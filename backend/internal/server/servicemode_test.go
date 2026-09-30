@@ -54,8 +54,8 @@ func TestServiceModeOwnsPath(t *testing.T) {
 }
 
 func TestParseServiceMode(t *testing.T) {
-	if ParseServiceMode("de-sys") != ModeSys {
-		t.Fatal("de-sys")
+	if ParseServiceMode("qzda-sys") != ModeSys {
+		t.Fatal("qzda-sys")
 	}
 	if ParseServiceMode("") != ModeSys {
 		t.Fatal("empty defaults to sys")
@@ -63,14 +63,14 @@ func TestParseServiceMode(t *testing.T) {
 	if ParseServiceMode("all") != ModeAll {
 		t.Fatal("all")
 	}
-	if ParseServiceMode("de-app") != ModeApp {
-		t.Fatal("de-app")
+	if ParseServiceMode("qzda-app") != ModeApp {
+		t.Fatal("qzda-app")
 	}
 	if ParseServiceMode("app") != ModeApp {
 		t.Fatal("app")
 	}
-	if ParseServiceMode("de-policy") != ModePolicy {
-		t.Fatal("de-policy")
+	if ParseServiceMode("qzda-policy") != ModePolicy {
+		t.Fatal("qzda-policy")
 	}
 	if ParseServiceMode("audit") != ModeAudit {
 		t.Fatal("audit")

@@ -70,7 +70,7 @@ CSP 里保留 `'unsafe-inline'` 仅对 `style-src` —— 前端 React 内联样
 
 - W4-D2 VisualDiff 落地时复用本组 header，并扩展 `Cache-Control` 为差异图自定义 TTL。
 - W6-D2 Canvas 若把 artifact iframe 进协作画布，需在 CSP 加 `frame-src 'self' https://<canvas-host>`（目前同一 host，无需改）。
-- 若未来允许跨 workspace 协作（artifact 共享），需将 `frame-ancestors` 升级为 `frame-ancestors 'self' https://*.de-platform.com` —— 等需求出现再立 ADR。
+- 若未来允许跨 workspace 协作（artifact 共享），需将 `frame-ancestors` 升级为 `frame-ancestors 'self' https://*.qzda-platform.com` —— 等需求出现再立 ADR。
 
 ## 6. 回退
 

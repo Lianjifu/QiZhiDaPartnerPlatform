@@ -1,5 +1,5 @@
 # Path-based split for coarse-grained units (v4).
-# Compose: make compose-up-coarse → gateway :8089 → de-sys:8100 / collab:8101 / cap:8102 / workflow:8103
+# Compose: make compose-up-coarse → gateway :8089 → qzda-sys:8100 / collab:8101 / cap:8102 / workflow:8103
 static_resources:
   listeners:
     - name: listener_http_coarse
@@ -10,7 +10,7 @@ static_resources:
             - name: envoy.filters.network.http_connection_manager
               typed_config:
                 "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
-                stat_prefix: de_coarse_ingress
+                stat_prefix: qzda_coarse_ingress
                 codec_type: AUTO
                 route_config:
                   name: coarse_route
@@ -20,160 +20,160 @@ static_resources:
                       routes:
                         - match: { prefix: "/agent" }
                           route:
-                            cluster: de_collab
+                            cluster: qzda_collab
                             timeout: 180s
                             prefix_rewrite: "/api/copilot"
                         - match: { prefix: "/api/copilot" }
-                          route: { cluster: de_collab, timeout: 180s }
+                          route: { cluster: qzda_collab, timeout: 180s }
                         - match: { prefix: "/api/conversations" }
-                          route: { cluster: de_collab, timeout: 180s }
+                          route: { cluster: qzda_collab, timeout: 180s }
                         - match: { prefix: "/api/sessions" }
-                          route: { cluster: de_collab, timeout: 30s }
+                          route: { cluster: qzda_collab, timeout: 30s }
                         - match: { prefix: "/api/share" }
-                          route: { cluster: de_collab, timeout: 30s }
+                          route: { cluster: qzda_collab, timeout: 30s }
                         - match: { prefix: "/api/attachments" }
-                          route: { cluster: de_collab, timeout: 60s }
+                          route: { cluster: qzda_collab, timeout: 60s }
                         - match: { prefix: "/api/actions" }
-                          route: { cluster: de_collab, timeout: 30s }
+                          route: { cluster: qzda_collab, timeout: 30s }
                         - match: { prefix: "/api/tasks" }
-                          route: { cluster: de_collab, timeout: 30s }
+                          route: { cluster: qzda_collab, timeout: 30s }
                         - match: { prefix: "/api/digital-employees" }
-                          route: { cluster: de_collab, timeout: 30s }
+                          route: { cluster: qzda_collab, timeout: 30s }
                         - match: { prefix: "/api/digital-employee-" }
-                          route: { cluster: de_collab, timeout: 30s }
+                          route: { cluster: qzda_collab, timeout: 30s }
                         - match: { prefix: "/api/agents" }
-                          route: { cluster: de_collab, timeout: 30s }
+                          route: { cluster: qzda_collab, timeout: 30s }
                         - match: { prefix: "/api/slash-commands" }
-                          route: { cluster: de_collab, timeout: 15s }
+                          route: { cluster: qzda_collab, timeout: 15s }
 
                         - match: { prefix: "/api/workflows" }
-                          route: { cluster: de_workflow, timeout: 60s }
+                          route: { cluster: qzda_workflow, timeout: 60s }
                         - match: { prefix: "/api/workflow-" }
-                          route: { cluster: de_workflow, timeout: 60s }
+                          route: { cluster: qzda_workflow, timeout: 60s }
 
                         # model-invoke before /api/model (prefix match is first-wins; stream needs long timeout)
                         - match: { prefix: "/api/model-invoke" }
-                          route: { cluster: de_cap, timeout: 120s }
+                          route: { cluster: qzda_cap, timeout: 120s }
                         - match: { prefix: "/api/model" }
-                          route: { cluster: de_cap, timeout: 30s }
+                          route: { cluster: qzda_cap, timeout: 30s }
                         - match: { prefix: "/api/knowledge" }
-                          route: { cluster: de_cap, timeout: 60s }
+                          route: { cluster: qzda_cap, timeout: 60s }
                         - match: { prefix: "/api/memory" }
-                          route: { cluster: de_cap, timeout: 30s }
+                          route: { cluster: qzda_cap, timeout: 30s }
                         - match: { prefix: "/api/skills" }
-                          route: { cluster: de_cap, timeout: 60s }
+                          route: { cluster: qzda_cap, timeout: 60s }
                         - match: { prefix: "/api/skill-" }
-                          route: { cluster: de_cap, timeout: 30s }
+                          route: { cluster: qzda_cap, timeout: 30s }
                         - match: { prefix: "/api/mcp-connections" }
-                          route: { cluster: de_cap, timeout: 30s }
+                          route: { cluster: qzda_cap, timeout: 30s }
                         - match: { prefix: "/api/tools" }
-                          route: { cluster: de_cap, timeout: 30s }
+                          route: { cluster: qzda_cap, timeout: 30s }
                         - match: { prefix: "/api/channel" }
-                          route: { cluster: de_cap, timeout: 30s }
+                          route: { cluster: qzda_cap, timeout: 30s }
                         - match: { prefix: "/api/channels" }
-                          route: { cluster: de_cap, timeout: 30s }
+                          route: { cluster: qzda_cap, timeout: 30s }
 
                         - match: { prefix: "/v1/evaluate" }
-                          route: { cluster: de_sys, timeout: 15s }
+                          route: { cluster: qzda_sys, timeout: 15s }
                         - match: { prefix: "/api/access" }
-                          route: { cluster: de_sys, timeout: 15s }
+                          route: { cluster: qzda_sys, timeout: 15s }
                         - match: { prefix: "/api/zero-trust" }
-                          route: { cluster: de_sys, timeout: 15s }
+                          route: { cluster: qzda_sys, timeout: 15s }
                         - match: { prefix: "/api/governance" }
-                          route: { cluster: de_sys, timeout: 15s }
+                          route: { cluster: qzda_sys, timeout: 15s }
                         - match: { prefix: "/api/audit" }
-                          route: { cluster: de_sys, timeout: 30s }
+                          route: { cluster: qzda_sys, timeout: 30s }
                         - match: { prefix: "/api/workspaces" }
-                          route: { cluster: de_sys, timeout: 30s }
+                          route: { cluster: qzda_sys, timeout: 30s }
                         - match: { prefix: "/api/auth" }
-                          route: { cluster: de_sys, timeout: 30s }
+                          route: { cluster: qzda_sys, timeout: 30s }
                         - match: { prefix: "/api/home" }
-                          route: { cluster: de_sys, timeout: 30s }
+                          route: { cluster: qzda_sys, timeout: 30s }
                         - match: { prefix: "/api/operations" }
-                          route: { cluster: de_sys, timeout: 30s }
+                          route: { cluster: qzda_sys, timeout: 30s }
                         - match: { prefix: "/api/billing" }
-                          route: { cluster: de_sys, timeout: 30s }
+                          route: { cluster: qzda_sys, timeout: 30s }
                         - match: { prefix: "/api/backups" }
-                          route: { cluster: de_sys, timeout: 30s }
+                          route: { cluster: qzda_sys, timeout: 30s }
                         - match: { prefix: "/api/tenant" }
-                          route: { cluster: de_sys, timeout: 30s }
+                          route: { cluster: qzda_sys, timeout: 30s }
                         - match: { prefix: "/api/notification-channels" }
-                          route: { cluster: de_sys, timeout: 30s }
+                          route: { cluster: qzda_sys, timeout: 30s }
                         - match: { prefix: "/api/api-keys" }
-                          route: { cluster: de_sys, timeout: 30s }
+                          route: { cluster: qzda_sys, timeout: 30s }
                         - match: { prefix: "/de.collab." }
-                          route: { cluster: de_collab, timeout: 60s }
+                          route: { cluster: qzda_collab, timeout: 60s }
                         - match: { prefix: "/de.employee." }
-                          route: { cluster: de_collab, timeout: 60s }
+                          route: { cluster: qzda_collab, timeout: 60s }
                         - match: { prefix: "/de.rag." }
-                          route: { cluster: de_cap, timeout: 60s }
+                          route: { cluster: qzda_cap, timeout: 60s }
                         - match: { prefix: "/de.runtime." }
-                          route: { cluster: de_cap, timeout: 60s }
+                          route: { cluster: qzda_cap, timeout: 60s }
                         - match: { prefix: "/connect" }
-                          route: { cluster: de_sys, timeout: 60s }
+                          route: { cluster: qzda_sys, timeout: 60s }
                         - match: { prefix: "/de." }
-                          route: { cluster: de_sys, timeout: 60s }
+                          route: { cluster: qzda_sys, timeout: 60s }
                         - match: { prefix: "/api" }
-                          route: { cluster: de_sys, timeout: 30s }
+                          route: { cluster: qzda_sys, timeout: 30s }
                         - match: { prefix: "/healthz" }
-                          route: { cluster: de_sys }
+                          route: { cluster: qzda_sys }
                         - match: { prefix: "/readyz" }
-                          route: { cluster: de_sys }
+                          route: { cluster: qzda_sys }
                         - match: { prefix: "/metrics" }
-                          route: { cluster: de_sys }
+                          route: { cluster: qzda_sys }
                 http_filters:
                   - name: envoy.filters.http.router
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
   clusters:
-    - name: de_sys
+    - name: qzda_sys
       connect_timeout: 2s
       type: LOGICAL_DNS
       dns_lookup_family: V4_ONLY
       lb_policy: ROUND_ROBIN
       load_assignment:
-        cluster_name: de_sys
+        cluster_name: qzda_sys
         endpoints:
           - lb_endpoints:
               - endpoint:
                   address:
-                    socket_address: { address: de-sys, port_value: 8100 }
-    - name: de_collab
+                    socket_address: { address: qzda-sys, port_value: 8100 }
+    - name: qzda_collab
       connect_timeout: 2s
       type: LOGICAL_DNS
       dns_lookup_family: V4_ONLY
       lb_policy: ROUND_ROBIN
       load_assignment:
-        cluster_name: de_collab
+        cluster_name: qzda_collab
         endpoints:
           - lb_endpoints:
               - endpoint:
                   address:
-                    socket_address: { address: de-collab, port_value: 8101 }
-    - name: de_cap
+                    socket_address: { address: qzda-collab, port_value: 8101 }
+    - name: qzda_cap
       connect_timeout: 2s
       type: LOGICAL_DNS
       dns_lookup_family: V4_ONLY
       lb_policy: ROUND_ROBIN
       load_assignment:
-        cluster_name: de_cap
+        cluster_name: qzda_cap
         endpoints:
           - lb_endpoints:
               - endpoint:
                   address:
-                    socket_address: { address: de-cap, port_value: 8102 }
-    - name: de_workflow
+                    socket_address: { address: qzda-cap, port_value: 8102 }
+    - name: qzda_workflow
       connect_timeout: 2s
       type: LOGICAL_DNS
       dns_lookup_family: V4_ONLY
       lb_policy: ROUND_ROBIN
       load_assignment:
-        cluster_name: de_workflow
+        cluster_name: qzda_workflow
         endpoints:
           - lb_endpoints:
               - endpoint:
                   address:
-                    socket_address: { address: de-workflow, port_value: 8103 }
+                    socket_address: { address: qzda-workflow, port_value: 8103 }
 
 admin:
   address:

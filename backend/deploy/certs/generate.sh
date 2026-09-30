@@ -7,22 +7,22 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$DIR"
 
 TTL_DAYS="${1:-825}"
-TRUST_DOMAIN="${DE_SPIFFE_TRUST_DOMAIN:-de.local}"
+TRUST_DOMAIN="${DE_SPIFFE_TRUST_DOMAIN:-qzda.local}"
 
 # Keep CA if rotating leaf certs only
 if [[ ! -f ca.crt || ! -f ca.key ]]; then
   openssl req -x509 -newkey rsa:2048 -nodes -keyout ca.key -out ca.crt -days 3650 \
-    -subj "/CN=de-local-ca"
+    -subj "/CN=qzda-local-ca"
 fi
 
 # Gateway / Envoy server identity
 openssl req -newkey rsa:2048 -nodes -keyout server.key -out server.csr \
-  -subj "/CN=de-gateway"
+  -subj "/CN=qzda-gateway"
 openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial \
   -out server.crt -days "$TTL_DAYS" -extfile <(printf '%s\n' \
-    "subjectAltName=DNS:localhost,DNS:de-envoy,DNS:de-gateway,IP:127.0.0.1,URI:spiffe://${TRUST_DOMAIN}/ns/default/sa/de-gateway")
+    "subjectAltName=DNS:localhost,DNS:qzda-envoy,DNS:qzda-gateway,IP:127.0.0.1,URI:spiffe://${TRUST_DOMAIN}/ns/default/sa/qzda-gateway")
 
-# Workload client (de-core and future microservices share CA; distinct SPIFFE IDs)
+# Workload client (qzda-core and future microservices share CA; distinct SPIFFE IDs)
 issue_workload() {
   local name="$1" spiffe_path="$2"
   openssl req -newkey rsa:2048 -nodes -keyout "${name}.key" -out "${name}.csr" \
@@ -33,17 +33,17 @@ issue_workload() {
   rm -f "${name}.csr"
 }
 
-issue_workload client de-core
+issue_workload client qzda-core
 # Aliases expected by older docs / curl examples
-cp -f client.crt de-core.crt
-cp -f client.key de-core.key
+cp -f client.crt qzda-core.crt
+cp -f client.key qzda-core.key
 
-for svc in de-platform de-policy de-audit de-collab de-employee skill-runtime; do
+for svc in qzda-platform qzda-policy qzda-audit qzda-collab qzda-employee qzda-skill-runtime; do
   issue_workload "$svc" "$svc"
 done
 
 rm -f server.csr ca.srl
 chmod 600 *.key 2>/dev/null || true
 echo "wrote CA + SPIFFE leaf certs under $DIR (ttl=${TTL_DAYS}d trust_domain=${TRUST_DOMAIN})"
-echo "  gateway: spiffe://${TRUST_DOMAIN}/ns/default/sa/de-gateway"
-echo "  client:  spiffe://${TRUST_DOMAIN}/ns/default/sa/de-core"
+echo "  gateway: spiffe://${TRUST_DOMAIN}/ns/default/sa/qzda-gateway"
+echo "  client:  spiffe://${TRUST_DOMAIN}/ns/default/sa/qzda-core"

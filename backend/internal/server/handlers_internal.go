@@ -81,7 +81,7 @@ func (s *Server) applyWorkflowSkillCatalog(actor *auth.Identity, skill map[strin
 		item["kind"] = "workflow"
 	}
 	if str(item["runtime"]) == "" {
-		item["runtime"] = "de-workflow"
+		item["runtime"] = "qzda-workflow"
 	}
 	item["source"] = "workflow"
 	if s.ownsCapRuntime() {

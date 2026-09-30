@@ -9,7 +9,7 @@
 
 | | |
 |:--|:--|
-| **默认联调** | 真实 API（`VITE_USE_MOCK=false`）→ Vite 代理 `de-gateway :8089` |
+| **默认联调** | 真实 API（`VITE_USE_MOCK=false`）→ Vite 代理 `qzda-gateway :8089` |
 | **纯前端演示** | `cd frontend/web && npm run dev:demo` |
 | **合规目标** | 等保 3 / ISO 27001 |
 
@@ -95,7 +95,7 @@ cd ../frontend && pnpm install && pnpm --filter web dev
 3. **知识 / 技能中心** → 办公知识包 published；岗位包 `office` 已安装  
 4. **专家协作** → 选用办公助手做一次制度问答或纪要类对话  
 
-改 Go 后：`cd backend && make build`，再 `launchctl kickstart -k "gui/$(id -u)/com.digital-employee.dev-stack"`。完整部署见 [本地部署](#本地部署)。
+改 Go 后：`cd backend && make build`，再 `launchctl kickstart -k "gui/$(id -u)/com.qizhida.dev-stack"`。完整部署见 [本地部署](#本地部署)。
 
 ---
 
@@ -281,7 +281,7 @@ flowchart TB
 ## 技术架构
 
 **控制面管可信与编排，执行面跑推理与工具，网关统一入口。**  
-本地 / SME 默认 **monolith**：`de-gateway:8089` → `de-app:8100` + `de-skill-runtime:8093`（可选 `de-workflow:8103`）。
+本地 / SME 默认 **monolith**：`qzda-gateway:8089` → `qzda-app:8100` + `qzda-skill-runtime:8093`（可选 `qzda-workflow:8103`）。
 
 | 文档 | 用途 |
 |------|------|
@@ -321,26 +321,26 @@ flowchart TB
   end
 
   subgraph Edge["入口层"]
-    GW["de-gateway :8089<br/>Envoy / gateway-proxy"]
+    GW["qzda-gateway :8089<br/>Envoy / gateway-proxy"]
   end
 
   subgraph Control["控制面 · Go"]
-    APP["de-app :8100<br/>monolith：sys + collab + cap"]
-    SYS["de-sys :8100"]
-    COL["de-collab :8101"]
-    CAP["de-cap :8102"]
-    WF["de-workflow :8103<br/>可选"]
+    APP["qzda-app :8100<br/>monolith：sys + collab + cap"]
+    SYS["qzda-sys :8100"]
+    COL["qzda-collab :8101"]
+    CAP["qzda-cap :8102"]
+    WF["qzda-workflow :8103<br/>可选"]
   end
 
   subgraph Exec["执行面"]
-    SK["de-skill-runtime :8093<br/>必须独立"]
-    AG["de-agent :8091<br/>按需"]
-    RAG["de-rag :8092<br/>按需"]
+    SK["qzda-skill-runtime :8093<br/>必须独立"]
+    AG["qzda-agent :8091<br/>按需"]
+    RAG["qzda-rag :8092<br/>按需"]
   end
 
   subgraph Data["数据与缓存"]
-    PG[("de-postgres :5432<br/>Postgres 16 · Docker only")]
-    RD[("de-redis :6379")]
+    PG[("qzda-postgres :5432<br/>Postgres 16 · Docker only")]
+    RD[("qzda-redis :6379")]
   end
 
   subgraph Obs["可观测 · 可选"]
@@ -364,7 +364,7 @@ flowchart TB
 
 | 形态 | 组成 | 适用 |
 |------|------|------|
-| **monolith（默认）** | gateway + de-app + skill-runtime（± workflow） | 本地联调 / SME |
+| **monolith（默认）** | gateway + qzda-app + skill-runtime（± workflow） | 本地联调 / SME |
 | **coarse** | gateway + sys/collab/cap/workflow + skill（± agent/rag） | 规模化对照 |
 | **staging 拓扑** | coarse + Dex + OPA + OpenSearch + obs | 预发验收 |
 
@@ -380,24 +380,24 @@ flowchart TB
     FE["frontend/web<br/>React 18 · Vite · TanStack Query · Zustand"]
   end
 
-  GW["de-gateway :8089<br/>Envoy monolith / coarse · 或 dev proxy"]
+  GW["qzda-gateway :8089<br/>Envoy monolith / coarse · 或 dev proxy"]
 
   FE -->|"HTTPS / SSE · 同源 /api"| GW
 
   subgraph Mono["monolith 默认"]
-    APP["de-app :8100<br/>sys + collab + cap"]
+    APP["qzda-app :8100<br/>sys + collab + cap"]
   end
 
   subgraph Coarse["coarse 四进程"]
-    SYS["de-sys :8100<br/>platform · ops · policy · audit"]
-    COL["de-collab :8101<br/>collab · employee"]
-    CAP["de-cap :8102<br/>model · knowledge · memory · skill · channel"]
-    WFc["de-workflow :8103<br/>可选"]
+    SYS["qzda-sys :8100<br/>platform · ops · policy · audit"]
+    COL["qzda-collab :8101<br/>collab · employee"]
+    CAP["qzda-cap :8102<br/>model · knowledge · memory · skill · channel"]
+    WFc["qzda-workflow :8103<br/>可选"]
   end
 
-  SKILL["de-skill-runtime :8093<br/>技能沙箱 · 必须独立"]
-  WFm["de-workflow :8103<br/>流程 HTTP + Temporal · 可选"]
-  AI["de-agent / de-rag :8091–8092<br/>coarse 或按需<br/>monolith 默认进程内 Harness"]
+  SKILL["qzda-skill-runtime :8093<br/>技能沙箱 · 必须独立"]
+  WFm["qzda-workflow :8103<br/>流程 HTTP + Temporal · 可选"]
+  AI["qzda-agent / qzda-rag :8091–8092<br/>coarse 或按需<br/>monolith 默认进程内 Harness"]
 
   GW -->|"默认"| APP
   GW -->|"规模化"| SYS
@@ -414,18 +414,18 @@ flowchart TB
 
 ### 数据流时序图
 
-专家协作发一条消息时的数据流（**monolith**；`de-app` 内含 sys / collab / cap 域逻辑）。高风险写操作可插入人工审核门禁后再执行工具。
+专家协作发一条消息时的数据流（**monolith**；`qzda-app` 内含 sys / collab / cap 域逻辑）。高风险写操作可插入人工审核门禁后再执行工具。
 
 ```mermaid
 sequenceDiagram
   autonumber
   participant UI as 控制台
-  participant GW as de-gateway
-  participant APP as de-app
+  participant GW as qzda-gateway
+  participant APP as qzda-app
   participant PG as PostgreSQL / Redis
   participant LLM as 模型供应商
-  participant SK as de-skill-runtime
-  participant WF as de-workflow
+  participant SK as qzda-skill-runtime
+  participant WF as qzda-workflow
   participant AUD as 审计 / 用量
 
   UI->>GW: HTTPS / SSE · /api · x-workspace-id
@@ -462,20 +462,20 @@ sequenceDiagram
   APP--)AUD: 异步 AuditEvent · UsageMeter
 ```
 
-coarse 模式下，上图 `de-app` 内域调用拆到 `de-collab` / `de-sys`(policy) / `de-cap`；网关仍统一入口 `:8089`。完整扇出见 [`docs/后端架构规划.md`](docs/后端架构规划.md) §3.3。
+coarse 模式下，上图 `qzda-app` 内域调用拆到 `qzda-collab` / `qzda-sys`(policy) / `qzda-cap`；网关仍统一入口 `:8089`。完整扇出见 [`docs/后端架构规划.md`](docs/后端架构规划.md) §3.3。
 
 ### 部署单元
 
 | 单元 | 端口 | 说明 |
 |------|------|------|
-| **de-gateway** | 8089 | 统一 API 入口；健康检查 `/healthz` |
-| **de-app** | 8100 | **monolith 默认**：sys + collab + cap |
-| de-sys / de-collab / de-cap | 8100–8102 | coarse：地基 / 协作编排 / 能力五中心 |
-| de-workflow | 8103 | 工作流与流程技能发布（可选） |
-| **de-skill-runtime** | 8093 | 技能沙箱（必须独立） |
+| **qzda-gateway** | 8089 | 统一 API 入口；健康检查 `/healthz` |
+| **qzda-app** | 8100 | **monolith 默认**：sys + collab + cap |
+| qzda-sys / qzda-collab / qzda-cap | 8100–8102 | coarse：地基 / 协作编排 / 能力五中心 |
+| qzda-workflow | 8103 | 工作流与流程技能发布（可选） |
+| **qzda-skill-runtime** | 8093 | 技能沙箱（必须独立） |
 | agent / rag | 8091–8092 | coarse 或按需 |
 
-已退役：`de-core:8080`、细端口 `de-policy:8094` / `de-audit:8095`（能力由 de-app / de-sys 吸收）。
+已退役：`qzda-core:8080`、细端口 `qzda-policy:8094` / `qzda-audit:8095`（能力由 qzda-app / qzda-sys 吸收）。
 
 ### 技术栈
 
@@ -507,8 +507,8 @@ qizhida-partner-platform/
 │   ├── web/                       # React 18 + Vite 应用（:5173）
 │   └── packages/                  # api · types · ui · utils · hooks
 ├── backend/                       # Go 控制面 + Python 执行面
-│   ├── cmd/                       # de-app（默认）· de-sys · de-collab · de-cap
-│   │                              # de-workflow · de-policy · de-audit · …
+│   ├── cmd/                       # qzda-app（默认）· qzda-sys · qzda-collab · qzda-cap
+│   │                              # qzda-workflow · qzda-policy · qzda-audit · …
 │   ├── builtin/                   # 出厂包（办公开箱）
 │   │   ├── knowledge/office/      # kp.office.* 知识包
 │   │   ├── skills/                # 岗位包 manifest（含 office autoInstall）
@@ -517,7 +517,7 @@ qizhida-partner-platform/
 │   ├── internal/                  # apprun · server(ServiceMode) · store · policy …
 │   ├── api/                       # routes.md · proto · 契约说明
 │   ├── services/                  # 部署单元：Dockerfile · SERVICE.md · FastAPI
-│   │                              # （de-app / de-skill-runtime / de-rag …）
+│   │                              # （qzda-app / qzda-skill-runtime / qzda-rag …）
 │   ├── deploy/                    # compose · envoy.monolith/coarse · topology-split
 │   ├── infra/ · obs/              # 基础依赖与可观测
 │   ├── libs/ · pkg/ · gen/        # 共享库与生成代码
@@ -543,7 +543,7 @@ qizhida-partner-platform/
 
 | 路径 | 说明 |
 |------|------|
-| `backend/cmd/de-app` | monolith 主进程入口（sys + collab + cap） |
+| `backend/cmd/qzda-app` | monolith 主进程入口（sys + collab + cap） |
 | `backend/builtin/` | 冷启动由 `EnsureBuiltin*` 装载；见各子目录 README |
 | `backend/bin/` | 本机常驻栈二进制；改 Go 后须 `make build` |
 | `scripts/dev-stack/` | LaunchAgent 联调（默认 `DE_STACK=monolith`） |
@@ -556,7 +556,7 @@ qizhida-partner-platform/
 
 | 已成立 | 仍在路上 |
 |--------|----------|
-| **monolith 默认**（de-app + skill + gateway） | 组织 / 个人作用域统一、真 gVisor |
+| **monolith 默认**（qzda-app + skill + gateway） | 组织 / 个人作用域统一、真 gVisor |
 | 控制台真实网关 + 工作区隔离 + live-aggregate | Temporal / Milvus 生产化 |
 | 办公开箱（知识×技能×流程）+ PilotDeck | Handler 六边形迁包、LangGraph 全图 |
 
@@ -586,11 +586,11 @@ bash scripts/dev-stack/ensure-docker-postgres.sh
 
 | 服务 | 端口 |
 |------|------|
-| de-gateway | **8089** |
-| de-app（monolith） | 8100 |
-| de-skill-runtime | 8093 |
+| qzda-gateway | **8089** |
+| qzda-app（monolith） | 8100 |
+| qzda-skill-runtime | 8093 |
 | Vite | 5173 |
-| de-workflow（可选） | 8103 |
+| qzda-workflow（可选） | 8103 |
 | coarse sys/collab/cap | 8100–8102 |
 
 ### Compose
@@ -609,7 +609,7 @@ curl -sS http://127.0.0.1:8089/healthz
 
 ```bash
 cd backend && make build
-launchctl kickstart -k "gui/$(id -u)/com.digital-employee.dev-stack"
+launchctl kickstart -k "gui/$(id -u)/com.qizhida.dev-stack"
 ```
 
 脚本：[`scripts/dev-stack/run-stack.sh`](scripts/dev-stack/run-stack.sh)（默认 `DE_STACK=monolith`，`DE_ENV=development`）。
@@ -648,7 +648,7 @@ cd ../backend && make test && make test-python && make smoke-monolith
 | 运营总览仍见演示金额 | `make build` + kickstart；强刷；确认未打到旧进程 |
 | 前端像 Mock | `VITE_USE_MOCK=false`，代理指向 `:8089` |
 | ACME 演示与真实数据混杂 | `backend/scripts/purge-demo-seed-ids.sql` 后重启 |
-| 数据像空库 / 版本不对 | 确认 `127.0.0.1:5432` 为 Docker `de-postgres` 16.x |
+| 数据像空库 / 版本不对 | 确认 `127.0.0.1:5432` 为 Docker `qzda-postgres` 16.x |
 | 办公模板 / 知识包缺失 | `make build` 并重启，确认 `EnsureBuiltin*` |
 | Go 改了不生效 | 未写入 `backend/bin` 或未重启栈 |
 | `E_IDENTITY_MOCK_FORBIDDEN` | `DE_ALLOW_DEMO_TOKEN=1` 或真实登录 |
@@ -685,7 +685,7 @@ flowchart LR
 
 | 主题 | 内容 |
 |------|------|
-| **联调拓扑** | monolith 默认（de-app + skill + gateway）；coarse 可对照；Docker Postgres 16 |
+| **联调拓扑** | monolith 默认（qzda-app + skill + gateway）；coarse 可对照；Docker Postgres 16 |
 | **产品闭环** | 伙伴上岗 → 专家协作 / 任务 / 流程 → 运营 live-aggregate → 审计 |
 | **办公开箱** | 知识 × 技能 × 流程 + `de-office`；模板库「平台内置 / 个人创建」 |
 | **运行时** | 进程内 Harness；技能沙箱独立；流式 SSE；单人审核主路径 |

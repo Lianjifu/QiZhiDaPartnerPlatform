@@ -25,7 +25,7 @@ func NewOpenSearchAuditFromEnv() *OpenSearchAudit {
 	if base == "" {
 		return nil
 	}
-	idx := envOr("DE_OPENSEARCH_AUDIT_INDEX", "de-audit")
+	idx := envOr("DE_OPENSEARCH_AUDIT_INDEX", "qzda-audit")
 	return &OpenSearchAudit{
 		Base:  strings.TrimRight(base, "/"),
 		Index: idx,

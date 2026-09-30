@@ -1,6 +1,6 @@
 # Build Go control-plane binaries (context = backend/).
-#   docker build -f Dockerfile --build-arg CMD=de-sys -t de-sys:local .
-ARG CMD=de-sys
+#   docker build -f Dockerfile --build-arg CMD=qzda-sys -t qzda-sys:local .
+ARG CMD=qzda-sys
 FROM golang:1.24-alpine AS build
 WORKDIR /src
 RUN apk add --no-cache git ca-certificates

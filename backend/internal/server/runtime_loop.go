@@ -166,7 +166,7 @@ func (s *Server) runRemoteRuntime(ctx context.Context, in reactTurnInput) reactT
 		ModelID: coalesce(lastModel, in.ModelID),
 		Mode:    coalesce(lastMode, contract.LoopDirect),
 		Resolved: resolvedTurn{
-			ProviderID: "de-agent-runtime", Source: runtimeModeRemote, ModelID: coalesce(lastModel, in.ModelID),
+			ProviderID: "qzda-agent-runtime", Source: runtimeModeRemote, ModelID: coalesce(lastModel, in.ModelID),
 		},
 		ToolCalls: []map[string]any{},
 		ReplyMode: replyMode,

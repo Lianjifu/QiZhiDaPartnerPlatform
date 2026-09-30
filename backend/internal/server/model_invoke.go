@@ -473,7 +473,7 @@ func formatModelInvokeUserMessage(err error) string {
 		strings.Contains(low, "client.timeout exceeded"),
 		strings.Contains(low, "i/o timeout"),
 		(strings.Contains(low, "timeout") && !strings.Contains(low, "timed out waiting for lock")):
-		return "模型调用超时：供应商在限定时间内未返回。请到「模型中心」探测连通性与密钥，或将 DE_MODEL_CANDIDATE_TIMEOUT 调至 45–60 后重启 de-app/de-cap。"
+		return "模型调用超时：供应商在限定时间内未返回。请到「模型中心」探测连通性与密钥，或将 DE_MODEL_CANDIDATE_TIMEOUT 调至 45–60 后重启 qzda-app/qzda-cap。"
 	case strings.Contains(low, "no model endpoint"),
 		strings.Contains(low, "empty model"),
 		strings.Contains(low, "model not found"),

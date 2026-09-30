@@ -15,7 +15,7 @@ func TestOpenSearchIndexAndSearch(t *testing.T) {
 	var indexed map[string]any
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
-		case r.Method == http.MethodPut && strings.HasSuffix(r.URL.Path, "/de-audit") && !strings.Contains(r.URL.Path, "_doc"):
+		case r.Method == http.MethodPut && strings.HasSuffix(r.URL.Path, "/qzda-audit") && !strings.Contains(r.URL.Path, "_doc"):
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`{"acknowledged":true}`))
 		case r.Method == http.MethodPut && strings.Contains(r.URL.Path, "/_doc/"):
@@ -39,7 +39,7 @@ func TestOpenSearchIndexAndSearch(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	o := &OpenSearchAudit{Base: srv.URL, Index: "de-audit", HTTP: srv.Client()}
+	o := &OpenSearchAudit{Base: srv.URL, Index: "qzda-audit", HTTP: srv.Client()}
 	if err := o.EnsureIndex(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +78,7 @@ func TestOpenSearchAuditCloseNilReceiver(t *testing.T) {
 // structs created without an HTTP client (e.g. tests, future code that
 // only sets Base) must still return nil from Close rather than panic.
 func TestOpenSearchAuditCloseNoClient(t *testing.T) {
-	o := &OpenSearchAudit{Base: "http://unused", Index: "de-audit"}
+	o := &OpenSearchAudit{Base: "http://unused", Index: "qzda-audit"}
 	if err := o.Close(); err != nil {
 		t.Fatalf("OpenSearchAudit.Close with nil HTTP returned %v, want nil", err)
 	}
@@ -100,7 +100,7 @@ func TestOpenSearchAuditCloseIdleConns(t *testing.T) {
 	}
 	o := &OpenSearchAudit{
 		Base:  "http://unused",
-		Index: "de-audit",
+		Index: "qzda-audit",
 		HTTP:  &http.Client{Transport: tr},
 	}
 	if err := o.Close(); err != nil {

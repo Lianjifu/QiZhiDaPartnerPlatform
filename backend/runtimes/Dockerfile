@@ -1,8 +1,8 @@
 # Legacy unified Dockerfile — build from backend/ root:
-#   docker build -f runtimes/Dockerfile --build-arg SERVICE=de-rag -t de-rag .
+#   docker build -f runtimes/Dockerfile --build-arg SERVICE=qzda-rag -t qzda-rag .
 #
-# Prefer per-service Dockerfiles under services/de-*/ (see each SERVICE.md).
-ARG SERVICE=de-agent-runtime
+# Prefer per-service Dockerfiles under services/qzda-*/ (see each SERVICE.md).
+ARG SERVICE=qzda-agent-runtime
 FROM python:3.12-slim
 WORKDIR /app
 COPY services/${SERVICE}/requirements.txt ./

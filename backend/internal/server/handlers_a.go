@@ -773,7 +773,7 @@ func (s *Server) auditCenter(r *http.Request) (any, error) {
 	seen := map[string]bool{}
 	var out []map[string]any
 
-	// Prefer OpenSearch when configured, else PG audit.events (owned by de-sys).
+	// Prefer OpenSearch when configured, else PG audit.events (owned by qzda-sys).
 	if s.Search != nil && s.Search.Available() {
 		if rows, err := s.Search.SearchRecent(r.Context(), id.WorkspaceIDs, 200); err == nil && len(rows) > 0 {
 			for _, a := range rows {

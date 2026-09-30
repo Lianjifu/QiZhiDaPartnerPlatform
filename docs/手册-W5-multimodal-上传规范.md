@@ -140,7 +140,7 @@ Provider 实现里要确保首次启动时即检查外部依赖版本（Tesserac
 CI 默认开 `DE_MULTIMODAL_OCR=stub` + `DE_MULTIMODAL_ASR=stub`，跑：
 
 ```bash
-DE_MULTIMODAL_OCR=stub DE_MULTIMODAL_ASR=stub ./de-app -mode app &
+DE_MULTIMODAL_OCR=stub DE_MULTIMODAL_ASR=stub ./qzda-app -mode app &
 
 curl -sf -X POST -H "Authorization: Bearer mock-admin-token" \
   -F file=@tests/fixtures/multimodal/receipt.png \

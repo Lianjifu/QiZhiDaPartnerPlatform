@@ -25,7 +25,7 @@
 ```bash
 mkdir -p data
 DE_STORE_BACKEND=sqlite DE_SQLITE_PATH=data/store.db \
-  ./de-app -mode app
+  ./qzda-app -mode app
 # → log: sqlite durability: hooked PersistFunc path=data/store.db
 ```
 
@@ -49,7 +49,7 @@ sqlite durability: open failed (data/store.db): unable to open database file
 ### 1.5 端到端 smoke
 
 ```bash
-DE_STORE_BACKEND=sqlite DE_SQLITE_PATH=/tmp/test.db ./de-app -mode app &
+DE_STORE_BACKEND=sqlite DE_SQLITE_PATH=/tmp/test.db ./qzda-app -mode app &
 PID=$!
 
 # 1) 写一个 task
@@ -62,7 +62,7 @@ sqlite3 /tmp/test.db 'SELECT count(*) FROM kv_documents;'
 # → 1
 
 # 3) 重启进程，数据应还在
-kill $PID; DE_STORE_BACKEND=sqlite DE_SQLITE_PATH=/tmp/test.db ./de-app -mode app &
+kill $PID; DE_STORE_BACKEND=sqlite DE_SQLITE_PATH=/tmp/test.db ./qzda-app -mode app &
 curl -sf -H "Authorization: Bearer mock-admin-token" \
   http://127.0.0.1:8089/api/tasks | jq '.data | length'
 # → 1
@@ -141,7 +141,7 @@ DE_WEIXIN_APP_ID=wxd... \
 DE_WEIXIN_APP_SECRET=... \
 DE_WEIXIN_TOKEN=mytoken \
 DE_WEIXIN_AES_KEY=$(head -c 43 /dev/urandom | base64) \
-./de-app -mode app
+./qzda-app -mode app
 
 # 1) 拿 access_token
 curl -sf http://127.0.0.1:8089/api/channel/wecom/probe \

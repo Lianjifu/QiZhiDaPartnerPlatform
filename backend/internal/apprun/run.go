@@ -1,5 +1,5 @@
 // Package apprun boots a coarse-grained control-plane process
-// (de-sys / collab / cap / workflow, plus optional de-policy / de-audit).
+// (qzda-sys / collab / cap / workflow, plus optional qzda-policy / qzda-audit).
 package apprun
 
 import (
@@ -84,8 +84,8 @@ func runDemo(ctx context.Context, opts Options, domain store.Domain) error {
 // and srv.Shutdown with a 10s deadline so the heartbeat sweep / visualdiff
 // janitor / memory TTL goroutine exit cleanly instead of being SIGKILLed.
 //
-// Used by runDemo and runDurable. Other cmd entry points (de-audit /
-// de-policy / de-sys) manage their own lifecycle.
+// Used by runDemo and runDurable. Other cmd entry points (qzda-audit /
+// qzda-policy / qzda-sys) manage their own lifecycle.
 func serveWithGracefulShutdown(httpServer *http.Server, srv *server.Server) error {
 	errCh := make(chan error, 1)
 	go func() { errCh <- httpServer.ListenAndServe() }()

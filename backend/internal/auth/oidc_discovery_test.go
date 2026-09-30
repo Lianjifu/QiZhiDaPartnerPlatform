@@ -24,7 +24,7 @@ func TestResolveEndpointsFromDiscovery(t *testing.T) {
 
 	cfg := OIDCConfig{
 		Enabled: true, Issuer: ts.URL + "/application/o/de",
-		ClientID: "de-core", HTTPClient: ts.Client(),
+		ClientID: "qzda-core", HTTPClient: ts.Client(),
 	}
 	authEP, tok, ui, err := cfg.resolveEndpoints(context.Background())
 	if err != nil {

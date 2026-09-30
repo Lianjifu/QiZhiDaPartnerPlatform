@@ -12,8 +12,8 @@
 | 来源 | 现状 | 触发条件 |
 |---|---|---|
 | 本地 store（in-process） | `buildCapabilityCatalogFromStoreLocked` | `ModeAll` / fallback |
-| de-cap peer HTTP（capability 子域） | `fetchCapCatalogParts` | `ModeCollab` |
-| de-workflow peer HTTP（workflow 子域） | `fetchWorkflowCatalogParts` | `ModeCollab` 或 `ModeApp` + `DE_WORKFLOW_URL` |
+| qzda-cap peer HTTP（capability 子域） | `fetchCapCatalogParts` | `ModeCollab` |
+| qzda-workflow peer HTTP（workflow 子域） | `fetchWorkflowCatalogParts` | `ModeCollab` 或 `ModeApp` + `DE_WORKFLOW_URL` |
 | 始终注入 | "Web" channel | 全部路径 |
 
 所有四条路径都各自解析 `map[string]any` 列表、手写去重（`seenSkill` / `seenTool` / `seenModel` / `seenCh`）、手写 workspace 过滤。问题：
@@ -85,7 +85,7 @@ W1-D4 的真实价值是「Source 抽象 + 单元可测的合并契约」 — �
 | `localSource` / `peerCapSource` / `peerWorkflowSource` 实现 `Source` | handler 重构时（独立 ADR） |
 | `handlers_capability_catalog.go` 从 600 行瘦身 | 上述 3 个 source 落地后 |
 | Option 加 `Score float64` | 未来按 score 排序 |
-| Source 加 `Priority()` 返回同 Kind 多 source 的优先级 | de-collab 模式需要 cap > local 时 |
+| Source 加 `Priority()` 返回同 Kind 多 source 的优先级 | qzda-collab 模式需要 cap > local 时 |
 
 ## 6. 回退
 

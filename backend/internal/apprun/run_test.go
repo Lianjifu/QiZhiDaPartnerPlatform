@@ -47,7 +47,7 @@ func TestServeWithGracefulShutdownReturnsOnSignal(t *testing.T) {
 }
 
 // TestServeWithGracefulShutdownExportedSignature guards the helper's
-// exported signature so future refactors that break callers (cmd/de-app
+// exported signature so future refactors that break callers (cmd/qzda-app
 // etc.) fail the test instead of breaking the build downstream.
 func TestServeWithGracefulShutdownExportedSignature(t *testing.T) {
 	// Type-level assertion: the function must take *http.Server + *server.Server

@@ -10,7 +10,7 @@ import (
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
-// evaluateWrite runs policy (DE_POLICY_URL → de-sys when set) and audits the decision.
+// evaluateWrite runs policy (DE_POLICY_URL → qzda-sys when set) and audits the decision.
 func (s *Server) evaluateWrite(r *http.Request, resource, action string, extra policy.Input) error {
 	s.Store.Lock()
 	defer s.Store.Unlock()
@@ -48,7 +48,7 @@ func (s *Server) evaluateWriteLocked(r *http.Request, resource, action string, e
 	return nil
 }
 
-// decidePolicy prefers peer policy service (DE_POLICY_URL → de-sys or de-policy /v1/evaluate), else local Engine.
+// decidePolicy prefers peer policy service (DE_POLICY_URL → qzda-sys or qzda-policy /v1/evaluate), else local Engine.
 func (s *Server) decidePolicy(ctx context.Context, in policy.Input) policy.Decision {
 	if c := qzdapolicy.NewClientFromEnv(); c.Available() {
 		if d, err := c.Evaluate(ctx, in); err == nil {

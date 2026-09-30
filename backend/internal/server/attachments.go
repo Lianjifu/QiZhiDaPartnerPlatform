@@ -14,7 +14,7 @@ import (
 func attachmentRoot() string {
 	base := strings.TrimSpace(os.Getenv("DE_SKILL_ARTIFACT_DIR"))
 	if base == "" {
-		base = "/tmp/de-stack/artifacts"
+		base = "/tmp/qzda-stack/artifacts"
 	}
 	dir := filepath.Join(base, "attachments")
 	_ = os.MkdirAll(dir, 0o755)

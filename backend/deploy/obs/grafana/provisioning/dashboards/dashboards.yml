@@ -1,6 +1,6 @@
 apiVersion: 1
 providers:
-  - name: de-core
+  - name: qzda-core
     orgId: 1
     folder: Digital Employee
     type: file

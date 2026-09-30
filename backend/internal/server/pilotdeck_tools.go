@@ -274,7 +274,7 @@ func (s *Server) runtimeSendAttachment(ctx toolRunContext, call toolCallRequest,
 func (s *Server) runtimeAgent(ctx toolRunContext, call toolCallRequest, started time.Time) toolExecResult {
 	prompt := firstNonEmpty(str(call.Args["prompt"]), str(call.Args["task"]), ctx.UserMessage)
 	return toolExecResult{Status: "success", DurationMs: int(time.Since(started).Milliseconds()),
-		Output: fmt.Sprintf("【agent】子 Agent 已接收任务（简化委派）：%s\n提示：完整子循环需 de-agent-runtime；当前返回任务摘要供主 Agent 继续。", truncateRunes(prompt, 500))}
+		Output: fmt.Sprintf("【agent】子 Agent 已接收任务（简化委派）：%s\n提示：完整子循环需 qzda-agent-runtime；当前返回任务摘要供主 Agent 继续。", truncateRunes(prompt, 500))}
 }
 
 func (s *Server) runtimeTaskCreate(ctx toolRunContext, call toolCallRequest, started time.Time) toolExecResult {

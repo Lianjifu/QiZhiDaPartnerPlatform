@@ -11,8 +11,8 @@ import (
 )
 
 // capabilityCatalogAligned builds the digital-employee assembly catalog from
-// live workspace assets. In split deploy (de-collab), skills / knowledge / models /
-// channels are owned by de-cap and workflow skills by de-workflow — so collab
+// live workspace assets. In split deploy (qzda-collab), skills / knowledge / models /
+// channels are owned by qzda-cap and workflow skills by qzda-workflow — so collab
 // aggregates via peer HTTP instead of its local (often empty) store shards.
 func (s *Server) capabilityCatalogAligned(r *http.Request) (any, error) {
 	ws := s.workspaceID(r)

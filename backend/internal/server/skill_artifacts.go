@@ -168,7 +168,7 @@ func skillArtifactDir() string {
 	if v := strings.TrimSpace(os.Getenv("DE_SKILL_ARTIFACT_DIR")); v != "" {
 		return v
 	}
-	return "/tmp/de-stack/artifacts"
+	return "/tmp/qzda-stack/artifacts"
 }
 
 func isDocxSkillName(name string) bool {

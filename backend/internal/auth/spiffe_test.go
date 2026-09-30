@@ -10,7 +10,7 @@ import (
 
 func TestSPIFFEID(t *testing.T) {
 	t.Setenv("DE_SPIFFE_TRUST_DOMAIN", "acme.test")
-	if got := SPIFFEID("de-policy"); got != "spiffe://acme.test/ns/default/sa/de-policy" {
+	if got := SPIFFEID("qzda-policy"); got != "spiffe://acme.test/ns/default/sa/qzda-policy" {
 		t.Fatalf("got %s", got)
 	}
 }
@@ -41,19 +41,19 @@ func TestParseSPIFFEURIsFromGeneratedCert(t *testing.T) {
 	}
 	found := false
 	for _, id := range ids {
-		if strings.Contains(id, "/sa/de-core") {
+		if strings.Contains(id, "/sa/qzda-core") {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Fatalf("expected de-core SPIFFE id, got %v", ids)
+		t.Fatalf("expected qzda-core SPIFFE id, got %v", ids)
 	}
-	if !HasSPIFFEID(pemBytes, SPIFFEID("de-core")) && !HasSPIFFEID(pemBytes, "spiffe://de.local/ns/default/sa/de-core") {
-		// Trust domain may have been overridden in env during generate; accept any de-core id.
+	if !HasSPIFFEID(pemBytes, SPIFFEID("qzda-core")) && !HasSPIFFEID(pemBytes, "spiffe://de.local/ns/default/sa/qzda-core") {
+		// Trust domain may have been overridden in env during generate; accept any qzda-core id.
 		ok := false
 		for _, id := range ids {
-			if strings.HasSuffix(id, "/sa/de-core") {
+			if strings.HasSuffix(id, "/sa/qzda-core") {
 				ok = true
 			}
 		}

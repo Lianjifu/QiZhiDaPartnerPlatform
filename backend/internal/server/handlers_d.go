@@ -94,7 +94,7 @@ func (s *Server) runWorkflow(r *http.Request) (any, error) {
 			s.Store.Lock()
 		}
 	}
-	s.Store.AppendAudit(s.workspaceID(r), id.Name, "试运行工作流", wfID, "success", "engine=de-workflow")
+	s.Store.AppendAudit(s.workspaceID(r), id.Name, "试运行工作流", wfID, "success", "engine=qzda-workflow")
 	s.Store.Unlock()
 	s.Store.Persist("workflow_runs")
 	s.Store.Persist("workflow_skills")

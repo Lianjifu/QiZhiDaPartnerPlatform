@@ -4,7 +4,7 @@
 
 | 项 | 默认 |
 |----|------|
-| **本地拓扑** | **monolith**：`de-gateway:8089` → `de-app:8100` + `de-skill-runtime:8093` |
+| **本地拓扑** | **monolith**：`qzda-gateway:8089` → `qzda-app:8100` + `qzda-skill-runtime:8093` |
 | **规模化对照** | coarse 四进程（sys / collab / cap / workflow） |
 | **数据** | Docker Postgres 16 + Redis；禁止 Homebrew 抢占 `5432` |
 | **环境** | `DE_ENV=development`（空库 hydrate，不灌 ACME seed） |
@@ -41,7 +41,7 @@
 ## 架构总览
 
 **控制面管可信与编排，执行面跑推理与工具，网关统一入口。**  
-`ServiceMode` 过滤路由；共享 PG KV 水合。monolith 下 `de-app` 以 `ModeApp` / `DomainAll` 吸收 sys + collab + cap。
+`ServiceMode` 过滤路由；共享 PG KV 水合。monolith 下 `qzda-app` 以 `ModeApp` / `DomainAll` 吸收 sys + collab + cap。
 
 ```mermaid
 flowchart TB
@@ -50,27 +50,27 @@ flowchart TB
     CH["渠道入站<br/>飞书 / 企微 / 钉钉"]
   end
 
-  GW["de-gateway :8089<br/>Envoy · TLS · 路由 · 限流"]
+  GW["qzda-gateway :8089<br/>Envoy · TLS · 路由 · 限流"]
 
   FE --> GW
   CH --> GW
 
-  subgraph Mono["monolith 默认 · de-app :8100"]
+  subgraph Mono["monolith 默认 · qzda-app :8100"]
     SYS["sys<br/>platform · policy · audit · ops"]
     COL["collab<br/>session · task · employee"]
     CAP["cap<br/>model · knowledge · memory · skill · channel"]
   end
 
   subgraph Coarse["coarse 四进程"]
-    S1["de-sys :8100"]
-    S2["de-collab :8101"]
-    S3["de-cap :8102"]
-    S4["de-workflow :8103"]
+    S1["qzda-sys :8100"]
+    S2["qzda-collab :8101"]
+    S3["qzda-cap :8102"]
+    S4["qzda-workflow :8103"]
   end
 
-  SK["de-skill-runtime :8093<br/>技能沙箱 · 必须"]
-  WF["de-workflow :8103<br/>可选"]
-  AI["de-agent / de-rag<br/>:8091–8092 · 按需"]
+  SK["qzda-skill-runtime :8093<br/>技能沙箱 · 必须"]
+  WF["qzda-workflow :8103<br/>可选"]
+  AI["qzda-agent / qzda-rag<br/>:8091–8092 · 按需"]
   PG[(PostgreSQL 16)]
   RD[(Redis)]
 
@@ -106,7 +106,7 @@ flowchart TB
 ```mermaid
 flowchart LR
   subgraph Gateway["入口"]
-    GW[de-gateway]
+    GW[qzda-gateway]
   end
 
   subgraph Control["Go 控制面"]
@@ -125,10 +125,10 @@ flowchart LR
 
   subgraph Exec["执行面"]
     HARN[Harness<br/>local 默认]
-    AGENT[de-agent-runtime]
-    RAG[de-rag]
-    SKRT[de-skill-runtime]
-    TEMP[de-workflow<br/>+ Temporal]
+    AGENT[qzda-agent-runtime]
+    RAG[qzda-rag]
+    SKRT[qzda-skill-runtime]
+    TEMP[qzda-workflow<br/>+ Temporal]
   end
 
   GW --> PLAT
@@ -154,14 +154,14 @@ flowchart LR
 
 | 域 | 职责 | monolith | coarse |
 |----|------|----------|--------|
-| **sys** | 工作区、设置、策略、审计、运营聚合 | de-app | de-sys（+ 可选独立 policy/audit） |
-| **collab** | 会话、任务、审核、流式回合 | de-app | de-collab |
-| **employee** | 岗位、装配、上岗 | de-app | de-collab |
-| **cap** | 模型 / 知识 / 记忆 / 技能 / 渠道 | de-app | de-cap |
-| **workflow** | 流程版本、试运行、Temporal | 可选 de-workflow | de-workflow |
+| **sys** | 工作区、设置、策略、审计、运营聚合 | qzda-app | qzda-sys（+ 可选独立 policy/audit） |
+| **collab** | 会话、任务、审核、流式回合 | qzda-app | qzda-collab |
+| **employee** | 岗位、装配、上岗 | qzda-app | qzda-collab |
+| **cap** | 模型 / 知识 / 记忆 / 技能 / 渠道 | qzda-app | qzda-cap |
+| **workflow** | 流程版本、试运行、Temporal | 可选 qzda-workflow | qzda-workflow |
 | **skill-runtime** | 沙箱执行 | 必须独立 :8093 | 同左 |
 
-已退役：`de-core`、细端口 `de-policy:8094` / `de-audit:8095`。独立切开：`DE_CROSSCUTTING_SPLIT=1` + `make run-policy` / `make run-audit`。
+已退役：`qzda-core`、细端口 `qzda-policy:8094` / `qzda-audit:8095`。独立切开：`DE_CROSSCUTTING_SPLIT=1` + `make run-policy` / `make run-audit`。
 
 ---
 
@@ -173,12 +173,12 @@ flowchart LR
 sequenceDiagram
   autonumber
   participant UI as 控制台 / 渠道
-  participant GW as de-gateway
-  participant APP as de-app
+  participant GW as qzda-gateway
+  participant APP as qzda-app
   participant PG as PostgreSQL / Redis
   participant LLM as 模型供应商
-  participant SK as de-skill-runtime
-  participant WF as de-workflow
+  participant SK as qzda-skill-runtime
+  participant WF as qzda-workflow
   participant AUD as 审计 / 用量
 
   UI->>GW: HTTPS / SSE · x-workspace-id
@@ -216,7 +216,7 @@ sequenceDiagram
 ```
 
 `DE_RUNTIME_MODE=local`（默认）：进程内 Harness。  
-`DE_RUNTIME_MODE=remote`：回合经 `de-agent-runtime` `POST /v1/run` SSE。  
+`DE_RUNTIME_MODE=remote`：回合经 `qzda-agent-runtime` `POST /v1/run` SSE。  
 完整扇出见 [docs/后端架构规划.md](../docs/后端架构规划.md) §3.3。
 
 ---
@@ -225,21 +225,21 @@ sequenceDiagram
 
 | 单元 | 端口 | 说明 |
 |------|------|------|
-| **de-gateway** | 8089 | Envoy / `gateway-proxy-monolith.py`；健康检查 `/healthz` |
-| **de-app** | 8100 | **monolith 默认**：sys + collab + cap |
-| de-sys | 8100 | coarse：platform · ops；默认仍吸收 policy · audit |
-| de-collab | 8101 | coarse：collab · employee |
-| de-cap | 8102 | coarse：五中心能力 |
-| de-workflow | 8103 | 流程 HTTP + Temporal Worker（可选） |
-| de-policy | 8104 | 可选独立策略 |
-| de-audit | 8105 | 可选独立审计读面 |
-| **de-skill-runtime** | 8093 | 技能沙箱（**必须**） |
-| de-agent / de-rag | 8091–8092 | coarse 或按需；monolith 默认不启 agent |
+| **qzda-gateway** | 8089 | Envoy / `gateway-proxy-monolith.py`；健康检查 `/healthz` |
+| **qzda-app** | 8100 | **monolith 默认**：sys + collab + cap |
+| qzda-sys | 8100 | coarse：platform · ops；默认仍吸收 policy · audit |
+| qzda-collab | 8101 | coarse：collab · employee |
+| qzda-cap | 8102 | coarse：五中心能力 |
+| qzda-workflow | 8103 | 流程 HTTP + Temporal Worker（可选） |
+| qzda-policy | 8104 | 可选独立策略 |
+| qzda-audit | 8105 | 可选独立审计读面 |
+| **qzda-skill-runtime** | 8093 | 技能沙箱（**必须**） |
+| qzda-agent / qzda-rag | 8091–8092 | coarse 或按需；monolith 默认不启 agent |
 
 切流要点：
 
-- collab/cap → `DE_POLICY_URL`（默认 `http://de-sys:8100` 的 `/v1/evaluate`）
-- 审计写入各进程本地 sink；独立 de-audit 读 `audit.events`
+- collab/cap → `DE_POLICY_URL`（默认 `http://qzda-sys:8100` 的 `/v1/evaluate`）
+- 审计写入各进程本地 sink；独立 qzda-audit 读 `audit.events`
 - 多活最小集：`DE_REPLICA_MODE=standby` 拒写；优先 `DE_DATABASE_REPLICA_URL`（`make compose-up-replica` → `:5433`）
 
 ---
@@ -249,10 +249,10 @@ sequenceDiagram
 ```text
 backend/
 ├── cmd/                       # 进程入口
-│   ├── de-app/                # monolith 主进程（默认）
-│   ├── de-sys/ · de-collab/ · de-cap/
-│   ├── de-workflow/ · de-policy/ · de-audit/
-│   └── de-local-llm/          # 本地模型辅助
+│   ├── qzda-app/                # monolith 主进程（默认）
+│   ├── qzda-sys/ · qzda-collab/ · qzda-cap/
+│   ├── qzda-workflow/ · qzda-policy/ · qzda-audit/
+│   └── qzda-local-llm/          # 本地模型辅助
 ├── builtin/                   # 出厂包（冷启动 EnsureBuiltin*）
 │   ├── knowledge/office/      # kp.office.* 办公开箱知识
 │   ├── skills/                # 岗位包 manifest（office / general …）
@@ -269,10 +269,10 @@ backend/
 │   └── feishu/ · wecom/ · dingtalk/ · weixin/
 ├── api/                       # routes.md · proto · 契约说明
 ├── services/                  # 一部署单元一目录
-│   ├── de-app/ · de-sys/ · de-collab/ · de-cap/
-│   ├── de-gateway/ · de-workflow/
-│   ├── de-skill-runtime/ · de-agent-runtime/ · de-rag/
-│   └── de-policy/ · de-audit/
+│   ├── qzda-app/ · qzda-sys/ · qzda-collab/ · qzda-cap/
+│   ├── qzda-gateway/ · qzda-workflow/
+│   ├── qzda-skill-runtime/ · qzda-agent-runtime/ · qzda-rag/
+│   └── qzda-policy/ · qzda-audit/
 ├── deploy/                    # compose · envoy · migrations · topology-split
 ├── infra/ · obs/              # 基础依赖与可观测
 ├── libs/ · pkg/ · gen/        # hexkit 等与 buf 生成代码
@@ -286,7 +286,7 @@ backend/
 
 | 路径 | 说明 |
 |------|------|
-| `cmd/de-app` + `internal/apprun` | 本地主路径入口与启动编排 |
+| `cmd/qzda-app` + `internal/apprun` | 本地主路径入口与启动编排 |
 | `internal/server` | 路由与领域 handler（六边形迁包进行中） |
 | `builtin/` | 知识 / 技能 / 流程 / 场景出厂源 |
 | `services/*/SERVICE.md` | 各部署单元说明 |
@@ -331,7 +331,7 @@ VITE_API_BASE=
 
 ```bash
 make build
-launchctl kickstart -k "gui/$(id -u)/com.digital-employee.dev-stack"
+launchctl kickstart -k "gui/$(id -u)/com.qizhida.dev-stack"
 ```
 
 ---
@@ -439,7 +439,7 @@ psql "$DE_DATABASE_URL" -f scripts/purge-demo-seed-ids.sql
 | `DE_SYS_ADDR` / `DE_COLLAB_ADDR` / `DE_CAP_ADDR` / `DE_WORKFLOW_ADDR` / `DE_POLICY_ADDR` / `DE_AUDIT_ADDR` | 监听 |
 | `DE_SERVICE` | `sys` / `collab` / `cap` / `workflow`；可选 `policy` / `audit` |
 | `DE_POLICY_URL` | collab/cap → 策略 evaluate；sys 留空用本地 Engine |
-| `DE_CROSSCUTTING_SPLIT` | `1` 时 de-sys 不再吸收 policy/audit |
+| `DE_CROSSCUTTING_SPLIT` | `1` 时 qzda-sys 不再吸收 policy/audit |
 | `DE_DATABASE_REPLICA_URL` | standby 从库；本机 `compose-up-replica` → `:5433` |
 | `DE_AGENT_RUNTIME_URL` / `DE_RAG_URL` / `DE_SKILL_RUNTIME_URL` | 侧车 |
 | `DE_RUNTIME_MODE` | `local`（默认）或 `remote` |

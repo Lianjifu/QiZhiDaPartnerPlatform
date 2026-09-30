@@ -1,11 +1,11 @@
 # M1 infrastructure: PostgreSQL + Redis (+ optional Envoy / Vault)
 # Usage: from backend/ → make compose-up
-name: digital-employee
+name: qizhida-partner
 
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: de-postgres
+    container_name: qzda-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: de
@@ -16,7 +16,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - de_pg:/var/lib/postgresql/data
+      - qzda_pg:/var/lib/postgresql/data
       - ./migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U de -d digital_employee"]
@@ -25,12 +25,12 @@ services:
       retries: 12
       start_period: 10s
     networks:
-      - de_net
+      - qzda_net
 
   # Optional streaming replica for DE_REPLICA_MODE=standby (not cn-east/south dual-active).
   postgres-replica:
     image: postgres:16-alpine
-    container_name: de-postgres-replica
+    container_name: qzda-postgres-replica
     restart: unless-stopped
     profiles: ["replica"]
     user: postgres
@@ -61,17 +61,17 @@ services:
       retries: 18
       start_period: 20s
     networks:
-      - de_net
+      - qzda_net
 
   redis:
     image: redis:7-alpine
-    container_name: de-redis
+    container_name: qzda-redis
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
     ports:
       - "6379:6379"
     volumes:
-      - de_redis:/data
+      - qzda_redis:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -79,25 +79,25 @@ services:
       retries: 12
       start_period: 5s
     networks:
-      - de_net
+      - qzda_net
 
   vault:
     image: hashicorp/vault:1.17
-    container_name: de-vault
+    container_name: qzda-vault
     restart: unless-stopped
     profiles: ["full"]
     cap_add: ["IPC_LOCK"]
     environment:
-      VAULT_DEV_ROOT_TOKEN_ID: de-vault-root
+      VAULT_DEV_ROOT_TOKEN_ID: qzda-vault-root
       VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
     ports:
       - "8200:8200"
     networks:
-      - de_net
+      - qzda_net
 
   envoy:
     image: envoyproxy/envoy:v1.31-latest
-    container_name: de-envoy
+    container_name: qzda-envoy
     restart: unless-stopped
     profiles: ["full"]
     ports:
@@ -109,12 +109,12 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
-      - de_net
+      - qzda_net
 
   # mTLS edge (dev CA). Generate certs: make certs
   envoy-mtls:
     image: envoyproxy/envoy:v1.31-latest
-    container_name: de-envoy-mtls
+    container_name: qzda-envoy-mtls
     restart: unless-stopped
     profiles: ["mtls"]
     ports:
@@ -127,12 +127,12 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
-      - de_net
+      - qzda_net
 
   # SPIFFE URI SAN validation (make certs / certs-rotate). https://127.0.0.1:8444
   envoy-spiffe:
     image: envoyproxy/envoy:v1.31-latest
-    container_name: de-envoy-spiffe
+    container_name: qzda-envoy-spiffe
     restart: unless-stopped
     profiles: ["spiffe"]
     ports:
@@ -145,13 +145,13 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
-      - de_net
+      - qzda_net
 
 
-  # Optional Temporal (M4). de-workflow HTTP+Worker.
+  # Optional Temporal (M4). qzda-workflow HTTP+Worker.
   temporal:
     image: temporalio/auto-setup:1.25.2
-    container_name: de-temporal
+    container_name: qzda-temporal
     restart: unless-stopped
     profiles: ["temporal"]
     depends_on:
@@ -167,12 +167,12 @@ services:
     ports:
       - "7233:7233"
     networks:
-      - de_net
+      - qzda_net
 
   # Local OIDC IdP (Dex). OIDC: DE_OIDC_ISSUER=http://127.0.0.1:5556/dex
   dex:
     image: ghcr.io/dexidp/dex:v2.41.1
-    container_name: de-dex
+    container_name: qzda-dex
     restart: unless-stopped
     profiles: ["oidc"]
     command: ["dex", "serve", "/etc/dex/config.yaml"]
@@ -181,12 +181,12 @@ services:
     volumes:
       - ./dex/config.yaml:/etc/dex/config.yaml:ro
     networks:
-      - de_net
+      - qzda_net
 
   # Kafka-compatible audit bus (Redpanda). DE_KAFKA_BROKERS=127.0.0.1:9092
   redpanda:
     image: redpandadata/redpanda:v24.2.4
-    container_name: de-redpanda
+    container_name: qzda-redpanda
     restart: unless-stopped
     profiles: ["kafka"]
     command:
@@ -209,12 +209,12 @@ services:
     ports:
       - "19092:19092"
     networks:
-      - de_net
+      - qzda_net
 
   # Milvus standalone (etcd + minio + milvus). RAG: DE_MILVUS_URI=http://127.0.0.1:19530
   milvus-etcd:
     image: quay.io/coreos/etcd:v3.5.16
-    container_name: de-milvus-etcd
+    container_name: qzda-milvus-etcd
     restart: unless-stopped
     profiles: ["milvus"]
     environment:
@@ -223,7 +223,7 @@ services:
       ETCD_QUOTA_BACKEND_BYTES: "4294967296"
       ETCD_SNAPSHOT_COUNT: "50000"
     volumes:
-      - de_milvus_etcd:/etcd
+      - qzda_milvus_etcd:/etcd
     command: >
       etcd
       -advertise-client-urls=http://milvus-etcd:2379
@@ -235,19 +235,19 @@ services:
       timeout: 20s
       retries: 3
     networks:
-      de_net:
+      qzda_net:
         aliases: ["milvus-etcd"]
 
   milvus-minio:
     image: minio/minio:RELEASE.2023-03-20T20-16-18Z
-    container_name: de-milvus-minio
+    container_name: qzda-milvus-minio
     restart: unless-stopped
     profiles: ["milvus"]
     environment:
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
     volumes:
-      - de_milvus_minio:/minio_data
+      - qzda_milvus_minio:/minio_data
     command: minio server /minio_data --console-address ":9001"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
@@ -255,12 +255,12 @@ services:
       timeout: 20s
       retries: 3
     networks:
-      de_net:
+      qzda_net:
         aliases: ["minio"]
 
   milvus:
     image: milvusdb/milvus:v2.4.22
-    container_name: de-milvus
+    container_name: qzda-milvus
     restart: unless-stopped
     profiles: ["milvus"]
     command: ["milvus", "run", "standalone"]
@@ -271,7 +271,7 @@ services:
       ETCD_ENDPOINTS: milvus-etcd:2379
       MINIO_ADDRESS: minio:9000
     volumes:
-      - de_milvus_data:/var/lib/milvus
+      - qzda_milvus_data:/var/lib/milvus
     ports:
       - "19530:19530"
       - "9091:9091"
@@ -287,12 +287,12 @@ services:
       timeout: 20s
       retries: 5
     networks:
-      - de_net
+      - qzda_net
 
   # External OPA (Rego). Set DE_OPA_URL=http://127.0.0.1:8181 on control-plane processes.
   opa:
     image: openpolicyagent/opa:0.70.0
-    container_name: de-opa
+    container_name: qzda-opa
     restart: unless-stopped
     profiles: ["opa"]
     command:
@@ -306,12 +306,12 @@ services:
     volumes:
       - ./opa/policies:/policies:ro
     networks:
-      - de_net
+      - qzda_net
 
   # OpenSearch audit search (dev, security disabled). DE_OPENSEARCH_URL=http://127.0.0.1:9200
   opensearch:
     image: opensearchproject/opensearch:2.17.1
-    container_name: de-opensearch
+    container_name: qzda-opensearch
     restart: unless-stopped
     profiles: ["search"]
     environment:
@@ -327,7 +327,7 @@ services:
     ports:
       - "9200:9200"
     volumes:
-      - de_opensearch:/usr/share/opensearch/data
+      - qzda_opensearch:/usr/share/opensearch/data
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://127.0.0.1:9200/_cluster/health || exit 1"]
       interval: 15s
@@ -335,12 +335,12 @@ services:
       retries: 20
       start_period: 40s
     networks:
-      - de_net
+      - qzda_net
 
   # Authentik OIDC IdP (heavier than Dex). UI :9000 — see deploy/authentik/README.md
   authentik-postgres:
     image: postgres:16-alpine
-    container_name: de-authentik-postgres
+    container_name: qzda-authentik-postgres
     restart: unless-stopped
     profiles: ["authentik"]
     environment:
@@ -348,18 +348,18 @@ services:
       POSTGRES_PASSWORD: authentik
       POSTGRES_DB: authentik
     volumes:
-      - de_authentik_pg:/var/lib/postgresql/data
+      - qzda_authentik_pg:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U authentik -d authentik"]
       interval: 5s
       timeout: 5s
       retries: 20
     networks:
-      - de_net
+      - qzda_net
 
   authentik-redis:
     image: redis:7-alpine
-    container_name: de-authentik-redis
+    container_name: qzda-authentik-redis
     restart: unless-stopped
     profiles: ["authentik"]
     healthcheck:
@@ -368,16 +368,16 @@ services:
       timeout: 3s
       retries: 20
     networks:
-      - de_net
+      - qzda_net
 
   authentik-server:
     image: ghcr.io/goauthentik/server:2024.10.4
-    container_name: de-authentik
+    container_name: qzda-authentik
     restart: unless-stopped
     profiles: ["authentik"]
     command: server
     environment:
-      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY:-changeme-de-authentik-dev-secret-key-32b}
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY:-changeme-qzda-authentik-dev-secret-key-32b}
       AUTHENTIK_ERROR_REPORTING__ENABLED: "false"
       AUTHENTIK_POSTGRESQL__HOST: authentik-postgres
       AUTHENTIK_POSTGRESQL__USER: authentik
@@ -388,7 +388,7 @@ services:
       AUTHENTIK_BOOTSTRAP_EMAIL: ${AUTHENTIK_BOOTSTRAP_EMAIL:-admin@acme.com}
     volumes:
       - ./authentik/blueprints:/blueprints/custom:ro
-      - de_authentik_media:/media
+      - qzda_authentik_media:/media
     ports:
       - "9000:9000"
       - "9443:9443"
@@ -398,16 +398,16 @@ services:
       authentik-redis:
         condition: service_healthy
     networks:
-      - de_net
+      - qzda_net
 
   authentik-worker:
     image: ghcr.io/goauthentik/server:2024.10.4
-    container_name: de-authentik-worker
+    container_name: qzda-authentik-worker
     restart: unless-stopped
     profiles: ["authentik"]
     command: worker
     environment:
-      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY:-changeme-de-authentik-dev-secret-key-32b}
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY:-changeme-qzda-authentik-dev-secret-key-32b}
       AUTHENTIK_ERROR_REPORTING__ENABLED: "false"
       AUTHENTIK_POSTGRESQL__HOST: authentik-postgres
       AUTHENTIK_POSTGRESQL__USER: authentik
@@ -416,19 +416,19 @@ services:
       AUTHENTIK_REDIS__HOST: authentik-redis
     volumes:
       - ./authentik/blueprints:/blueprints/custom:ro
-      - de_authentik_media:/media
+      - qzda_authentik_media:/media
     depends_on:
       authentik-postgres:
         condition: service_healthy
       authentik-redis:
         condition: service_healthy
     networks:
-      - de_net
+      - qzda_net
 
   # Observability: Prometheus + Grafana (scrapes coarse :8100-8103/metrics)
   prometheus:
     image: prom/prometheus:v2.55.1
-    container_name: de-prometheus
+    container_name: qzda-prometheus
     restart: unless-stopped
     profiles: ["obs"]
     command:
@@ -440,15 +440,15 @@ services:
     volumes:
       - ./obs/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./obs/alerts.yml:/etc/prometheus/alerts.yml:ro
-      - de_prometheus:/prometheus
+      - qzda_prometheus:/prometheus
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
-      - de_net
+      - qzda_net
 
   grafana:
     image: grafana/grafana:11.3.1
-    container_name: de-grafana
+    container_name: qzda-grafana
     restart: unless-stopped
     profiles: ["obs"]
     environment:
@@ -462,21 +462,21 @@ services:
     volumes:
       - ./obs/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./obs/grafana/dashboards:/var/lib/grafana/dashboards:ro
-      - de_grafana:/var/lib/grafana
+      - qzda_grafana:/var/lib/grafana
     depends_on:
       - prometheus
     networks:
-      - de_net
+      - qzda_net
 
   # —— Monolith control plane (方案 A) ——
-  # Profile: monolith — de-app:8100 + de-skill-runtime:8093 (+ gateway)
-  de-app:
+  # Profile: monolith — qzda-app:8100 + qzda-skill-runtime:8093 (+ gateway)
+  qzda-app:
     build:
       context: ..
-      dockerfile: services/de-sys/Dockerfile
-      args: { CMD: de-app }
-    image: de-app:local
-    container_name: de-app
+      dockerfile: services/qzda-sys/Dockerfile
+      args: { CMD: qzda-app }
+    image: qzda-app:local
+    container_name: qzda-app
     restart: unless-stopped
     profiles: ["monolith"]
     depends_on:
@@ -484,7 +484,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      de-skill-runtime:
+      qzda-skill-runtime:
         condition: service_healthy
     environment:
       DE_APP_ADDR: ":8100"
@@ -492,8 +492,8 @@ services:
       DE_DATABASE_URL: postgres://de:de@postgres:5432/digital_employee?sslmode=disable
       DE_REDIS_URL: redis://redis:6379/0
       DE_RUNTIME_MODE: local
-      DE_SKILL_RUNTIME_URL: http://de-skill-runtime:8093
-      DE_SKILL_RUN_SECRET: ${DE_SKILL_RUN_SECRET:-de-skill-run-dev}
+      DE_SKILL_RUNTIME_URL: http://qzda-skill-runtime:8093
+      DE_SKILL_RUN_SECRET: ${DE_SKILL_RUN_SECRET:-qzda-skill-run-dev}
       DE_WORKFLOW_URL: ${DE_WORKFLOW_URL:-}
       DE_BAN_MOCK_TOKEN: ${DE_BAN_MOCK_TOKEN:-0}
       DE_BAN_DEMO_TOKEN: ${DE_BAN_DEMO_TOKEN:-${DE_BAN_MOCK_TOKEN:-0}}
@@ -514,16 +514,16 @@ services:
       timeout: 3s
       retries: 12
     networks:
-      - de_net
-      - de_exec_net
+      - qzda_net
+      - qzda_exec_net
 
   envoy-monolith:
     image: envoyproxy/envoy:v1.31-latest
-    container_name: de-envoy-monolith
+    container_name: qzda-envoy-monolith
     restart: unless-stopped
     profiles: ["monolith"]
     depends_on:
-      de-app:
+      qzda-app:
         condition: service_healthy
     volumes:
       - ./envoy/envoy.monolith.yaml:/etc/envoy/envoy.yaml:ro
@@ -531,17 +531,17 @@ services:
       - "8089:8089"
       - "9903:9901"
     networks:
-      - de_net
+      - qzda_net
 
   # —— Coarse-grained control plane (v4) ——
-  # Profile: coarse — de-sys:8100 de-collab:8101 de-cap:8102 de-workflow:8103 (+ gateway + FastAPI)
-  de-sys:
+  # Profile: coarse — qzda-sys:8100 qzda-collab:8101 qzda-cap:8102 qzda-workflow:8103 (+ gateway + FastAPI)
+  qzda-sys:
     build:
       context: ..
-      dockerfile: services/de-sys/Dockerfile
-      args: { CMD: de-sys }
-    image: de-sys:local
-    container_name: de-sys
+      dockerfile: services/qzda-sys/Dockerfile
+      args: { CMD: qzda-sys }
+    image: qzda-sys:local
+    container_name: qzda-sys
     restart: unless-stopped
     profiles: ["coarse"]
     depends_on:
@@ -575,15 +575,15 @@ services:
       timeout: 3s
       retries: 12
     networks:
-      - de_net
+      - qzda_net
 
-  de-collab:
+  qzda-collab:
     build:
       context: ..
-      dockerfile: services/de-collab/Dockerfile
-      args: { CMD: de-collab }
-    image: de-collab:local
-    container_name: de-collab
+      dockerfile: services/qzda-collab/Dockerfile
+      args: { CMD: qzda-collab }
+    image: qzda-collab:local
+    container_name: qzda-collab
     restart: unless-stopped
     profiles: ["coarse"]
     depends_on:
@@ -591,23 +591,23 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      de-sys:
+      qzda-sys:
         condition: service_healthy
     environment:
       DE_COLLAB_ADDR: ":8101"
       DE_SERVICE: collab
       DE_DATABASE_URL: postgres://de:de@postgres:5432/digital_employee?sslmode=disable
       DE_REDIS_URL: redis://redis:6379/0
-      DE_AGENT_RUNTIME_URL: http://de-agent-runtime:8091
-      DE_RAG_URL: http://de-rag:8092
-      DE_SKILL_RUNTIME_URL: http://de-skill-runtime:8093
-      DE_CAP_URL: ${DE_CAP_URL:-http://de-cap:8102}
-      DE_WORKFLOW_URL: ${DE_WORKFLOW_URL:-http://de-workflow:8103}
+      DE_AGENT_RUNTIME_URL: http://qzda-agent-runtime:8091
+      DE_RAG_URL: http://qzda-rag:8092
+      DE_SKILL_RUNTIME_URL: http://qzda-skill-runtime:8093
+      DE_CAP_URL: ${DE_CAP_URL:-http://qzda-cap:8102}
+      DE_WORKFLOW_URL: ${DE_WORKFLOW_URL:-http://qzda-workflow:8103}
       DE_ENV: ${DE_ENV:-development}
       DE_BAN_MOCK_TOKEN: ${DE_BAN_MOCK_TOKEN:-0}
       DE_BAN_DEMO_TOKEN: ${DE_BAN_DEMO_TOKEN:-${DE_BAN_MOCK_TOKEN:-0}}
-      DE_POLICY_URL: ${DE_COLLAB_POLICY_URL:-http://de-sys:8100}
-      DE_SKILL_RUN_SECRET: ${DE_SKILL_RUN_SECRET:-de-skill-run-dev}
+      DE_POLICY_URL: ${DE_COLLAB_POLICY_URL:-http://qzda-sys:8100}
+      DE_SKILL_RUN_SECRET: ${DE_SKILL_RUN_SECRET:-qzda-skill-run-dev}
       DE_JWT_SECRET: ${DE_JWT_SECRET:-}
       DE_LLM_BASE_URL: ${DE_LLM_BASE_URL:-}
       DE_LLM_API_KEY: ${DE_LLM_API_KEY:-}
@@ -620,16 +620,16 @@ services:
       timeout: 3s
       retries: 12
     networks:
-      - de_net
-      - de_exec_net
+      - qzda_net
+      - qzda_exec_net
 
-  de-cap:
+  qzda-cap:
     build:
       context: ..
-      dockerfile: services/de-cap/Dockerfile
-      args: { CMD: de-cap }
-    image: de-cap:local
-    container_name: de-cap
+      dockerfile: services/qzda-cap/Dockerfile
+      args: { CMD: qzda-cap }
+    image: qzda-cap:local
+    container_name: qzda-cap
     restart: unless-stopped
     profiles: ["coarse"]
     depends_on:
@@ -637,22 +637,22 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      de-sys:
+      qzda-sys:
         condition: service_healthy
     environment:
       DE_CAP_ADDR: ":8102"
       DE_SERVICE: cap
       DE_DATABASE_URL: postgres://de:de@postgres:5432/digital_employee?sslmode=disable
       DE_REDIS_URL: redis://redis:6379/0
-      DE_RAG_URL: http://de-rag:8092
-      DE_SKILL_RUNTIME_URL: http://de-skill-runtime:8093
+      DE_RAG_URL: http://qzda-rag:8092
+      DE_SKILL_RUNTIME_URL: http://qzda-skill-runtime:8093
       DE_ENV: ${DE_ENV:-development}
       DE_BAN_MOCK_TOKEN: ${DE_BAN_MOCK_TOKEN:-0}
       DE_BAN_DEMO_TOKEN: ${DE_BAN_DEMO_TOKEN:-${DE_BAN_MOCK_TOKEN:-0}}
       DE_VAULT_ADDR: ${DE_VAULT_ADDR:-}
       DE_VAULT_TOKEN: ${DE_VAULT_TOKEN:-}
-      DE_SKILL_RUN_SECRET: ${DE_SKILL_RUN_SECRET:-de-skill-run-dev}
-      DE_POLICY_URL: ${DE_CAP_POLICY_URL:-http://de-sys:8100}
+      DE_SKILL_RUN_SECRET: ${DE_SKILL_RUN_SECRET:-qzda-skill-run-dev}
+      DE_POLICY_URL: ${DE_CAP_POLICY_URL:-http://qzda-sys:8100}
       DE_JWT_SECRET: ${DE_JWT_SECRET:-}
       # Local Ollama / private LLM endpoints (set 1 only when intentional)
       DE_MODEL_ALLOW_PRIVATE: ${DE_MODEL_ALLOW_PRIVATE:-0}
@@ -667,22 +667,22 @@ services:
       timeout: 3s
       retries: 12
     networks:
-      - de_net
-      - de_exec_net
+      - qzda_net
+      - qzda_exec_net
 
   envoy-coarse:
     image: envoyproxy/envoy:v1.31-latest
-    container_name: de-envoy-coarse
+    container_name: qzda-envoy-coarse
     restart: unless-stopped
     profiles: ["coarse"]
     depends_on:
-      de-sys:
+      qzda-sys:
         condition: service_healthy
-      de-collab:
+      qzda-collab:
         condition: service_healthy
-      de-cap:
+      qzda-cap:
         condition: service_healthy
-      de-workflow:
+      qzda-workflow:
         condition: service_healthy
     volumes:
       - ./envoy/envoy.coarse.yaml:/etc/envoy/envoy.yaml:ro
@@ -690,14 +690,14 @@ services:
       - "8089:8089"
       - "9902:9901"
     networks:
-      - de_net
+      - qzda_net
 
-  de-agent-runtime:
+  qzda-agent-runtime:
     build:
-      context: ../services/de-agent-runtime
+      context: ../services/qzda-agent-runtime
       dockerfile: Dockerfile
-    image: de-agent-runtime:local
-    container_name: de-agent-runtime
+    image: qzda-agent-runtime:local
+    container_name: qzda-agent-runtime
     restart: unless-stopped
     profiles: ["coarse"]
     environment:
@@ -711,14 +711,14 @@ services:
       timeout: 3s
       retries: 12
     networks:
-      - de_net
+      - qzda_net
 
-  de-rag:
+  qzda-rag:
     build:
-      context: ../services/de-rag
+      context: ../services/qzda-rag
       dockerfile: Dockerfile
-    image: de-rag:local
-    container_name: de-rag
+    image: qzda-rag:local
+    container_name: qzda-rag
     restart: unless-stopped
     profiles: ["coarse"]
     environment:
@@ -733,21 +733,21 @@ services:
       timeout: 3s
       retries: 12
     networks:
-      - de_net
+      - qzda_net
 
-  de-skill-runtime:
+  qzda-skill-runtime:
     build:
-      context: ../services/de-skill-runtime
+      context: ../services/qzda-skill-runtime
       dockerfile: Dockerfile
-    image: de-skill-runtime:local
-    container_name: de-skill-runtime
+    image: qzda-skill-runtime:local
+    container_name: qzda-skill-runtime
     restart: unless-stopped
     profiles: ["coarse", "monolith"]
     # Intentionally no DE_DATABASE_URL / DE_REDIS_URL
     environment:
       DE_BIND_HOST: "0.0.0.0"
       DE_BIND_PORT: "8093"
-      DE_SKILL_RUN_SECRET: ${DE_SKILL_RUN_SECRET:-de-skill-run-dev}
+      DE_SKILL_RUN_SECRET: ${DE_SKILL_RUN_SECRET:-qzda-skill-run-dev}
       DE_SKILL_SANDBOX: ${DE_SKILL_SANDBOX:-runsc}
       DE_SKILL_REQUIRE_ISOLATION: "1"
     ports:
@@ -764,17 +764,17 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
-      - seccomp=./de-skill-runtime/seccomp.json
+      - seccomp=./qzda-skill-runtime/seccomp.json
     networks:
-      - de_exec_net
+      - qzda_exec_net
 
-  de-workflow:
+  qzda-workflow:
     build:
       context: ..
-      dockerfile: services/de-workflow/Dockerfile
-      args: { CMD: de-workflow }
-    image: de-workflow:local
-    container_name: de-workflow
+      dockerfile: services/qzda-workflow/Dockerfile
+      args: { CMD: qzda-workflow }
+    image: qzda-workflow:local
+    container_name: qzda-workflow
     restart: unless-stopped
     # Enable with: --profile coarse | --profile monolith-workflow
     profiles: ["coarse", "monolith-workflow"]
@@ -790,8 +790,8 @@ services:
       DE_TEMPORAL_HOST: ${DE_TEMPORAL_HOST:-}
       DE_DATABASE_URL: postgres://de:de@postgres:5432/digital_employee?sslmode=disable
       DE_REDIS_URL: redis://redis:6379/0
-      DE_AGENT_RUNTIME_URL: http://de-agent-runtime:8091
-      DE_RAG_URL: http://de-rag:8092
+      DE_AGENT_RUNTIME_URL: http://qzda-agent-runtime:8091
+      DE_RAG_URL: http://qzda-rag:8092
       DE_BAN_MOCK_TOKEN: ${DE_BAN_MOCK_TOKEN:-0}
       DE_BAN_DEMO_TOKEN: ${DE_BAN_DEMO_TOKEN:-${DE_BAN_MOCK_TOKEN:-0}}
       DE_ENV: ${DE_ENV:-development}
@@ -805,24 +805,24 @@ services:
       timeout: 3s
       retries: 12
     networks:
-      - de_net
+      - qzda_net
 
 volumes:
-  de_pg:
-  de_redis:
-  de_milvus_etcd:
-  de_milvus_minio:
-  de_milvus_data:
-  de_opensearch:
-  de_authentik_pg:
-  de_authentik_media:
-  de_prometheus:
-  de_grafana:
+  qzda_pg:
+  qzda_redis:
+  qzda_milvus_etcd:
+  qzda_milvus_minio:
+  qzda_milvus_data:
+  qzda_opensearch:
+  qzda_authentik_pg:
+  qzda_authentik_media:
+  qzda_prometheus:
+  qzda_grafana:
 
 networks:
-  de_net:
+  qzda_net:
     driver: bridge
   # Execution plane only: skill-runtime + collab/cap for invoke.
-  de_exec_net:
+  qzda_exec_net:
     driver: bridge
     internal: false

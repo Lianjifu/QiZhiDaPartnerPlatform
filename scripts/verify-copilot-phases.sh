@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 七架构 Phase 0–4 冒烟验收（需本地 de-core / collab 已启动）
+# 七架构 Phase 0–4 冒烟验收（需本地 qzda-core / collab 已启动）
 set -euo pipefail
 
 BASE="${DE_API_BASE:-http://127.0.0.1:8080}"

@@ -107,7 +107,7 @@ func (p PersonaContext) titleLine() string {
 }
 
 // BuildLocalChatReply produces a persona-aware answer without calling external LLMs.
-// Used by embedded protocol and de-local-llm so Copilot can converse when no cloud key is set.
+// Used by embedded protocol and qzda-local-llm so Copilot can converse when no cloud key is set.
 func BuildLocalChatReply(system, user string) string {
 	user = strings.TrimSpace(user)
 	p := ParsePersonaContext(system)

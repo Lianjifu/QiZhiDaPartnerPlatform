@@ -17,7 +17,7 @@ import (
 	"github.com/qizhida-partner-platform/backend/internal/policy"
 )
 
-// Server is the de-policy microservice: evaluate locally, proxy store-backed routes to de-core.
+// Server is the qzda-policy microservice: evaluate locally, proxy store-backed routes to qzda-core.
 type Server struct {
 	Engine   *policy.Engine
 	CoreURL  string
@@ -68,14 +68,14 @@ func envOr(k, d string) string {
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, 200, map[string]any{"status": "ok", "service": "de-policy"})
+		writeJSON(w, 200, map[string]any{"status": "ok", "service": "qzda-policy"})
 	})
 	mux.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, map[string]any{"ready": true, "coreUrl": s.CoreURL})
 	})
 	mux.HandleFunc("/v1/evaluate", s.handleEvaluate)
 	mux.HandleFunc("/api/zero-trust/evaluate", s.handleZTEvaluate)
-	// Store-backed policy surfaces: proxy to de-core
+	// Store-backed policy surfaces: proxy to qzda-core
 	mux.HandleFunc("/api/access/", s.proxyOrNotFound)
 	mux.HandleFunc("/api/access", s.proxyOrNotFound)
 	mux.HandleFunc("/api/zero-trust/", s.proxyOrNotFound)
@@ -169,7 +169,7 @@ func (s *Server) handleZTEvaluate(w http.ResponseWriter, r *http.Request) {
 	})
 	decision := "allow"
 	reason, policyID := dec.Reason, dec.PolicyID
-	// Preserve FE-facing approval_required for user publish (parity with de-core ZT).
+	// Preserve FE-facing approval_required for user publish (parity with qzda-core ZT).
 	if role == "user" && strings.EqualFold(action, "publish") {
 		decision = "approval_required"
 		reason = "生产发布已转为管理员审批"
@@ -186,7 +186,7 @@ func (s *Server) handleZTEvaluate(w http.ResponseWriter, r *http.Request) {
 		"data": map[string]any{
 			"decision": decision, "reason": reason, "policyId": policyID,
 			"correlationId": corr, "resource": resource, "action": action,
-			"source": "de-policy",
+			"source": "qzda-policy",
 		},
 	})
 }
@@ -197,7 +197,7 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
-// Client calls remote de-policy /v1/evaluate.
+// Client calls remote qzda-policy /v1/evaluate.
 type Client struct {
 	Base  string
 	Token string
@@ -241,7 +241,7 @@ func (c *Client) Evaluate(ctx context.Context, in policy.Input) (policy.Decision
 	defer res.Body.Close()
 	body, _ := io.ReadAll(io.LimitReader(res.Body, 1<<20))
 	if res.StatusCode >= 300 {
-		return policy.Decision{}, fmt.Errorf("de-policy %d: %s", res.StatusCode, string(body))
+		return policy.Decision{}, fmt.Errorf("qzda-policy %d: %s", res.StatusCode, string(body))
 	}
 	var wrap struct {
 		Success bool `json:"success"`
@@ -265,6 +265,6 @@ func (c *Client) Evaluate(ctx context.Context, in policy.Input) (policy.Decision
 
 // ListenAndServe starts the HTTP server (blocking).
 func (s *Server) ListenAndServe() error {
-	log.Printf("de-policy listening on %s (core=%s opa=%s)", s.Addr, s.CoreURL, os.Getenv("DE_OPA_URL"))
+	log.Printf("qzda-policy listening on %s (core=%s opa=%s)", s.Addr, s.CoreURL, os.Getenv("DE_OPA_URL"))
 	return http.ListenAndServe(s.Addr, s.Handler())
 }

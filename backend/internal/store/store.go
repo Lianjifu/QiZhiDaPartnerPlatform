@@ -386,7 +386,7 @@ func (s *Store) seed() {
 	s.ReleaseApprovals = []map[string]any{
 		{"id": "approval-agent-21", "workspaceId": "w1", "environment": "production", "resourceType": "agent", "resourceName": "客服质检助手 v2.1", "submittedBy": "业务构建者", "submittedById": "u2", "submittedAt": "2026-07-21T02:30:00Z", "status": "pending", "risk": "medium", "correlationId": "corr-release-agent-21"},
 	}
-	s.AppendAudit("w1", "系统", "初始化审计", "de-core", "success", "seed")
+	s.AppendAudit("w1", "系统", "初始化审计", "qzda-core", "success", "seed")
 
 	s.CapabilityCatalog = map[string]any{
 		"models":    []map[string]any{{"id": "mdl-gpt4", "name": "gpt-4o", "meta": "Azure OpenAI CN · cn-east"}},
@@ -833,7 +833,7 @@ func (s *Store) seed() {
 	// Fallback only; opsOverviewLive derives pending/health from tasks & employees.
 	s.OpsOverview = map[string]any{
 		"services": []map[string]any{
-			{"name": "de-core", "status": "up"},
+			{"name": "qzda-core", "status": "up"},
 			{"name": "agent-runtime", "status": "up"},
 			{"name": "rag", "status": "up"},
 		},

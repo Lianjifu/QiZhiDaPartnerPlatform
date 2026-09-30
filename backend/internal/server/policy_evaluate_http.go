@@ -9,7 +9,7 @@ import (
 	"github.com/qizhida-partner-platform/backend/pkg/response"
 )
 
-// handleLocalPolicyEvaluate serves POST /v1/evaluate on de-sys (default) or de-policy.
+// handleLocalPolicyEvaluate serves POST /v1/evaluate on qzda-sys (default) or qzda-policy.
 func (s *Server) handleLocalPolicyEvaluate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)

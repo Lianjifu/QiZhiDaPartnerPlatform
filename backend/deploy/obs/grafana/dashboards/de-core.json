@@ -8,7 +8,7 @@
   "panels": [
     {
       "type": "stat",
-      "title": "de-core up",
+      "title": "qzda-core up",
       "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
       "targets": [{ "expr": "de_core_up", "refId": "A" }],
       "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -47,10 +47,10 @@
     }
   ],
   "schemaVersion": 39,
-  "tags": ["de-core"],
+  "tags": ["qzda-core"],
   "templating": { "list": [] },
   "time": { "from": "now-1h", "to": "now" },
-  "title": "de-core overview",
-  "uid": "de-core-overview",
+  "title": "qzda-core overview",
+  "uid": "qzda-core-overview",
   "version": 1
 }

@@ -91,7 +91,7 @@ func TestMetricsEndpoint(t *testing.T) {
 	if rr.Code != 200 {
 		t.Fatalf("metrics %d %s", rr.Code, rr.Body.String())
 	}
-	if !bytes.Contains(rr.Body.Bytes(), []byte("de_core_up")) {
-		t.Fatalf("missing de_core_up: %s", rr.Body.String())
+	if !bytes.Contains(rr.Body.Bytes(), []byte("qzda_core_up")) {
+		t.Fatalf("missing qzda_core_up: %s", rr.Body.String())
 	}
 }

@@ -1,7 +1,7 @@
 // Package catalog defines the contract between the assembly catalog
 // handler and the heterogeneous data sources it reads from. In split
-// deploy (de-collab) skills/knowledge/models/channels live on de-cap
-// and workflow skills on de-workflow; in monolith they all live in the
+// deploy (qzda-collab) skills/knowledge/models/channels live on qzda-cap
+// and workflow skills on qzda-workflow; in monolith they all live in the
 // local store. Both shapes must satisfy Source so the handler can
 // fan out to either uniformly.
 //

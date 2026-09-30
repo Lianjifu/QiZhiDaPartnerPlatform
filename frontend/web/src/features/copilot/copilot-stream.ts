@@ -1,5 +1,5 @@
 /**
- * Copilot SSE client — 对接 de-core /api/copilot/conversations/:id/stream
+ * Copilot SSE client — 对接 qzda-core /api/copilot/conversations/:id/stream
  */
 import { useAuthStore } from '@/stores/authStore';
 import { resolveWorkspaceHeader } from '@/lib/workspace-header';

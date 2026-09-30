@@ -57,7 +57,7 @@
 | GET/POST | `/api/copilot/conversations`、`/api/copilot/conversations/:id`、`…/messages`、`…/stream`（SSE；Connect：`/connect/de.collab.v1.CollabService/*`） |
 | POST | `/api/copilot/conversations/:id/messages/:mid/feedback`（点赞/点踩 → 自进化候选） |
 | POST | `/api/actions/:id/approve`、`/api/actions/:id/execute`（双重审批 / 受控执行） |
-| POST | `/api/model-invoke`、`/api/model-invoke/stream`（de-cap：按供应商凭据真实 LLM；Copilot SSE 经此调用） |
+| POST | `/api/model-invoke`、`/api/model-invoke/stream`（qzda-cap：按供应商凭据真实 LLM；Copilot SSE 经此调用） |
 
 ### Copilot SSE 事件（节选）
 
@@ -92,5 +92,5 @@
 | GET | `/metrics`（Prometheus 文本；OTel 桥后续） |
 
 拆分与 mTLS 目标见 [`deploy/topology-split.md`](../deploy/topology-split.md)。  
-**Monolith（方案 A）**：上述 sys/collab/cap 路由均由 **de-app:8100** 提供；网关 **8089** → `envoy.monolith.yaml`。  
+**Monolith（方案 A）**：上述 sys/collab/cap 路由均由 **qzda-app:8100** 提供；网关 **8089** → `envoy.monolith.yaml`。  
 详见 [`contract-gap.md`](contract-gap.md)。

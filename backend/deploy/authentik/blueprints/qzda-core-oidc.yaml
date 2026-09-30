@@ -1,0 +1,36 @@
+# Best-effort Authentik blueprint for local control-plane OIDC.
+# Client id "qzda-core" is historical; callback targets qzda-gateway :8089.
+# If apply fails on your Authentik version, create the provider in the UI
+# (see deploy/authentik/README.md).
+version: 1
+metadata:
+  name: qzda-core-oidc
+entries:
+  - model: authentik_providers_oauth2.oauth2provider
+    id: qzda-core-provider
+    state: present
+    identifiers:
+      name: Provider for qzda-core
+    attrs:
+      name: Provider for qzda-core
+      authentication_flow: !Find [authentik_flows.flow, [slug, default-authentication-flow]]
+      authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+      client_type: confidential
+      client_id: qzda-core
+      client_secret: qzda-core-secret
+      access_coqzda_validity: minutes=1
+      access_token_validity: minutes=10
+      refresh_token_validity: days=30
+      incluqzda_claims_in_id_token: true
+      redirect_uris: http://127.0.0.1:8089/api/auth/oidc/callback
+      sub_mode: hashed_user_id
+      issuer_mode: per_provider
+  - model: authentik_core.application
+    state: present
+    identifiers:
+      slug: de
+    attrs:
+      name: qzda-core
+      slug: de
+      provider: !KeyOf qzda-core-provider
+      policy_engine_mode: any

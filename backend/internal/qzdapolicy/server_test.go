@@ -99,7 +99,7 @@ func TestZTEvaluateUserPublish(t *testing.T) {
 		} `json:"data"`
 	}
 	_ = json.Unmarshal(rr.Body.Bytes(), &wrap)
-	if wrap.Data.Decision != "approval_required" || wrap.Data.Source != "de-policy" {
+	if wrap.Data.Decision != "approval_required" || wrap.Data.Source != "qzda-policy" {
 		t.Fatalf("%+v", wrap.Data)
 	}
 }

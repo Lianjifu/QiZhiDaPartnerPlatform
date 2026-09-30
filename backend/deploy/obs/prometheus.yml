@@ -6,22 +6,22 @@ rule_files:
   - /etc/prometheus/alerts.yml
 
 scrape_configs:
-  - job_name: de-monolith
+  - job_name: qzda-monolith
     metrics_path: /metrics
     static_configs:
       - targets: ["host.docker.internal:8100"]
-        labels: { service: de-app }
-  - job_name: de-coarse
+        labels: { service: qzda-app }
+  - job_name: qzda-coarse
     metrics_path: /metrics
     static_configs:
       - targets: ["host.docker.internal:8100"]
-        labels: { service: de-sys }
+        labels: { service: qzda-sys }
       - targets: ["host.docker.internal:8101"]
-        labels: { service: de-collab }
+        labels: { service: qzda-collab }
       - targets: ["host.docker.internal:8102"]
-        labels: { service: de-cap }
+        labels: { service: qzda-cap }
       - targets: ["host.docker.internal:8103"]
-        labels: { service: de-workflow }
+        labels: { service: qzda-workflow }
   - job_name: prometheus
     static_configs:
       - targets: ["localhost:9090"]

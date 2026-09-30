@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Gateway for monolith stack: all API traffic → de-app :8100."""
+"""Gateway for monolith stack: all API traffic → qzda-app :8100."""
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 import urllib.error
 import urllib.request

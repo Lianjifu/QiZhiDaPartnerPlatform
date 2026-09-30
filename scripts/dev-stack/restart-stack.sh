@@ -1,6 +1,6 @@
 #!/bin/bash
-# Restart the digital-employee-platform dev stack via launchd supervisor.
-# Use this instead of `pkill bin/de-app` — supervisor will respawn instantly.
+# Restart the QiZhiDa · PartnerPlatform dev stack via launchd supervisor.
+# Use this instead of `pkill bin/qzda-app` — supervisor will respawn instantly.
 #
 # Usage:
 #   ./scripts/dev-stack/restart-stack.sh           # restart in place
@@ -11,13 +11,13 @@
 # See [[feedback-startup-protocol]] for why this exists.
 
 set -u
-PLIST="$HOME/Library/LaunchAgents/com.digital-employee.dev-stack.plist"
+PLIST="$HOME/Library/LaunchAgents/com.qizhida.dev-stack.plist"
 PORTS=(8089 8100 5173)
-BACKEND="/Users/LIANJIFU/ops/digital-employee-platform/backend"
+BACKEND="/Users/LIANJIFU/ops/QiZhiDaPartnerPlatform/backend"
 
 probe() {
   echo "=== procs ==="
-  ps aux | grep -E "de-app|vite|gateway-proxy-monolith" | grep -v grep | awk '{printf "  %-7s %s\n", $2, substr($0, index($0,$11))}' | head -10
+  ps aux | grep -E "qzda-app|vite|gateway-proxy-monolith" | grep -v grep | awk '{printf "  %-7s %s\n", $2, substr($0, index($0,$11))}' | head -10
   echo "=== ports ==="
   for p in "${PORTS[@]}"; do
     code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 1 "http://127.0.0.1:${p}/healthz" 2>/dev/null)
@@ -29,7 +29,7 @@ probe() {
     fi
   done
   echo "=== supervisor ==="
-  launchctl list | grep digital-employee || echo "  (supervisor not loaded)"
+  launchctl list | grep qizhida || echo "  (supervisor not loaded)"
 }
 
 wait_ready() {
@@ -44,7 +44,7 @@ wait_ready() {
     fi
     sleep 1
   done
-  echo "stack not ready after ${timeout}s; check /tmp/de-stack/*.log"
+  echo "stack not ready after ${timeout}s; check /tmp/qzda-stack/*.log"
   return 1
 }
 
@@ -61,7 +61,7 @@ case "${1:-restart}" in
     if [ ! -f "$PLIST" ]; then
       echo "missing plist: $PLIST"; exit 1
     fi
-    if launchctl list | grep -q digital-employee; then
+    if launchctl list | grep -q qizhida; then
       echo "already loaded"
     else
       launchctl load "$PLIST"
@@ -69,7 +69,7 @@ case "${1:-restart}" in
     wait_ready
     ;;
   restart|"")
-    if [ -f "$PLIST" ] && launchctl list | grep -q digital-employee; then
+    if [ -f "$PLIST" ] && launchctl list | grep -q qizhida; then
       echo "unloading supervisor..."
       launchctl unload "$PLIST"
       sleep 2

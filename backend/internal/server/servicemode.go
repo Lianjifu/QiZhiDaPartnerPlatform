@@ -25,7 +25,7 @@ func unifiedMode(m ServiceMode) bool {
 	return m == ModeAll || m == ModeApp
 }
 
-// IsUnified reports monolith / full-route modes (tests + de-app deployment).
+// IsUnified reports monolith / full-route modes (tests + qzda-app deployment).
 func (m ServiceMode) IsUnified() bool {
 	return unifiedMode(m)
 }
@@ -34,19 +34,19 @@ func ParseServiceMode(s string) ServiceMode {
 	switch strings.ToLower(strings.TrimSpace(s)) {
 	case "all":
 		return ModeAll
-	case "app", "de-app":
+	case "app", "qzda-app":
 		return ModeApp
-	case "sys", "de-sys", "platform", "":
+	case "sys", "qzda-sys", "platform", "":
 		return ModeSys
-	case "collab", "de-collab":
+	case "collab", "qzda-collab":
 		return ModeCollab
-	case "cap", "de-cap", "capability":
+	case "cap", "qzda-cap", "capability":
 		return ModeCap
-	case "workflow", "de-workflow":
+	case "workflow", "qzda-workflow":
 		return ModeWorkflow
-	case "policy", "de-policy":
+	case "policy", "qzda-policy":
 		return ModePolicy
-	case "audit", "de-audit":
+	case "audit", "qzda-audit":
 		return ModeAudit
 	default:
 		return ModeSys
@@ -56,23 +56,23 @@ func ParseServiceMode(s string) ServiceMode {
 func (m ServiceMode) String() string {
 	switch m {
 	case ModeApp:
-		return "de-app"
+		return "qzda-app"
 	case ModeSys:
-		return "de-sys"
+		return "qzda-sys"
 	case ModeCollab:
-		return "de-collab"
+		return "qzda-collab"
 	case ModeCap:
-		return "de-cap"
+		return "qzda-cap"
 	case ModeWorkflow:
-		return "de-workflow"
+		return "qzda-workflow"
 	case ModePolicy:
-		return "de-policy"
+		return "qzda-policy"
 	case ModeAudit:
-		return "de-audit"
+		return "qzda-audit"
 	case ModeAll:
-		return "de-all"
+		return "qzda-all"
 	default:
-		return "de-sys"
+		return "qzda-sys"
 	}
 }
 

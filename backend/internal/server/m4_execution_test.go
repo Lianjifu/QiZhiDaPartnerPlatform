@@ -29,8 +29,8 @@ func TestWorkflowTrialUsesWorkerEngine(t *testing.T) {
 		} `json:"data"`
 	}
 	_ = json.Unmarshal(rr.Body.Bytes(), &env)
-	if env.Data.Engine != "de-workflow" {
-		t.Fatalf("expected de-workflow, got %s body=%s", env.Data.Engine, rr.Body.String())
+	if env.Data.Engine != "qzda-workflow" {
+		t.Fatalf("expected qzda-workflow, got %s body=%s", env.Data.Engine, rr.Body.String())
 	}
 	if env.Data.Status != "succeeded" {
 		t.Fatalf("status %s", env.Data.Status)

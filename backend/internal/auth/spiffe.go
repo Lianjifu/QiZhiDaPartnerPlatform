@@ -22,7 +22,7 @@ func SPIFFETrustDomain() string {
 func SPIFFEID(service string) string {
 	svc := strings.TrimSpace(service)
 	if svc == "" {
-		svc = "de-core"
+		svc = "qzda-core"
 	}
 	return fmt.Sprintf("spiffe://%s/ns/default/sa/%s", SPIFFETrustDomain(), svc)
 }

@@ -1,4 +1,4 @@
-# L00 edge: /api and /agent → de-core on host
+# L00 edge: /api and /agent → qzda-core on host
 static_resources:
   listeners:
     - name: listener_http
@@ -9,7 +9,7 @@ static_resources:
             - name: envoy.filters.network.http_connection_manager
               typed_config:
                 "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
-                stat_prefix: de_ingress
+                stat_prefix: qzda_ingress
                 codec_type: AUTO
                 route_config:
                   name: local_route
@@ -19,29 +19,29 @@ static_resources:
                       routes:
                         - match: { prefix: "/agent" }
                           route:
-                            cluster: de_core
+                            cluster: qzda_core
                             timeout: 180s
                             prefix_rewrite: "/api/copilot"
                         - match: { prefix: "/api" }
                           route:
-                            cluster: de_core
+                            cluster: qzda_core
                             timeout: 180s
                         - match: { prefix: "/healthz" }
-                          route: { cluster: de_core }
+                          route: { cluster: qzda_core }
                         - match: { prefix: "/readyz" }
-                          route: { cluster: de_core }
+                          route: { cluster: qzda_core }
                 http_filters:
                   - name: envoy.filters.http.router
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
   clusters:
-    - name: de_core
+    - name: qzda_core
       connect_timeout: 2s
       type: LOGICAL_DNS
       dns_lookup_family: V4_ONLY
       lb_policy: ROUND_ROBIN
       load_assignment:
-        cluster_name: de_core
+        cluster_name: qzda_core
         endpoints:
           - lb_endpoints:
               - endpoint:

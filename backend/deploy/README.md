@@ -10,7 +10,7 @@ bash scripts/dev-stack/ensure-docker-postgres.sh
 cd backend && make infra-env
 ```
 
-脚本会停掉占用 5432 的本机 Postgres、拉起 `de-postgres`，并校验为 **16.x**。更多说明见 [`docs/环境与数据模式.md`](../../docs/环境与数据模式.md)。
+脚本会停掉占用 5432 的本机 Postgres、拉起 `qzda-postgres`，并校验为 **16.x**。更多说明见 [`docs/环境与数据模式.md`](../../docs/环境与数据模式.md)。
 
 ## 前置
 
@@ -30,8 +30,8 @@ make compose-down        # 停止并移除容器（数据卷默认保留）
 
 | 服务 | 容器名 | 主机端口 | 账号 |
 |------|--------|----------|------|
-| PostgreSQL 16 | `de-postgres` | `5432` | `de` / `de`，库 `digital_employee` |
-| Redis 7 | `de-redis` | `6379` | 无密码 |
+| PostgreSQL 16 | `qzda-postgres` | `5432` | `de` / `de`，库 `digital_employee` |
+| Redis 7 | `qzda-redis` | `6379` | 无密码 |
 
 Schema 初始化：`deploy/migrations/*.sql` 挂载到 Postgres 的 `/docker-entrypoint-initdb.d`（**仅数据卷首次创建时执行**）。
 
@@ -52,8 +52,8 @@ make run                 # monolith（方案 A 默认）
 
 ```bash
 make compose-up-full       # + Vault(:8200) + Envoy(:8088)
-make compose-up-monolith   # ★ 主路径（方案 A）：de-app + de-skill + gateway:8089
-make compose-up-monolith-workflow  # monolith + de-workflow:8103
+make compose-up-monolith   # ★ 主路径（方案 A）：qzda-app + qzda-skill + gateway:8089
+make compose-up-monolith-workflow  # monolith + qzda-workflow:8103
 make compose-up-coarse     # 四进程 coarse：sys/collab/cap/workflow + FastAPI + gateway:8089
 make compose-up-temporal   # + Temporal(:7233)
 make compose-up-oidc       # + Dex OIDC(:5556)
@@ -70,7 +70,7 @@ make compose-up-staging    # coarse + oidc + opa + search + obs
 
 | 变量 | 说明 |
 |------|------|
-| `DE_OIDC_ISSUER=http://127.0.0.1:5556/dex` 等 | Dex：历史 `CLIENT_ID=de-core`（可用 `de-platform`）；`SECRET=de-core-secret`；账号 `admin@acme.com` / `password` |
+| `DE_OIDC_ISSUER=http://127.0.0.1:5556/dex` 等 | Dex：历史 `CLIENT_ID=qzda-core`（可用 `qzda-platform`）；`SECRET=qzda-core-secret`；账号 `admin@acme.com` / `password` |
 | Authentik issuer | `http://127.0.0.1:9000/application/o/de/`（discovery 自动解析端点） |
 | `DE_VAULT_ADDR` / `DE_VAULT_TOKEN` | KV v2 Put/Resolve；供应商 test 会 Resolve `credentialRef` |
 | `DE_TEMPORAL_HOST` | Temporal SDK 提交试运行；需 `make worker` |
@@ -78,8 +78,8 @@ make compose-up-staging    # coarse + oidc + opa + search + obs
 | `DE_MILVUS_URI=http://127.0.0.1:19530` | Docker Milvus（`make compose-up-milvus`）；未设置则 RAG 用内存向量 |
 | `DE_OPA_URL=http://127.0.0.1:8181` | 远程 OPA evaluate；失败回退内嵌 baseline |
 | `DE_OPENSEARCH_URL=http://127.0.0.1:9200` | 审计写入/查询 OpenSearch |
-| `DE_POLICY_URL=http://127.0.0.1:8100` | collab/cap 调 de-sys `/v1/evaluate`；sys 留空；切开后可改 `:8104` |
-| `DE_SKILL_RUN_SECRET` | 控制面与 de-skill-runtime 共享的 RunToken HMAC 密钥 |
+| `DE_POLICY_URL=http://127.0.0.1:8100` | collab/cap 调 qzda-sys `/v1/evaluate`；sys 留空；切开后可改 `:8104` |
+| `DE_SKILL_RUN_SECRET` | 控制面与 qzda-skill-runtime 共享的 RunToken HMAC 密钥 |
 | `DE_ENV` | `demo` \| `development`（默认）\| `staging` \| `production`；见 [环境与数据模式](../../docs/环境与数据模式.md) |
 | `DE_BAN_MOCK_TOKEN=1` | 仅禁用 `mock-*-token`，**不**触发双人审批 |
 | `DE_FORCE_OIDC=1` | 拒绝密码登录，仅 OIDC |
@@ -103,7 +103,7 @@ make compose-up-obs         # Prometheus :9090，Grafana :3000（抓取 :8100–
 ```bash
 make certs && make certs-rotate
 make compose-up-spiffe            # https://127.0.0.1:8444
-# de-skill-runtime：de_exec_net + seccomp；见 topology-split.md
+# qzda-skill-runtime：qzda_exec_net + seccomp；见 topology-split.md
 ```
 
 Proto / Connect：`make buf-generate` → `gen/`（`/de.*.Service/*`）。  
@@ -113,12 +113,12 @@ mTLS：`make certs` 生成本地 CA；客户端证书 `deploy/certs/client.{crt,
 
 ```bash
 make compose-up-milvus
-pip install -r services/de-rag/requirements-milvus.txt
+pip install -r services/qzda-rag/requirements-milvus.txt
 export DE_MILVUS_URI=http://127.0.0.1:19530
 make rag   # :8092，healthz 中 backend=milvus
 ```
 
-容器：`de-milvus`（19530/9091）、`de-milvus-etcd`、`de-milvus-minio`（内网）。Milvus 较吃内存，Colima/Docker 建议 ≥6–8GB。
+容器：`qzda-milvus`（19530/9091）、`qzda-milvus-etcd`、`qzda-milvus-minio`（内网）。Milvus 较吃内存，Colima/Docker 建议 ≥6–8GB。
 
 ### 应用进程
 
@@ -126,7 +126,7 @@ make rag   # :8092，healthz 中 backend=milvus
 
 ```bash
 make compose-up-monolith
-# gateway:8089  de-app:8100  de-skill:8093
+# gateway:8089  qzda-app:8100  qzda-skill:8093
 # 可选：make compose-up-monolith-workflow
 ```
 

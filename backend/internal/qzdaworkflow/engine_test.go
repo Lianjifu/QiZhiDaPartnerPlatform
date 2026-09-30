@@ -14,11 +14,11 @@ func TestStartTrialLocal(t *testing.T) {
 	if run.Status != "succeeded" {
 		t.Fatalf("status %s", run.Status)
 	}
-	if run.EngineName != "de-workflow" {
+	if run.EngineName != "qzda-workflow" {
 		t.Fatalf("engine %s", run.EngineName)
 	}
 	m := run.ToMap()
-	if m["engine"] != "de-workflow" {
+	if m["engine"] != "qzda-workflow" {
 		t.Fatalf("map engine %v", m["engine"])
 	}
 }

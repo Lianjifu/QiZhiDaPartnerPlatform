@@ -18,7 +18,7 @@ func TestClientAppendAndList(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/v1/events" && r.Method == http.MethodPost {
 			_ = json.NewDecoder(r.Body).Decode(&got)
-			_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "data": map[string]any{"id": got["id"], "source": "de-audit"}})
+			_ = json.NewEncoder(w).Encode(map[string]any{"success": true, "data": map[string]any{"id": got["id"], "source": "qzda-audit"}})
 			return
 		}
 		if r.URL.Path == "/v1/events" && r.Method == http.MethodGet {

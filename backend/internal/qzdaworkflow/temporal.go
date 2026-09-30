@@ -9,7 +9,7 @@ import (
 	"go.temporal.io/sdk/client"
 )
 
-// TrialWorkflowName is registered by cmd/de-workflow.
+// TrialWorkflowName is registered by cmd/qzda-workflow.
 const TrialWorkflowName = "qzda.workflow.TrialRun"
 
 // StartTrialTemporal submits a Temporal workflow when the frontend is reachable.
@@ -48,7 +48,7 @@ func (e *Engine) StartTrialTemporal(ctx context.Context, runID, workflowID strin
 	defer cancel()
 	we, err := c.ExecuteWorkflow(wctx, client.StartWorkflowOptions{
 		ID:        temporalID,
-		TaskQueue: "de-workflow",
+		TaskQueue: "qzda-workflow",
 	}, TrialWorkflowName, TrialInput{RunID: runID, WorkflowID: workflowID})
 	if err != nil {
 		if temporalFailClosed() {

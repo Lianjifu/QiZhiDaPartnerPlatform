@@ -1,4 +1,4 @@
-.PHONY: run test tidy build compose-up compose-up-full compose-up-temporal compose-up-oidc compose-up-authentik compose-up-kafka compose-up-mtls compose-up-spiffe compose-up-coarse compose-up-monolith compose-up-monolith-workflow compose-up-milvus compose-up-opa compose-up-search compose-up-obs compose-up-staging compose-up-replica compose-down compose-ps compose-logs infra-env smoke smoke-coarse smoke-monolith test-python runtime rag skill sync-builtin-skills de-workflow docker-engine buf-generate buf-lint worker certs certs-rotate run-sys run-collab run-cap run-app run-workflow run-policy run-audit run-demo run-dev db-reset-dev
+.PHONY: run test tidy build compose-up compose-up-full compose-up-temporal compose-up-oidc compose-up-authentik compose-up-kafka compose-up-mtls compose-up-spiffe compose-up-coarse compose-up-monolith compose-up-monolith-workflow compose-up-milvus compose-up-opa compose-up-search compose-up-obs compose-up-staging compose-up-replica compose-down compose-ps compose-logs infra-env smoke smoke-coarse smoke-monolith test-python runtime rag skill sync-builtin-skills qzda-workflow docker-engine buf-generate buf-lint worker certs certs-rotate run-sys run-collab run-cap run-app run-workflow run-policy run-audit run-demo run-dev db-reset-dev
 
 
 export DE_DATABASE_URL ?= postgres://de:de@127.0.0.1:5432/digital_employee?sslmode=disable
@@ -10,46 +10,46 @@ export PATH := /opt/homebrew/bin:$(HOME)/go/bin:$(PATH)
 GO ?= $(shell if [ -x "$(CURDIR)/.tools/go/bin/go" ]; then echo "$(CURDIR)/.tools/go/bin/go"; else echo go; fi)
 COMPOSE := docker compose -f deploy/compose.yml
 
-# Primary local entry: monolith stack (gateway :8089 → de-app :8100 + de-skill :8093).
+# Primary local entry: monolith stack (gateway :8089 → qzda-app :8100 + qzda-skill :8093).
 # Data mode: DE_ENV=development (production-shaped persist, no demo seed on empty DB).
 run: compose-up-monolith
 
 # 演示环境：内存 + ACME seed，不写 Postgres。
 run-demo:
-	DE_ENV=demo DE_SERVICE=app DE_LISTEN_ADDR=:8100 $(GO) run ./cmd/de-app
+	DE_ENV=demo DE_SERVICE=app DE_LISTEN_ADDR=:8100 $(GO) run ./cmd/qzda-app
 
 # 本机生产数据模式：需 PG；空库不灌演示 seed。
 run-dev: infra-env run-app
 
 run-sys: infra-env
-	$(GO) run ./cmd/de-sys
+	$(GO) run ./cmd/qzda-sys
 
 run-app: infra-env
 	DE_ENV=$${DE_ENV:-development} \
 	DE_RUNTIME_MODE=local \
 	DE_SKILL_RUNTIME_URL=$${DE_SKILL_RUNTIME_URL:-http://127.0.0.1:8093} \
-	$(GO) run ./cmd/de-app
+	$(GO) run ./cmd/qzda-app
 
 db-reset-dev: docker-engine
 	@bash ../scripts/dev-stack/ensure-docker-postgres.sh
 	@echo "WARNING: drops application schemas in Docker Postgres ($(DE_DATABASE_URL))"
 	@$(COMPOSE) exec -T postgres psql -U de -d digital_employee -c "DROP SCHEMA IF EXISTS platform CASCADE; DROP SCHEMA IF EXISTS audit CASCADE; DROP SCHEMA IF EXISTS policy CASCADE; DROP SCHEMA IF EXISTS collab CASCADE; DROP SCHEMA IF EXISTS cap CASCADE;" || true
-	@echo "Restart de-app with DE_ENV=development to re-apply migrations / empty durable store."
+	@echo "Restart qzda-app with DE_ENV=development to re-apply migrations / empty durable store."
 
 run-collab: infra-env
-	DE_CAP_URL=$${DE_CAP_URL:-http://127.0.0.1:8102} DE_WORKFLOW_URL=$${DE_WORKFLOW_URL:-http://127.0.0.1:8103} $(GO) run ./cmd/de-collab
+	DE_CAP_URL=$${DE_CAP_URL:-http://127.0.0.1:8102} DE_WORKFLOW_URL=$${DE_WORKFLOW_URL:-http://127.0.0.1:8103} $(GO) run ./cmd/qzda-collab
 
 run-cap: infra-env
-	$(GO) run ./cmd/de-cap
+	$(GO) run ./cmd/qzda-cap
 
 run-workflow: infra-env
-	DE_WORKFLOW_HTTP=1 DE_WORKFLOW_WORKER=$${DE_WORKFLOW_WORKER:-0} $(GO) run ./cmd/de-workflow
+	DE_WORKFLOW_HTTP=1 DE_WORKFLOW_WORKER=$${DE_WORKFLOW_WORKER:-0} $(GO) run ./cmd/qzda-workflow
 
 run-policy: infra-env
-	$(GO) run ./cmd/de-policy
+	$(GO) run ./cmd/qzda-policy
 
 run-audit: infra-env
-	$(GO) run ./cmd/de-audit
+	$(GO) run ./cmd/qzda-audit
 
 test:
 	# Isolate unit tests from a locally running FastAPI RAG on :8092.
@@ -59,18 +59,18 @@ tidy:
 	$(GO) mod tidy
 
 build:
-	$(GO) build -o ./bin/de-sys ./cmd/de-sys
-	$(GO) build -o ./bin/de-app ./cmd/de-app
-	$(GO) build -o ./bin/de-collab ./cmd/de-collab
-	$(GO) build -o ./bin/de-cap ./cmd/de-cap
-	$(GO) build -o ./bin/de-workflow ./cmd/de-workflow
-	$(GO) build -o ./bin/de-policy ./cmd/de-policy
-	$(GO) build -o ./bin/de-audit ./cmd/de-audit
-	$(GO) build -o ./bin/de-local-llm ./cmd/de-local-llm
+	$(GO) build -o ./bin/qzda-sys ./cmd/qzda-sys
+	$(GO) build -o ./bin/qzda-app ./cmd/qzda-app
+	$(GO) build -o ./bin/qzda-collab ./cmd/qzda-collab
+	$(GO) build -o ./bin/qzda-cap ./cmd/qzda-cap
+	$(GO) build -o ./bin/qzda-workflow ./cmd/qzda-workflow
+	$(GO) build -o ./bin/qzda-policy ./cmd/qzda-policy
+	$(GO) build -o ./bin/qzda-audit ./cmd/qzda-audit
+	$(GO) build -o ./bin/qzda-local-llm ./cmd/qzda-local-llm
 
 # Local OpenAI-compatible chat (default :18080) for Copilot when no cloud key is set.
 local-llm:
-	$(GO) run ./cmd/de-local-llm
+	$(GO) run ./cmd/qzda-local-llm
 
 docker-engine:
 	@command -v docker >/dev/null || { echo "docker CLI missing; brew install docker colima"; exit 1; }
@@ -84,13 +84,13 @@ compose-up: docker-engine
 	$(COMPOSE) up -d
 	@echo "waiting for postgres + redis healthy..."
 	@for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do \
-		ok=$$(docker inspect -f '{{.State.Health.Status}}' de-postgres 2>/dev/null || echo starting); \
-		rok=$$(docker inspect -f '{{.State.Health.Status}}' de-redis 2>/dev/null || echo starting); \
+		ok=$$(docker inspect -f '{{.State.Health.Status}}' qzda-postgres 2>/dev/null || echo starting); \
+		rok=$$(docker inspect -f '{{.State.Health.Status}}' qzda-redis 2>/dev/null || echo starting); \
 		echo "  try $$i: postgres=$$ok redis=$$rok"; \
 		if [ "$$ok" = "healthy" ] && [ "$$rok" = "healthy" ]; then \
 			echo "applying SQL migrations (idempotent)..."; \
 			for f in deploy/migrations/*.sql; do \
-				docker exec -i de-postgres psql -U de -d digital_employee < "$$f" >/dev/null; \
+				docker exec -i qzda-postgres psql -U de -d digital_employee < "$$f" >/dev/null; \
 			done; \
 			echo "infra ready"; \
 			echo "  DE_DATABASE_URL=$(DE_DATABASE_URL)"; \
@@ -114,8 +114,8 @@ compose-up-oidc: docker-engine
 	$(COMPOSE) --profile oidc up -d
 	@echo "Dex OIDC: http://127.0.0.1:5556/dex"
 	@echo "  DE_OIDC_ISSUER=http://127.0.0.1:5556/dex"
-	@echo "  DE_OIDC_CLIENT_ID=de-core"
-	@echo "  DE_OIDC_CLIENT_SECRET=de-core-secret"
+	@echo "  DE_OIDC_CLIENT_ID=qzda-core"
+	@echo "  DE_OIDC_CLIENT_SECRET=qzda-core-secret"
 	@echo "  DE_OIDC_AUTH_PATH=/auth"
 
 compose-up-authentik: docker-engine
@@ -149,36 +149,36 @@ compose-up-coarse: docker-engine
 compose-up-monolith: docker-engine
 	@$(MAKE) compose-up
 	$(COMPOSE) --profile monolith up -d --build
-	@echo "monolith: gateway:8089 → de-app:8100 + de-skill:8093"
+	@echo "monolith: gateway:8089 → qzda-app:8100 + qzda-skill:8093"
 	@echo "  FE proxy default → http://127.0.0.1:8089"
 	@echo "  optional workflow: make compose-up-monolith-workflow"
 
 compose-up-monolith-workflow: docker-engine
 	@$(MAKE) compose-up
-	DE_WORKFLOW_URL=http://de-workflow:8103 $(COMPOSE) --profile monolith --profile monolith-workflow up -d --build
-	@echo "monolith+workflow: de-app + de-skill + de-workflow:8103"
+	DE_WORKFLOW_URL=http://qzda-workflow:8103 $(COMPOSE) --profile monolith --profile monolith-workflow up -d --build
+	@echo "monolith+workflow: qzda-app + qzda-skill + qzda-workflow:8103"
 
 compose-up-milvus: docker-engine
 	$(COMPOSE) --profile milvus up -d
 	@echo "waiting for Milvus healthy..."
 	@for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30; do \
-		ok=$$(docker inspect -f '{{.State.Health.Status}}' de-milvus 2>/dev/null || echo starting); \
+		ok=$$(docker inspect -f '{{.State.Health.Status}}' qzda-milvus 2>/dev/null || echo starting); \
 		echo "  try $$i: milvus=$$ok"; \
 		if [ "$$ok" = "healthy" ]; then \
 			echo "Milvus ready: http://127.0.0.1:19530"; \
 			echo "  export DE_MILVUS_URI=http://127.0.0.1:19530"; \
-			echo "  pip install -r services/de-rag/requirements-milvus.txt && make rag"; \
+			echo "  pip install -r services/qzda-rag/requirements-milvus.txt && make rag"; \
 			exit 0; \
 		fi; \
 		sleep 3; \
 	done; \
-	echo "Milvus not healthy yet; check: docker logs de-milvus"; exit 1
+	echo "Milvus not healthy yet; check: docker logs qzda-milvus"; exit 1
 
 compose-up-replica: docker-engine
 	$(COMPOSE) --profile replica up -d
 	@echo "waiting for PG replica recovery..."
 	@for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18; do \
-		ok=$$(docker inspect -f '{{.State.Health.Status}}' de-postgres-replica 2>/dev/null || echo starting); \
+		ok=$$(docker inspect -f '{{.State.Health.Status}}' qzda-postgres-replica 2>/dev/null || echo starting); \
 		echo "  try $$i: replica=$$ok"; \
 		if [ "$$ok" = "healthy" ]; then \
 			echo "PG replica ready: postgres://de:de@127.0.0.1:5433/digital_employee?sslmode=disable"; \
@@ -189,7 +189,7 @@ compose-up-replica: docker-engine
 		sleep 3; \
 	done; \
 	echo "replica not healthy; existing PG volume may lack replication hba."; \
-	echo "  docker exec de-postgres sh -c 'echo \"host replication de all scram-sha-256\" >> \$$PGDATA/pg_hba.conf && psql -U de -c \"SELECT pg_reload_conf()\"'"; \
+	echo "  docker exec qzda-postgres sh -c 'echo \"host replication de all scram-sha-256\" >> \$$PGDATA/pg_hba.conf && psql -U de -c \"SELECT pg_reload_conf()\"'"; \
 	echo "  or recreate: $(COMPOSE) down -v && $(MAKE) compose-up-replica"; \
 	exit 1
 
@@ -201,7 +201,7 @@ compose-up-search: docker-engine
 	$(COMPOSE) --profile search up -d
 	@echo "waiting for OpenSearch healthy..."
 	@for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30; do \
-		ok=$$(docker inspect -f '{{.State.Health.Status}}' de-opensearch 2>/dev/null || echo starting); \
+		ok=$$(docker inspect -f '{{.State.Health.Status}}' qzda-opensearch 2>/dev/null || echo starting); \
 		echo "  try $$i: opensearch=$$ok"; \
 		if [ "$$ok" = "healthy" ]; then \
 			echo "OpenSearch ready: http://127.0.0.1:9200"; \
@@ -210,11 +210,11 @@ compose-up-search: docker-engine
 		fi; \
 		sleep 3; \
 	done; \
-	echo "OpenSearch not healthy yet; check: docker logs de-opensearch"; exit 1
+	echo "OpenSearch not healthy yet; check: docker logs qzda-opensearch"; exit 1
 
-compose-up-policy compose-up-de-policy compose-up-audit compose-up-de-audit compose-up-apps compose-up-split:
-	@echo "retired compose profile: coarse de-sys still absorbs policy/audit."
-	@echo "optional binaries: make run-policy (:8104) / make run-audit (:8105); set DE_CROSSCUTTING_SPLIT=1 on de-sys to drop those routes."
+compose-up-policy compose-up-qzda-policy compose-up-audit compose-up-qzda-audit compose-up-apps compose-up-split:
+	@echo "retired compose profile: coarse qzda-sys still absorbs policy/audit."
+	@echo "optional binaries: make run-policy (:8104) / make run-audit (:8105); set DE_CROSSCUTTING_SPLIT=1 on qzda-sys to drop those routes."
 	@exit 1
 
 # Staging: coarse + oidc + opa + search + obs
@@ -246,8 +246,8 @@ certs:
 certs-rotate:
 	@bash deploy/certs/rotate.sh 1
 
-worker de-workflow:
-	$(GO) run ./cmd/de-workflow
+worker qzda-workflow:
+	$(GO) run ./cmd/qzda-workflow
 
 compose-ps:
 	$(COMPOSE) ps
@@ -262,17 +262,17 @@ infra-env:
 	@echo "using DE_REDIS_URL=$(DE_REDIS_URL)"
 
 runtime:
-	pip install -q -r services/de-agent-runtime/requirements.txt
-	cd services/de-agent-runtime && python3 -m uvicorn app.main:app --host $${DE_BIND_HOST:-127.0.0.1} --port $${DE_BIND_PORT:-8091}
+	pip install -q -r services/qzda-agent-runtime/requirements.txt
+	cd services/qzda-agent-runtime && python3 -m uvicorn app.main:app --host $${DE_BIND_HOST:-127.0.0.1} --port $${DE_BIND_PORT:-8091}
 
 rag:
 	@echo "RAG backend: $${DE_MILVUS_URI:-vector-memory}"
-	pip install -q -r services/de-rag/requirements.txt
-	cd services/de-rag && python3 -m uvicorn app.main:app --host $${DE_BIND_HOST:-127.0.0.1} --port $${DE_BIND_PORT:-8092}
+	pip install -q -r services/qzda-rag/requirements.txt
+	cd services/qzda-rag && python3 -m uvicorn app.main:app --host $${DE_BIND_HOST:-127.0.0.1} --port $${DE_BIND_PORT:-8092}
 
 skill:
-	pip install -q -r services/de-skill-runtime/requirements.txt
-	cd services/de-skill-runtime && DE_SKILL_REQUIRE_ISOLATION=$${DE_SKILL_REQUIRE_ISOLATION:-0} python3 -m uvicorn app.main:app --host $${DE_BIND_HOST:-127.0.0.1} --port $${DE_BIND_PORT:-8093}
+	pip install -q -r services/qzda-skill-runtime/requirements.txt
+	cd services/qzda-skill-runtime && DE_SKILL_REQUIRE_ISOLATION=$${DE_SKILL_REQUIRE_ISOLATION:-0} python3 -m uvicorn app.main:app --host $${DE_BIND_HOST:-127.0.0.1} --port $${DE_BIND_PORT:-8093}
 
 sync-builtin-skills:
 	@bash ../scripts/sync-builtin-skills.sh

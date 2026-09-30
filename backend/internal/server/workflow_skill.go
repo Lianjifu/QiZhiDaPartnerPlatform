@@ -51,7 +51,7 @@ func (s *Server) publishWorkflowAsSkillLocked(actor *auth.Identity, ws string, w
 	catalogItem := map[string]any{
 		"id": skill["id"], "workspaceId": ws, "ownerId": actor.ID, "owner": actor.Name,
 		"name": name, "kind": "workflow", "description": "由流程 " + str(wf["name"]) + " 发布",
-		"lifecycleStatus": life, "status": status, "runtime": "de-workflow",
+		"lifecycleStatus": life, "status": status, "runtime": "qzda-workflow",
 		"version": skill["version"], "workflowId": wfID, "source": "workflow",
 		"environment": coalesce(str(wf["environment"]), "production"),
 		"riskLevel":   risk,
@@ -107,7 +107,7 @@ func (s *Server) enableWorkflowSkillCatalogLocked(skill map[string]any) {
 		s.Store.Skills = append([]map[string]any{{
 			"id": sid, "workspaceId": skill["workspaceId"], "name": skill["name"],
 			"kind": "workflow", "lifecycleStatus": "enabled", "status": "published",
-			"runtime": "de-workflow", "version": skill["version"], "source": "workflow",
+			"runtime": "qzda-workflow", "version": skill["version"], "source": "workflow",
 			"workflowId": skill["workflowId"],
 		}}, s.Store.Skills...)
 	}

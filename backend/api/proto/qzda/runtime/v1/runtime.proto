@@ -10,7 +10,7 @@ option go_package = "github.com/qizhida-partner-platform/backend/gen/qzda/runtim
 service RuntimeService {
   // Invoke 返回一次性补全，仅用于联调占位。
   rpc Invoke(InvokeRequest) returns (InvokeResponse);
-  // Run 消费 ContextSnapshot 并流式输出 LoopEvent；阶段 2 由 de-agent-runtime 实现。
+  // Run 消费 ContextSnapshot 并流式输出 LoopEvent；阶段 2 由 qzda-agent-runtime 实现。
   rpc Run(RunRequest) returns (stream LoopEvent);
 }
 

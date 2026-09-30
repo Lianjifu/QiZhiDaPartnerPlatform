@@ -1,5 +1,5 @@
 #!/bin/bash
-# Ensure local de-app talks to Docker Postgres (de-postgres), not Homebrew Postgres.
+# Ensure local qzda-app talks to Docker Postgres (qzda-postgres), not Homebrew Postgres.
 # Homebrew postgresql@N binding 127.0.0.1:5432 steals connections from Colima port-publish.
 set -euo pipefail
 
@@ -58,11 +58,11 @@ ensure_compose_postgres() {
   (cd "$BACKEND" && "${COMPOSE[@]}" up -d postgres redis) >/dev/null
   local i ok
   for i in $(seq 1 30); do
-    ok="$(docker inspect -f '{{.State.Health.Status}}' de-postgres 2>/dev/null || echo starting)"
+    ok="$(docker inspect -f '{{.State.Health.Status}}' qzda-postgres 2>/dev/null || echo starting)"
     [ "$ok" = "healthy" ] && return 0
     sleep 1
   done
-  echo "ensure-docker-postgres: de-postgres not healthy" >&2
+  echo "ensure-docker-postgres: qzda-postgres not healthy" >&2
   exit 1
 }
 

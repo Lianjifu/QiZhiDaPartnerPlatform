@@ -20,7 +20,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Server is the de-audit microservice: durable append/list + audit-center API.
+// Server is the qzda-audit microservice: durable append/list + audit-center API.
 type Server struct {
 	Addr     string
 	CoreURL  string
@@ -38,11 +38,11 @@ func NewFromEnv(ctx context.Context) (*Server, error) {
 		return nil, err
 	}
 	if pg == nil {
-		return nil, fmt.Errorf("DE_DATABASE_URL required for de-audit")
+		return nil, fmt.Errorf("DE_DATABASE_URL required for qzda-audit")
 	}
 	rdb, errRedis := infra.OpenRedis(ctx)
 	if errRedis != nil {
-		log.Printf("de-audit redis optional: %v", errRedis)
+		log.Printf("qzda-audit redis optional: %v", errRedis)
 	}
 	search := infra.NewOpenSearchAuditFromEnv()
 	if search != nil {
@@ -86,7 +86,7 @@ func envOr(k, d string) string {
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, 200, map[string]any{"status": "ok", "service": "de-audit"})
+		writeJSON(w, 200, map[string]any{"status": "ok", "service": "qzda-audit"})
 	})
 	mux.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) {
 		ok := s.Sink != nil && s.Sink.Pool != nil
@@ -145,7 +145,7 @@ func (s *Server) appendEvent(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 500, map[string]any{"success": false, "error": map[string]any{"code": "E_AUDIT_WRITE", "message": err.Error()}})
 		return
 	}
-	writeJSON(w, 200, map[string]any{"success": true, "data": map[string]any{"id": str(ev["id"]), "source": "de-audit"}})
+	writeJSON(w, 200, map[string]any{"success": true, "data": map[string]any{"id": str(ev["id"]), "source": "qzda-audit"}})
 }
 
 func (s *Server) ingest(ctx context.Context, ev map[string]any) error {
@@ -285,7 +285,7 @@ func str(v any) string {
 	return fmt.Sprint(v)
 }
 
-// Client calls remote de-audit.
+// Client calls remote qzda-audit.
 type Client struct {
 	Base  string
 	Token string
@@ -323,7 +323,7 @@ func (c *Client) Append(ctx context.Context, ev map[string]any) error {
 	defer res.Body.Close()
 	if res.StatusCode >= 300 {
 		b, _ := io.ReadAll(io.LimitReader(res.Body, 1<<16))
-		return fmt.Errorf("de-audit %d: %s", res.StatusCode, string(b))
+		return fmt.Errorf("qzda-audit %d: %s", res.StatusCode, string(b))
 	}
 	return nil
 }
@@ -350,7 +350,7 @@ func (c *Client) ListRecent(ctx context.Context, workspaceIDs []string, limit in
 	defer res.Body.Close()
 	body, _ := io.ReadAll(io.LimitReader(res.Body, 4<<20))
 	if res.StatusCode >= 300 {
-		return nil, fmt.Errorf("de-audit list %d: %s", res.StatusCode, string(body))
+		return nil, fmt.Errorf("qzda-audit list %d: %s", res.StatusCode, string(body))
 	}
 	var wrap struct {
 		Data []map[string]any `json:"data"`
@@ -362,7 +362,7 @@ func (c *Client) ListRecent(ctx context.Context, workspaceIDs []string, limit in
 }
 
 func (s *Server) ListenAndServe() error {
-	log.Printf("de-audit listening on %s (pg configured)", s.Addr)
+	log.Printf("qzda-audit listening on %s (pg configured)", s.Addr)
 	return http.ListenAndServe(s.Addr, s.Handler())
 }
 

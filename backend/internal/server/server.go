@@ -1053,7 +1053,7 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) {
 	case path == "/api/webhooks-config" && method == http.MethodGet:
 		data, err = s.listWebhooksConfig(r)
 
-	// Aliases absorbed from former de-policy / de-audit proxy surfaces
+	// Aliases absorbed from former qzda-policy / qzda-audit proxy surfaces
 	case path == "/api/governance" && method == http.MethodGet:
 		data, err = s.accessGovernance(r)
 	case (path == "/api/audit" || path == "/api/audits") && method == http.MethodGet:

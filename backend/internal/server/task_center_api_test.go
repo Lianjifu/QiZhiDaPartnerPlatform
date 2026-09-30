@@ -120,7 +120,7 @@ func TestTaskCenterProductionAPI(t *testing.T) {
 	req = httptest.NewRequest(http.MethodGet, "/metrics", nil)
 	h.ServeHTTP(rr, req)
 	metrics := rr.Body.String()
-	for _, needle := range []string{"de_task_created_total", "de_task_approve_reject_total", "de_tasks_total"} {
+	for _, needle := range []string{"qzda_task_created_total", "qzda_task_approve_reject_total", "qzda_tasks_total"} {
 		if !strings.Contains(metrics, needle) {
 			t.Fatalf("metrics missing %s", needle)
 		}

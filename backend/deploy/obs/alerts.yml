@@ -1,17 +1,17 @@
 groups:
-  - name: de-coarse-slo
+  - name: qzda-coarse-slo
     rules:
       - alert: DeControlPlaneDown
-        expr: de_core_up == 0 or absent(de_core_up)
+        expr: qzda_core_up == 0 or absent(qzda_core_up)
         for: 1m
         labels:
           severity: critical
         annotations:
           summary: "control-plane metrics missing or down"
-          description: "Prometheus cannot scrape de_core_up{service=...} from coarse :8100–8103/metrics"
+          description: "Prometheus cannot scrape qzda_core_up{service=...} from coarse :8100–8103/metrics"
 
       - alert: DeControlPlanePostgresMissing
-        expr: de_postgres_configured == 0
+        expr: qzda_postgres_configured == 0
         for: 5m
         labels:
           severity: warning
@@ -19,16 +19,16 @@ groups:
           summary: "control-plane has no Postgres pool"
 
       - alert: DeChannelDLQGrowing
-        expr: de_channel_dlq_size > 20
+        expr: qzda_channel_dlq_size > 20
         for: 10m
         labels:
           severity: warning
         annotations:
           summary: "Channel DLQ size high"
-          description: "de_channel_dlq_size={{ $value }}"
+          description: "qzda_channel_dlq_size={{ $value }}"
 
       - alert: DeControlPlaneHighGoroutines
-        expr: de_go_goroutines > 500
+        expr: qzda_go_goroutines > 500
         for: 10m
         labels:
           severity: warning
@@ -38,9 +38,9 @@ groups:
       - alert: DeCopilotStreamErrorRate
         expr: |
           (
-            rate(de_copilot_stream_errors_total[5m])
+            rate(qzda_copilot_stream_errors_total[5m])
             /
-            clamp_min(rate(de_copilot_stream_total[5m]), 1e-9)
+            clamp_min(rate(qzda_copilot_stream_total[5m]), 1e-9)
           ) > 0.2
         for: 10m
         labels:
@@ -50,20 +50,20 @@ groups:
           description: "More than 20% of Copilot streams failed in the last 5m window"
 
       - alert: DeAuditWriteFailures
-        expr: increase(de_audit_write_failures_total[10m]) > 5
+        expr: increase(qzda_audit_write_failures_total[10m]) > 5
         for: 5m
         labels:
           severity: warning
         annotations:
           summary: "Durable audit fanout failures"
-          description: "de_audit_write_failures_total increased by {{ $value }} in 10m"
+          description: "qzda_audit_write_failures_total increased by {{ $value }} in 10m"
 
       - alert: DeModelProbeErrorRate
         expr: |
           (
-            rate(de_model_provider_probe_errors_total[10m])
+            rate(qzda_model_provider_probe_errors_total[10m])
             /
-            clamp_min(rate(de_model_provider_probe_total[10m]), 1e-9)
+            clamp_min(rate(qzda_model_provider_probe_total[10m]), 1e-9)
           ) > 0.5
         for: 15m
         labels:
@@ -72,7 +72,7 @@ groups:
           summary: "Model provider probe failure rate elevated"
 
       - alert: DeModelVaultErrors
-        expr: increase(de_model_vault_errors_total[15m]) > 3
+        expr: increase(qzda_model_vault_errors_total[15m]) > 3
         for: 5m
         labels:
           severity: warning
@@ -80,7 +80,7 @@ groups:
           summary: "Model credential Vault errors"
 
       - alert: DeModelBudgetDenies
-        expr: increase(de_model_budget_denies_total[30m]) > 10
+        expr: increase(qzda_model_budget_denies_total[30m]) > 10
         for: 10m
         labels:
           severity: warning

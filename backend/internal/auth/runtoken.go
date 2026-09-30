@@ -24,7 +24,7 @@ func skillRunSecret() string {
 	if v := strings.TrimSpace(os.Getenv("DE_SKILL_RUN_SECRET")); v != "" {
 		return v
 	}
-	return "de-skill-run-dev"
+	return "qzda-skill-run-dev"
 }
 
 // MintRunToken issues a short-lived token (default 5m).

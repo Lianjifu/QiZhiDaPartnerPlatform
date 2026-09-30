@@ -17,7 +17,7 @@ make compose-up-authentik
 ## 配置控制面 OAuth2 应用
 
 1. 登录 Authentik Admin → **Applications** → **Providers** → **Create** → **OAuth2/OpenID Provider**
-2. 名称：`de-platform`（历史名 `de-core` 可保留）；Redirect URI：`http://127.0.0.1:8089/api/auth/oidc/callback`
+2. 名称：`qzda-platform`（历史名 `qzda-core` 可保留）；Redirect URI：`http://127.0.0.1:8089/api/auth/oidc/callback`
 3. Client type：Confidential；记下 Client ID / Secret
 4. **Applications** → Create，Slug 设为 `de`，绑定上述 Provider
 5. 导出环境变量后启动栈：
@@ -36,5 +36,5 @@ make compose-up-monolith   # 默认
 
 ## Blueprint（可选）
 
-`blueprints/de-core-oidc.yaml` 会尝试自动创建 Provider/Application（历史 Client ID=`de-core`，Secret=`de-core-secret`）。  
+`blueprints/qzda-core-oidc.yaml` 会尝试自动创建 Provider/Application（历史 Client ID=`qzda-core`，Secret=`qzda-core-secret`）。  
 若版本字段不兼容，以 UI 手工配置为准；控制面已支持 Authentik discovery。

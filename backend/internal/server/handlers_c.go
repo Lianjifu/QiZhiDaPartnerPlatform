@@ -789,7 +789,7 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 
-	// 4) Runtime.Run：local Harness / remote de-agent-runtime（ADR-013 阶段 2）
+	// 4) Runtime.Run：local Harness / remote qzda-agent-runtime（ADR-013 阶段 2）
 	emit("stage", "runtime", map[string]any{
 		"status": "running", "modelId": modelID, "mode": "harness",
 		"runtimeMode": runtimeMode(),
@@ -917,7 +917,7 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 	assistantNow := time.Now().UTC().Format(time.RFC3339)
 	sharedMeta := map[string]any{
 		"metrics": map[string]any{
-			"model": modelID, "provider": coalesce(rt.ProviderID, "de-runtime"),
+			"model": modelID, "provider": coalesce(rt.ProviderID, "qzda-runtime"),
 			"source": coalesce(rt.Source, mode), "replyMode": replyMode,
 			"memoryHits": len(memoryHits), "historyTurns": len(chatMessages), "ragHits": ragCount,
 			"reactSteps": reactOut.Steps, "mode": mode, "reflectRounds": reactOut.ReflectRounds,
@@ -1314,7 +1314,7 @@ func (s *Server) runtimeReply(prompt, modelID string, enabledTools []string) str
 	if len(enabledTools) > 0 {
 		toolHint = "；可用工具：" + strings.Join(enabledTools, ",")
 	}
-	return "（de-core 退化回复 · " + modelID + "）已收到：" + prompt + "。建议结合知识检索与已上岗数字伙伴能力继续排查" + toolHint + "。"
+	return "（qzda-core 退化回复 · " + modelID + "）已收到：" + prompt + "。建议结合知识检索与已上岗数字伙伴能力继续排查" + toolHint + "。"
 }
 
 func writeSSE(w http.ResponseWriter, event string, data any) {

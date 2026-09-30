@@ -11,7 +11,7 @@ import (
 )
 
 // Engine is a local Temporal-shaped worker. When DE_TEMPORAL_HOST is set,
-// StartTrial prefers the Temporal frontend (see temporal.go + de-workflow).
+// StartTrial prefers the Temporal frontend (see temporal.go + qzda-workflow).
 type Engine struct {
 	mu           sync.Mutex
 	runs         map[string]*Run
@@ -70,7 +70,7 @@ func (e *Engine) StartTrial(ctx context.Context, runID, workflowID string) (*Run
 
 // StartTrialLocal executes a synchronous trial run in-process.
 func (e *Engine) StartTrialLocal(ctx context.Context, runID, workflowID string) (*Run, error) {
-	engineName := "de-workflow"
+	engineName := "qzda-workflow"
 	temporalID := ""
 	if e.TemporalConfigured() {
 		engineName = "temporal"
@@ -120,7 +120,7 @@ func (r *Run) ToMap() map[string]any {
 		"engine":     r.EngineName, "steps": r.Steps, "error": r.Error,
 	}
 	if r.EngineName == "" {
-		m["engine"] = "de-workflow"
+		m["engine"] = "qzda-workflow"
 	}
 	if r.TemporalID != "" {
 		m["temporalWorkflowId"] = r.TemporalID

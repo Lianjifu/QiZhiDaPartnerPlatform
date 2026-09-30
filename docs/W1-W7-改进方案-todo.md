@@ -259,7 +259,7 @@ W1-W7 主线 100% ✅ 后做的最后一公里硬化：让进程退出 / 异常�
 
 **复核后不存在的尾巴**：
 
-- **cmd/de-audit / de-policy / de-sys 等独立服务进程的 shutdown 审计**：所有 cmd (`de-audit / de-policy / de-sys / de-workflow / de-cap / de-collab / de-app`) 都通过 `apprun.Run(...)` 启动，已自动继承 P1-1 的 graceful shutdown
+- **cmd/qzda-audit / qzda-policy / qzda-sys 等独立服务进程的 shutdown 审计**：所有 cmd (`qzda-audit / qzda-policy / qzda-sys / qzda-workflow / qzda-cap / qzda-collab / qzda-app`) 都通过 `apprun.Run(...)` 启动，已自动继承 P1-1 的 graceful shutdown
 - **SSE handler（canvas / heartbeat / copilot）的 goroutine panic + cancel**：`handlers_canvas.go:283-294` 与 `handlers_heartbeat.go:97-118` 已正确使用 `r.Context().Done()` + `defer cancel()`；`httpServer.Shutdown(ctx)` 自然终止
 
 **剩余已知 out-of-scope**：

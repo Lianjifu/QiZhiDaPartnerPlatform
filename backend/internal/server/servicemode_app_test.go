@@ -90,7 +90,7 @@ func TestModeAppSkillInvocationInProcess(t *testing.T) {
 }
 
 func TestModeAppString(t *testing.T) {
-	if ModeApp.String() != "de-app" {
+	if ModeApp.String() != "qzda-app" {
 		t.Fatalf("got %q", ModeApp.String())
 	}
 }

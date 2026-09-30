@@ -27,7 +27,7 @@ describe('model control-plane UI state', () => {
     expect(providerLifecycleAction({ deletionAllowed: true })).toEqual({ disabled: false, label: '删除供应商' });
   });
 
-  it('normalizes null routeReferences from de-core so detail drawers do not crash', () => {
+  it('normalizes null routeReferences from qzda-core so detail drawers do not crash', () => {
     expect(normalizeProviderImpact({
       providerId: 'mp-23',
       deletionAllowed: true,

@@ -81,9 +81,9 @@ var collectionDomain = map[string]Domain{
 	"workflow_templates": DomainWorkflow,
 }
 
-// AbsorbCrosscutting is the R5 default: de-sys still hydrates/serves policy+audit
+// AbsorbCrosscutting is the R5 default: qzda-sys still hydrates/serves policy+audit
 // so the 4-process coarse compose stays valid. Set DE_CROSSCUTTING_SPLIT=1 when
-// running independent de-policy / de-audit binaries so sys drops those collections.
+// running independent qzda-policy / qzda-audit binaries so sys drops those collections.
 func AbsorbCrosscutting() bool {
 	v := strings.ToLower(strings.TrimSpace(os.Getenv("DE_CROSSCUTTING_SPLIT")))
 	return v != "1" && v != "true" && v != "yes"
@@ -100,19 +100,19 @@ func ownsAudit(d Domain) bool {
 // DomainFromMode maps ServiceMode / process name to a write domain.
 func DomainFromMode(mode string) Domain {
 	switch strings.ToLower(strings.TrimSpace(mode)) {
-	case "app", "de-app":
+	case "app", "qzda-app":
 		return DomainAll
-	case "sys", "de-sys", "platform":
+	case "sys", "qzda-sys", "platform":
 		return DomainSys
-	case "collab", "de-collab":
+	case "collab", "qzda-collab":
 		return DomainCollab
-	case "cap", "de-cap", "capability":
+	case "cap", "qzda-cap", "capability":
 		return DomainCap
-	case "workflow", "de-workflow":
+	case "workflow", "qzda-workflow":
 		return DomainWorkflow
-	case "policy", "de-policy":
+	case "policy", "qzda-policy":
 		return DomainPolicy
-	case "audit", "de-audit":
+	case "audit", "qzda-audit":
 		return DomainAudit
 	default:
 		return DomainAll

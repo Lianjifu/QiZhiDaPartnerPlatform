@@ -1,5 +1,5 @@
 /**
- * API 运行模式：默认走真实控制面（de-gateway）；仅当显式演示模式时注入本地 Handler。
+ * API 运行模式：默认走真实控制面（qzda-gateway）；仅当显式演示模式时注入本地 Handler。
  * VITE_USE_DEMO=true 或兼容旧名 VITE_USE_MOCK=true。
  */
 export function isDemoApiMode(): boolean {
@@ -21,7 +21,7 @@ function isLoopbackBase(url: string): boolean {
 }
 
 /**
- * 开发态默认走同源 `/api`（Vite proxy → de-gateway :8089），避免浏览器/Cursor 沙箱
+ * 开发态默认走同源 `/api`（Vite proxy → qzda-gateway :8089），避免浏览器/Cursor 沙箱
  * 无法直连环回地址导致控制面读取失败。
  * 需要直连时设置 `VITE_API_DIRECT=true` 并填写非空 `VITE_API_BASE`。
  */

@@ -850,7 +850,7 @@ function loadState(): State | null {
     const parsed = JSON.parse(stored);
     if (!parsed || !parsed.sessions) return null;
     // 版本升级：丢弃本地会话缓存（保留输入草稿），由 /api/sessions 重新灌入，
-    // 避免 mock 时代的 s1/s_* 与 de-core 会话 id 错位引发深链振荡与 404。
+    // 避免 mock 时代的 s1/s_* 与 qzda-core 会话 id 错位引发深链振荡与 404。
     if ((parsed.schemaVersion ?? 1) < STORAGE_VERSION) {
       if ((parsed.schemaVersion ?? 1) === 8 && parsed.sessions) {
         return {
@@ -1163,7 +1163,7 @@ export function useChat(agentMeta?: { name: string }) {
     [],
   );
 
-  /** 对接 de-core SSE（VITE_USE_MOCK=false） */
+  /** 对接 qzda-core SSE（VITE_USE_MOCK=false） */
   const startBackendStream = useCallback(
     (
       sid: string,
@@ -1189,7 +1189,7 @@ export function useChat(agentMeta?: { name: string }) {
         correlationId: correlationIdStr,
         segmentIndex: replyMode === 'single' ? undefined : 0,
         status: 'streaming',
-        metrics: { model: modelId, provider: 'de-core' },
+        metrics: { model: modelId, provider: 'qzda-core' },
         createdAt: new Date().toISOString(),
       };
       if (!opts?.skipAppend) {
@@ -1228,7 +1228,7 @@ export function useChat(agentMeta?: { name: string }) {
             segmentIndex,
             segmentKind,
             status: 'streaming',
-            metrics: { model: modelId, provider: 'de-core' },
+            metrics: { model: modelId, provider: 'qzda-core' },
             createdAt: new Date().toISOString(),
           };
           segmentPlaceholders.set(mid, segPlaceholder);
@@ -1319,7 +1319,7 @@ export function useChat(agentMeta?: { name: string }) {
       const toolCalls: ToolCall[] = [];
       const citations: Citation[] = [];
       let resolvedModel = modelId;
-      let resolvedProvider = 'de-core';
+      let resolvedProvider = 'qzda-core';
       let resolvedSource = '';
       let toolStartedAt = startedAt;
       let liveProgress = '';

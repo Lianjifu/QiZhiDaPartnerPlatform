@@ -7,9 +7,9 @@
 
 ## 背景
 
-现仓专家协作主路径跑在 **de-app monolith**（`ModeApp`，`:8100`）或 coarse 下的 **de-collab**（`copilotStream`）。历史上曾用 `de-core` 单体，已退役。图上 11 层能力已有代码切片，但 **ABI 未冻结**：Runtime IDL 仅为 `Invoke` 占位，入站渠道无统一 Envelope，Context 无法按 `correlationId` 重建，SSE 事件形状与 Connect 流式不完全一致。
+现仓专家协作主路径跑在 **qzda-app monolith**（`ModeApp`，`:8100`）或 coarse 下的 **qzda-collab**（`copilotStream`）。历史上曾用 `qzda-core` 单体，已退役。图上 11 层能力已有代码切片，但 **ABI 未冻结**：Runtime IDL 仅为 `Invoke` 占位，入站渠道无统一 Envelope，Context 无法按 `correlationId` 重建，SSE 事件形状与 Connect 流式不完全一致。
 
-阶段 0 冻结内核契约，使阶段 1（Session Routing / Snapshot / Replay）与阶段 2（拆 `de-agent-runtime`）共用同一套类型，禁止再长 REST 方言。
+阶段 0 冻结内核契约，使阶段 1（Session Routing / Snapshot / Replay）与阶段 2（拆 `qzda-agent-runtime`）共用同一套类型，禁止再长 REST 方言。
 
 ## 决策
 
@@ -17,12 +17,12 @@
 
 | 归属 | 写服务（目标） | 阶段 0/1 落地 |
 |---|---|---|
-| Envelope · Session · Message · Task | de-collab | Go 单体模块，IDL = `de.collab.v1` |
-| ContextSnapshot | de-collab（创建） / runtime（只读消费） | 回合结束落盘；Replay 只读 |
-| MemoryRecord | de-memory | 现 `MemoryRecords` |
-| RunRequest / LoopEvent | de-agent-runtime | IDL = `de.runtime.v1`；`DE_RUNTIME_MODE=local` 进程内 Go Harness，`remote` 走 sidecar `/v1/run` |
-| PolicyDecision | de-policy | `evaluateZeroTrust` 返回值必须是四态枚举 |
-| AuditEvent | de-audit | 每回合带同一 `correlationId` |
+| Envelope · Session · Message · Task | qzda-collab | Go 单体模块，IDL = `de.collab.v1` |
+| ContextSnapshot | qzda-collab（创建） / runtime（只读消费） | 回合结束落盘；Replay 只读 |
+| MemoryRecord | qzda-memory | 现 `MemoryRecords` |
+| RunRequest / LoopEvent | qzda-agent-runtime | IDL = `de.runtime.v1`；`DE_RUNTIME_MODE=local` 进程内 Go Harness，`remote` 走 sidecar `/v1/run` |
+| PolicyDecision | qzda-policy | `evaluateZeroTrust` 返回值必须是四态枚举 |
+| AuditEvent | qzda-audit | 每回合带同一 `correlationId` |
 
 **硬约束（不可违背）：**
 
@@ -109,7 +109,7 @@ Replay **禁止**再调用模型或工具；只返回 snapshot + 已落盘 Loop/
 | remote | `POST {DE_AGENT_RUNTIME_URL}/v1/run`，消费 SSE LoopEvent；sidecar `done` 不转成 Copilot `type=done` |
 | 失败 | remote 不可用 → `E_RUNTIME_UNAVAILABLE`；生产不 stub、不默默 failover |
 | Failover | 仅 `DE_RUNTIME_FAILOVER_LOCAL=true` 且非生产时允许回落 local |
-| 向量 RAG | 优先 `de-rag`；生产 sidecar 失败则关键词降级，SSE/REST `degraded` 仍返回 hits |
+| 向量 RAG | 优先 `qzda-rag`；生产 sidecar 失败则关键词降级，SSE/REST `degraded` 仍返回 hits |
 | 技能沙箱 | 生产关闭 `DE_SKILL_TEST_SIM`；runtime 不可达 → `E_RUNTIME_UNAVAILABLE` |
 | Replay | 只读已落盘 snapshot/events，禁止再调 Runtime / LLM / 工具 |
 
@@ -149,11 +149,11 @@ Replay **禁止**再调用模型或工具；只返回 snapshot + 已落盘 Loop/
 
 ## R5 横切进程与副本（2026-08-19）
 
-Store 切开后允许把 Policy / Audit 从 sys 域 **拆成独立二进制**（`:8104` / `:8105`），**不是** 16 微服务。默认 monolith（de-app）与 coarse（de-sys）均在进程内吸收这两类路由；`DE_CROSSCUTTING_SPLIT=1` 时可拆开。
+Store 切开后允许把 Policy / Audit 从 sys 域 **拆成独立二进制**（`:8104` / `:8105`），**不是** 16 微服务。默认 monolith（qzda-app）与 coarse（qzda-sys）均在进程内吸收这两类路由；`DE_CROSSCUTTING_SPLIT=1` 时可拆开。
 
 | 项 | 实现 |
 |---|---|
-| Policy / Audit 进程 | `cmd/de-policy` · `cmd/de-audit`；`DE_CROSSCUTTING_SPLIT=1` 时 sys 丢弃对应 OwnsPath / collections |
+| Policy / Audit 进程 | `cmd/qzda-policy` · `cmd/qzda-audit`；`DE_CROSSCUTTING_SPLIT=1` 时 sys 丢弃对应 OwnsPath / collections |
 | Connect | `de.policy.v1` / `de.audit.v1` 挂在 policy、audit，以及吸收模式下的 sys |
 | 多活 | `DE_REPLICA_MODE=standby` 拒写；standby 用 `DE_DATABASE_REPLICA_URL`；启动探测 `pg_is_in_recovery()` 为真则强制 standby。`/readyz` 露出 `postgresRecovery` |
 | 隔离 | gVisor / Milvus 仍属 cap 后续层，**不阻塞** 本切片 |

@@ -1,7 +1,7 @@
 # Local OIDC IdP for control plane (compose profile: oidc)
 # Issuer: http://127.0.0.1:5556/dex
 # Users: admin@acme.com / password, user@acme.com / password, audit@acme.com / password
-# Client id "de-core" 为历史 OIDC 客户端名，回调指向 de-gateway :8089
+# Client id "qzda-core" 为历史 OIDC 客户端名，回调指向 qzda-gateway :8089
 
 issuer: http://127.0.0.1:5556/dex
 storage:
@@ -11,11 +11,11 @@ web:
 telemetry:
   http: 0.0.0.0:5558
 staticClients:
-  - id: de-core
+  - id: qzda-core
     redirectURIs:
       - http://127.0.0.1:8089/api/auth/oidc/callback
-    name: de-core
-    secret: de-core-secret
+    name: qzda-core
+    secret: qzda-core-secret
 enablePasswordDB: true
 staticPasswords:
   - email: admin@acme.com

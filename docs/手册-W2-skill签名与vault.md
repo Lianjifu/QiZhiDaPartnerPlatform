@@ -137,7 +137,7 @@ curl -sf -H "Authorization: Bearer $TOKEN" \
 临时 override：
 
 ```bash
-DE_TRUSTED_PUBLISHERS_PATH=/etc/dep/trusted-publishers.json ./de-app
+DE_TRUSTED_PUBLISHERS_PATH=/etc/dep/trusted-publishers.json ./qzda-app
 ```
 
 ---
@@ -149,7 +149,7 @@ DE_TRUSTED_PUBLISHERS_PATH=/etc/dep/trusted-publishers.json ./de-app
 不设任何 Vault env，server 走 `DevKeyStore`，自动 provisioning `data/skill-keys/dev-keypair.json`。私钥在 disk。
 
 ```bash
-DE_ENV=development ./de-app
+DE_ENV=development ./qzda-app
 ```
 
 CI / 演示环境可以一直这样。
@@ -165,7 +165,7 @@ export DE_VAULT_KV_MOUNT=secret
 export DE_SKILL_KEYSTORE=vault
 export DE_VAULT_KEYSTORE_PROBE=ed25519:probe   # 可选，默认就是这个
 
-./de-app
+./qzda-app
 ```
 
 启动期 `bootstrapVaultSkillSigning()` 会用 probe keyID 做一次 lookup，失败立即在 log 里写出，避免第一次签名才发现 vault 配错。
