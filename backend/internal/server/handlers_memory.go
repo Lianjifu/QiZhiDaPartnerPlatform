@@ -5,10 +5,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/auth"
-	memid "github.com/digital-employee-platform/backend/internal/memory/identity"
-	"github.com/digital-employee-platform/backend/internal/store"
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	"github.com/qizhida-partner-platform/backend/internal/auth"
+	memid "github.com/qizhida-partner-platform/backend/internal/memory/identity"
+	"github.com/qizhida-partner-platform/backend/internal/store"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 func defaultMemoryPolicy(ws string) map[string]any {
@@ -177,7 +177,7 @@ func (s *Server) createMemory(r *http.Request) (any, error) {
 	}
 	item := map[string]any{
 		"id": s.Store.ID("memory"), "workspaceId": ws, "ownerId": id.ID,
-		"digitalEmployeeId": body["digitalEmployeeId"],
+		"digitalPartnerId": body["digitalPartnerId"],
 		"layer":             layer, "scope": coalesce(str(body["scope"]), "user"),
 		"title": title, "content": content,
 		"classification": coalesce(str(body["classification"]), "internal"),
@@ -651,13 +651,13 @@ func (s *Server) upsertMemoryIdentity(r *http.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	de := strings.TrimSpace(str(body["digitalEmployeeId"]))
+	de := strings.TrimSpace(str(body["digitalPartnerId"]))
 	if de == "" {
-		return nil, apperr.BadReq(apperr.BadRequest, "E_IDENTITY_DE_REQUIRED: 必须提供 digitalEmployeeId")
+		return nil, apperr.BadReq(apperr.BadRequest, "E_IDENTITY_DE_REQUIRED: 必须提供 digitalPartnerId")
 	}
 	profile := memid.Profile{
 		WorkspaceID:        ws,
-		DigitalEmployeeID:  de,
+		DigitalPartnerID:  de,
 		PreferredName:      strings.TrimSpace(str(body["preferredName"])),
 		Locale:             strings.TrimSpace(str(body["locale"])),
 		PrimaryLanguage:    strings.TrimSpace(str(body["primaryLanguage"])),
@@ -683,7 +683,7 @@ func (s *Server) deleteMemoryIdentity(r *http.Request) (any, error) {
 	}
 	de := strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/api/memory/identity/"))
 	if de == "" {
-		return nil, apperr.BadReq(apperr.BadRequest, "E_IDENTITY_DE_REQUIRED: 路径缺少 digitalEmployeeId")
+		return nil, apperr.BadReq(apperr.BadRequest, "E_IDENTITY_DE_REQUIRED: 路径缺少 digitalPartnerId")
 	}
 	if err := s.identityStore().Delete(ws, de); err != nil {
 		return nil, apperr.NotFoundErr("memory.identity_not_found", "身份画像不存在")
@@ -698,7 +698,7 @@ type runtimeMemoryInput struct {
 	WorkspaceID       string
 	OwnerID           string
 	OwnerName         string
-	DigitalEmployeeID string
+	DigitalPartnerID string
 	Title             string
 	Content           string
 	SourceType        string
@@ -750,7 +750,7 @@ func (s *Server) ingestRuntimeMemoryLocked(in runtimeMemoryInput) (map[string]an
 	}
 	item := map[string]any{
 		"id": s.Store.ID("memory"), "workspaceId": ws, "ownerId": coalesce(in.OwnerID, "system"),
-		"digitalEmployeeId": in.DigitalEmployeeID, "layer": layer, "scope": scope,
+		"digitalPartnerId": in.DigitalPartnerID, "layer": layer, "scope": scope,
 		"title": truncateRunes(title, 80), "content": truncateRunes(content, 2000),
 		"classification": coalesce(in.Classification, "internal"),
 		"sourceType":     coalesce(in.SourceType, "conversation"), "sourceId": coalesce(in.SourceID, "runtime"),

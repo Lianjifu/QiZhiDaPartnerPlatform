@@ -322,12 +322,12 @@ export interface ChatSession {
   id: string;
   title: string;
   preview: string;
-  /** @deprecated 展示用岗位专家名称；请优先使用 digitalEmployeeName / digitalEmployeeId */
+  /** @deprecated 展示用岗位专家名称；请优先使用 digitalPartnerName / digitalPartnerId */
   agent: string;
   agentKey?: string;
   /** 绑定的在岗数字伙伴（主对象） */
-  digitalEmployeeId?: string;
-  digitalEmployeeName?: string;
+  digitalPartnerId?: string;
+  digitalPartnerName?: string;
   status: 'active' | 'done' | 'closed' | 'archived';
   group: SessionGroup;
   time: string;
@@ -394,7 +394,7 @@ export interface SendMessageInput {
   /** 携带附件（图片 / 文件） */
   attachments?: { name: string; size: string; type: 'file' | 'image'; url?: string }[];
   /** 显式指定数字伙伴（默认沿用会话绑定） */
-  digitalEmployeeId?: string;
+  digitalPartnerId?: string;
   /** @deprecated 内部执行内核引用 */
   agentId?: string;
   /** 显式指定模型（兼容旧字段） */

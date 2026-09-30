@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/modelprov"
-	"github.com/digital-employee-platform/backend/internal/store"
-	"github.com/digital-employee-platform/backend/internal/vault"
+	"github.com/qizhida-partner-platform/backend/internal/modelprov"
+	"github.com/qizhida-partner-platform/backend/internal/store"
+	"github.com/qizhida-partner-platform/backend/internal/vault"
 )
 
 func TestJoinChatURL(t *testing.T) {
@@ -189,7 +189,7 @@ func TestCopilotStreamUsesModelInvoke(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/copilot/conversations/conv-1/stream",
-		strings.NewReader(`{"content":"hello","modelId":"mdl-local","digitalEmployeeId":"de-1","correlationId":"corr-llm"}`))
+		strings.NewReader(`{"content":"hello","modelId":"mdl-local","digitalPartnerId":"de-1","correlationId":"corr-llm"}`))
 	req.Header.Set("Authorization", "Bearer mock-admin-token")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Workspace-Id", "w1")
@@ -222,7 +222,7 @@ func TestCopilotStreamEmbeddedFallback(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/copilot/conversations/conv-emb/stream",
-		strings.NewReader(`{"content":"你是使用什么大模型？","modelId":"sonnet-4","digitalEmployeeId":"de-1","correlationId":"corr-emb"}`))
+		strings.NewReader(`{"content":"你是使用什么大模型？","modelId":"sonnet-4","digitalPartnerId":"de-1","correlationId":"corr-emb"}`))
 	req.Header.Set("Authorization", "Bearer mock-admin-token")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Workspace-Id", "w1")
@@ -317,7 +317,7 @@ func TestCopilotStreamViaCapHop(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/copilot/conversations/conv-cap/stream",
-		strings.NewReader(`{"content":"hello","modelId":"mdl-local","digitalEmployeeId":"de-1","correlationId":"corr-cap"}`))
+		strings.NewReader(`{"content":"hello","modelId":"mdl-local","digitalPartnerId":"de-1","correlationId":"corr-cap"}`))
 	req.Header.Set("Authorization", "Bearer mock-admin-token")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Workspace-Id", "w1")

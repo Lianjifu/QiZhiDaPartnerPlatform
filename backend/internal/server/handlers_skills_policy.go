@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 var (

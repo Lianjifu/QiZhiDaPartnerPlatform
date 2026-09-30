@@ -3,8 +3,8 @@ package server
 import (
 	"testing"
 
-	"github.com/digital-employee-platform/backend/internal/store"
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	"github.com/qizhida-partner-platform/backend/internal/store"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 func TestCheckModelBudgetLocked(t *testing.T) {

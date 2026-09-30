@@ -2,15 +2,15 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   Activity, AlertTriangle, CheckCircle2, Cloud, FileText, History, KeyRound, MessageSquare, Pencil, Plus, Power, Route, Search, Send, ShieldAlert, ShieldCheck, Trash2, Users,
 } from 'lucide-react';
-import { Badge, Button, Input, toast } from '@de/web-ui';
-import type { ChannelAuditEvent, ChannelDeployment, ChannelKind, DeliveryAttempt, DeliveryPolicyDraft, DeliveryPolicyVersion } from '@de/web-types';
+import { Badge, Button, Input, toast } from '@qzda/web-ui';
+import type { ChannelAuditEvent, ChannelDeployment, ChannelKind, DeliveryAttempt, DeliveryPolicyDraft, DeliveryPolicyVersion } from '@qzda/web-types';
 import { useApiMutation, useApiQuery } from '@/services/query';
 import { ConfirmDialog, Drawer, EmptyState, Modal } from '@/components/shared';
 import { useAuthStore } from '@/stores/authStore';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { connectionModeLabel, deliveryPolicyStatusLabel, deploymentDeletionAction, deploymentInboundFact } from '@/features/channels/channel-ui';
 import { useT } from '@/i18n';
-import { cn } from '@de/web-utils';
+import { cn } from '@qzda/web-utils';
 
 type Tab = 'deployments' | 'routing' | 'templates' | 'health' | 'failures' | 'audit';
 

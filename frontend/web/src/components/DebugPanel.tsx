@@ -5,16 +5,16 @@
  * 按 调试 按钮打开 / Esc 关闭
  */
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Badge, Button } from '@de/web-ui';
+import { Badge, Button } from '@qzda/web-ui';
 import {
   X, Bug, Receipt, Cpu, Wrench, Database, Activity, Copy, CheckCircle2, AlertCircle,
   Sparkles, ChevronRight, ChevronDown, ShieldCheck, ShieldAlert, FileText, ListChecks, Lock,
   Search, Filter, Download, RefreshCw, Clock, Hash, Zap, Server, History,
   Box, Layers, AlertOctagon, FileDown, TrendingUp, Activity as Pulse,
 } from 'lucide-react';
-import { cn } from '@de/web-utils';
-import { getApiClient } from '@de/web-api';
-import type { ReplayTurnResponse } from '@de/web-types';
+import { cn } from '@qzda/web-utils';
+import { getApiClient } from '@qzda/web-api';
+import type { ReplayTurnResponse } from '@qzda/web-types';
 import type { ChatMessageEx, ChatSession, ToolCall, Citation } from '@/hooks/types';
 
 interface AgentMetaDebug {

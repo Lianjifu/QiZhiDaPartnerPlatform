@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { MemoryLayer, ZeroTrustDecision } from '@de/web-types';
+import type { MemoryLayer, ZeroTrustDecision } from '@qzda/web-types';
 import {
   AGENT_OS_ERROR_CODES,
   INBOUND_CHANNEL_KINDS,
@@ -12,7 +12,7 @@ import {
   isSessionMode,
   isStreamEventType,
   type PolicyDecision,
-} from '@de/web-types';
+} from '@qzda/web-types';
 
 describe('agent-os contract', () => {
   it('freezes sessionMode to investigate|execute', () => {

@@ -4,8 +4,8 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/digital-employee-platform/backend/internal/auth"
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	"github.com/qizhida-partner-platform/backend/internal/auth"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 func (s *Server) ensureChannelSessionAPI(r *http.Request) (any, error) {
@@ -17,7 +17,7 @@ func (s *Server) ensureChannelSessionAPI(r *http.Request) (any, error) {
 	channel := str(body["channel"])
 	threadID := coalesce(str(body["channelThreadId"]), str(body["threadId"]))
 	deployID := coalesce(str(body["deploymentId"]), str(body["channelDeploymentId"]))
-	employeeID := str(body["digitalEmployeeId"])
+	employeeID := str(body["digitalPartnerId"])
 	actorID := str(body["actorId"])
 	if actor := identityFrom(r.Context()); actor != nil && actorID == "" {
 		actorID = actor.ID
@@ -148,7 +148,7 @@ func (s *Server) copilotPostTurnAPI(r *http.Request) (any, error) {
 			WorkspaceID:       coalesce(str(raw["workspaceId"]), ws),
 			OwnerID:           coalesce(str(raw["ownerId"]), ownerID),
 			OwnerName:         coalesce(str(raw["ownerName"]), ownerName),
-			DigitalEmployeeID: str(raw["digitalEmployeeId"]),
+			DigitalPartnerID: str(raw["digitalPartnerId"]),
 			Title:             str(raw["title"]),
 			Content:           str(raw["content"]),
 			SourceType:        str(raw["sourceType"]),
@@ -168,7 +168,7 @@ func (s *Server) copilotPostTurnAPI(r *http.Request) (any, error) {
 		WorkspaceID:       ws,
 		OwnerID:           ownerID,
 		OwnerName:         ownerName,
-		DigitalEmployeeID: str(body["digitalEmployeeId"]),
+		DigitalPartnerID: str(body["digitalPartnerId"]),
 		ConversationID:    str(body["conversationId"]),
 		CorrelationID:     str(body["correlationId"]),
 		MessageID:         str(body["messageId"]),

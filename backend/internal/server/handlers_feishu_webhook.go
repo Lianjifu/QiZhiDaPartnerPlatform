@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/feishu"
-	"github.com/digital-employee-platform/backend/pkg/contract"
+	"github.com/qizhida-partner-platform/backend/internal/feishu"
+	"github.com/qizhida-partner-platform/backend/pkg/contract"
 )
 
 // handleFeishuWebhook is the public Feishu/Lark event callback endpoint

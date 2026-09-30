@@ -7,7 +7,7 @@ import (
 
 func TestSetGet(t *testing.T) {
 	s := NewStore()
-	p := Profile{WorkspaceID: "ws1", DigitalEmployeeID: "de-A", PreferredName: "听风", Locale: "zh-CN", PrimaryLanguage: "zh"}
+	p := Profile{WorkspaceID: "ws1", DigitalPartnerID: "de-A", PreferredName: "听风", Locale: "zh-CN", PrimaryLanguage: "zh"}
 	if err := s.Set(p); err != nil {
 		t.Fatalf("set: %v", err)
 	}
@@ -22,10 +22,10 @@ func TestSetGet(t *testing.T) {
 
 func TestSetInvalid(t *testing.T) {
 	s := NewStore()
-	if err := s.Set(Profile{WorkspaceID: "", DigitalEmployeeID: "x"}); !errors.Is(err, ErrInvalid) {
+	if err := s.Set(Profile{WorkspaceID: "", DigitalPartnerID: "x"}); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("expected ErrInvalid: %v", err)
 	}
-	if err := s.Set(Profile{WorkspaceID: "ws", DigitalEmployeeID: ""}); !errors.Is(err, ErrInvalid) {
+	if err := s.Set(Profile{WorkspaceID: "ws", DigitalPartnerID: ""}); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("expected ErrInvalid: %v", err)
 	}
 }
@@ -39,7 +39,7 @@ func TestGetNotFound(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 	s := NewStore()
-	s.Set(Profile{WorkspaceID: "ws", DigitalEmployeeID: "de"})
+	s.Set(Profile{WorkspaceID: "ws", DigitalPartnerID: "de"})
 	if err := s.Delete("ws", "de"); err != nil {
 		t.Fatalf("delete: %v", err)
 	}
@@ -50,14 +50,14 @@ func TestDelete(t *testing.T) {
 
 func TestListAll(t *testing.T) {
 	s := NewStore()
-	s.Set(Profile{WorkspaceID: "ws", DigitalEmployeeID: "b"})
-	s.Set(Profile{WorkspaceID: "ws", DigitalEmployeeID: "a"})
-	s.Set(Profile{WorkspaceID: "other", DigitalEmployeeID: "a"})
+	s.Set(Profile{WorkspaceID: "ws", DigitalPartnerID: "b"})
+	s.Set(Profile{WorkspaceID: "ws", DigitalPartnerID: "a"})
+	s.Set(Profile{WorkspaceID: "other", DigitalPartnerID: "a"})
 	got := s.ListAll("ws")
 	if len(got) != 2 {
 		t.Fatalf("len=%d", len(got))
 	}
-	if got[0].DigitalEmployeeID != "a" || got[1].DigitalEmployeeID != "b" {
+	if got[0].DigitalPartnerID != "a" || got[1].DigitalPartnerID != "b" {
 		t.Fatalf("sort: %+v", got)
 	}
 }

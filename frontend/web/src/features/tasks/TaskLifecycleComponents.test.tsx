@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ControlledTask } from '@de/web-types';
+import type { ControlledTask } from '@qzda/web-types';
 
 const query = vi.hoisted(() => vi.fn());
 const mutation = vi.hoisted(() => vi.fn());

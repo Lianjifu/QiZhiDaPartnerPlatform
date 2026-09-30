@@ -12,11 +12,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/digital-employee-platform/backend/internal/runtimeenv"
-	"github.com/digital-employee-platform/backend/internal/skills/signing"
-	"github.com/digital-employee-platform/backend/internal/skills/vetter"
-	"github.com/digital-employee-platform/backend/internal/store"
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	"github.com/qizhida-partner-platform/backend/internal/runtimeenv"
+	"github.com/qizhida-partner-platform/backend/internal/skills/signing"
+	"github.com/qizhida-partner-platform/backend/internal/skills/vetter"
+	"github.com/qizhida-partner-platform/backend/internal/store"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 // General pack — single default job pack「通用」.

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useApiMutation } from '@/services/query';
-import { Button, Input, Badge, toast } from '@de/web-ui';
+import { Button, Input, Badge, toast } from '@qzda/web-ui';
 import { useUiStore } from '@/stores/uiStore';
 import { Bot, ShieldCheck, Sun, Moon, UserRound, Shield, ScrollText, Gauge } from 'lucide-react';
 

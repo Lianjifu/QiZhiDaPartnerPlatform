@@ -1,6 +1,6 @@
 import { useEffect, type ReactNode } from 'react';
 import { X } from 'lucide-react';
-import { cn } from '@de/web-utils';
+import { cn } from '@qzda/web-utils';
 
 export interface DrawerProps {
   open: boolean;

@@ -2,7 +2,7 @@
  * 404 友好错误页
  */
 import { Link, useLocation } from 'react-router-dom';
-import { Button, Badge } from '@de/web-ui';
+import { Button, Badge } from '@qzda/web-ui';
 import { Home, Search, ArrowLeft, Compass, Bot, FileText, Workflow, AlertCircle } from 'lucide-react';
 
 const QUICK_LINKS = [

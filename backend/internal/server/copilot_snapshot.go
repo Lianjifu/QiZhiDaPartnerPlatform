@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/digital-employee-platform/backend/pkg/contract"
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	"github.com/qizhida-partner-platform/backend/pkg/contract"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 type turnEventRecorder struct {
@@ -156,7 +156,7 @@ func (s *Server) replayCopilotTurn(r *http.Request) (any, error) {
 		"system": rec["system"], "historyTurns": rec["historyTurns"],
 		"memoryProvenance": rec["memoryProvenance"], "ragHits": rec["ragHits"],
 		"toolRegistry": rec["toolRegistry"], "builtAt": rec["builtAt"],
-		"employeeId": rec["employeeId"], "sessionMode": rec["sessionMode"],
+		"partnerId": rec["partnerId"], "sessionMode": rec["sessionMode"],
 		"riskLevel": rec["riskLevel"], "channel": rec["channel"],
 		"channelThreadId": rec["channelThreadId"], "envelope": rec["envelope"],
 		"runtimeMode": rec["runtimeMode"], "employeeBinding": rec["employeeBinding"],
@@ -201,7 +201,7 @@ func buildContextSnapshotRecord(in map[string]any) map[string]any {
 		"ragHits":          in["ragHits"],
 		"toolRegistry":     in["toolRegistry"],
 		"builtAt":          coalesce(str(in["builtAt"]), now),
-		"employeeId":       str(in["employeeId"]),
+		"partnerId":       str(in["partnerId"]),
 		"sessionMode":      str(in["sessionMode"]),
 		"riskLevel":        str(in["riskLevel"]),
 		"channel":          coalesce(str(in["channel"]), contract.ChannelWeb),

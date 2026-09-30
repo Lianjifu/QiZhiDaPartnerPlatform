@@ -22,8 +22,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/digital-employee-platform/backend/internal/skills/signing"
-	"github.com/digital-employee-platform/backend/internal/skills/vetter"
+	"github.com/qizhida-partner-platform/backend/internal/skills/signing"
+	"github.com/qizhida-partner-platform/backend/internal/skills/vetter"
 )
 
 func main() {

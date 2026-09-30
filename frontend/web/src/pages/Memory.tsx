@@ -4,13 +4,13 @@ import {
   Archive, AlertTriangle, ArrowRight, BrainCircuit, CheckCircle2, ChevronLeft, ChevronRight, Clock3, ExternalLink,
   FileUp, History, Layers3, Search, ShieldCheck, Trash2, XCircle,
 } from 'lucide-react';
-import { Badge, Button, Input, toast } from '@de/web-ui';
-import type { DigitalEmployee, EvolveCandidate, MemoryAuditEvent, MemoryKnowledgeCandidate, MemoryLayer, MemoryPolicy, MemoryRecord, MemoryStatus } from '@de/web-types';
+import { Badge, Button, Input, toast } from '@qzda/web-ui';
+import type { DigitalPartner, EvolveCandidate, MemoryAuditEvent, MemoryKnowledgeCandidate, MemoryLayer, MemoryPolicy, MemoryRecord, MemoryStatus } from '@qzda/web-types';
 import { useApiMutation, useApiQuery } from '@/services/query';
 import { ConfirmDialog, EmptyState, Modal, RoleReadonlyBanner } from '@/components/shared';
 import { useAuthStore } from '@/stores/authStore';
 import { useT } from '@/i18n';
-import { cn } from '@de/web-utils';
+import { cn } from '@qzda/web-utils';
 import { defaultMemoryTab, roleCanMutate, rolePageCopy } from '@/features/role-nav/role-nav';
 import {
   MEMORY_PAGE_SIZE_KEY,
@@ -79,7 +79,7 @@ const LAYER_TAB: Record<MemoryLayer, Tab> = {
 function sourcePath(record: MemoryRecord) {
   if (record.sourceType === 'task') return '/tasks';
   if (record.sourceType === 'workflow') return '/workflows';
-  if (record.sourceType === 'conversation') return record.digitalEmployeeId ? `/copilot?employeeId=${record.digitalEmployeeId}` : '/copilot';
+  if (record.sourceType === 'conversation') return record.digitalPartnerId ? `/copilot?employeeId=${record.digitalPartnerId}` : '/copilot';
   return null;
 }
 
@@ -121,7 +121,7 @@ export default function Memory() {
   const policy = useApiQuery<MemoryPolicy>(['memory', 'policy'], '/api/memory/policy');
   const audit = useApiQuery<MemoryAuditEvent[]>(['memory', 'audit'], '/api/memory/audit');
   const auditItems = useMemo(() => dedupeMemoryAudits(audit.data ?? []), [audit.data]);
-  const employees = useApiQuery<DigitalEmployee[]>(['digital-employees'], '/api/digital-employees');
+  const employees = useApiQuery<DigitalPartner[]>(['digital-employees'], '/api/partners');
 
   const expire = useApiMutation<MemoryRecord, { id: string }>(({ id }) => `/api/memory/records/${id}/expire`);
   const remove = useApiMutation<{ id: string }, { id: string }>(({ id }) => `/api/memory/records/${id}`, undefined, 'DELETE');
@@ -133,7 +133,7 @@ export default function Memory() {
   const runDream = useApiMutation<{ applied: number }, Record<string, never>>('/api/evolve/dream/run');
 
   const employeeMap = useMemo(() => {
-    const map = new Map<string, DigitalEmployee>();
+    const map = new Map<string, DigitalPartner>();
     (employees.data ?? []).forEach((item) => map.set(item.id, item));
     return map;
   }, [employees.data]);
@@ -142,7 +142,7 @@ export default function Memory() {
     const matchesQuery = !query.trim() || `${record.title} ${record.content} ${record.correlationId}`.toLowerCase().includes(query.trim().toLowerCase());
     const layer = tab === 'short_term' ? 'short_term' : tab === 'working' ? 'working' : tab === 'long_term' ? 'long_term' : undefined;
     const matchesLayer = !layer || record.layer === layer;
-    const matchesEmployee = employeeFilter === 'all' || record.digitalEmployeeId === employeeFilter;
+    const matchesEmployee = employeeFilter === 'all' || record.digitalPartnerId === employeeFilter;
     const matchesStatus = statusFilter === 'all' || record.status === statusFilter;
     return matchesQuery && matchesLayer && matchesEmployee && matchesStatus;
   }), [records.data, query, tab, employeeFilter, statusFilter]);
@@ -321,7 +321,7 @@ export default function Memory() {
         {detail && (
           <MemoryDetail
             record={detail}
-            employee={detail.digitalEmployeeId ? employeeMap.get(detail.digitalEmployeeId) : undefined}
+            employee={detail.digitalPartnerId ? employeeMap.get(detail.digitalPartnerId) : undefined}
             canMutate={canMutate}
             onClose={() => setDetailId(null)}
             onExpire={() => { setDetailId(null); setConfirm({ type: 'expire', id: detail.id, title: detail.title }); }}
@@ -367,13 +367,13 @@ function Overview({
   records: MemoryRecord[];
   policy?: MemoryPolicy;
   audit: MemoryAuditEvent[];
-  employees: DigitalEmployee[];
+  employees: DigitalPartner[];
   employeeFilter: string;
-  selectedEmployee?: DigitalEmployee;
+  selectedEmployee?: DigitalPartner;
   onOpen: (tab: Tab) => void;
   onEmployeeFilter: (value: string) => void;
 }) {
-  const scoped = employeeFilter === 'all' ? records : records.filter((record) => record.digitalEmployeeId === employeeFilter);
+  const scoped = employeeFilter === 'all' ? records : records.filter((record) => record.digitalPartnerId === employeeFilter);
   const ratio = Math.min(1, capacityRatio(policy));
   const layers = (['short_term', 'working', 'long_term'] as MemoryLayer[]).map((layer) => ({
     layer,
@@ -560,8 +560,8 @@ function RecordList({
   query: string;
   statusFilter: StatusFilter;
   employeeFilter: string;
-  employees: DigitalEmployee[];
-  employeeMap: Map<string, DigitalEmployee>;
+  employees: DigitalPartner[];
+  employeeMap: Map<string, DigitalPartner>;
   onQuery: (value: string) => void;
   onStatusFilter: (value: StatusFilter) => void;
   onEmployeeFilter: (value: string) => void;
@@ -639,7 +639,7 @@ function RecordList({
         <>
           <div className="memory-record-list">
             {pageItems.map((record) => {
-              const employee = record.digitalEmployeeId ? employeeMap.get(record.digitalEmployeeId) : undefined;
+              const employee = record.digitalPartnerId ? employeeMap.get(record.digitalPartnerId) : undefined;
               const href = sourcePath(record);
               const preview = memoryContentPreview(record.content);
               return (
@@ -733,7 +733,7 @@ function MemoryDetail({
   onCandidate,
 }: {
   record: MemoryRecord;
-  employee?: DigitalEmployee;
+  employee?: DigitalPartner;
   canMutate?: boolean;
   onClose: () => void;
   onExpire: () => void;
@@ -784,7 +784,7 @@ function Candidates({
 }: {
   items: MemoryKnowledgeCandidate[];
   records: MemoryRecord[];
-  employeeMap: Map<string, DigitalEmployee>;
+  employeeMap: Map<string, DigitalPartner>;
   canReview: boolean;
   onReview: (id: string, action: 'approve' | 'reject') => void;
 }) {
@@ -802,7 +802,7 @@ function Candidates({
         <div className="memory-record-list">
           {items.map((item) => {
             const source = records.find((record) => record.id === item.memoryId);
-            const employee = source?.digitalEmployeeId ? employeeMap.get(source.digitalEmployeeId) : undefined;
+            const employee = source?.digitalPartnerId ? employeeMap.get(source.digitalPartnerId) : undefined;
             return (
               <article key={item.id} className="memory-record is-warn">
                 <div className="memory-record__main">

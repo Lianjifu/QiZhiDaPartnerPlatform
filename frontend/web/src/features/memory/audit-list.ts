@@ -1,4 +1,4 @@
-import type { MemoryAuditEvent } from '@de/web-types';
+import type { MemoryAuditEvent } from '@qzda/web-types';
 
 /** 按 id 去重，保留首次出现（API/持久化可能返回重复 ma-*）。 */
 export function dedupeMemoryAudits(audits: MemoryAuditEvent[]): MemoryAuditEvent[] {

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 // Evolve candidate kinds — never silently mutate published production artifacts.
@@ -34,7 +34,7 @@ type evolveTurnInput struct {
 	WorkspaceID       string
 	OwnerID           string
 	OwnerName         string
-	DigitalEmployeeID string
+	DigitalPartnerID string
 	ConversationID    string
 	CorrelationID     string
 	MessageID         string
@@ -135,7 +135,7 @@ func (s *Server) runPostTurnEvolutionLocked(in evolveTurnInput) []map[string]any
 					"scope":       "user",
 					"confidence":  0.9,
 				},
-				"digitalEmployeeId":   in.DigitalEmployeeID,
+				"digitalPartnerId":   in.DigitalPartnerID,
 				"conversationId":      in.ConversationID,
 				"messageId":           in.MessageID,
 				"correlationId":       in.CorrelationID,
@@ -163,7 +163,7 @@ func (s *Server) runPostTurnEvolutionLocked(in evolveTurnInput) []map[string]any
 					"promptHint": "当用户意图匹配时优先调用：" + strings.Join(tools, "、"),
 					"sampleUser": truncateRunes(in.UserMessage, 120),
 				},
-				"digitalEmployeeId":   in.DigitalEmployeeID,
+				"digitalPartnerId":   in.DigitalPartnerID,
 				"conversationId":      in.ConversationID,
 				"messageId":           in.MessageID,
 				"correlationId":       in.CorrelationID,
@@ -189,7 +189,7 @@ func (s *Server) runPostTurnEvolutionLocked(in evolveTurnInput) []map[string]any
 					"suggestedLevel": "P0", "mode": in.Mode,
 					"note": "仅生成 draft 路由策略，不会自动 published。",
 				},
-				"digitalEmployeeId":   in.DigitalEmployeeID,
+				"digitalPartnerId":   in.DigitalPartnerID,
 				"conversationId":      in.ConversationID,
 				"messageId":           in.MessageID,
 				"correlationId":       in.CorrelationID,
@@ -260,7 +260,7 @@ func (s *Server) dreamCompressConversationLocked(in evolveTurnInput) map[string]
 	content := strings.TrimSpace(b.String())
 	item, err := s.ingestRuntimeMemoryLocked(runtimeMemoryInput{
 		WorkspaceID: ws, OwnerID: in.OwnerID, OwnerName: in.OwnerName,
-		DigitalEmployeeID: in.DigitalEmployeeID,
+		DigitalPartnerID: in.DigitalPartnerID,
 		Title:             "Dream 压缩 · " + truncateRunes(cid, 24),
 		Content:           content, SourceType: "dream_compress", SourceID: cid,
 		CorrelationID: in.CorrelationID, Layer: "working", Scope: "team", Confidence: 0.88,
@@ -284,7 +284,7 @@ func (s *Server) dreamCompressConversationLocked(in evolveTurnInput) map[string]
 			"sourceMemoryIds": ids,
 			"count":           len(shorts),
 		},
-		"digitalEmployeeId":   in.DigitalEmployeeID,
+		"digitalPartnerId":   in.DigitalPartnerID,
 		"conversationId":      cid,
 		"messageId":           in.MessageID,
 		"correlationId":       in.CorrelationID,
@@ -582,7 +582,7 @@ func (s *Server) applyEvolveCandidateLocked(ws, actorID, actorName string, cand 
 		}
 		item, err := s.ingestRuntimeMemoryLocked(runtimeMemoryInput{
 			WorkspaceID: ws, OwnerID: actorID, OwnerName: actorName,
-			DigitalEmployeeID: str(cand["digitalEmployeeId"]),
+			DigitalPartnerID: str(cand["digitalPartnerId"]),
 			Title:             coalesce(str(payload["title"]), str(cand["title"])),
 			Content:           coalesce(str(payload["content"]), str(cand["summary"])),
 			SourceType:        "evolve_approve", SourceID: coalesce(str(cand["conversationId"]), str(cand["id"])),

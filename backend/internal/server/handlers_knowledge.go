@@ -9,12 +9,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/auth"
-	"github.com/digital-employee-platform/backend/internal/knowledge/citationlog"
-	"github.com/digital-employee-platform/backend/internal/knowledge/eval"
-	"github.com/digital-employee-platform/backend/internal/knowledge/scope"
-	"github.com/digital-employee-platform/backend/internal/policy"
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	"github.com/qizhida-partner-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/knowledge/citationlog"
+	"github.com/qizhida-partner-platform/backend/internal/knowledge/eval"
+	"github.com/qizhida-partner-platform/backend/internal/knowledge/scope"
+	"github.com/qizhida-partner-platform/backend/internal/policy"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 func requireKnowledgeRead(id *auth.Identity) error {
@@ -1801,7 +1801,7 @@ func scopeDocFromMap(d map[string]any) scope.Source {
 		Status:    str(d["status"]),
 		Scopes:    scopes,
 		ScopeTags: tags,
-		OwnerID:   str(d["digitalEmployeeId"]),
+		OwnerID:   str(d["digitalPartnerId"]),
 		Roles:     roles,
 	}
 }

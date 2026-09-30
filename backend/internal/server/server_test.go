@@ -10,8 +10,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/digital-employee-platform/backend/internal/server"
-	"github.com/digital-employee-platform/backend/internal/store"
+	"github.com/qizhida-partner-platform/backend/internal/server"
+	"github.com/qizhida-partner-platform/backend/internal/store"
 )
 
 func TestPhaseACriticalPath(t *testing.T) {
@@ -91,7 +91,7 @@ func TestEmployeeReleaseActivatesWithoutSOD(t *testing.T) {
 	}
 	h := server.New(st).Handler()
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/digital-employees/de-2/release", bytes.NewBufferString(`{}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/partners/de-2/release", bytes.NewBufferString(`{}`))
 	req.Header.Set("Authorization", "Bearer mock-admin-token")
 	req.Header.Set("Content-Type", "application/json")
 	h.ServeHTTP(rr, req)
@@ -111,7 +111,7 @@ func TestLegacyApproveActivatesWithoutSOD(t *testing.T) {
 	h := server.New(store.New()).Handler()
 	// de-2 is pending_approval submitted by u2; submitter confirming should succeed now.
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/digital-employees/de-2/approve", nil)
+	req := httptest.NewRequest(http.MethodPost, "/api/partners/de-2/approve", nil)
 	req.Header.Set("Authorization", "Bearer mock-user-token")
 	h.ServeHTTP(rr, req)
 	if rr.Code != 200 {
@@ -141,7 +141,7 @@ func TestEmployeeLifecyclePersists(t *testing.T) {
 	})
 	h := server.New(st).Handler()
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPatch, "/api/digital-employees/de-2/lifecycle", bytes.NewBufferString(`{"lifecycle":"active"}`))
+	req := httptest.NewRequest(http.MethodPatch, "/api/partners/de-2/lifecycle", bytes.NewBufferString(`{"lifecycle":"active"}`))
 	req.Header.Set("Authorization", "Bearer mock-admin-token")
 	req.Header.Set("Content-Type", "application/json")
 	h.ServeHTTP(rr, req)

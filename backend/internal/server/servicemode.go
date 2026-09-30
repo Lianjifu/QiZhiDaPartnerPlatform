@@ -3,7 +3,7 @@ package server
 import (
 	"strings"
 
-	"github.com/digital-employee-platform/backend/internal/store"
+	"github.com/qizhida-partner-platform/backend/internal/store"
 )
 
 // ServiceMode selects which coarse-grained deployment unit this process owns.
@@ -102,7 +102,7 @@ func (m ServiceMode) OwnsPath(path string) bool {
 	if path == "/connect/" || strings.HasPrefix(path, "/connect/") {
 		return m == ModeSys || m == ModeCollab || m == ModeCap || m == ModePolicy || m == ModeAudit
 	}
-	if strings.HasPrefix(path, "/de.") {
+	if strings.HasPrefix(path, "/qzda.") {
 		return m.ownsOwner(connectOwner(path))
 	}
 	return m.ownsOwner(ownerForAPI(path))
@@ -111,15 +111,15 @@ func (m ServiceMode) OwnsPath(path string) bool {
 // connectOwner maps Connect path prefix to owning mode.
 func connectOwner(path string) ServiceMode {
 	switch {
-	case strings.HasPrefix(path, "/de.collab."), strings.HasPrefix(path, "/de.employee."):
+	case strings.HasPrefix(path, "/qzda.collab."), strings.HasPrefix(path, "/qzda.partner."):
 		return ModeCollab
-	case strings.HasPrefix(path, "/de.rag."), strings.HasPrefix(path, "/de.runtime."):
+	case strings.HasPrefix(path, "/qzda.rag."), strings.HasPrefix(path, "/qzda.runtime."):
 		return ModeCap
-	case strings.HasPrefix(path, "/de.policy."):
+	case strings.HasPrefix(path, "/qzda.policy."):
 		return ModePolicy
-	case strings.HasPrefix(path, "/de.audit."):
+	case strings.HasPrefix(path, "/qzda.audit."):
 		return ModeAudit
-	case strings.HasPrefix(path, "/de.platform."):
+	case strings.HasPrefix(path, "/qzda.platform."):
 		return ModeSys
 	default:
 		return ModeSys
@@ -129,8 +129,8 @@ func connectOwner(path string) ServiceMode {
 func ownerForAPI(path string) ServiceMode {
 	switch {
 	case matchPref(path,
-		"/api/digital-employees", "/api/digital-employee-templates", "/api/digital-employee-template-adoptions",
-		"/api/digital-employee-capability-catalog",
+		"/api/partners", "/api/partner-templates", "/api/partner-template-adoptions",
+		"/api/partner-capability-catalog",
 		"/api/tasks", "/api/agents",
 		"/api/sessions", "/api/slash-commands", "/api/conversations", "/api/copilot", "/api/actions",
 		"/api/share", "/api/attachments", "/api/internal/channel-sessions"):

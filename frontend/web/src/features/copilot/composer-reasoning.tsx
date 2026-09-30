@@ -1,6 +1,6 @@
 import { useId, useRef, useState } from 'react';
 import { Check, ChevronDown, Zap } from 'lucide-react';
-import { cn } from '@de/web-utils';
+import { cn } from '@qzda/web-utils';
 import {
   REASONING_EFFORT_OPTIONS,
   type ReasoningEffort,

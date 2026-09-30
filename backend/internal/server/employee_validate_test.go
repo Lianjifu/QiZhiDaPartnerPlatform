@@ -25,7 +25,7 @@ func TestValidateEmployeeReleaseGates(t *testing.T) {
 		"evaluation":       map[string]any{"status": "failed"},
 	}
 	err := validateEmployeeReleaseGates(bad)
-	if err == nil || !strings.Contains(err.Error(), "E_DIGITAL_EMPLOYEE_PROFILE_INCOMPLETE") {
+	if err == nil || !strings.Contains(err.Error(), "E_DIGITAL_PARTNER_PROFILE_INCOMPLETE") {
 		t.Fatalf("expected profile incomplete, got %v", err)
 	}
 }

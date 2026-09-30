@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/digital-employee-platform/backend/internal/server"
-	"github.com/digital-employee-platform/backend/internal/store"
+	"github.com/qizhida-partner-platform/backend/internal/server"
+	"github.com/qizhida-partner-platform/backend/internal/store"
 )
 
 func TestMemoryOverviewCountsActiveOnly(t *testing.T) {
@@ -219,7 +219,7 @@ func TestCopilotStreamWritesShortTermMemory(t *testing.T) {
 	before := len(st.MemoryRecords)
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/copilot/conversations/conv-1/stream",
-		strings.NewReader(`{"content":"请总结 Redis 风险","digitalEmployeeId":"de-1","correlationId":"corr_stream_mem"}`))
+		strings.NewReader(`{"content":"请总结 Redis 风险","digitalPartnerId":"de-1","correlationId":"corr_stream_mem"}`))
 	req.Header.Set("Authorization", "Bearer mock-admin-token")
 	req.Header.Set("X-Workspace-Id", "w1")
 	req.Header.Set("Content-Type", "application/json")

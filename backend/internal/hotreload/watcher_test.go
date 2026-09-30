@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/hotreload"
+	"github.com/qizhida-partner-platform/backend/internal/hotreload"
 )
 
 // intParser parses a config file containing a single integer.

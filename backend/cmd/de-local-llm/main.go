@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/modelprov"
+	"github.com/qizhida-partner-platform/backend/internal/modelprov"
 )
 
 // de-local-llm: OpenAI-compatible chat completions for local Copilot / Cap wiring.

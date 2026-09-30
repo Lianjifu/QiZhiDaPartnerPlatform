@@ -4,7 +4,7 @@
  */
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Button } from '@de/web-ui';
+import { Button } from '@qzda/web-ui';
 import { AlertTriangle, RotateCcw, Home } from 'lucide-react';
 
 interface Props {

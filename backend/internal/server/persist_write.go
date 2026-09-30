@@ -3,7 +3,7 @@ package server
 import (
 	"log"
 
-	"github.com/digital-employee-platform/backend/internal/runtimeenv"
+	"github.com/qizhida-partner-platform/backend/internal/runtimeenv"
 )
 
 // afterWrite persists durable collections when the process is not in demo (memory-only) mode.

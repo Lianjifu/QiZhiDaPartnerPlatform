@@ -6,7 +6,7 @@ import {
   formatEvidencePackMarkdown,
 } from './expert-context';
 import type { ChatMessageEx } from '@/hooks/types';
-import type { DigitalEmployee } from '@de/web-types';
+import type { DigitalPartner } from '@qzda/web-types';
 
 describe('deriveExpertContextOverview', () => {
   it('returns empty evidence when messages have no tools or citations', () => {
@@ -142,7 +142,7 @@ describe('deriveExpertJobContract', () => {
       },
       capabilities: { model: 'mdl-a', knowledge: ['手册'], skills: ['docx'], tools: [], workflows: [], channels: ['web'] },
       evaluation: { status: 'passed', score: 91 },
-    } as unknown as DigitalEmployee;
+    } as unknown as DigitalPartner;
 
     const contract = deriveExpertJobContract(employee);
     expect(contract?.responsibilities).toEqual(['入职材料核对']);

@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
-import { Badge, Button } from '@de/web-ui';
+import { Badge, Button } from '@qzda/web-ui';
 import { Eye, ExternalLink, FileText, RefreshCw } from 'lucide-react';
-import type { KnowledgeRetrievalResult } from '@de/web-types';
+import type { KnowledgeRetrievalResult } from '@qzda/web-types';
 import { Modal } from '@/components/shared';
 import { estimateChunkTokens, plainTextFromMarkdown, renderMarkdownDocument } from '@/features/knowledge/markdown-doc';
 

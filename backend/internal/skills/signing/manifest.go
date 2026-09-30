@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"sort"
 
-	"github.com/digital-employee-platform/backend/internal/metrics"
+	"github.com/qizhida-partner-platform/backend/internal/metrics"
 )
 
 // ManifestDigest is the canonical form that gets signed. It captures the

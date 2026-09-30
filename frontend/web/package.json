@@ -13,11 +13,11 @@
     "lint": "echo 'lint stub'"
   },
   "dependencies": {
-    "@de/web-api": "workspace:*",
-    "@de/web-hooks": "workspace:*",
-    "@de/web-types": "workspace:*",
-    "@de/web-ui": "workspace:*",
-    "@de/web-utils": "workspace:*",
+    "@qzda/web-api": "workspace:*",
+    "@qzda/web-hooks": "workspace:*",
+    "@qzda/web-types": "workspace:*",
+    "@qzda/web-ui": "workspace:*",
+    "@qzda/web-utils": "workspace:*",
     "@tanstack/react-query": "^5.51.0",
     "axios": "^1.7.2",
     "clsx": "^2.1.1",

@@ -1,6 +1,6 @@
 import { useId, useRef, useState } from 'react';
 import { Check, ChevronDown, ListTodo, MessageSquare, Play } from 'lucide-react';
-import { cn } from '@de/web-utils';
+import { cn } from '@qzda/web-utils';
 import {
   RUN_MODE_OPTIONS,
   type RunMode,

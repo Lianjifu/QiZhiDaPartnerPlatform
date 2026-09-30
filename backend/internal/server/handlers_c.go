@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/auth"
-	"github.com/digital-employee-platform/backend/internal/modelprov"
-	"github.com/digital-employee-platform/backend/internal/policy"
-	"github.com/digital-employee-platform/backend/pkg/contract"
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	"github.com/qizhida-partner-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/modelprov"
+	"github.com/qizhida-partner-platform/backend/internal/policy"
+	"github.com/qizhida-partner-platform/backend/pkg/contract"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 func (s *Server) listModelProviders(r *http.Request) (any, error) {
@@ -308,8 +308,8 @@ func (s *Server) createConversation(r *http.Request) (any, error) {
 	ws := s.workspaceID(r)
 	now := time.Now().UTC().Format(time.RFC3339)
 	convID := s.Store.ID("conv")
-	deID := body["digitalEmployeeId"]
-	deName := strings.TrimSpace(coalesce(str(body["digitalEmployeeName"]), str(body["agent"])))
+	deID := body["digitalPartnerId"]
+	deName := strings.TrimSpace(coalesce(str(body["digitalPartnerName"]), str(body["agent"])))
 	if deName == "" {
 		if str(deID) != "" {
 			deName = "岗位专家"
@@ -321,14 +321,14 @@ func (s *Server) createConversation(r *http.Request) (any, error) {
 	modelID := coalesce(str(body["modelId"]), "sonnet-4")
 	item := map[string]any{
 		"id": convID, "workspaceId": ws,
-		"title": title, "digitalEmployeeId": deID, "modelId": modelID,
+		"title": title, "digitalPartnerId": deID, "modelId": modelID,
 		"updatedAt": now,
 	}
 	sessID := s.Store.ID("sess")
 	session := map[string]any{
 		"id": sessID, "workspaceId": ws, "ownerId": id.ID, "title": title,
 		"preview": "暂无消息", "agent": deName,
-		"digitalEmployeeId": deID, "digitalEmployeeName": deName,
+		"digitalPartnerId": deID, "digitalPartnerName": deName,
 		"conversationId": convID, "status": "active", "modelId": modelID,
 		"createdAt": now, "updatedAt": now, "lastMessageAt": now,
 	}
@@ -431,7 +431,7 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 	clientMsgID := strings.TrimSpace(str(body["clientMsgId"]))
 	firstMessageID := strings.TrimSpace(str(body["firstMessageId"]))
 	ws := s.workspaceID(r)
-	deID := coalesce(str(body["digitalEmployeeId"]), "")
+	deID := coalesce(str(body["digitalPartnerId"]), "")
 	// Mem5: hard-no guard — short-circuit the LLM when the user query
 	// touches a topic the digital employee is configured to refuse.
 	if deID != "" {
@@ -777,14 +777,14 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 		"id": snapID, "workspaceId": ws, "conversationId": cid, "sessionId": rawID,
 		"correlationId": corr, "system": system, "historyTurns": len(chatMessages),
 		"memoryProvenance": memoryProvenanceMaps(memoryHits), "ragHits": ragCount,
-		"toolRegistry": enabledToolKeys(registry), "employeeId": resolvedDE,
+		"toolRegistry": enabledToolKeys(registry), "partnerId": resolvedDE,
 		"sessionMode": sessionMode, "riskLevel": riskLevel,
 		"channel": channel, "channelThreadId": channelThreadID,
 		"runtimeMode": runtimeMode(), "employeeBinding": binding,
 		"envelope": map[string]any{
 			"tenantId": id.TenantID, "workspaceId": ws, "actorId": id.ID,
 			"channel": channel, "channelThreadId": channelThreadID,
-			"sessionId": rawID, "employeeId": resolvedDE, "correlationId": corr,
+			"sessionId": rawID, "partnerId": resolvedDE, "correlationId": corr,
 			"classification": "internal", "sessionMode": sessionMode, "riskLevel": riskLevel,
 		},
 	})
@@ -822,7 +822,7 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 	reactOut := s.runRuntimeTurn(streamCtx, reactTurnInput{
 		Request: r, WorkspaceID: ws, ModelID: modelID, System: system,
 		Messages: chatMessages, Registry: registry, UserMessage: userMsg,
-		ConversationID: cid, CorrelationID: corr, DigitalEmployee: resolvedDE,
+		ConversationID: cid, CorrelationID: corr, DigitalPartner: resolvedDE,
 		Viewer: id, Emit: emit, ModeHint: modeHint, ReflectHint: reflectHint,
 		SessionMode: sessionMode, RiskLevel: riskLevel, Channel: channel,
 		RAGPrefetched: ragCount > 0,
@@ -990,7 +990,7 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 	if s.ownsCapRuntime() {
 		if shouldIngestTurnMemory(historySnapshot, userMsg, full, toolCalls) {
 			if _, err := s.ingestRuntimeMemoryLocked(runtimeMemoryInput{
-				WorkspaceID: ws, OwnerID: id.ID, OwnerName: id.Name, DigitalEmployeeID: resolvedDE,
+				WorkspaceID: ws, OwnerID: id.ID, OwnerName: id.Name, DigitalPartnerID: resolvedDE,
 				Title:      "会话上下文 · " + truncateRunes(userMsg, 40),
 				Content:    "用户：" + userMsg + "\n助手：" + full,
 				SourceType: "conversation", SourceID: cid, CorrelationID: corr,
@@ -1001,7 +1001,7 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		evolveCreated = s.runPostTurnEvolutionLocked(evolveTurnInput{
-			WorkspaceID: ws, OwnerID: id.ID, OwnerName: id.Name, DigitalEmployeeID: resolvedDE,
+			WorkspaceID: ws, OwnerID: id.ID, OwnerName: id.Name, DigitalPartnerID: resolvedDE,
 			ConversationID: cid, CorrelationID: corr, MessageID: assistantMsgID,
 			UserMessage: userMsg, AssistantText: full, Mode: mode,
 			ReflectRounds: reactOut.ReflectRounds, ToolCalls: toolCalls,
@@ -1009,7 +1009,7 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 		})
 	} else if shouldIngestTurnMemory(historySnapshot, userMsg, full, toolCalls) {
 		postTurnPayload.MemoryIngest = &runtimeMemoryInput{
-			WorkspaceID: ws, OwnerID: id.ID, OwnerName: id.Name, DigitalEmployeeID: resolvedDE,
+			WorkspaceID: ws, OwnerID: id.ID, OwnerName: id.Name, DigitalPartnerID: resolvedDE,
 			Title:      "会话上下文 · " + truncateRunes(userMsg, 40),
 			Content:    "用户：" + userMsg + "\n助手：" + full,
 			SourceType: "conversation", SourceID: cid, CorrelationID: corr,
@@ -1029,7 +1029,7 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 		postTurnPayload.WorkspaceID = ws
 		postTurnPayload.OwnerID = id.ID
 		postTurnPayload.OwnerName = id.Name
-		postTurnPayload.DigitalEmployeeID = resolvedDE
+		postTurnPayload.DigitalPartnerID = resolvedDE
 		postTurnPayload.ConversationID = cid
 		postTurnPayload.CorrelationID = corr
 		postTurnPayload.MessageID = assistantMsgID
@@ -1089,8 +1089,8 @@ func (s *Server) touchSessionLocked(ws, rawID, cid, preview, now, modelID, digit
 		if modelID != "" {
 			sess["modelId"] = modelID
 		}
-		if digitalEmployeeID != "" && str(sess["digitalEmployeeId"]) == "" {
-			sess["digitalEmployeeId"] = digitalEmployeeID
+		if digitalEmployeeID != "" && str(sess["digitalPartnerId"]) == "" {
+			sess["digitalPartnerId"] = digitalEmployeeID
 		}
 		// Auto-title first real turn when still default.
 		if title := str(sess["title"]); title == "" || title == "新会话" {
@@ -1118,7 +1118,7 @@ func (s *Server) touchSessionLocked(ws, rawID, cid, preview, now, modelID, digit
 	for _, c := range s.Store.Conversations {
 		if str(c["id"]) == convID {
 			if deID == "" {
-				deID = str(c["digitalEmployeeId"])
+				deID = str(c["digitalPartnerId"])
 			}
 			break
 		}
@@ -1141,8 +1141,8 @@ func (s *Server) touchSessionLocked(ws, rawID, cid, preview, now, modelID, digit
 			hasConv = true
 			c["workspaceId"] = coalesce(str(c["workspaceId"]), ws)
 			c["updatedAt"] = now
-			if deID != "" && str(c["digitalEmployeeId"]) == "" {
-				c["digitalEmployeeId"] = deID
+			if deID != "" && str(c["digitalPartnerId"]) == "" {
+				c["digitalPartnerId"] = deID
 			}
 			break
 		}
@@ -1150,13 +1150,13 @@ func (s *Server) touchSessionLocked(ws, rawID, cid, preview, now, modelID, digit
 	if !hasConv {
 		s.Store.Conversations = append([]map[string]any{{
 			"id": convID, "workspaceId": ws, "title": title,
-			"digitalEmployeeId": deID, "modelId": modelID, "updatedAt": now,
+			"digitalPartnerId": deID, "modelId": modelID, "updatedAt": now,
 		}}, s.Store.Conversations...)
 	}
 	session := map[string]any{
 		"id": sessID, "workspaceId": ws, "ownerId": ownerID, "title": title,
 		"preview": truncateRunes(preview, 120), "agent": deName,
-		"digitalEmployeeId": deID, "digitalEmployeeName": deName,
+		"digitalPartnerId": deID, "digitalPartnerName": deName,
 		"conversationId": convID, "status": "active", "modelId": modelID,
 		"createdAt": now, "updatedAt": now, "lastMessageAt": now,
 	}

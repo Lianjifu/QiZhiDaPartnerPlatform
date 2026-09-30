@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/digital-employee-platform/backend/internal/server"
-	"github.com/digital-employee-platform/backend/internal/store"
+	"github.com/qizhida-partner-platform/backend/internal/server"
+	"github.com/qizhida-partner-platform/backend/internal/store"
 )
 
 func TestSkillStoreCatalogP0P3(t *testing.T) {

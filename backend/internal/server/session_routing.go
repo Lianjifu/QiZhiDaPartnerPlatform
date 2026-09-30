@@ -9,12 +9,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/auth"
-	"github.com/digital-employee-platform/backend/internal/dingtalk"
-	"github.com/digital-employee-platform/backend/internal/feishu"
-	"github.com/digital-employee-platform/backend/internal/wecom"
-	"github.com/digital-employee-platform/backend/pkg/contract"
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	"github.com/qizhida-partner-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/dingtalk"
+	"github.com/qizhida-partner-platform/backend/internal/feishu"
+	"github.com/qizhida-partner-platform/backend/internal/wecom"
+	"github.com/qizhida-partner-platform/backend/pkg/contract"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 func (s *Server) ensureChannelSession(ws, channel, threadID, deployID, employeeID, actorID string) (sessionID, conversationID string, created bool) {
@@ -38,8 +38,8 @@ func (s *Server) ensureChannelSession(ws, channel, threadID, deployID, employeeI
 		}
 		sid := str(sess["id"])
 		cid := coalesce(str(sess["conversationId"]), sid)
-		if employeeID != "" && str(sess["digitalEmployeeId"]) == "" {
-			sess["digitalEmployeeId"] = employeeID
+		if employeeID != "" && str(sess["digitalPartnerId"]) == "" {
+			sess["digitalPartnerId"] = employeeID
 		}
 		sess["updatedAt"] = now
 		return sid, cid, false
@@ -60,13 +60,13 @@ func (s *Server) ensureChannelSession(ws, channel, threadID, deployID, employeeI
 	riskLevel := s.resolveDefaultRiskLevel(employeeID)
 	s.Store.Conversations = append([]map[string]any{{
 		"id": convID, "workspaceId": ws, "title": title,
-		"digitalEmployeeId": employeeID, "updatedAt": now,
+		"digitalPartnerId": employeeID, "updatedAt": now,
 		"channel": channel, "channelThreadId": threadID,
 	}}, s.Store.Conversations...)
 	s.Store.Sessions = append([]map[string]any{{
 		"id": sessID, "workspaceId": ws, "ownerId": actorID, "title": title,
 		"preview": "渠道入站", "agent": deName,
-		"digitalEmployeeId": employeeID, "digitalEmployeeName": deName,
+		"digitalPartnerId": employeeID, "digitalPartnerName": deName,
 		"conversationId": convID, "status": "active",
 		"channel": channel, "channelThreadId": threadID, "channelDeploymentId": deployID,
 		"sessionMode": sessionMode, "riskLevel": riskLevel,
@@ -89,7 +89,7 @@ func (s *Server) bindInboundSession(ws, channel, threadID, deployID, employeeID 
 	req := s.requestWithActor(nil, actor, ws)
 	data, err := s.peerPOST(req, collabBaseURL(), "/api/internal/channel-sessions", map[string]any{
 		"workspaceId": ws, "channel": channel, "channelThreadId": threadID,
-		"deploymentId": deployID, "digitalEmployeeId": employeeID, "actorId": actorID,
+		"deploymentId": deployID, "digitalPartnerId": employeeID, "actorId": actorID,
 	})
 	if err != nil {
 		return "", "", false
@@ -137,7 +137,7 @@ func (s *Server) persistChannelSessionIfLocal(created bool) {
 }
 
 func (s *Server) defaultEmployeeIDForWorkspace(ws string, deploy map[string]any) string {
-	if de := str(deploy["digitalEmployeeId"]); de != "" {
+	if de := str(deploy["digitalPartnerId"]); de != "" {
 		return de
 	}
 	s.Store.RLock()
@@ -270,7 +270,7 @@ func (s *Server) routeFeishuMessage(ctx context.Context, ws, deployID string, de
 	reply := s.dispatchInboundCopilot(ctx, ws, sessID, convID, corr, actor, map[string]any{
 		"content":           msg.Text,
 		"correlationId":     corr,
-		"digitalEmployeeId": employeeID,
+		"digitalPartnerId": employeeID,
 		"sessionMode":       contract.SessionModeInvestigate,
 		"channel":           contract.ChannelFeishu,
 		"channelThreadId":   msg.ChatID,
@@ -393,7 +393,7 @@ func (s *Server) routeWecomMessage(ctx context.Context, ws, deployID string, dep
 	reply := s.dispatchInboundCopilot(ctx, ws, sessID, convID, corr, actor, map[string]any{
 		"content":           msg.Text,
 		"correlationId":     corr,
-		"digitalEmployeeId": employeeID,
+		"digitalPartnerId": employeeID,
 		"sessionMode":       contract.SessionModeInvestigate,
 		"channel":           contract.ChannelWecom,
 		"channelThreadId":   threadID,
@@ -450,7 +450,7 @@ func (s *Server) routeDingtalkMessage(ctx context.Context, ws, deployID string, 
 	reply := s.dispatchInboundCopilot(ctx, ws, sessID, convID, corr, actor, map[string]any{
 		"content":           msg.Text,
 		"correlationId":     corr,
-		"digitalEmployeeId": employeeID,
+		"digitalPartnerId": employeeID,
 		"sessionMode":       contract.SessionModeInvestigate,
 		"channel":           contract.ChannelDingtalk,
 		"channelThreadId":   threadID,

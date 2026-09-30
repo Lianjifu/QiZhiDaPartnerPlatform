@@ -1,6 +1,6 @@
 import { useId, useRef, useState } from 'react';
 import { AtSign, Hash, Paperclip, Plus } from 'lucide-react';
-import { cn } from '@de/web-utils';
+import { cn } from '@qzda/web-utils';
 import { ComposerPortal } from './composer-portal';
 
 type Props = {

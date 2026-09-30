@@ -6,10 +6,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/auth"
-	"github.com/digital-employee-platform/backend/internal/modelprov"
-	"github.com/digital-employee-platform/backend/internal/runtimeenv"
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	"github.com/qizhida-partner-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/modelprov"
+	"github.com/qizhida-partner-platform/backend/internal/runtimeenv"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 var (

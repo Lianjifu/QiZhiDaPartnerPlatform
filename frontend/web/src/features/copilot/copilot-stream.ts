@@ -154,7 +154,7 @@ export type StreamTurnInput = {
   conversationId: string;
   content: string;
   correlationId: string;
-  digitalEmployeeId?: string;
+  digitalPartnerId?: string;
   modelId?: string;
   enabledTools?: string[];
   modeHint?: string;
@@ -192,7 +192,7 @@ export async function streamCopilotTurn(input: StreamTurnInput): Promise<void> {
       body: JSON.stringify({
         content: input.content,
         correlationId: input.correlationId,
-        digitalEmployeeId: input.digitalEmployeeId,
+        digitalPartnerId: input.digitalPartnerId,
         modelId: input.modelId,
         enabledTools: input.enabledTools,
         modeHint: input.modeHint,

@@ -6,7 +6,7 @@ managed:
       module: buf.build/googleapis/googleapis
   override:
     - file_option: go_package_prefix
-      value: github.com/digital-employee-platform/backend/gen
+      value: github.com/qizhida-partner-platform/backend/gen
 plugins:
   - local: protoc-gen-go
     out: gen

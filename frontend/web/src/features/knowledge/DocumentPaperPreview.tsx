@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowUp, ListTree, Minus, Plus, Type } from 'lucide-react';
-import { Button } from '@de/web-ui';
-import { cn } from '@de/web-utils';
+import { Button } from '@qzda/web-ui';
+import { cn } from '@qzda/web-utils';
 import { renderMarkdownDocument, type MarkdownOutlineItem } from './markdown-doc';
 
 export type PaperWidth = 'comfortable' | 'standard' | 'wide';

@@ -7,8 +7,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/digital-employee-platform/backend/internal/server"
-	"github.com/digital-employee-platform/backend/internal/store"
+	"github.com/qizhida-partner-platform/backend/internal/server"
+	"github.com/qizhida-partner-platform/backend/internal/store"
 )
 
 func TestPasswordLoginBlockedWhenForceOIDC(t *testing.T) {

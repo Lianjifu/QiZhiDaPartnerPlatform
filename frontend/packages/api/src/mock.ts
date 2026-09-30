@@ -4,10 +4,10 @@
  */
 import type {
   Agent,
-  DigitalEmployee,
-  DigitalEmployeeConfigurationVersion,
-  DigitalEmployeeTemplate,
-  DigitalEmployeeTemplateAdoption,
+  DigitalPartner,
+  DigitalPartnerConfigurationVersion,
+  DigitalPartnerTemplate,
+  DigitalPartnerTemplateAdoption,
   CapabilityBinding,
   AuditItem,
   Channel,
@@ -59,8 +59,8 @@ import type {
   Workspace,
   WorkspaceAuditEvent, WorkspaceBinding, WorkspaceEnvironment, WorkspaceMember, WorkspacePolicy, WorkspaceQuota, WorkspaceRuntimeEvent,
   AccessGrant, AccessReview, SeparationOfDutyRule, ReleaseApproval, Role, Permission, User, TemporaryAuthorization, ZeroTrustAction, ZeroTrustDecision, ZeroTrustEvaluation, ZeroTrustEvent, ZeroTrustPolicy, ZeroTrustResource,
-} from '@de/web-types';
-import { sleep } from '@de/web-utils';
+} from '@qzda/web-types';
+import { sleep } from '@qzda/web-utils';
 import {
   buildHomeExtraLive,
   buildOpsOverviewLive,
@@ -213,7 +213,7 @@ const homeAlertAcknowledgements = new Map<string, { acknowledgedAt: string; ackn
 export const mockTasks: Task[] = [
   {
     id: 't-dispatch-1', code: 'TSK-20260722-101', title: '本部门派工 · 告警降噪复核', priority: 'P1', status: 'pending',
-    assignee: '王昊', digitalEmployeeId: 'de-alert-ops', digitalEmployeeName: '告警运营专员', agentId: 'a6',
+    assignee: '王昊', digitalPartnerId: 'de-alert-ops', digitalPartnerName: '告警运营专员', agentId: 'a6',
     coordinatorId: 'de-it-head', coordinatorName: '信息技术部负责人', dispatchKind: 'assign', assistStatus: 'not_required',
     progress: { done: 0, total: 3 }, slaRemainingMin: 180, tags: ['派工', '告警'],
     description: '北辰向本部门观星派工：复核重复告警合并建议并回报值班影响。',
@@ -221,7 +221,7 @@ export const mockTasks: Task[] = [
   },
   {
     id: 't-assist-1', code: 'TSK-20260722-102', title: '跨部门协办 · 发布窗口费用核验', priority: 'P2', status: 'review',
-    assignee: '钱财', digitalEmployeeId: 'de-expense-ops', digitalEmployeeName: '费用核算专员', agentId: 'a2',
+    assignee: '钱财', digitalPartnerId: 'de-expense-ops', digitalPartnerName: '费用核算专员', agentId: 'a2',
     coordinatorId: 'de-it-head', coordinatorName: '信息技术部负责人', dispatchKind: 'assist',
     collaboratorIds: ['de-expense-ops'], collaboratorNames: ['费用核算专员'], assistStatus: 'pending',
     progress: { done: 0, total: 2 }, slaRemainingMin: 360, tags: ['协办', '财务', '发布'],
@@ -230,49 +230,49 @@ export const mockTasks: Task[] = [
   },
   {
     id: 't1', code: 'TSK-20260713-001', title: '与夜航协同处置 Redis OOM', priority: 'P0', status: 'in_progress',
-    assignee: '王昊', digitalEmployeeId: 'de-sre', digitalEmployeeName: 'SRE 故障处置专员', agentId: 'a1',
+    assignee: '王昊', digitalPartnerId: 'de-sre', digitalPartnerName: 'SRE 故障处置专员', agentId: 'a1',
     progress: { done: 4, total: 6 }, slaRemainingMin: -8, tags: ['redis', '生产', 'OOM'],
     description: 'prod-redis-01 触发 maxmemory；需与在岗专家夜航确认扩容方案并完成双重审批后执行。',
     createdAt: '2026-07-13T08:12:00Z', updatedAt: '2026-07-13T08:24:00Z',
   },
   {
     id: 't2', code: 'TSK-20260713-002', title: 'K8s 节点扩容 · 待专家确认', priority: 'P1', status: 'review',
-    assignee: '李婷', digitalEmployeeId: 'de-change', digitalEmployeeName: '变更协同专员', agentId: 'a3',
+    assignee: '李婷', digitalPartnerId: 'de-change', digitalPartnerName: '变更协同专员', agentId: 'a3',
     progress: { done: 3, total: 4 }, slaRemainingMin: 32, tags: ['k8s', '扩容'], relatedTaskCode: 'INC-019',
     description: '扩容影响 5 个服务；磐石已汇集风险，等待双重审批与负责人确认。',
     createdAt: '2026-07-13T07:55:00Z', updatedAt: '2026-07-13T08:20:00Z',
   },
   {
     id: 't3', code: 'TSK-20260713-003', title: '威胁狩猎 · 横向移动线索复核', priority: 'P1', status: 'in_progress',
-    assignee: '张睿', digitalEmployeeId: 'de-threat-hunt', digitalEmployeeName: '威胁狩猎专员', agentId: 'a5',
+    assignee: '张睿', digitalPartnerId: 'de-threat-hunt', digitalPartnerName: '威胁狩猎专员', agentId: 'a5',
     progress: { done: 2, total: 5 }, slaRemainingMin: 120, tags: ['siem', 'edr'],
     description: '追影已关联 SIEM/EDR 线索，需安全分析师复核后决定是否升级响应。',
     createdAt: '2026-07-13T07:30:00Z', updatedAt: '2026-07-13T08:00:00Z',
   },
   {
     id: 't4', code: 'TSK-20260713-004', title: '告警降噪 · 重复规则合并建议', priority: 'P2', status: 'in_progress',
-    assignee: '陈雪', digitalEmployeeId: 'de-alert-ops', digitalEmployeeName: '告警运营专员', agentId: 'a6',
+    assignee: '陈雪', digitalPartnerId: 'de-alert-ops', digitalPartnerName: '告警运营专员', agentId: 'a6',
     progress: { done: 1, total: 3 }, slaRemainingMin: 240, tags: ['siem'],
     description: '观星归并重复规则后，由值班经理确认静默策略。',
     createdAt: '2026-07-13T06:40:00Z', updatedAt: '2026-07-13T07:50:00Z',
   },
   {
     id: 't5', code: 'TSK-20260712-019', title: '漏洞 CVE-2026-3321 · 修复协同', priority: 'P1', status: 'review',
-    assignee: '赵明', digitalEmployeeId: 'de-vulnerability', digitalEmployeeName: '漏洞响应专员', agentId: 'a7',
+    assignee: '赵明', digitalPartnerId: 'de-vulnerability', digitalPartnerName: '漏洞响应专员', agentId: 'a7',
     progress: { done: 5, total: 5 }, tags: ['cve', '安全'],
     description: '破晓已完成影响分析；待安全负责人确认修复窗口。',
     createdAt: '2026-07-12T16:20:00Z', updatedAt: '2026-07-13T02:00:00Z',
   },
   {
     id: 't6', code: 'TSK-20260712-018', title: '容量预测 · Q3 评估结论', priority: 'P3', status: 'completed',
-    assignee: '周慧', digitalEmployeeId: 'de-capacity', digitalEmployeeName: '容量与性能专员', agentId: 'a4',
+    assignee: '周慧', digitalPartnerId: 'de-capacity', digitalPartnerName: '容量与性能专员', agentId: 'a4',
     progress: { done: 4, total: 4 }, tags: ['容量'],
     description: '衡山完成 Q3 评估，结论已交由平台运维负责人决策。',
     createdAt: '2026-07-12T10:00:00Z', updatedAt: '2026-07-12T18:00:00Z',
   },
   {
     id: 't7', code: 'TSK-20260712-017', title: '网关灰度发布 · 保障协同', priority: 'P2', status: 'completed',
-    assignee: '孙博', digitalEmployeeId: 'de-release-guard', digitalEmployeeName: '发布保障专员', agentId: 'a3',
+    assignee: '孙博', digitalPartnerId: 'de-release-guard', digitalPartnerName: '发布保障专员', agentId: 'a3',
     progress: { done: 6, total: 6 }, tags: ['灰度'],
     description: '守望完成灰度观察与回滚预案确认。',
     createdAt: '2026-07-12T09:15:00Z', updatedAt: '2026-07-12T11:30:00Z',
@@ -324,7 +324,7 @@ const EMPLOYEE_BY_ID: Record<string, { name: string; role: string; agentId?: str
   'de-finance-manager': { name: '衡通', role: '财务部负责人', agentId: 'a2' },
 };
 
-/** 执行内核 → 主岗位（仅缺 digitalEmployeeId 时的回退；由 EMPLOYEE_BY_ID 主键推导）。 */
+/** 执行内核 → 主岗位（仅缺 digitalPartnerId 时的回退；由 EMPLOYEE_BY_ID 主键推导）。 */
 const EMPLOYEE_BY_AGENT: Record<string, { id: string; name: string; role: string }> = Object.fromEntries(
   (Object.entries(EMPLOYEE_BY_ID) as Array<[string, { name: string; role: string; agentId?: string }]>)
     .filter(([, meta]) => meta.agentId)
@@ -337,21 +337,21 @@ const EMPLOYEE_BY_AGENT: Record<string, { id: string; name: string; role: string
 );
 
 function resolveEmployeeFields(seed: Partial<Task>) {
-  if (seed.digitalEmployeeId) {
-    const known = EMPLOYEE_BY_ID[seed.digitalEmployeeId];
+  if (seed.digitalPartnerId) {
+    const known = EMPLOYEE_BY_ID[seed.digitalPartnerId];
     return {
-      digitalEmployeeId: seed.digitalEmployeeId,
-      digitalEmployeeName: seed.digitalEmployeeName ?? known?.role ?? known?.name,
+      digitalPartnerId: seed.digitalPartnerId,
+      digitalPartnerName: seed.digitalPartnerName ?? known?.role ?? known?.name,
       agentId: seed.agentId ?? known?.agentId,
     };
   }
   if (seed.agentId && EMPLOYEE_BY_AGENT[seed.agentId]) {
     const mapped = EMPLOYEE_BY_AGENT[seed.agentId];
-    return { digitalEmployeeId: mapped.id, digitalEmployeeName: seed.digitalEmployeeName ?? mapped.role ?? mapped.name, agentId: seed.agentId };
+    return { digitalPartnerId: mapped.id, digitalPartnerName: seed.digitalPartnerName ?? mapped.role ?? mapped.name, agentId: seed.agentId };
   }
   return {
-    digitalEmployeeId: seed.digitalEmployeeId,
-    digitalEmployeeName: seed.digitalEmployeeName,
+    digitalPartnerId: seed.digitalPartnerId,
+    digitalPartnerName: seed.digitalPartnerName,
     agentId: seed.agentId,
   };
 }
@@ -454,8 +454,8 @@ export function createTaskDomain(seed: TaskSeed[] = mockTasks) {
         priority: input.priority ?? 'P1',
         status: input.status ?? 'pending',
         assignee: input.assignee,
-        digitalEmployeeId: employee.digitalEmployeeId,
-        digitalEmployeeName: employee.digitalEmployeeName,
+        digitalPartnerId: employee.digitalPartnerId,
+        digitalPartnerName: employee.digitalPartnerName,
         agentId: employee.agentId,
         progress: input.progress ?? { done: 0, total: 1 },
         slaRemainingMin: input.slaRemainingMin,
@@ -586,7 +586,7 @@ export const mockAgentRank = [
   { rank: 8, id: 'a4', name: '容量预测', calls: 6, change: 0 },
 ];
 
-/** @deprecated LEGACY 执行内核目录；产品主路径为 /api/digital-employees + /partners。新功能勿依赖。 */
+/** @deprecated LEGACY 执行内核目录；产品主路径为 /api/partners + /partners。新功能勿依赖。 */
 export const mockAgents: Agent[] = [
   { id: 'a1', name: 'Redis 故障自愈', category: 'AIOps', description: 'redis-cli · MONITOR · CONFIG 自动恢复', version: '1.4.2', status: 'installed', rating: 4.8, installCount: 1240, cacheHitRate: 0.32, p95Ms: 580, tools: ['redis-cli', 'MONITOR'], isStarred: true },
   { id: 'a2', name: 'K8s 操作助手', category: 'AIOps', description: 'kubectl apply / scale / rollout', version: '2.1.0', status: 'installed', rating: 4.7, installCount: 980, cacheHitRate: 0.28, p95Ms: 720, tools: ['kubectl'] },
@@ -648,7 +648,7 @@ const mockAgentRuntime = {
 const mockAgentImports: any[] = [];
 
 // ============ 数字伙伴：岗位身份与受控运行控制面 ============
-const mockDigitalEmployees: DigitalEmployee[] = [
+const mockDigitalPartners: DigitalPartner[] = [
   { id: 'de-sre', workspaceId: 'w1', name: '夜航', role: 'SRE 故障处置专员', department: '信息技术部', description: '关联告警、日志和资产上下文定位生产故障；在受控工作流内执行恢复操作，超出边界立即转人工。', owner: '陈晓', escalationOwner: '王昊', serviceObject: '生产业务系统', version: '1.3.0', environment: 'production', lifecycle: 'active', risk: 'high', responsibilities: ['告警关联与影响分析', '故障定位建议', '执行已批准的恢复流程'], prohibitedActions: ['不得绕过生产变更审批', '不得执行未批准的写操作', '不得关闭重大事件证据'], capabilities: { agentId: 'a1', model: '企业通用路由 v2', knowledge: ['运行手册库', '故障知识库'], skills: ['日志检索', '告警分析'], tools: ['Prometheus', 'Loki', 'CMDB'], workflows: ['生产故障处置流'], channels: ['企业微信', '事件中心'] }, memoryPolicy: { shortTermHours: 24, workingDays: 7, longTermCadence: 'daily', knowledgePromotion: 'approval_required' }, runtime: { calls24h: 286, successRate: 0.982, p95Ms: 840, costToday: 46.8, handoffs24h: 12, anomalies: 0 }, evaluation: { status: 'passed', score: 94.2, lastRunAt: '2026-07-22T02:30:00Z' }, release: { status: 'released', releasedAt: '2026-07-20T08:00:00Z', approver: '平台管理员' }, updatedAt: '2026-07-22T08:00:00Z' },
   { id: 'de-it', workspaceId: 'w1', name: '青禾', role: 'IT 服务台专员', department: '信息技术部', description: '受理常见 IT 服务请求，执行低风险标准操作并对高风险请求发起人工交接。', owner: '李婷', escalationOwner: '王昊', serviceObject: '内部员工', version: '2.1.0', environment: 'production', lifecycle: 'active', risk: 'medium', responsibilities: ['工单分诊', '知识问答', '受控执行标准操作'], prohibitedActions: ['不得重置高权限账号', '不得绕过变更审批', '不得导出终端数据'], capabilities: { agentId: 'a2', model: '企业通用路由 v2', knowledge: ['IT 服务知识库'], skills: ['工单分诊', '资产查询'], tools: ['CMDB', 'Jira'], workflows: ['IT 服务请求流'], channels: ['企业微信', 'Web'] }, memoryPolicy: { shortTermHours: 12, workingDays: 14, longTermCadence: 'daily', knowledgePromotion: 'approval_required' }, runtime: { calls24h: 462, successRate: 0.976, p95Ms: 680, costToday: 61.4, handoffs24h: 21, anomalies: 1 }, evaluation: { status: 'passed', score: 92.8, lastRunAt: '2026-07-21T09:20:00Z' }, release: { status: 'released', releasedAt: '2026-07-18T09:30:00Z', approver: '平台管理员' }, updatedAt: '2026-07-22T07:40:00Z' },
   { id: 'de-secops', workspaceId: 'w1', name: '听潮', role: '安全事件分析专员', department: '信息技术部', description: '关联 SIEM、EDR 与资产信息研判安全告警，形成处置建议并对高风险事件升级至安全响应人员。', owner: '张睿', escalationOwner: '安全负责人', serviceObject: '企业安全运营中心', version: '0.9.0', environment: 'staging', lifecycle: 'pending_approval', risk: 'high', responsibilities: ['安全告警去重与研判', '事件证据汇集', '响应建议与升级'], prohibitedActions: ['不得自动隔离核心生产资产', '不得删除安全证据', '不得绕过双人复核'], capabilities: { agentId: 'a5', model: '受限数据路由 v1', knowledge: ['安全运行手册', '威胁情报库'], skills: ['告警研判', '威胁狩猎'], tools: ['SIEM', 'EDR', 'CMDB'], workflows: ['安全事件响应流'], channels: ['事件中心'] }, memoryPolicy: { shortTermHours: 8, workingDays: 7, longTermCadence: 'weekly', knowledgePromotion: 'approval_required' }, runtime: { calls24h: 38, successRate: 0.947, p95Ms: 1120, costToday: 12.6, handoffs24h: 8, anomalies: 0 }, evaluation: { status: 'passed', score: 91.4, lastRunAt: '2026-07-22T03:10:00Z' }, release: { status: 'pending_approval' }, updatedAt: '2026-07-22T09:10:00Z' },
@@ -679,7 +679,7 @@ const mockDigitalEmployees: DigitalEmployee[] = [
 ];
 
 // Demo 种子 ID（de-sre 等）与 backend store（de-1 等）刻意分离；切 Mock↔真后端会换片，联调以 backend 为准。
-mockDigitalEmployees.forEach((employee) => {
+mockDigitalPartners.forEach((employee) => {
   const mapped = EMPLOYEE_BY_ID[employee.id];
   if (mapped?.agentId) employee.capabilities.agentId = mapped.agentId;
   employee.capabilities = normalizeEmployeeCapabilities(employee.capabilities);
@@ -710,7 +710,7 @@ mockDigitalEmployees.forEach((employee) => {
 });
 
 // 员工广场：岗位模板与工作区员工实例分离。模板可被采用，实例必须重新评测和上岗。
-const mockDigitalEmployeeTemplates: DigitalEmployeeTemplate[] = [
+const mockDigitalPartnerTemplates: DigitalPartnerTemplate[] = [
   { id: 'det-sre', name: 'SRE 故障处置专员', role: '生产故障诊断与处置', department: '信息技术部', description: '关联告警、日志和资产上下文定位生产故障，在受控流程内执行已批准的恢复操作。', serviceObject: '生产业务系统', version: '1.3.0', risk: 'high', responsibilities: ['告警关联与影响分析', '故障定位建议', '执行已批准的恢复流程'], prohibitedActions: ['不得绕过生产变更审批', '不得执行未批准的写操作', '不得关闭重大事件证据'], capabilities: { agentId: 'a1', model: '企业通用路由 v2', knowledge: ['运行手册库', '故障知识库'], skills: ['日志检索', '告警分析'], tools: ['Prometheus', 'Loki', 'CMDB'], workflows: ['生产故障处置流'], channels: ['企业微信', '事件中心'] }, memoryPolicy: { shortTermHours: 24, workingDays: 7, longTermCadence: 'daily', knowledgePromotion: 'approval_required' }, source: 'platform', sourceName: '平台认证模板', status: 'certified', scope: 'organization', applicableEnvironments: ['staging', 'production'], evaluationScore: 94.2, adoptionCount: 12, tags: ['运维', '故障处置', '生产'], publishedAt: '2026-06-20T08:00:00Z', updatedAt: '2026-07-20T08:00:00Z' },
   { id: 'det-secops', name: '安全事件分析专员', role: '安全告警研判与响应', department: '信息技术部', description: '关联 SIEM、EDR 与资产信息研判安全告警，形成处置建议并将高风险事件升级至安全响应人员。', serviceObject: '企业安全运营中心', version: '1.0.0', risk: 'high', responsibilities: ['安全告警去重与研判', '事件证据汇集', '响应建议与升级'], prohibitedActions: ['不得自动隔离核心生产资产', '不得删除安全证据', '不得绕过双人复核'], capabilities: { agentId: 'a5', model: '受限数据路由 v1', knowledge: ['安全运行手册', '威胁情报库'], skills: ['告警研判', '威胁狩猎'], tools: ['SIEM', 'EDR', 'CMDB'], workflows: ['安全事件响应流'], channels: ['事件中心'] }, memoryPolicy: { shortTermHours: 8, workingDays: 7, longTermCadence: 'weekly', knowledgePromotion: 'approval_required' }, source: 'platform', sourceName: '平台认证模板', status: 'certified', scope: 'organization', applicableEnvironments: ['staging', 'production'], evaluationScore: 93.6, adoptionCount: 8, tags: ['安全', '事件响应', '高风险'], publishedAt: '2026-06-28T08:00:00Z', updatedAt: '2026-07-18T08:00:00Z' },
   { id: 'det-service-desk', name: 'IT 服务台专员', role: '员工 IT 服务', department: '信息技术部', description: '受理常见 IT 服务请求，执行低风险标准操作，并将高风险请求交接至人工处理。', serviceObject: '内部员工', version: '2.1.0', risk: 'medium', responsibilities: ['工单分诊', '知识问答', '受控执行标准操作'], prohibitedActions: ['不得重置高权限账号', '不得绕过变更审批', '不得导出终端数据'], capabilities: { agentId: 'a2', model: '企业通用路由 v2', knowledge: ['IT 服务知识库'], skills: ['工单分诊', '资产查询'], tools: ['CMDB', 'Jira'], workflows: ['IT 服务请求流'], channels: ['企业微信', 'Web'] }, memoryPolicy: { shortTermHours: 12, workingDays: 14, longTermCadence: 'daily', knowledgePromotion: 'approval_required' }, source: 'platform', sourceName: '平台认证模板', status: 'certified', scope: 'organization', applicableEnvironments: ['sandbox', 'staging', 'production'], evaluationScore: 92.8, adoptionCount: 18, tags: ['IT 服务', '服务台', '员工体验'], publishedAt: '2026-06-10T08:00:00Z', updatedAt: '2026-07-16T08:00:00Z' },
@@ -724,30 +724,30 @@ const mockDigitalEmployeeTemplates: DigitalEmployeeTemplate[] = [
 ];
 
 
-mockDigitalEmployeeTemplates.forEach((template) => {
+mockDigitalPartnerTemplates.forEach((template) => {
   template.capabilities = normalizeEmployeeCapabilities(template.capabilities);
 });
 
-const mockDigitalEmployeeTemplateAdoptions: DigitalEmployeeTemplateAdoption[] = [
+const mockDigitalPartnerTemplateAdoptions: DigitalPartnerTemplateAdoption[] = [
   { id: 'deta-1', templateId: 'det-sre', templateVersion: '1.3.0', employeeId: 'de-sre', workspaceId: 'w1', adoptedBy: '王昊', status: 'active', createdAt: '2026-07-20T08:00:00Z' },
   { id: 'deta-2', templateId: 'det-service-desk', templateVersion: '2.1.0', employeeId: 'de-it', workspaceId: 'w1', adoptedBy: '李婷', status: 'active', createdAt: '2026-07-18T09:30:00Z' },
 ];
 
-type DigitalEmployeeConfigurationInput = {
+type DigitalPartnerConfigurationInput = {
   /** capability 装配直接生效；role/缺省仍按在岗·生产·高风险走审批 */
   scope?: 'capability' | 'role';
-  profile: Pick<DigitalEmployee, 'name' | 'role' | 'department' | 'description' | 'owner' | 'escalationOwner' | 'serviceObject' | 'risk' | 'environment'>;
-  boundary: Pick<DigitalEmployee, 'responsibilities' | 'prohibitedActions' | 'handoffPolicy' | 'boundaryPolicy'>;
-  capabilities?: DigitalEmployee['capabilities'];
-  memoryPolicy: DigitalEmployee['memoryPolicy'];
+  profile: Pick<DigitalPartner, 'name' | 'role' | 'department' | 'description' | 'owner' | 'escalationOwner' | 'serviceObject' | 'risk' | 'environment'>;
+  boundary: Pick<DigitalPartner, 'responsibilities' | 'prohibitedActions' | 'handoffPolicy' | 'boundaryPolicy'>;
+  capabilities?: DigitalPartner['capabilities'];
+  memoryPolicy: DigitalPartner['memoryPolicy'];
 };
 
-const mockDigitalEmployeeConfigurationVersions: DigitalEmployeeConfigurationVersion[] = mockDigitalEmployees.map((employee) => ({
+const mockDigitalPartnerConfigurationVersions: DigitalPartnerConfigurationVersion[] = mockDigitalPartners.map((employee) => ({
   id: `decv-${employee.id}-1`, employeeId: employee.id, version: '配置 v1', status: 'current', changeSummary: '初始化岗位配置', changedFields: ['岗位档案', '职责边界', '能力装配', '记忆策略'], updatedBy: employee.owner, updatedAt: employee.updatedAt,
 }));
-const mockDigitalEmployeeConfigurationDrafts = new Map<string, DigitalEmployeeConfigurationInput>();
+const mockDigitalPartnerConfigurationDrafts = new Map<string, DigitalPartnerConfigurationInput>();
 
-function applyDigitalEmployeeConfiguration(employee: DigitalEmployee, input: DigitalEmployeeConfigurationInput) {
+function applyDigitalPartnerConfiguration(employee: DigitalPartner, input: DigitalPartnerConfigurationInput) {
   const scope = input.scope ?? 'role';
   Object.assign(employee, input.profile, {
     responsibilities: [...input.boundary.responsibilities],
@@ -772,7 +772,7 @@ function applyDigitalEmployeeConfiguration(employee: DigitalEmployee, input: Dig
   });
 }
 
-function digitalEmployeeEvidence(employee: DigitalEmployee) {
+function digitalPartnerEvidence(employee: DigitalPartner) {
   const events = [
     { id: `${employee.id}-e1`, time: employee.updatedAt, actor: employee.owner, action: '更新员工配置', target: `${employee.role} · ${employee.name} · v${employee.version}`, result: 'success' },
     { id: `${employee.id}-e2`, time: employee.evaluation.lastRunAt ?? employee.updatedAt, actor: '评测服务', action: '执行质量评测', target: `评分 ${employee.evaluation.score ?? '待执行'}`, result: employee.evaluation.status === 'failed' ? 'failed' : 'success' },
@@ -2690,8 +2690,8 @@ export interface SessionItem {
   preview: string;
   /** 岗位专家显示名（兼容侧栏旧字段） */
   agent: string;
-  digitalEmployeeId?: string;
-  digitalEmployeeName?: string;
+  digitalPartnerId?: string;
+  digitalPartnerName?: string;
   status: 'active' | 'done';
   createdAt: string;
   updatedAt: string;
@@ -2700,13 +2700,13 @@ export interface SessionItem {
 }
 
 export const mockSessions: SessionItem[] = [
-  { id: 's1', workspaceId: 'w1', ownerId: 'u1', correlationId: 'corr_session_s1', title: 'Redis OOM 处理', preview: '已扩容到 16GB + volatile-lru', agent: 'SRE 故障处置专员', digitalEmployeeId: 'de-sre', digitalEmployeeName: 'SRE 故障处置专员', status: 'active', createdAt: '2026-07-22T12:47:00.000Z', updatedAt: '2026-07-22T12:53:42.000Z', lastMessageAt: '2026-07-22T12:53:42.000Z', pinned: true },
-  { id: 's2', workspaceId: 'w1', ownerId: 'u1', correlationId: 'corr_session_s2', title: '合规审计报告生成', preview: '本月 94 项审计已生成 PDF', agent: '安全合规核查专员', digitalEmployeeId: 'de-compliance', digitalEmployeeName: '安全合规核查专员', status: 'done', createdAt: '2026-07-22T10:40:00.000Z', updatedAt: '2026-07-22T11:20:00.000Z', lastMessageAt: '2026-07-22T11:20:00.000Z' },
-  { id: 's3', workspaceId: 'w2', ownerId: 'u2', correlationId: 'corr_session_s3', title: 'K8s 节点扩容申请', preview: '需要 2 个 c5.2xlarge，预计影响 5 个服务', agent: '变更协同专员', digitalEmployeeId: 'de-change', digitalEmployeeName: '变更协同专员', status: 'active', createdAt: '2026-07-22T09:40:00.000Z', updatedAt: '2026-07-22T10:15:00.000Z', lastMessageAt: '2026-07-22T10:15:00.000Z' },
-  { id: 's4', workspaceId: 'w3', ownerId: 'u3', correlationId: 'corr_session_s4', title: 'CVE 周报', preview: '本周 12 个新漏洞，建议优先修复 CVE-2026-3321', agent: '漏洞响应专员', digitalEmployeeId: 'de-vulnerability', digitalEmployeeName: '漏洞响应专员', status: 'done', createdAt: '2026-07-21T16:30:00.000Z', updatedAt: '2026-07-21T17:45:00.000Z', lastMessageAt: '2026-07-21T17:45:00.000Z' },
-  { id: 's5', workspaceId: 'w3', ownerId: 'u3', correlationId: 'corr_session_s5', title: '告警降噪规则', preview: '合并 23 条重复 SIEM 告警', agent: '告警运营专员', digitalEmployeeId: 'de-alert-ops', digitalEmployeeName: '告警运营专员', status: 'done', createdAt: '2026-07-21T14:00:00.000Z', updatedAt: '2026-07-21T14:30:00.000Z', lastMessageAt: '2026-07-21T14:30:00.000Z' },
-  { id: 's6', workspaceId: 'w1', ownerId: 'u1', correlationId: 'corr_session_s6', title: '客户咨询 · 价格问题', preview: '关于 Enterprise Plus 升级方案', agent: 'IT 服务台专员', digitalEmployeeId: 'de-it', digitalEmployeeName: 'IT 服务台专员', status: 'done', createdAt: '2026-07-10T08:30:00.000Z', updatedAt: '2026-07-10T09:10:00.000Z', lastMessageAt: '2026-07-10T09:10:00.000Z' },
-  { id: 's7', workspaceId: 'w2', ownerId: 'u2', correlationId: 'corr_session_s7', title: '容量预测 · Q3', preview: '预计增长 24%，建议提前扩容', agent: '容量与性能专员', digitalEmployeeId: 'de-capacity', digitalEmployeeName: '容量与性能专员', status: 'done', createdAt: '2026-07-09T08:30:00.000Z', updatedAt: '2026-07-09T09:00:00.000Z', lastMessageAt: '2026-07-09T09:00:00.000Z' },
+  { id: 's1', workspaceId: 'w1', ownerId: 'u1', correlationId: 'corr_session_s1', title: 'Redis OOM 处理', preview: '已扩容到 16GB + volatile-lru', agent: 'SRE 故障处置专员', digitalPartnerId: 'de-sre', digitalPartnerName: 'SRE 故障处置专员', status: 'active', createdAt: '2026-07-22T12:47:00.000Z', updatedAt: '2026-07-22T12:53:42.000Z', lastMessageAt: '2026-07-22T12:53:42.000Z', pinned: true },
+  { id: 's2', workspaceId: 'w1', ownerId: 'u1', correlationId: 'corr_session_s2', title: '合规审计报告生成', preview: '本月 94 项审计已生成 PDF', agent: '安全合规核查专员', digitalPartnerId: 'de-compliance', digitalPartnerName: '安全合规核查专员', status: 'done', createdAt: '2026-07-22T10:40:00.000Z', updatedAt: '2026-07-22T11:20:00.000Z', lastMessageAt: '2026-07-22T11:20:00.000Z' },
+  { id: 's3', workspaceId: 'w2', ownerId: 'u2', correlationId: 'corr_session_s3', title: 'K8s 节点扩容申请', preview: '需要 2 个 c5.2xlarge，预计影响 5 个服务', agent: '变更协同专员', digitalPartnerId: 'de-change', digitalPartnerName: '变更协同专员', status: 'active', createdAt: '2026-07-22T09:40:00.000Z', updatedAt: '2026-07-22T10:15:00.000Z', lastMessageAt: '2026-07-22T10:15:00.000Z' },
+  { id: 's4', workspaceId: 'w3', ownerId: 'u3', correlationId: 'corr_session_s4', title: 'CVE 周报', preview: '本周 12 个新漏洞，建议优先修复 CVE-2026-3321', agent: '漏洞响应专员', digitalPartnerId: 'de-vulnerability', digitalPartnerName: '漏洞响应专员', status: 'done', createdAt: '2026-07-21T16:30:00.000Z', updatedAt: '2026-07-21T17:45:00.000Z', lastMessageAt: '2026-07-21T17:45:00.000Z' },
+  { id: 's5', workspaceId: 'w3', ownerId: 'u3', correlationId: 'corr_session_s5', title: '告警降噪规则', preview: '合并 23 条重复 SIEM 告警', agent: '告警运营专员', digitalPartnerId: 'de-alert-ops', digitalPartnerName: '告警运营专员', status: 'done', createdAt: '2026-07-21T14:00:00.000Z', updatedAt: '2026-07-21T14:30:00.000Z', lastMessageAt: '2026-07-21T14:30:00.000Z' },
+  { id: 's6', workspaceId: 'w1', ownerId: 'u1', correlationId: 'corr_session_s6', title: '客户咨询 · 价格问题', preview: '关于 Enterprise Plus 升级方案', agent: 'IT 服务台专员', digitalPartnerId: 'de-it', digitalPartnerName: 'IT 服务台专员', status: 'done', createdAt: '2026-07-10T08:30:00.000Z', updatedAt: '2026-07-10T09:10:00.000Z', lastMessageAt: '2026-07-10T09:10:00.000Z' },
+  { id: 's7', workspaceId: 'w2', ownerId: 'u2', correlationId: 'corr_session_s7', title: '容量预测 · Q3', preview: '预计增长 24%，建议提前扩容', agent: '容量与性能专员', digitalPartnerId: 'de-capacity', digitalPartnerName: '容量与性能专员', status: 'done', createdAt: '2026-07-09T08:30:00.000Z', updatedAt: '2026-07-09T09:00:00.000Z', lastMessageAt: '2026-07-09T09:00:00.000Z' },
 ];
 
 // Slash 命令面板
@@ -2730,7 +2730,7 @@ export const mockConversation: Conversation = {
   workspaceId: 'w1',
   ownerId: 'u1',
   correlationId: 'corr_session_s1',
-  digitalEmployeeId: 'de-sre',
+  digitalPartnerId: 'de-sre',
   agentId: 'a1',
   title: 'Redis OOM 处理',
   createdAt: '2026-07-22T12:47:00.000Z',
@@ -2793,11 +2793,11 @@ export const mockConversation: Conversation = {
 
 // ============ 记忆中心：受控运行记忆，不作为权威知识直接使用 ============
 const memoryRecords: MemoryRecord[] = [
-  { id: 'mem-short-1', workspaceId: 'w1', ownerId: 'u1', digitalEmployeeId: 'de-sre', layer: 'short_term', scope: 'user', title: 'Redis OOM 会话上下文', content: '当前会话已确认 prod-redis-01 的 maxmemory 风险，等待双重审批执行。', classification: 'internal', sourceType: 'conversation', sourceId: 'cv1', correlationId: 'corr_conversation_cv1', confidence: .92, status: 'active', expiresAt: '2026-07-22T08:00:00.000Z', createdAt: '2026-07-21T08:12:00.000Z', updatedAt: '2026-07-21T08:24:00.000Z' },
-  { id: 'mem-work-1', workspaceId: 'w1', ownerId: 'u1', digitalEmployeeId: 'de-sre', layer: 'working', scope: 'team', title: 'TSK-20260713-001 处置上下文', content: '已完成内存趋势验证与大 Key 识别；人工接管前需保留执行证据。', classification: 'internal', sourceType: 'task', sourceId: 't1', correlationId: 'corr_task_t1', confidence: .96, status: 'active', expiresAt: '2026-08-20T00:00:00.000Z', createdAt: '2026-07-13T08:24:00.000Z', updatedAt: '2026-07-21T08:24:00.000Z' },
-  { id: 'mem-long-1', workspaceId: 'w1', ownerId: 'u1', digitalEmployeeId: 'de-sre', layer: 'long_term', scope: 'workspace', title: 'Redis OOM 处置偏好', content: '生产 Redis OOM 优先检索已发布 Runbook；涉及配置写入必须由 SRE 与管理员完成双重审批。', classification: 'restricted', sourceType: 'workflow', sourceId: 'wf1', correlationId: 'corr_task_t1', confidence: .91, status: 'active', createdAt: '2026-07-18T09:00:00.000Z', updatedAt: '2026-07-21T08:24:00.000Z' },
-  { id: 'mem-long-pending', workspaceId: 'w1', ownerId: 'u1', digitalEmployeeId: 'de-alert-ops', layer: 'long_term', scope: 'workspace', title: '告警静默窗口经验', content: '重大活动窗口内对已知抖动告警可建议静默，但不得自动关闭 P1；需值班经理确认后执行。', classification: 'confidential', sourceType: 'task', sourceId: 't-dispatch-1', correlationId: 'corr_task_t-dispatch-1', confidence: .89, status: 'pending_review', createdAt: '2026-07-20T10:00:00.000Z', updatedAt: '2026-07-21T09:00:00.000Z' },
-  { id: 'mem-long-2', workspaceId: 'w2', ownerId: 'u2', digitalEmployeeId: 'de-capacity', layer: 'long_term', scope: 'workspace', title: '预发扩容验收规则', content: '预发扩容先完成 10% 灰度与回滚演练，再提交生产发布审批。', classification: 'internal', sourceType: 'task', sourceId: 't6', correlationId: 'corr_task_t6', confidence: .88, status: 'active', createdAt: '2026-07-17T09:00:00.000Z', updatedAt: '2026-07-20T08:00:00.000Z' },
+  { id: 'mem-short-1', workspaceId: 'w1', ownerId: 'u1', digitalPartnerId: 'de-sre', layer: 'short_term', scope: 'user', title: 'Redis OOM 会话上下文', content: '当前会话已确认 prod-redis-01 的 maxmemory 风险，等待双重审批执行。', classification: 'internal', sourceType: 'conversation', sourceId: 'cv1', correlationId: 'corr_conversation_cv1', confidence: .92, status: 'active', expiresAt: '2026-07-22T08:00:00.000Z', createdAt: '2026-07-21T08:12:00.000Z', updatedAt: '2026-07-21T08:24:00.000Z' },
+  { id: 'mem-work-1', workspaceId: 'w1', ownerId: 'u1', digitalPartnerId: 'de-sre', layer: 'working', scope: 'team', title: 'TSK-20260713-001 处置上下文', content: '已完成内存趋势验证与大 Key 识别；人工接管前需保留执行证据。', classification: 'internal', sourceType: 'task', sourceId: 't1', correlationId: 'corr_task_t1', confidence: .96, status: 'active', expiresAt: '2026-08-20T00:00:00.000Z', createdAt: '2026-07-13T08:24:00.000Z', updatedAt: '2026-07-21T08:24:00.000Z' },
+  { id: 'mem-long-1', workspaceId: 'w1', ownerId: 'u1', digitalPartnerId: 'de-sre', layer: 'long_term', scope: 'workspace', title: 'Redis OOM 处置偏好', content: '生产 Redis OOM 优先检索已发布 Runbook；涉及配置写入必须由 SRE 与管理员完成双重审批。', classification: 'restricted', sourceType: 'workflow', sourceId: 'wf1', correlationId: 'corr_task_t1', confidence: .91, status: 'active', createdAt: '2026-07-18T09:00:00.000Z', updatedAt: '2026-07-21T08:24:00.000Z' },
+  { id: 'mem-long-pending', workspaceId: 'w1', ownerId: 'u1', digitalPartnerId: 'de-alert-ops', layer: 'long_term', scope: 'workspace', title: '告警静默窗口经验', content: '重大活动窗口内对已知抖动告警可建议静默，但不得自动关闭 P1；需值班经理确认后执行。', classification: 'confidential', sourceType: 'task', sourceId: 't-dispatch-1', correlationId: 'corr_task_t-dispatch-1', confidence: .89, status: 'pending_review', createdAt: '2026-07-20T10:00:00.000Z', updatedAt: '2026-07-21T09:00:00.000Z' },
+  { id: 'mem-long-2', workspaceId: 'w2', ownerId: 'u2', digitalPartnerId: 'de-capacity', layer: 'long_term', scope: 'workspace', title: '预发扩容验收规则', content: '预发扩容先完成 10% 灰度与回滚演练，再提交生产发布审批。', classification: 'internal', sourceType: 'task', sourceId: 't6', correlationId: 'corr_task_t6', confidence: .88, status: 'active', createdAt: '2026-07-17T09:00:00.000Z', updatedAt: '2026-07-20T08:00:00.000Z' },
 ];
 const memoryCandidates: MemoryKnowledgeCandidate[] = [
   { id: 'mc-1', workspaceId: 'w1', memoryId: 'mem-long-pending', title: '告警静默窗口经验', summary: '重大活动窗口内对已知抖动告警可建议静默，但不得自动关闭 P1；需值班经理确认后执行。', classification: 'confidential', sourceCorrelationId: 'corr_task_t-dispatch-1', status: 'pending_review', submittedAt: '2026-07-21T09:00:00.000Z' },
@@ -2881,7 +2881,7 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
     const source = buildHomeExtraLive({
       workspaceId,
       tasks: taskDomain.list().filter((task) => !task.workspaceId || task.workspaceId === workspaceId),
-      employees: mockDigitalEmployees.filter((item) => item.workspaceId === workspaceId),
+      employees: mockDigitalPartners.filter((item) => item.workspaceId === workspaceId),
       sessions: mockSessions.filter((item) => item.workspaceId === workspaceId),
       members,
       usageMeters: mockUsageMeters.filter((item) => item.workspaceId === workspaceId),
@@ -2894,7 +2894,7 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
   if (path === '/api/home/kpis') {
     const extra = homeExtraLiveFor(requestedWorkspaceId);
     return {
-      activeDigitalEmployees: extra.operationalMetrics.activeAgents,
+      activeDigitalPartners: extra.operationalMetrics.activeAgents,
       openTasks: extra.taskCompletion.doing + extra.taskCompletion.review + extra.taskCompletion.todo,
       riskTasks: extra.slaAlerts.length,
       pendingApprovals: mockReleaseApprovals.filter((item) => item.workspaceId === requestedWorkspaceId && item.status === 'pending').length,
@@ -3141,7 +3141,7 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
   if (workspaceAction) { const [, id, action] = workspaceAction; const workspace = requireWorkspace(id, action !== 'impact' && action !== 'report'); const body = (opts.body ?? {}) as any; if (action === 'impact') return { blocked: workspaceBindings.some((item) => item.workspaceId === id && item.status === 'active'), bindings: workspaceBindings.filter((item) => item.workspaceId === id) }; if (action === 'report') return { workspace, quota: workspaceQuotas.find((item) => item.workspaceId === id), governanceScore: workspace.complianceScore, auditCount: workspaceAudits.filter((item) => item.workspaceId === id).length }; if (action === 'freeze' || action === 'archive') { if (workspaceBindings.some((item) => item.workspaceId === id && item.status === 'active') && !body.force) throw new Error('E_WORKSPACE_IN_USE'); workspace.status = action === 'freeze' ? 'frozen' : 'archived'; workspaceAudit(id, action === 'freeze' ? '冻结工作区' : '归档工作区', workspace.name, 'success', body.reason); return workspace; } if (action === 'transfer') { if (!body.ownerId) throw new Error('E_WORKSPACE_OWNER_REQUIRED'); workspace.ownerId = body.ownerId; workspaceAudit(id, '移交工作区负责人', workspace.name, 'success', body.reason); return workspace; } const event: WorkspaceRuntimeEvent = { id: mockId('runtime'), workspaceId: id, type: body.type ?? 'incident', status: 'open', detail: body.detail ?? '运行治理动作', createdAt: new Date().toISOString() }; workspaceRuntimeEvents.unshift(event); workspaceAudit(id, `运行治理：${event.type}`, workspace.name, 'success', body.reason); return event; }
   if (path.startsWith('/api/workspaces/') && path.endsWith('/partners')) {
     const id = path.split('/')[3]; requireWorkspace(id);
-    return mockDigitalEmployees
+    return mockDigitalPartners
       .filter((item) => item.workspaceId === id)
       .map((item) => ({ id: item.id, name: item.name, role: item.role, department: item.department, lifecycle: item.lifecycle, environment: item.environment }));
   }
@@ -3165,7 +3165,7 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
     return buildOpsOverviewLive({
       workspaceId: currentWorkspaceId,
       tasks: taskDomain.list().filter((task) => !task.workspaceId || task.workspaceId === currentWorkspaceId),
-      employees: mockDigitalEmployees.filter((item) => item.workspaceId === currentWorkspaceId),
+      employees: mockDigitalPartners.filter((item) => item.workspaceId === currentWorkspaceId),
       deadLetterCount: deadLetters.length,
       pendingApprovals,
       pendingBackups,
@@ -3186,7 +3186,7 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
     if (!body.title?.trim() || !body.content?.trim() || !body.layer) throw new Error('E_MEMORY_INVALID: 标题、内容与记忆层级不能为空');
     if (body.layer === 'long_term' && (memoryPolicies.find((item) => item.workspaceId === currentWorkspaceId)?.longTermWriteApproval ?? true)) throw new Error('E_MEMORY_APPROVAL_REQUIRED: 长期记忆写入需要通过提炼审核');
     const now = new Date().toISOString();
-    const record: MemoryRecord = { id: mockId('memory'), workspaceId: currentWorkspaceId, ownerId: identity?.id ?? 'u1', digitalEmployeeId: body.digitalEmployeeId, layer: body.layer, scope: body.scope ?? 'user', title: body.title.trim(), content: body.content.trim(), classification: body.classification ?? 'internal', sourceType: body.sourceType ?? 'manual', sourceId: body.sourceId ?? 'manual', correlationId: body.correlationId ?? mockId('memory_corr'), confidence: body.confidence ?? .8, status: 'active', expiresAt: body.expiresAt, createdAt: now, updatedAt: now };
+    const record: MemoryRecord = { id: mockId('memory'), workspaceId: currentWorkspaceId, ownerId: identity?.id ?? 'u1', digitalPartnerId: body.digitalPartnerId, layer: body.layer, scope: body.scope ?? 'user', title: body.title.trim(), content: body.content.trim(), classification: body.classification ?? 'internal', sourceType: body.sourceType ?? 'manual', sourceId: body.sourceId ?? 'manual', correlationId: body.correlationId ?? mockId('memory_corr'), confidence: body.confidence ?? .8, status: 'active', expiresAt: body.expiresAt, createdAt: now, updatedAt: now };
     memoryRecords.unshift(record); memoryAudit('写入记忆', record.title, 'success', record.correlationId); return record;
   }
   const memoryRecordRoute = path.match(/^\/api\/memory\/records\/([^/]+)(?:\/(expire|candidate))?$/);
@@ -3225,11 +3225,11 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
     const now = new Date().toISOString(); let workingCreated = 0; let longCreated = 0; let candidatesCreated = 0;
     if (policy.shortToWorkingEnabled) memoryRecords.filter((item) => inCurrentWorkspace(item) && item.layer === 'short_term' && item.status === 'active').forEach((source) => {
       if (memoryRecords.some((item) => item.layer === 'working' && item.sourceId === source.sourceId)) return;
-      memoryRecords.unshift({ ...source, id: mockId('memory_work'), digitalEmployeeId: source.digitalEmployeeId, layer: 'working', scope: 'team', title: `${source.title} · 会话摘要`, content: `每日归纳：${source.content}`, confidence: Math.min(.99, source.confidence + .02), expiresAt: new Date(Date.now() + policy.workingMemoryTtlDays * 86400000).toISOString(), createdAt: now, updatedAt: now }); workingCreated += 1;
+      memoryRecords.unshift({ ...source, id: mockId('memory_work'), digitalPartnerId: source.digitalPartnerId, layer: 'working', scope: 'team', title: `${source.title} · 会话摘要`, content: `每日归纳：${source.content}`, confidence: Math.min(.99, source.confidence + .02), expiresAt: new Date(Date.now() + policy.workingMemoryTtlDays * 86400000).toISOString(), createdAt: now, updatedAt: now }); workingCreated += 1;
     });
     if (policy.workingToLongEnabled) memoryRecords.filter((item) => inCurrentWorkspace(item) && item.layer === 'working' && item.status === 'active' && item.confidence >= policy.minimumConfidence).forEach((source) => {
       if (memoryRecords.some((item) => item.layer === 'long_term' && item.sourceId === source.sourceId)) return;
-      memoryRecords.unshift({ ...source, id: mockId('memory_long'), digitalEmployeeId: source.digitalEmployeeId, layer: 'long_term', scope: 'workspace', title: `${source.title} · 日结经验`, content: `经每日提炼的可复用经验：${source.content}`, status: 'active', createdAt: now, updatedAt: now }); longCreated += 1;
+      memoryRecords.unshift({ ...source, id: mockId('memory_long'), digitalPartnerId: source.digitalPartnerId, layer: 'long_term', scope: 'workspace', title: `${source.title} · 日结经验`, content: `经每日提炼的可复用经验：${source.content}`, status: 'active', createdAt: now, updatedAt: now }); longCreated += 1;
     });
     if (policy.longToKnowledgeEnabled) memoryRecords.filter((item) => inCurrentWorkspace(item) && item.layer === 'long_term' && item.status === 'active' && item.confidence >= policy.minimumConfidence).forEach((source) => {
       if (memoryCandidates.some((item) => item.memoryId === source.id && item.status === 'pending_review')) return;
@@ -3394,10 +3394,10 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
 
   // 智能体
   // 数字伙伴：业务岗位对象。其能力引用技术资产，但不复用 /api/agents 的技术语义。
-  if (path === '/api/digital-employee-templates' && method === 'GET') return mockDigitalEmployeeTemplates.filter((item) => item.scope === 'organization' || item.workspaceId === currentWorkspaceId);
-  if (path === '/api/digital-employee-template-adoptions' && method === 'GET') return mockDigitalEmployeeTemplateAdoptions.filter((item) => item.workspaceId === currentWorkspaceId);
+  if (path === '/api/partner-templates' && method === 'GET') return mockDigitalPartnerTemplates.filter((item) => item.scope === 'organization' || item.workspaceId === currentWorkspaceId);
+  if (path === '/api/partner-template-adoptions' && method === 'GET') return mockDigitalPartnerTemplateAdoptions.filter((item) => item.workspaceId === currentWorkspaceId);
   // 数字伙伴仅能从各能力中心已准入/已发布资产中选择，不能由前端手填名称。
-  if (path === '/api/digital-employee-capability-catalog' && method === 'GET') {
+  if (path === '/api/partner-capability-catalog' && method === 'GET') {
     const allModels = modelProviders.flatMap((provider) => provider.models.map((model) => ({ ...model, providerName: provider.name, providerStatus: provider.status, providerWorkspaceId: provider.workspaceId })));
     const routeOptions = routingPolicies
       .filter((policy) => policy.workspaceId === currentWorkspaceId && policy.status === 'published')
@@ -3434,37 +3434,37 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
     ];
     return { models, knowledge: knowledgeOptions, skills: skillOptions, tools: toolOptions, workflows: workflowOptions, channels: channelOptions };
   }
-  if (path === '/api/digital-employee-templates' && method === 'POST') {
+  if (path === '/api/partner-templates' && method === 'POST') {
     requireAdministrator('发布部门岗位模板');
-    const body = (opts.body ?? {}) as Partial<DigitalEmployeeTemplate>;
+    const body = (opts.body ?? {}) as Partial<DigitalPartnerTemplate>;
     if (!body.name?.trim() || !body.role?.trim() || !body.department?.trim()) throw new Error('E_DIGITAL_EMPLOYEE_TEMPLATE_REQUIRED');
-    const template: DigitalEmployeeTemplate = { id: mockId('digital_employee_template'), name: body.name.trim(), role: body.role.trim(), department: body.department.trim(), description: body.description?.trim() || '待完善岗位模板说明。', serviceObject: body.serviceObject?.trim() || '内部用户', version: '0.1.0', risk: body.risk ?? 'low', responsibilities: body.responsibilities?.length ? body.responsibilities : ['待配置岗位职责'], prohibitedActions: body.prohibitedActions?.length ? body.prohibitedActions : ['待配置禁止行为'], capabilities: body.capabilities ?? { model: '企业通用路由 v2', knowledge: [], skills: [], tools: [], workflows: [], channels: ['Web'] }, memoryPolicy: body.memoryPolicy ?? { shortTermHours: 24, workingDays: 7, longTermCadence: 'daily', knowledgePromotion: 'approval_required' }, source: 'department', sourceName: `${body.department.trim()}共享模板`, status: 'review', scope: 'workspace', workspaceId: currentWorkspaceId, applicableEnvironments: body.applicableEnvironments ?? ['sandbox'], adoptionCount: 0, tags: body.tags ?? [], publishedAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
-    mockDigitalEmployeeTemplates.unshift(template); workspaceAudit(currentWorkspaceId, '发布部门岗位模板', template.name); return template;
+    const template: DigitalPartnerTemplate = { id: mockId('partner_template'), name: body.name.trim(), role: body.role.trim(), department: body.department.trim(), description: body.description?.trim() || '待完善岗位模板说明。', serviceObject: body.serviceObject?.trim() || '内部用户', version: '0.1.0', risk: body.risk ?? 'low', responsibilities: body.responsibilities?.length ? body.responsibilities : ['待配置岗位职责'], prohibitedActions: body.prohibitedActions?.length ? body.prohibitedActions : ['待配置禁止行为'], capabilities: body.capabilities ?? { model: '企业通用路由 v2', knowledge: [], skills: [], tools: [], workflows: [], channels: ['Web'] }, memoryPolicy: body.memoryPolicy ?? { shortTermHours: 24, workingDays: 7, longTermCadence: 'daily', knowledgePromotion: 'approval_required' }, source: 'department', sourceName: `${body.department.trim()}共享模板`, status: 'review', scope: 'workspace', workspaceId: currentWorkspaceId, applicableEnvironments: body.applicableEnvironments ?? ['sandbox'], adoptionCount: 0, tags: body.tags ?? [], publishedAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    mockDigitalPartnerTemplates.unshift(template); workspaceAudit(currentWorkspaceId, '发布部门岗位模板', template.name); return template;
   }
-  const digitalEmployeeTemplateRoute = path.match(/^\/api\/digital-employee-templates\/([^/]+)(?:\/(adopt))?$/);
-  if (digitalEmployeeTemplateRoute) {
-    const [, templateId, action] = digitalEmployeeTemplateRoute;
-    const template = mockDigitalEmployeeTemplates.find((item) => item.id === templateId && (item.scope === 'organization' || item.workspaceId === currentWorkspaceId));
+  const digitalPartnerTemplateRoute = path.match(/^\/api\/partner-templates\/([^/]+)(?:\/(adopt))?$/);
+  if (digitalPartnerTemplateRoute) {
+    const [, templateId, action] = digitalPartnerTemplateRoute;
+    const template = mockDigitalPartnerTemplates.find((item) => item.id === templateId && (item.scope === 'organization' || item.workspaceId === currentWorkspaceId));
     if (!template) throw new Error('E_DIGITAL_EMPLOYEE_TEMPLATE_NOT_FOUND');
     if (!action && method === 'GET') return template;
     if (action === 'adopt' && method === 'POST') {
       if (!identity || identity.role === 'auditor') throw new Error('E_DIGITAL_EMPLOYEE_WRITE_FORBIDDEN');
       if (template.status === 'deprecated') throw new Error('E_DIGITAL_EMPLOYEE_TEMPLATE_DEPRECATED');
-      const body = (opts.body ?? {}) as Partial<Pick<DigitalEmployee, 'owner' | 'escalationOwner' | 'environment' | 'department' | 'name'>>;
-      const employee: DigitalEmployee = { id: mockId('digital_employee'), workspaceId: currentWorkspaceId, name: body.name?.trim() || template.name, role: template.role, department: body.department?.trim() || template.department, description: template.description, owner: body.owner?.trim() || identity.name, escalationOwner: body.escalationOwner?.trim() || '待指定', serviceObject: template.serviceObject, version: template.version, environment: body.environment ?? 'sandbox', lifecycle: 'draft', risk: template.risk, responsibilities: [...template.responsibilities], prohibitedActions: [...template.prohibitedActions], capabilities: { ...template.capabilities, knowledge: [...template.capabilities.knowledge], skills: [...template.capabilities.skills], tools: [...template.capabilities.tools], workflows: [...template.capabilities.workflows], channels: [...template.capabilities.channels] }, memoryPolicy: { ...template.memoryPolicy }, runtime: { calls24h: 0, successRate: 0, p95Ms: 0, costToday: 0, handoffs24h: 0, anomalies: 0 }, evaluation: { status: 'not_started' }, release: { status: 'not_released' }, templateId: template.id, templateVersion: template.version, updatedAt: new Date().toISOString() };
-      mockDigitalEmployees.unshift(employee); template.adoptionCount += 1; mockDigitalEmployeeTemplateAdoptions.unshift({ id: mockId('digital_employee_adoption'), templateId: template.id, templateVersion: template.version, employeeId: employee.id, workspaceId: currentWorkspaceId, adoptedBy: identity.name, status: 'draft', createdAt: new Date().toISOString() }); workspaceAudit(currentWorkspaceId, '采用岗位模板', `${template.name} · v${template.version}`); return employee;
+      const body = (opts.body ?? {}) as Partial<Pick<DigitalPartner, 'owner' | 'escalationOwner' | 'environment' | 'department' | 'name'>>;
+      const employee: DigitalPartner = { id: mockId('digital_employee'), workspaceId: currentWorkspaceId, name: body.name?.trim() || template.name, role: template.role, department: body.department?.trim() || template.department, description: template.description, owner: body.owner?.trim() || identity.name, escalationOwner: body.escalationOwner?.trim() || '待指定', serviceObject: template.serviceObject, version: template.version, environment: body.environment ?? 'sandbox', lifecycle: 'draft', risk: template.risk, responsibilities: [...template.responsibilities], prohibitedActions: [...template.prohibitedActions], capabilities: { ...template.capabilities, knowledge: [...template.capabilities.knowledge], skills: [...template.capabilities.skills], tools: [...template.capabilities.tools], workflows: [...template.capabilities.workflows], channels: [...template.capabilities.channels] }, memoryPolicy: { ...template.memoryPolicy }, runtime: { calls24h: 0, successRate: 0, p95Ms: 0, costToday: 0, handoffs24h: 0, anomalies: 0 }, evaluation: { status: 'not_started' }, release: { status: 'not_released' }, templateId: template.id, templateVersion: template.version, updatedAt: new Date().toISOString() };
+      mockDigitalPartners.unshift(employee); template.adoptionCount += 1; mockDigitalPartnerTemplateAdoptions.unshift({ id: mockId('partner_adoption'), templateId: template.id, templateVersion: template.version, employeeId: employee.id, workspaceId: currentWorkspaceId, adoptedBy: identity.name, status: 'draft', createdAt: new Date().toISOString() }); workspaceAudit(currentWorkspaceId, '采用岗位模板', `${template.name} · v${template.version}`); return employee;
     }
     if (!action && method === 'PATCH') {
       requireAdministrator('治理岗位模板');
-      const body = (opts.body ?? {}) as Partial<Pick<DigitalEmployeeTemplate, 'status' | 'version' | 'description' | 'tags'>>;
+      const body = (opts.body ?? {}) as Partial<Pick<DigitalPartnerTemplate, 'status' | 'version' | 'description' | 'tags'>>;
       if (body.status && !['certified', 'review', 'deprecated'].includes(body.status)) throw new Error('E_DIGITAL_EMPLOYEE_TEMPLATE_STATUS_INVALID');
       Object.assign(template, body, { updatedAt: new Date().toISOString() }); workspaceAudit(currentWorkspaceId, '治理岗位模板', `${template.name} · ${template.status}`); return template;
     }
   }
-  if (path === '/api/digital-employees' && method === 'GET') {
+  if (path === '/api/partners' && method === 'GET') {
     const departmentOrder = ['研发部', '销售部', '市场部', '运营部', '人事部', '财务部', '信息技术部'];
     const isHead = (item: { id: string; name: string; role?: string }) => /-(manager|head)$/.test(item.id) || Boolean(item.role && /部负责人$|部经理$|负责人$|经理$|总监$|主管$/.test(item.role));
-    return mockDigitalEmployees
+    return mockDigitalPartners
       .filter((item) => item.workspaceId === currentWorkspaceId)
       .slice()
       .sort((left, right) => {
@@ -3477,8 +3477,8 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
         return left.name.localeCompare(right.name, 'zh-CN');
       });
   }
-  if (path === '/api/digital-employees/overview' && method === 'GET') {
-    const employees = mockDigitalEmployees.filter((item) => item.workspaceId === currentWorkspaceId);
+  if (path === '/api/partners/overview' && method === 'GET') {
+    const employees = mockDigitalPartners.filter((item) => item.workspaceId === currentWorkspaceId);
     return {
       total: employees.length,
       active: employees.filter((item) => item.lifecycle === 'active').length,
@@ -3488,43 +3488,43 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
       costToday: Number(employees.reduce((sum, item) => sum + item.runtime.costToday, 0).toFixed(2)),
     };
   }
-  if (path === '/api/digital-employees' && method === 'POST') {
+  if (path === '/api/partners' && method === 'POST') {
     if (!identity || identity.role === 'auditor') throw new Error('E_DIGITAL_EMPLOYEE_WRITE_FORBIDDEN');
-    const body = (opts.body ?? {}) as Partial<DigitalEmployee>;
+    const body = (opts.body ?? {}) as Partial<DigitalPartner>;
     if (!body.name?.trim() || !body.role?.trim() || !body.department?.trim()) throw new Error('E_DIGITAL_EMPLOYEE_PROFILE_REQUIRED');
-    const employee: DigitalEmployee = {
+    const employee: DigitalPartner = {
       id: mockId('digital_employee'), workspaceId: currentWorkspaceId, name: body.name.trim(), role: body.role.trim(), department: body.department.trim(),
       description: body.description?.trim() || '待完善岗位职责说明。', owner: identity.name, escalationOwner: body.escalationOwner?.trim() || '待指定', serviceObject: body.serviceObject?.trim() || '内部用户', version: '0.1.0', environment: 'sandbox', lifecycle: 'draft', risk: body.risk ?? 'low',
       responsibilities: body.responsibilities?.length ? body.responsibilities : ['待配置岗位职责'], prohibitedActions: body.prohibitedActions?.length ? body.prohibitedActions : ['待配置禁止行为'],
       capabilities: body.capabilities ?? { model: '企业通用路由 v2', knowledge: [], skills: [], tools: [], workflows: [], channels: ['Web'] },
       memoryPolicy: body.memoryPolicy ?? { shortTermHours: 24, workingDays: 7, longTermCadence: 'daily', knowledgePromotion: 'approval_required' }, runtime: { calls24h: 0, successRate: 0, p95Ms: 0, costToday: 0, handoffs24h: 0, anomalies: 0 }, evaluation: { status: 'not_started' }, release: { status: 'not_released' }, updatedAt: new Date().toISOString(),
     };
-    mockDigitalEmployees.unshift(employee); workspaceAudit(currentWorkspaceId, '创建数字伙伴', `${employee.role} · ${employee.name}`); return employee;
+    mockDigitalPartners.unshift(employee); workspaceAudit(currentWorkspaceId, '创建数字伙伴', `${employee.role} · ${employee.name}`); return employee;
   }
-  const digitalEmployeeConfigurationVersionsRoute = path.match(/^\/api\/digital-employees\/([^/]+)\/configuration-versions(?:\/([^/]+)\/approve)?$/);
-  if (digitalEmployeeConfigurationVersionsRoute) {
-    const [, employeeId, versionId] = digitalEmployeeConfigurationVersionsRoute;
-    const employee = mockDigitalEmployees.find((item) => item.id === employeeId && item.workspaceId === currentWorkspaceId);
+  const digitalPartnerConfigurationVersionsRoute = path.match(/^\/api\/partners\/([^/]+)\/configuration-versions(?:\/([^/]+)\/approve)?$/);
+  if (digitalPartnerConfigurationVersionsRoute) {
+    const [, employeeId, versionId] = digitalPartnerConfigurationVersionsRoute;
+    const employee = mockDigitalPartners.find((item) => item.id === employeeId && item.workspaceId === currentWorkspaceId);
     if (!employee) throw new Error('E_DIGITAL_EMPLOYEE_NOT_FOUND');
-    if (!versionId && method === 'GET') return mockDigitalEmployeeConfigurationVersions.filter((item) => item.employeeId === employee.id);
+    if (!versionId && method === 'GET') return mockDigitalPartnerConfigurationVersions.filter((item) => item.employeeId === employee.id);
     if (versionId && method === 'POST') {
       requireAdministrator('批准员工受控配置变更');
-      const version = mockDigitalEmployeeConfigurationVersions.find((item) => item.id === versionId && item.employeeId === employee.id);
-      const draft = mockDigitalEmployeeConfigurationDrafts.get(versionId);
+      const version = mockDigitalPartnerConfigurationVersions.find((item) => item.id === versionId && item.employeeId === employee.id);
+      const draft = mockDigitalPartnerConfigurationDrafts.get(versionId);
       if (!version || !draft || version.status !== 'pending_approval') throw new Error('E_DIGITAL_EMPLOYEE_CONFIGURATION_CHANGE_NOT_FOUND');
       if (version.updatedById && identity && version.updatedById === identity.id) throw new Error('E_SOD_SELF_APPROVAL: 配置提交人不能批准自己的受控变更');
       if (!version.updatedById && identity && version.updatedBy === identity.name) throw new Error('E_SOD_SELF_APPROVAL: 配置提交人不能批准自己的受控变更');
-      mockDigitalEmployeeConfigurationVersions.filter((item) => item.employeeId === employee.id && item.status === 'current').forEach((item) => { item.status = 'superseded'; });
-      applyDigitalEmployeeConfiguration(employee, draft); version.status = 'current'; version.updatedAt = new Date().toISOString(); mockDigitalEmployeeConfigurationDrafts.delete(versionId);
+      mockDigitalPartnerConfigurationVersions.filter((item) => item.employeeId === employee.id && item.status === 'current').forEach((item) => { item.status = 'superseded'; });
+      applyDigitalPartnerConfiguration(employee, draft); version.status = 'current'; version.updatedAt = new Date().toISOString(); mockDigitalPartnerConfigurationDrafts.delete(versionId);
       workspaceAudit(currentWorkspaceId, '批准员工受控配置变更', `${employee.role} · ${employee.name} · ${version.version} · 批准人 ${identity?.name ?? '平台管理员'}`); return version;
     }
   }
-  const digitalEmployeeConfigurationRoute = path.match(/^\/api\/digital-employees\/([^/]+)\/configuration$/);
-  if (digitalEmployeeConfigurationRoute && method === 'POST') {
-    const employee = mockDigitalEmployees.find((item) => item.id === digitalEmployeeConfigurationRoute[1] && item.workspaceId === currentWorkspaceId);
+  const digitalPartnerConfigurationRoute = path.match(/^\/api\/partners\/([^/]+)\/configuration$/);
+  if (digitalPartnerConfigurationRoute && method === 'POST') {
+    const employee = mockDigitalPartners.find((item) => item.id === digitalPartnerConfigurationRoute[1] && item.workspaceId === currentWorkspaceId);
     if (!employee) throw new Error('E_DIGITAL_EMPLOYEE_NOT_FOUND');
     if (!identity || identity.role === 'auditor') throw new Error('E_DIGITAL_EMPLOYEE_WRITE_FORBIDDEN');
-    const body = (opts.body ?? {}) as DigitalEmployeeConfigurationInput;
+    const body = (opts.body ?? {}) as DigitalPartnerConfigurationInput;
     const scope = body.scope ?? 'role';
     if (!body.profile?.name?.trim() || !body.profile?.role?.trim() || !body.profile?.department?.trim()) throw new Error('E_DIGITAL_EMPLOYEE_CONFIGURATION_REQUIRED');
     if (scope === 'capability' && !body.capabilities?.model?.trim()) throw new Error('E_DIGITAL_EMPLOYEE_CONFIGURATION_REQUIRED');
@@ -3548,21 +3548,21 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
     ].filter(Boolean) as string[];
     // 岗位授权契约与能力装配均直接生效（历史 pending 版本仍可走 approve）。
     const requiresApproval = false;
-    const revisions = mockDigitalEmployeeConfigurationVersions.filter((item) => item.employeeId === employee.id).length + 1;
-    const version: DigitalEmployeeConfigurationVersion = { id: mockId('digital_employee_config'), employeeId: employee.id, version: `配置 v${revisions}`, status: 'current', changeSummary: body.scope === 'capability' ? '更新能力装配' : '更新岗位授权契约', changedFields: changedFields.length ? changedFields : ['职责与边界'], updatedBy: identity.name, updatedById: identity.id, updatedAt: new Date().toISOString() };
-    mockDigitalEmployeeConfigurationVersions.filter((item) => item.employeeId === employee.id && item.status === 'current').forEach((item) => { item.status = 'superseded'; });
-    applyDigitalEmployeeConfiguration(employee, body);
+    const revisions = mockDigitalPartnerConfigurationVersions.filter((item) => item.employeeId === employee.id).length + 1;
+    const version: DigitalPartnerConfigurationVersion = { id: mockId('partner_config'), employeeId: employee.id, version: `配置 v${revisions}`, status: 'current', changeSummary: body.scope === 'capability' ? '更新能力装配' : '更新岗位授权契约', changedFields: changedFields.length ? changedFields : ['职责与边界'], updatedBy: identity.name, updatedById: identity.id, updatedAt: new Date().toISOString() };
+    mockDigitalPartnerConfigurationVersions.filter((item) => item.employeeId === employee.id && item.status === 'current').forEach((item) => { item.status = 'superseded'; });
+    applyDigitalPartnerConfiguration(employee, body);
     workspaceAudit(currentWorkspaceId, '更新员工配置', `${employee.role} · ${employee.name} · ${version.version}`);
-    mockDigitalEmployeeConfigurationVersions.unshift(version); return { ...version, requiresApproval };
+    mockDigitalPartnerConfigurationVersions.unshift(version); return { ...version, requiresApproval };
   }
-  const digitalEmployeeRoute = path.match(/^\/api\/digital-employees\/([^/]+)(?:\/(capabilities|boundary|memory-policy|evaluate|release|lifecycle|runtime|evidence)(?:\/(withdraw|reject))?)?$/);
-  if (digitalEmployeeRoute) {
-    const [, employeeId, action, releaseAction] = digitalEmployeeRoute;
-    const employee = mockDigitalEmployees.find((item) => item.id === employeeId && item.workspaceId === currentWorkspaceId);
+  const digitalPartnerRoute = path.match(/^\/api\/partners\/([^/]+)(?:\/(capabilities|boundary|memory-policy|evaluate|release|lifecycle|runtime|evidence)(?:\/(withdraw|reject))?)?$/);
+  if (digitalPartnerRoute) {
+    const [, employeeId, action, releaseAction] = digitalPartnerRoute;
+    const employee = mockDigitalPartners.find((item) => item.id === employeeId && item.workspaceId === currentWorkspaceId);
     if (!employee) throw new Error('E_DIGITAL_EMPLOYEE_NOT_FOUND');
     if (!action && method === 'GET') return employee;
     if (action === 'runtime' && method === 'GET') return employee.runtime;
-    if (action === 'evidence' && method === 'GET') return digitalEmployeeEvidence(employee);
+    if (action === 'evidence' && method === 'GET') return digitalPartnerEvidence(employee);
     if (!identity || identity.role === 'auditor') throw new Error('E_DIGITAL_EMPLOYEE_WRITE_FORBIDDEN');
     const body = (opts.body ?? {}) as any;
     if (!action && method === 'PATCH') {
@@ -3638,7 +3638,7 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
       }
     }
     if (action === 'lifecycle' && method === 'POST') {
-      const target = body.lifecycle as DigitalEmployee['lifecycle'];
+      const target = body.lifecycle as DigitalPartner['lifecycle'];
       if (!['draft', 'testing', 'active', 'paused', 'quarantined'].includes(target)) throw new Error('E_DIGITAL_EMPLOYEE_LIFECYCLE_INVALID');
       const reason = typeof body.reason === 'string' ? body.reason.trim() : '';
       if (target === 'active') {
@@ -3678,7 +3678,7 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
       employee.lifecycle = target;
     }
     // 采用记录只作为模板溯源视图，始终镜像员工实例的生命周期，避免两处状态漂移。
-    const adoption = employee.templateId ? mockDigitalEmployeeTemplateAdoptions.find((item) => item.employeeId === employee.id) : undefined;
+    const adoption = employee.templateId ? mockDigitalPartnerTemplateAdoptions.find((item) => item.employeeId === employee.id) : undefined;
     if (adoption) adoption.status = employee.lifecycle;
     employee.updatedAt = new Date().toISOString(); workspaceAudit(currentWorkspaceId, `数字伙伴：${releaseAction ? `${action}/${releaseAction}` : (action ?? '更新')}`, `${employee.role} · ${employee.name}`); return employee;
   }
@@ -5901,7 +5901,7 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
         workspaceId: session.workspaceId,
         ownerId: session.ownerId,
         correlationId: session.correlationId,
-        digitalEmployeeId: session.digitalEmployeeId,
+        digitalPartnerId: session.digitalPartnerId,
         title: session.title,
         preview: session.preview,
         status: session.status,
@@ -5916,14 +5916,14 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
   if (path === '/api/sessions' && opts.method === 'POST') {
     const body = (opts.body ?? {}) as {
       title?: string;
-      digitalEmployeeId?: string;
-      digitalEmployeeName?: string;
+      digitalPartnerId?: string;
+      digitalPartnerName?: string;
       modelId?: string;
     };
     const id = mockId('sess');
     const conversationId = mockId('conv');
     const now = new Date().toISOString();
-    const name = body.digitalEmployeeName ?? '岗位专家';
+    const name = body.digitalPartnerName ?? '岗位专家';
     const session = {
       id,
       workspaceId: currentWorkspaceId,
@@ -5932,8 +5932,8 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
       title: body.title ?? '新会话',
       preview: '暂无消息',
       agent: name,
-      digitalEmployeeId: body.digitalEmployeeId,
-      digitalEmployeeName: name,
+      digitalPartnerId: body.digitalPartnerId,
+      digitalPartnerName: name,
       conversationId,
       status: 'active' as const,
       modelId: body.modelId ?? 'sonnet-4',
@@ -6010,17 +6010,17 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
       priority?: string;
       assignee?: string;
       agentId?: string;
-      digitalEmployeeId?: string;
+      digitalPartnerId?: string;
       workflowId?: string;
       correlationId?: string;
     };
-    const employeeId = body.digitalEmployeeId ?? body.agentId ?? 'de-sre';
+    const employeeId = body.digitalPartnerId ?? body.agentId ?? 'de-sre';
     const task = taskDomain.create({
       title: body.title ?? '协同会话待办事项',
       description: `由专家协同会话 ${conversationId} 转出，可回会话继续双重审批与能力调用。`,
       priority: (body.priority as Task['priority']) ?? 'P1',
       assignee: body.assignee ?? '王昊',
-      digitalEmployeeId: employeeId,
+      digitalPartnerId: employeeId,
       agentId: body.agentId ?? employeeId,
       progress: { done: 0, total: 3 },
       tags: ['会话转任务'],

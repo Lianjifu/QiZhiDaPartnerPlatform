@@ -1,4 +1,4 @@
-import type { ModelLevel, ModelProvider, ModelProviderStatus, ProviderImpact, RoutingPolicyDraft, RoutingPolicyStatus, Role } from '@de/web-types';
+import type { ModelLevel, ModelProvider, ModelProviderStatus, ProviderImpact, RoutingPolicyDraft, RoutingPolicyStatus, Role } from '@qzda/web-types';
 import { resolveAppRole } from '@/features/role-nav/role-nav';
 
 export type ModelWorkspaceTab = 'access' | 'routing' | 'governance' | 'audit';

@@ -1,7 +1,7 @@
 /**
  * 单人人工审核授权 Modal（替代原双重审批 DualSignModal）
  */
-import { Modal, Button, Badge } from '@de/web-ui';
+import { Modal, Button, Badge } from '@qzda/web-ui';
 import { ShieldCheck, UserCheck, ShieldAlert } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { SkillTurnPlan } from '@/hooks/types';

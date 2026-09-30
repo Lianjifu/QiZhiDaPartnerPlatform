@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/auth"
-	"github.com/digital-employee-platform/backend/internal/policy"
-	"github.com/digital-employee-platform/backend/internal/store"
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	"github.com/qizhida-partner-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/policy"
+	"github.com/qizhida-partner-platform/backend/internal/store"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 // --- Home ---
@@ -209,7 +209,7 @@ func (s *Server) writeTaskWorkingMemoryLocked(task map[string]any, id *auth.Iden
 	}
 	_, _ = s.ingestRuntimeMemoryLocked(runtimeMemoryInput{
 		WorkspaceID: str(task["workspaceId"]), OwnerID: coalesce(str(task["ownerId"]), id.ID), OwnerName: id.Name,
-		DigitalEmployeeID: str(task["digitalEmployeeId"]),
+		DigitalPartnerID: str(task["digitalPartnerId"]),
 		Title:             title, Content: content,
 		SourceType: "task", SourceID: str(task["id"]),
 		CorrelationID: "corr_task_" + str(task["id"]),
@@ -314,7 +314,7 @@ func (s *Server) digitalEmployeeRoute(r *http.Request) (any, error) {
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	// api/digital-employees/:id/...
 	if len(parts) < 3 {
-		return nil, apperr.NotFoundErr(apperr.DigitalEmployeeNotFound, "数字伙伴不存在")
+		return nil, apperr.NotFoundErr(apperr.DigitalPartnerNotFound, "数字伙伴不存在")
 	}
 	eid := parts[2]
 	action, sub := "", ""
@@ -335,7 +335,7 @@ func (s *Server) digitalEmployeeRoute(r *http.Request) (any, error) {
 		}
 	}
 	if emp == nil {
-		return nil, apperr.NotFoundErr(apperr.DigitalEmployeeNotFound, "数字伙伴不存在")
+		return nil, apperr.NotFoundErr(apperr.DigitalPartnerNotFound, "数字伙伴不存在")
 	}
 	if err := s.requireWorkspaceAccess(id, str(emp["workspaceId"])); err != nil {
 		return nil, err
@@ -354,7 +354,7 @@ func (s *Server) digitalEmployeeRoute(r *http.Request) (any, error) {
 		if sub == "" && r.Method == http.MethodGet {
 			var out []map[string]any
 			for _, v := range s.Store.ConfigVersions {
-				if str(v["employeeId"]) == eid {
+				if str(v["partnerId"]) == eid {
 					out = append(out, v)
 				}
 			}
@@ -400,13 +400,13 @@ func (s *Server) digitalEmployeeRoute(r *http.Request) (any, error) {
 			summary = "更新能力装配"
 		}
 		ver := map[string]any{
-			"id": s.Store.ID("cfg"), "employeeId": eid, "version": "配置 v" + itoa(len(s.Store.ConfigVersions)+1),
+			"id": s.Store.ID("cfg"), "partnerId": eid, "version": "配置 v" + itoa(len(s.Store.ConfigVersions)+1),
 			"status": "current", "changeSummary": summary, "changedFields": []string{"岗位档案", "能力装配", "授权契约"},
 			"updatedBy": id.Name, "updatedById": id.ID, "updatedAt": time.Now().UTC().Format(time.RFC3339),
 			"requiresApproval": false,
 		}
 		for _, prev := range s.Store.ConfigVersions {
-			if str(prev["employeeId"]) == eid && str(prev["status"]) == "current" {
+			if str(prev["partnerId"]) == eid && str(prev["status"]) == "current" {
 				prev["status"] = "superseded"
 			}
 		}
@@ -445,7 +445,7 @@ func (s *Server) digitalEmployeeRoute(r *http.Request) (any, error) {
 		switch sub {
 		case "withdraw":
 			if str(rel["status"]) != "pending_approval" {
-				return nil, apperr.BadReq(apperr.DigitalEmployeeInvalid, "仅待审批申请可撤回")
+				return nil, apperr.BadReq(apperr.DigitalPartnerInvalid, "仅待审批申请可撤回")
 			}
 			if str(rel["requestedById"]) != id.ID {
 				return nil, apperr.Forbidden(apperr.RoleForbidden, "仅申请人可撤回上岗申请")
@@ -512,7 +512,7 @@ func (s *Server) digitalEmployeeRoute(r *http.Request) (any, error) {
 					"countersigner": rel["countersigner"], "countersignerId": rel["countersignerId"],
 				}
 			} else if rel == nil || str(rel["status"]) != "released" {
-				return nil, apperr.BadReq(apperr.DigitalEmployeePublish, "须先完成评测并申请上岗")
+				return nil, apperr.BadReq(apperr.DigitalPartnerPublish, "须先完成评测并申请上岗")
 			}
 		}
 		if target == "paused" || target == "quarantined" {
@@ -729,7 +729,7 @@ func (s *Server) adoptTemplate(r *http.Request) (any, error) {
 	tpl["adoptionCount"] = intFrom(tpl["adoptionCount"]) + 1
 	s.Store.TemplateAdoptions = append([]map[string]any{{
 		"id": s.Store.ID("adopt"), "templateId": tid, "templateVersion": tpl["version"],
-		"employeeId": emp["id"], "workspaceId": ws, "adoptedBy": id.Name, "status": "draft",
+		"partnerId": emp["id"], "workspaceId": ws, "adoptedBy": id.Name, "status": "draft",
 		"createdAt": time.Now().UTC().Format(time.RFC3339),
 	}}, s.Store.TemplateAdoptions...)
 	s.Store.AppendAudit(ws, id.Name, "采用岗位模板", str(tpl["name"]), "success", "")
@@ -816,7 +816,7 @@ func (s *Server) listSessions(r *http.Request) (any, error) {
 			cp["status"] = "active"
 		}
 		if str(cp["agent"]) == "" {
-			if name := str(cp["digitalEmployeeName"]); name != "" {
+			if name := str(cp["digitalPartnerName"]); name != "" {
 				cp["agent"] = name
 			} else {
 				cp["agent"] = "助手"
@@ -832,8 +832,8 @@ func (s *Server) createSession(r *http.Request) (any, error) {
 	body, _ := decodeMap(r)
 	ws := s.workspaceID(r)
 	now := time.Now().UTC().Format(time.RFC3339)
-	deID := body["digitalEmployeeId"]
-	deName := strings.TrimSpace(coalesce(str(body["digitalEmployeeName"]), str(body["agent"])))
+	deID := body["digitalPartnerId"]
+	deName := strings.TrimSpace(coalesce(str(body["digitalPartnerName"]), str(body["agent"])))
 	if deName == "" {
 		if str(deID) != "" {
 			deName = "岗位专家"
@@ -848,12 +848,12 @@ func (s *Server) createSession(r *http.Request) (any, error) {
 
 	conv := map[string]any{
 		"id": convID, "workspaceId": ws, "title": title,
-		"digitalEmployeeId": deID, "modelId": modelID, "updatedAt": now,
+		"digitalPartnerId": deID, "modelId": modelID, "updatedAt": now,
 	}
 	session := map[string]any{
 		"id": sessID, "workspaceId": ws, "ownerId": id.ID, "title": title,
 		"preview": coalesce(str(body["preview"]), "暂无消息"), "agent": deName,
-		"digitalEmployeeId": deID, "digitalEmployeeName": deName,
+		"digitalPartnerId": deID, "digitalPartnerName": deName,
 		"conversationId": convID, "status": "active", "modelId": modelID,
 		"sessionMode": sessionModeInvestigate, "riskLevel": "medium",
 		"handoff":   map[string]any{"active": false},
@@ -982,17 +982,17 @@ func (s *Server) patchSession(r *http.Request) (any, error) {
 				sess["status"] = st
 			}
 		}
-		if v, ok := body["digitalEmployeeId"]; ok {
+		if v, ok := body["digitalPartnerId"]; ok {
 			deID := strings.TrimSpace(str(v))
-			sess["digitalEmployeeId"] = deID
+			sess["digitalPartnerId"] = deID
 			if deID == "" {
-				sess["digitalEmployeeName"] = "助手"
+				sess["digitalPartnerName"] = "助手"
 				sess["agent"] = "助手"
 			} else {
 				for _, emp := range s.Store.Employees {
 					if str(emp["id"]) == deID && str(emp["workspaceId"]) == ws {
 						name := coalesce(str(emp["role"]), str(emp["name"]))
-						sess["digitalEmployeeName"] = name
+						sess["digitalPartnerName"] = name
 						sess["agent"] = name
 						break
 					}

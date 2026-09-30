@@ -1,4 +1,4 @@
-import type { Role } from '@de/web-types';
+import type { Role } from '@qzda/web-types';
 
 export type AppRole = Extract<Role, 'user' | 'admin' | 'auditor'>;
 

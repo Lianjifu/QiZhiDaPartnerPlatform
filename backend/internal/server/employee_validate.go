@@ -3,7 +3,7 @@ package server
 import (
 	"strings"
 
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 func employeeCapabilityCount(emp map[string]any) int {
@@ -52,10 +52,10 @@ func validateEmployeeReleaseGates(emp map[string]any) error {
 		strings.TrimSpace(str(emp["escalationOwner"])) == "" ||
 		str(emp["escalationOwner"]) == "待指定" ||
 		strings.TrimSpace(str(emp["serviceObject"])) == "" {
-		return apperr.BadReq(apperr.DigitalEmployeeProfileIncomplete, "请先完善岗位负责人、接管人与服务对象")
+		return apperr.BadReq(apperr.DigitalPartnerProfileIncomplete, "请先完善岗位负责人、接管人与服务对象")
 	}
 	if responsibilitiesIncomplete(emp) {
-		return apperr.BadReq(apperr.DigitalEmployeeBoundaryRequired, "请先配置岗位职责边界")
+		return apperr.BadReq(apperr.DigitalPartnerBoundaryRequired, "请先配置岗位职责边界")
 	}
 	caps, _ := emp["capabilities"].(map[string]any)
 	model := ""
@@ -66,15 +66,15 @@ func validateEmployeeReleaseGates(emp map[string]any) error {
 		}
 	}
 	if model == "" || employeeCapabilityCount(emp) == 0 {
-		return apperr.BadReq(apperr.DigitalEmployeeCapabilityRequired, "请先装配已发布模型与至少一项技能/工具/流程技能")
+		return apperr.BadReq(apperr.DigitalPartnerCapabilityRequired, "请先装配已发布模型与至少一项技能/工具/流程技能")
 	}
 	ev, _ := emp["evaluation"].(map[string]any)
 	if ev == nil || str(ev["status"]) != "passed" {
-		return apperr.BadReq(apperr.DigitalEmployeeEvaluationRequired, "质量评测未通过，无法申请上岗")
+		return apperr.BadReq(apperr.DigitalPartnerEvaluationRequired, "质量评测未通过，无法申请上岗")
 	}
 	if min := evalScoreMin(); min > 0 {
 		if toFloat(ev["score"]) < min {
-			return apperr.BadReq(apperr.DigitalEmployeeEvaluationRequired, "评测分数未达门禁，无法申请上岗")
+			return apperr.BadReq(apperr.DigitalPartnerEvaluationRequired, "评测分数未达门禁，无法申请上岗")
 		}
 	}
 	return nil
@@ -103,23 +103,23 @@ func validateEmployeeConfigurationBody(body map[string]any) error {
 	profile, _ := body["profile"].(map[string]any)
 	caps, _ := body["capabilities"].(map[string]any)
 	if profile == nil {
-		return apperr.BadReq(apperr.DigitalEmployeeConfigurationRequired, "配置须包含 profile")
+		return apperr.BadReq(apperr.DigitalPartnerConfigurationRequired, "配置须包含 profile")
 	}
 	if scope == "capability" && caps == nil {
-		return apperr.BadReq(apperr.DigitalEmployeeConfigurationRequired, "能力装配须包含 capabilities")
+		return apperr.BadReq(apperr.DigitalPartnerConfigurationRequired, "能力装配须包含 capabilities")
 	}
 	if strings.TrimSpace(str(profile["name"])) == "" ||
 		strings.TrimSpace(str(profile["role"])) == "" ||
 		strings.TrimSpace(str(profile["department"])) == "" {
-		return apperr.BadReq(apperr.DigitalEmployeeConfigurationRequired, "岗位档案为必填")
+		return apperr.BadReq(apperr.DigitalPartnerConfigurationRequired, "岗位档案为必填")
 	}
 	if scope == "capability" &&
 		(strings.TrimSpace(str(caps["model"])) == "" && strings.TrimSpace(str(caps["modelRouteId"])) == "") {
-		return apperr.BadReq(apperr.DigitalEmployeeConfigurationRequired, "能力装配须指定已发布模型")
+		return apperr.BadReq(apperr.DigitalPartnerConfigurationRequired, "能力装配须指定已发布模型")
 	}
 	boundary, _ := body["boundary"].(map[string]any)
 	if boundary == nil {
-		return apperr.BadReq(apperr.DigitalEmployeeBoundaryRequired, "须配置岗位职责边界")
+		return apperr.BadReq(apperr.DigitalPartnerBoundaryRequired, "须配置岗位职责边界")
 	}
 	resp := toAnySlice(boundary["responsibilities"])
 	policy, _ := boundary["boundaryPolicy"].(map[string]any)
@@ -127,17 +127,17 @@ func validateEmployeeConfigurationBody(body map[string]any) error {
 		policy, _ = boundary["policy"].(map[string]any)
 	}
 	if len(resp) == 0 {
-		return apperr.BadReq(apperr.DigitalEmployeeBoundaryRequired, "须配置岗位职责边界")
+		return apperr.BadReq(apperr.DigitalPartnerBoundaryRequired, "须配置岗位职责边界")
 	}
 	if policy != nil {
 		polResp := toAnySlice(policy["responsibilities"])
 		if len(polResp) == 0 {
-			return apperr.BadReq(apperr.DigitalEmployeeBoundaryRequired, "须配置岗位职责边界")
+			return apperr.BadReq(apperr.DigitalPartnerBoundaryRequired, "须配置岗位职责边界")
 		}
 		handoff, _ := policy["handoff"].(map[string]any)
 		if handoff != nil {
 			if len(toAnySlice(handoff["triggers"])) == 0 || len(toAnySlice(handoff["approvers"])) == 0 {
-				return apperr.BadReq(apperr.DigitalEmployeeBoundaryRequired, "须配置升级触发条件与审批人")
+				return apperr.BadReq(apperr.DigitalPartnerBoundaryRequired, "须配置升级触发条件与审批人")
 			}
 		}
 	}

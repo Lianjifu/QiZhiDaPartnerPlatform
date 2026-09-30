@@ -5,8 +5,8 @@ package contract
 import (
 	"strings"
 
-	commonv1 "github.com/digital-employee-platform/backend/gen/de/common/v1"
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	commonv1 "github.com/qizhida-partner-platform/backend/gen/qzda/common/v1"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 const (

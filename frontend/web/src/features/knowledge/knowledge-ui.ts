@@ -1,4 +1,4 @@
-import type { KnowledgePackageStatus, KnowledgeRetrievalResult } from '@de/web-types';
+import type { KnowledgePackageStatus, KnowledgeRetrievalResult } from '@qzda/web-types';
 
 export type DisplaySourceStatus = 'healthy' | 'syncing' | 'attention';
 

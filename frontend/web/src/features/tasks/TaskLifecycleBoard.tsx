@@ -1,6 +1,6 @@
 import { AlertTriangle, ArrowRight, MessagesSquare, UserRound } from 'lucide-react';
-import type { ControlledTask, TaskLifecycleStage } from '@de/web-types';
-import { Badge } from '@de/web-ui';
+import type { ControlledTask, TaskLifecycleStage } from '@qzda/web-types';
+import { Badge } from '@qzda/web-ui';
 import { STAGES, employeeLabel, getStageMeta, isRiskTask, nextStepLabel, riskLabel, sourceLabel } from './task-ui';
 
 const priorityTone = { P0: 'error', P1: 'warn', P2: 'info', P3: 'neutral' } as const;

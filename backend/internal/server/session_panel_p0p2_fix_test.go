@@ -38,15 +38,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/auth"
-	"github.com/digital-employee-platform/backend/internal/channel"
-	"github.com/digital-employee-platform/backend/internal/knowledge/citation"
-	"github.com/digital-employee-platform/backend/internal/knowledge/citationlog"
-	memid "github.com/digital-employee-platform/backend/internal/memory/identity"
-	memret "github.com/digital-employee-platform/backend/internal/memory/retrieval"
-	"github.com/digital-employee-platform/backend/internal/store"
-	"github.com/digital-employee-platform/backend/internal/vault"
-	"github.com/digital-employee-platform/backend/pkg/contract"
+	"github.com/qizhida-partner-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/channel"
+	"github.com/qizhida-partner-platform/backend/internal/knowledge/citation"
+	"github.com/qizhida-partner-platform/backend/internal/knowledge/citationlog"
+	memid "github.com/qizhida-partner-platform/backend/internal/memory/identity"
+	memret "github.com/qizhida-partner-platform/backend/internal/memory/retrieval"
+	"github.com/qizhida-partner-platform/backend/internal/store"
+	"github.com/qizhida-partner-platform/backend/internal/vault"
+	"github.com/qizhida-partner-platform/backend/pkg/contract"
 )
 
 // ─── P0 ─────────────────────────────────────────────────────────────────────
@@ -68,23 +68,23 @@ func TestP0_PanicRecoveredToFailedResult(t *testing.T) {
 		IdentityProfiles: memid.NewStore(),
 		testHooks: &serverTestHooks{
 			participantTurnOverride: func(_ context.Context, pc participantContext) participantTurnResult {
-				if pc.DigitalEmployee == panicID {
+				if pc.DigitalPartner == panicID {
 					panic("kaboom")
 				}
-				return participantTurnResult{ParticipantID: pc.DigitalEmployee, Status: "success", Text: "ok"}
+				return participantTurnResult{ParticipantID: pc.DigitalPartner, Status: "success", Text: "ok"}
 			},
 		},
 	}
 
 	pcs := []participantContext{
 		{
-			WorkspaceID: "ws-1", DigitalEmployee: "de-a",
+			WorkspaceID: "ws-1", DigitalPartner: "de-a",
 			SessionMode: contract.SessionModeInvestigate,
 			RiskLevel:   contract.RiskLevelMedium, ModelID: "m",
 			UserMessage: "hi", Emit: func(string, string, map[string]any) {},
 		},
 		{
-			WorkspaceID: "ws-1", DigitalEmployee: panicID,
+			WorkspaceID: "ws-1", DigitalPartner: panicID,
 			SessionMode: contract.SessionModeInvestigate,
 			RiskLevel:   contract.RiskLevelMedium, ModelID: "m",
 			UserMessage: "explode", Emit: func(string, string, map[string]any) {},
@@ -168,7 +168,7 @@ func TestP0_RetrievePublishedACLFilter(t *testing.T) {
 
 	// A plain user viewer must see doc-open but NOT doc-audit-only.
 	viewer := &auth.Identity{ID: "u-1", Role: "user", Permissions: auth.RolePermissions("user"), WorkspaceID: "ws-1"}
-	r := httptest.NewRequest("POST", "/connect/de.rag.v1.RagService/Retrieve", nil)
+	r := httptest.NewRequest("POST", "/connect/qzda.rag.v1.RagService/Retrieve", nil)
 	r = r.WithContext(withIdentity(r.Context(), viewer))
 	r.Header.Set("x-workspace-id", "ws-1")
 
@@ -194,7 +194,7 @@ func TestP0_RetrievePublishedACLFilter(t *testing.T) {
 
 	// An admin viewer (RolePermissions("admin") includes audit.export) must
 	// see BOTH.
-	r2 := httptest.NewRequest("POST", "/connect/de.rag.v1.RagService/Retrieve", nil)
+	r2 := httptest.NewRequest("POST", "/connect/qzda.rag.v1.RagService/Retrieve", nil)
 	r2 = r2.WithContext(withIdentity(r2.Context(), &auth.Identity{ID: "u-2", Role: "admin", Permissions: auth.RolePermissions("admin"), WorkspaceID: "ws-1"}))
 	r2.Header.Set("x-workspace-id", "ws-1")
 	out2, _ := s.retrievePublished(r2, map[string]any{"query": ""}, "corr-acl2")
@@ -232,7 +232,7 @@ func TestP0_ParticipantSkillRoutesThroughApprovalGate(t *testing.T) {
 		},
 	}
 	pc := participantContext{
-		WorkspaceID: "ws-1", DigitalEmployee: "de-x",
+		WorkspaceID: "ws-1", DigitalPartner: "de-x",
 		SessionMode: contract.SessionModeExecute, // execute mode queues
 		RiskLevel:   contract.RiskLevelMedium,
 		UserMessage: "do it",
@@ -443,7 +443,7 @@ func TestP1_ParticipantRiskFlooredByInbound(t *testing.T) {
 func TestP1_TimeoutBoundsToolPhase(t *testing.T) {
 	s := &Server{Store: store.NewEmpty(), IdentityProfiles: memid.NewStore()}
 	pc := participantContext{
-		WorkspaceID: "ws-1", DigitalEmployee: "de-t",
+		WorkspaceID: "ws-1", DigitalPartner: "de-t",
 		SessionMode: contract.SessionModeInvestigate,
 		RiskLevel:   contract.RiskLevelMedium,
 		ModelID:     "m",
@@ -524,7 +524,7 @@ func TestP1_VaultCredentialsMissingAuditsAndDLQs(t *testing.T) {
 
 	var got capturedEvent
 	pc := participantContext{
-		DigitalEmployee: "de-x", WorkspaceID: "ws-1", ConversationID: "conv-1",
+		DigitalPartner: "de-x", WorkspaceID: "ws-1", ConversationID: "conv-1",
 		Channel: "feishu", CorrelationID: "corr-vault",
 		Emit: func(cat, ev string, m map[string]any) {
 			got = capturedEvent{category: cat, event: ev, payload: m}
@@ -560,7 +560,7 @@ func TestP1_VaultCredentialsMissingAuditsAndDLQs(t *testing.T) {
 // ─── P2 ─────────────────────────────────────────────────────────────────────
 
 // TestP2_MemDEStrictScoping (M-4): a memory record with empty
-// digitalEmployeeId (legacy admin ingest) must NOT leak to specialists
+// digitalPartnerId (legacy admin ingest) must NOT leak to specialists
 // bound to a specific DE. The pre-fix short-circuit `deID != "" && memDE != ""
 // && memDE != deID` returned false for memDE=="" so the row was admitted.
 func TestP2_MemDEStrictScoping(t *testing.T) {
@@ -577,7 +577,7 @@ func TestP2_MemDEStrictScoping(t *testing.T) {
 			"id": "m-bound", "workspaceId": "ws-1", "layer": "long_term",
 			"status": "active", "title": "Specialist A bound memory",
 			"content": "context bound to de-A",
-			"digitalEmployeeId": "de-A", "createdAt": now, "ownerId": "u-1",
+			"digitalPartnerId": "de-A", "createdAt": now, "ownerId": "u-1",
 		},
 	)
 	s := &Server{Store: st, IdentityProfiles: memid.NewStore()}
@@ -677,7 +677,7 @@ func TestP2_MultiToolRAGHitsAppend(t *testing.T) {
 		{Kind: "builtin", Name: "memory.recall", Key: "builtin:memory.recall", Enabled: true},
 	}
 	pc := participantContext{
-		WorkspaceID: "ws-1", DigitalEmployee: "de-multi",
+		WorkspaceID: "ws-1", DigitalPartner: "de-multi",
 		SessionMode: contract.SessionModeInvestigate,
 		RiskLevel:   contract.RiskLevelMedium,
 		UserMessage: "x", Tools: tools,
@@ -724,7 +724,7 @@ func TestP2_ToolRowDurationMsPerTool(t *testing.T) {
 		{Kind: "builtin", Name: "memory.recall", Key: "builtin:memory.recall", Enabled: true},
 	}
 	pc := participantContext{
-		WorkspaceID: "ws-1", DigitalEmployee: "de-dur",
+		WorkspaceID: "ws-1", DigitalPartner: "de-dur",
 		Tools: tools, UserMessage: "x",
 		CorrelationID: "corr-dur",
 	}
@@ -792,7 +792,7 @@ func TestP2_AttributedChannelSkippedBranchesAudit(t *testing.T) {
 			}
 			s := &Server{Store: st, IdentityProfiles: memid.NewStore()}
 			pc := participantContext{
-				DigitalEmployee: "de-x", WorkspaceID: "ws-1",
+				DigitalPartner: "de-x", WorkspaceID: "ws-1",
 				ConversationID: c.sessID, Channel: c.channel,
 				CorrelationID: "corr-" + c.name,
 				Emit:          func(string, string, map[string]any) {},
@@ -829,7 +829,7 @@ func TestP2_FallbackReasonDistinguishesEmptyVsNoScore(t *testing.T) {
 		var emitted []map[string]any
 		emit := func(_, _ string, m map[string]any) { emitted = append(emitted, m) }
 		_ = s.runMultiAgentTurn(context.Background(), reactTurnInput{
-			WorkspaceID: "ws-empty", DigitalEmployee: "de-sup",
+			WorkspaceID: "ws-empty", DigitalPartner: "de-sup",
 			UserMessage: "完全无关的内容", Emit: emit,
 		})
 		found := false
@@ -860,7 +860,7 @@ func TestP2_FallbackReasonDistinguishesEmptyVsNoScore(t *testing.T) {
 		var emitted []map[string]any
 		emit := func(_, _ string, m map[string]any) { emitted = append(emitted, m) }
 		_ = s.runMultiAgentTurn(context.Background(), reactTurnInput{
-			WorkspaceID: "ws-1", DigitalEmployee: "de-sup",
+			WorkspaceID: "ws-1", DigitalPartner: "de-sup",
 			UserMessage: "完全无关的内容", Emit: emit,
 		})
 		found := false
@@ -941,7 +941,7 @@ func TestP2_ParticipantMemoryBudgetReported(t *testing.T) {
 	}
 	_ = s.runMultiAgentTurn(context.Background(), reactTurnInput{
 		WorkspaceID:    "ws-1",
-		DigitalEmployee: "de-sup",
+		DigitalPartner: "de-sup",
 		UserMessage:     "redis 延迟飙升，请协助运维和人事一同排查",
 		Emit:            emit,
 	})

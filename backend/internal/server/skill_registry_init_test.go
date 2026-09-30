@@ -3,7 +3,7 @@ package server
 import (
 	"testing"
 
-	"github.com/digital-employee-platform/backend/internal/skills/registry"
+	"github.com/qizhida-partner-platform/backend/internal/skills/registry"
 )
 
 func TestDefaultSkillRegistryPopulatesBuiltins(t *testing.T) {

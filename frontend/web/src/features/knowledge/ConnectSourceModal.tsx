@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Badge, Button, Input } from '@de/web-ui';
+import { Badge, Button, Input } from '@qzda/web-ui';
 import { Database, GitBranch, ShieldCheck, Webhook } from 'lucide-react';
-import type { KnowledgeSourceConnection } from '@de/web-types';
-import { cn } from '@de/web-utils';
+import type { KnowledgeSourceConnection } from '@qzda/web-types';
+import { cn } from '@qzda/web-utils';
 import { Modal } from '@/components/shared';
 
 export type ConnectSourceForm = {

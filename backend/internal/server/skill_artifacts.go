@@ -15,9 +15,9 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/digital-employee-platform/backend/internal/gateway"
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
-	"github.com/digital-employee-platform/backend/pkg/response"
+	"github.com/qizhida-partner-platform/backend/internal/gateway"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
+	"github.com/qizhida-partner-platform/backend/pkg/response"
 )
 
 var (

@@ -4,13 +4,13 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApiQuery } from '@/services/query';
-import { Input, Badge, Avatar } from '@de/web-ui';
+import { Input, Badge, Avatar } from '@qzda/web-ui';
 import {
   Search, FileText, Bot, ListChecks, ArrowRight, Sparkles, X, CornerDownLeft,
 } from 'lucide-react';
-import { cn } from '@de/web-utils';
-import type { Task, DigitalEmployee, KnowledgeDoc } from '@de/web-types';
-import { sortDigitalEmployees } from '@/lib/digital-employees';
+import { cn } from '@qzda/web-utils';
+import type { Task, DigitalPartner, KnowledgeDoc } from '@qzda/web-types';
+import { sortDigitalPartners } from '@/lib/digital-employees';
 
 type Result = { type: 'task' | 'employee' | 'doc'; id: string; title: string; subtitle?: string; to: string; meta?: string };
 
@@ -22,10 +22,10 @@ export function GlobalSearch() {
   const navigate = useNavigate();
 
   const { data: tasks = [] } = useApiQuery<Task[]>(['search-tasks'], '/api/tasks');
-  const { data: employees = [] } = useApiQuery<DigitalEmployee[]>(['search-digital-employees'], '/api/digital-employees');
+  const { data: employees = [] } = useApiQuery<DigitalPartner[]>(['search-digital-employees'], '/api/partners');
   const { data: docs = [] } = useApiQuery<KnowledgeDoc[]>(['search-docs'], '/api/knowledge/docs');
 
-  const orderedEmployees = useMemo(() => sortDigitalEmployees(employees), [employees]);
+  const orderedEmployees = useMemo(() => sortDigitalPartners(employees), [employees]);
 
   // ⌘K / Ctrl+K 全局打开
   useEffect(() => {

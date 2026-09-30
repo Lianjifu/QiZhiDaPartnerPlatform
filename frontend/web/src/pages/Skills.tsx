@@ -1,13 +1,13 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useApiMutation, useApiQuery, useApiUploadMutation } from '@/services/query';
-import { Badge, Button, Input, KpiCard } from '@de/web-ui';
+import { Badge, Button, Input, KpiCard } from '@qzda/web-ui';
 import {
   Wrench, ShieldAlert, ShieldCheck, Settings, Search, AlertTriangle, CheckCircle2, Box, Star, Globe, Activity, History,
   Play, RefreshCw, Lock, Container, Eye, Terminal, Sparkles, Trash2, GitBranch, Cpu,
   Save, List, LayoutGrid, Power, ArrowUpCircle, Upload, Network,
 } from 'lucide-react';
-import { cn } from '@de/web-utils';
-import type { Skill, SkillAuditEvent, SkillImpactReport, SkillInstallPreflight, SkillPermission, SkillGovernancePolicy, SkillLifecycleStatus, SkillRuntimeHealth, WorkflowSkill } from '@de/web-types';
+import { cn } from '@qzda/web-utils';
+import type { Skill, SkillAuditEvent, SkillImpactReport, SkillInstallPreflight, SkillPermission, SkillGovernancePolicy, SkillLifecycleStatus, SkillRuntimeHealth, WorkflowSkill } from '@qzda/web-types';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Modal, ConfirmDialog, EmptyState, RoleReadonlyBanner } from '@/components/shared';
 import { useAuthStore } from '@/stores/authStore';

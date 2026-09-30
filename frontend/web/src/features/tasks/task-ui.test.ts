@@ -29,14 +29,14 @@ describe('task center copy', () => {
   });
 
   it('prefers digital employee name over agent id', () => {
-    expect(employeeLabel({ digitalEmployeeName: 'SRE 故障处置专员', digitalEmployeeId: 'de-sre', agentId: 'a1' })).toBe('SRE 故障处置专员');
+    expect(employeeLabel({ digitalPartnerName: 'SRE 故障处置专员', digitalPartnerId: 'de-sre', agentId: 'a1' })).toBe('SRE 故障处置专员');
     expect(sourceLabel('workflow')).toBe('能力触发');
   });
 
   it('builds conversation deep link from employee id', () => {
-    expect(conversationHref({ links: { conversationId: 's1' }, digitalEmployeeId: 'de-sre' })).toBe('/copilot?session=s1&employeeId=de-sre');
-    expect(conversationHref({ links: {}, digitalEmployeeId: 'de-sre' })).toBeNull();
-    expect(conversationHref({ links: {}, digitalEmployeeId: undefined })).toBeNull();
-    expect(conversationHref({ digitalEmployeeId: 'de-sre' })).toBeNull();
+    expect(conversationHref({ links: { conversationId: 's1' }, digitalPartnerId: 'de-sre' })).toBe('/copilot?session=s1&employeeId=de-sre');
+    expect(conversationHref({ links: {}, digitalPartnerId: 'de-sre' })).toBeNull();
+    expect(conversationHref({ links: {}, digitalPartnerId: undefined })).toBeNull();
+    expect(conversationHref({ digitalPartnerId: 'de-sre' })).toBeNull();
   });
 });

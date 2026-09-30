@@ -5,7 +5,7 @@
  * 安全（防 XSS）：先转义 HTML
  */
 import { useMemo } from 'react';
-import { cn } from '@de/web-utils';
+import { cn } from '@qzda/web-utils';
 
 function escapeHtml(s: string): string {
   return s

@@ -2,9 +2,9 @@ import { useMemo, useState } from 'react';
 import {
   AlertTriangle, CheckCircle2, Clock3, Filter, RefreshCcw, Shield, UserPlus, UsersRound,
 } from 'lucide-react';
-import { Badge, Button, Input, KpiCard, toast } from '@de/web-ui';
-import { cn } from '@de/web-utils';
-import type { AccessGrant, AccessReview, ReleaseApproval, SeparationOfDutyRule, Role } from '@de/web-types';
+import { Badge, Button, Input, KpiCard, toast } from '@qzda/web-ui';
+import { cn } from '@qzda/web-utils';
+import type { AccessGrant, AccessReview, ReleaseApproval, SeparationOfDutyRule, Role } from '@qzda/web-types';
 import { useApiMutation, useApiQuery } from '@/services/query';
 import { useT } from '@/i18n';
 

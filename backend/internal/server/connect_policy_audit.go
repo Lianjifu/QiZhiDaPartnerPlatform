@@ -5,10 +5,10 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
-	auditv1 "github.com/digital-employee-platform/backend/gen/de/audit/v1"
-	policyv1 "github.com/digital-employee-platform/backend/gen/de/policy/v1"
-	"github.com/digital-employee-platform/backend/pkg/contract"
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	auditv1 "github.com/qizhida-partner-platform/backend/gen/qzda/audit/v1"
+	policyv1 "github.com/qizhida-partner-platform/backend/gen/qzda/policy/v1"
+	"github.com/qizhida-partner-platform/backend/pkg/contract"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 type policyConnect struct{ s *Server }

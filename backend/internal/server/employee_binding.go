@@ -13,7 +13,7 @@ func captureEmployeeBinding(emp map[string]any, memoryPolicyID string) map[strin
 	if emp == nil || emp["skipped"] == true {
 		return out
 	}
-	out["employeeId"] = str(emp["id"])
+	out["partnerId"] = str(emp["id"])
 	caps, _ := emp["capabilities"].(map[string]any)
 	if caps == nil {
 		return out

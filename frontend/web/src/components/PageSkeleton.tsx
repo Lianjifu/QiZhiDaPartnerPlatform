@@ -2,7 +2,7 @@
  * 通用页面骨架屏 — loading 态
  * 用于 useApiQuery isLoading 时占位（避免空白）
  */
-import { cn } from '@de/web-utils';
+import { cn } from '@qzda/web-utils';
 
 export function PageSkeleton({ className }: { className?: string }) {
   return (

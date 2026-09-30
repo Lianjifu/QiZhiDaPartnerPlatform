@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/apprun"
-	"github.com/digital-employee-platform/backend/internal/deworkflow"
-	"github.com/digital-employee-platform/backend/internal/server"
+	"github.com/qizhida-partner-platform/backend/internal/apprun"
+	"github.com/qizhida-partner-platform/backend/internal/qzdaworkflow"
+	"github.com/qizhida-partner-platform/backend/internal/server"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
@@ -77,26 +77,26 @@ func runTemporalWorker(host string) error {
 	defer c.Close()
 
 	w := worker.New(c, "de-workflow", worker.Options{})
-	w.RegisterWorkflowWithOptions(TrialRunWorkflow, workflow.RegisterOptions{Name: deworkflow.TrialWorkflowName})
+	w.RegisterWorkflowWithOptions(TrialRunWorkflow, workflow.RegisterOptions{Name: qzdaworkflow.TrialWorkflowName})
 	w.RegisterActivity(SimulateTrialActivity)
 
 	log.Printf("de-workflow Temporal worker on %s queue=de-workflow", host)
 	return w.Run(worker.InterruptCh())
 }
 
-func TrialRunWorkflow(ctx workflow.Context, in deworkflow.TrialInput) (deworkflow.TrialResult, error) {
+func TrialRunWorkflow(ctx workflow.Context, in qzdaworkflow.TrialInput) (qzdaworkflow.TrialResult, error) {
 	ao := workflow.ActivityOptions{StartToCloseTimeout: 30 * time.Second}
 	ctx = workflow.WithActivityOptions(ctx, ao)
 	var steps []string
 	if err := workflow.ExecuteActivity(ctx, SimulateTrialActivity, in).Get(ctx, &steps); err != nil {
-		return deworkflow.TrialResult{Status: "failed", Error: err.Error(), Steps: steps}, nil
+		return qzdaworkflow.TrialResult{Status: "failed", Error: err.Error(), Steps: steps}, nil
 	}
-	return deworkflow.TrialResult{Status: "succeeded", Steps: steps}, nil
+	return qzdaworkflow.TrialResult{Status: "succeeded", Steps: steps}, nil
 }
 
-func SimulateTrialActivity(ctx context.Context, in deworkflow.TrialInput) ([]string, error) {
+func SimulateTrialActivity(ctx context.Context, in qzdaworkflow.TrialInput) ([]string, error) {
 	steps := []string{"validate_graph", "allocate_worker"}
-	steps = append(steps, deworkflow.CallTrialActivities(ctx, in.WorkflowID)...)
+	steps = append(steps, qzdaworkflow.CallTrialActivities(ctx, in.WorkflowID)...)
 	steps = append(steps, "collect_artifacts", "temporal_activity")
 	return steps, nil
 }

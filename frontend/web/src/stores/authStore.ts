@@ -3,7 +3,7 @@
  */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { User, Permission, Role } from '@de/web-types';
+import type { User, Permission, Role } from '@qzda/web-types';
 
 interface AuthState {
   user: User | null;

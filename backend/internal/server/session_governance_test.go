@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 func TestNormalizeSessionModeAndFilter(t *testing.T) {

@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package qzda.rag.v1;
+
+option go_package = "github.com/qizhida-partner-platform/backend/gen/qzda/rag/v1;ragv1";
+
+service RagService {
+  rpc Retrieve(RetrieveRequest) returns (RetrieveResponse);
+  rpc SyncPublished(SyncPublishedRequest) returns (SyncPublishedResponse);
+}
+
+message RetrieveRequest {
+  string query = 1;
+  string workspace_id = 2;
+  string correlation_id = 3;
+  // Only published docs are searchable.
+  bool published_only = 4;
+}
+
+message RetrieveHit {
+  string doc_id = 1;
+  string title = 2;
+  string snippet = 3;
+  double score = 4;
+  string status = 5;
+}
+
+message RetrieveResponse {
+  string query = 1;
+  repeated RetrieveHit results = 2;
+  string backend = 3;
+  string correlation_id = 4;
+}
+
+message SyncPublishedRequest {
+  string workspace_id = 1;
+  repeated RetrieveHit docs = 2;
+}
+
+message SyncPublishedResponse {
+  int32 indexed = 1;
+}

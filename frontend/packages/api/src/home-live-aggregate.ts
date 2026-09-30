@@ -10,7 +10,7 @@ export type AggregateTask = {
   status: string;
   priority?: string;
   assignee?: string;
-  digitalEmployeeName?: string;
+  digitalPartnerName?: string;
   workspaceId?: string;
   updatedAt?: string;
   createdAt?: string;
@@ -149,7 +149,7 @@ export function buildHomeExtraLive(input: {
     else todo += 1;
 
     const title = t.title || t.code;
-    const actor = t.digitalEmployeeName || t.assignee || '系统';
+    const actor = t.digitalPartnerName || t.assignee || '系统';
     let tone: HomeExtraLive['recentActivities'][number]['tone'] = 'info';
     if (st === 'completed' || st === 'archived') tone = 'success';
     else if (st === 'review') tone = 'warning';
@@ -205,7 +205,7 @@ export function buildHomeExtraLive(input: {
       level,
       text: title,
       time: updated,
-      assignee: t.digitalEmployeeName || t.assignee || '—',
+      assignee: t.digitalPartnerName || t.assignee || '—',
       taskCode: t.code,
       workspaceId: ws,
       source: 'task',
@@ -391,7 +391,7 @@ export function buildOpsOverviewLive(input: {
     workspaceId: ws,
     generatedAt: (input.now ?? new Date()).toISOString(),
     source: 'live-aggregate' as const,
-    digitalEmployees: { active: activeDE, pending: pendingDE },
+    digitalPartners: { active: activeDE, pending: pendingDE },
     tasks: { open: openTasks, risk: riskTasks },
     channels: { deadLetters: input.deadLetterCount ?? 0 },
     governance: {
@@ -413,7 +413,7 @@ export function buildOpsOverviewLive(input: {
 
 /** 能力装配展示名 → 能力目录真实名（模型路由 / 知识包 / 技能 / 工具 / 流程 / 渠道） */
 export const CAPABILITY_NAME_ALIASES: Record<string, string> = {
-  // 模型路由（对齐 /api/digital-employee-capability-catalog 已发布策略名）
+  // 模型路由（对齐 /api/partner-capability-catalog 已发布策略名）
   '企业通用路由 v2': 'P0 路由',
   '受限数据路由 v1': 'P2 路由',
   // 知识包

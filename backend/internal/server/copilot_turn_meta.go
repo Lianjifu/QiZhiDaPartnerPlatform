@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/digital-employee-platform/backend/pkg/contract"
+	"github.com/qizhida-partner-platform/backend/pkg/contract"
 )
 
 const (

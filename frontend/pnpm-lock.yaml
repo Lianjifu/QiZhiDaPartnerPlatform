@@ -10,10 +10,10 @@ importers:
 
   packages/api:
     dependencies:
-      '@de/web-types':
+      '@qzda/web-types':
         specifier: workspace:*
         version: link:../types
-      '@de/web-utils':
+      '@qzda/web-utils':
         specifier: workspace:*
         version: link:../utils
     devDependencies:
@@ -26,7 +26,7 @@ importers:
 
   packages/hooks:
     dependencies:
-      '@de/web-types':
+      '@qzda/web-types':
         specifier: workspace:*
         version: link:../types
       react:
@@ -48,7 +48,7 @@ importers:
 
   packages/ui:
     dependencies:
-      '@de/web-utils':
+      '@qzda/web-utils':
         specifier: workspace:*
         version: link:../utils
       react:
@@ -76,19 +76,19 @@ importers:
 
   web:
     dependencies:
-      '@de/web-api':
+      '@qzda/web-api':
         specifier: workspace:*
         version: link:../packages/api
-      '@de/web-hooks':
+      '@qzda/web-hooks':
         specifier: workspace:*
         version: link:../packages/hooks
-      '@de/web-types':
+      '@qzda/web-types':
         specifier: workspace:*
         version: link:../packages/types
-      '@de/web-ui':
+      '@qzda/web-ui':
         specifier: workspace:*
         version: link:../packages/ui
-      '@de/web-utils':
+      '@qzda/web-utils':
         specifier: workspace:*
         version: link:../packages/utils
       '@tanstack/react-query':

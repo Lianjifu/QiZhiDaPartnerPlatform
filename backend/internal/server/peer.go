@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/auth"
 )
 
 func collabBaseURL() string {

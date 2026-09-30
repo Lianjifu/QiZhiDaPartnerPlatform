@@ -6,13 +6,13 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useApiMutation, useApiQuery } from '@/services/query';
-import { Badge, Button, Progress, toast } from '@de/web-ui';
+import { Badge, Button, Progress, toast } from '@qzda/web-ui';
 import {
   Plus, Bot, Wrench, Activity, History, Lock,
   CheckCircle2, Settings, ArrowRight,
 } from 'lucide-react';
-import { cn } from '@de/web-utils';
-import type { Workspace } from '@de/web-types';
+import { cn } from '@qzda/web-utils';
+import type { Workspace } from '@qzda/web-types';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useT } from '@/i18n';
 

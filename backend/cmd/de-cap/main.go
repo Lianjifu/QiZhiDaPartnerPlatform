@@ -4,8 +4,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/digital-employee-platform/backend/internal/apprun"
-	"github.com/digital-employee-platform/backend/internal/server"
+	"github.com/qizhida-partner-platform/backend/internal/apprun"
+	"github.com/qizhida-partner-platform/backend/internal/server"
 )
 
 // Service: de-cap

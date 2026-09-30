@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/heartbeat"
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
-	"github.com/digital-employee-platform/backend/pkg/response"
+	"github.com/qizhida-partner-platform/backend/internal/heartbeat"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
+	"github.com/qizhida-partner-platform/backend/pkg/response"
 )
 
 // withHeartbeat is the middleware that calls Heartbeat.Touch on every

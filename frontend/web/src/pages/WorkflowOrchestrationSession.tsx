@@ -24,10 +24,10 @@ import {
   FileText, GitBranch, Library, Loader2, PlayCircle, RefreshCw, RotateCcw, Search, Send,
   ShieldCheck, Sparkles, Trash2, Upload, Layers, Webhook, Wrench,
 } from 'lucide-react';
-import { Badge, Button } from '@de/web-ui';
-import { cn } from '@de/web-utils';
-import type { WorkflowNodeKind } from '@de/web-types';
-import { getApiClient } from '@de/web-api';
+import { Badge, Button } from '@qzda/web-ui';
+import { cn } from '@qzda/web-utils';
+import type { WorkflowNodeKind } from '@qzda/web-types';
+import { getApiClient } from '@qzda/web-api';
 import { useApiMutation, useApiQuery } from '@/services/query';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useAuthStore } from '@/stores/authStore';

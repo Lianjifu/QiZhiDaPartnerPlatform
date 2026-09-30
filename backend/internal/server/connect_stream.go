@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
-	collabv1 "github.com/digital-employee-platform/backend/gen/de/collab/v1"
-	"github.com/digital-employee-platform/backend/pkg/contract"
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	collabv1 "github.com/qizhida-partner-platform/backend/gen/qzda/collab/v1"
+	"github.com/qizhida-partner-platform/backend/pkg/contract"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 type connectTurnWriter struct {

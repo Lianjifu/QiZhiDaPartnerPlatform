@@ -212,9 +212,9 @@ export interface Task {
   status: TaskStatus;
   assignee?: string;
   /** 绑定的在岗数字伙伴（主对象） */
-  digitalEmployeeId?: ID;
+  digitalPartnerId?: ID;
   /** 展示用岗位专家名称；以员工档案为准，列表可缓存 */
-  digitalEmployeeName?: string;
+  digitalPartnerName?: string;
   /** @deprecated 执行内核；由数字伙伴 capabilities.agentId 派生，不对外主称 */
   agentId?: ID;
   /** 发起调度的部门负责人数字伙伴 */
@@ -320,12 +320,12 @@ export interface Agent {
  * 数字伙伴是面向业务岗位的一等对象；Agent 仅是其底层执行内核之一。
  * 业务身份、职责边界、受控能力、上岗状态和运行证据均收敛在此对象。
  */
-export type DigitalEmployeeLifecycle = 'draft' | 'testing' | 'pending_approval' | 'active' | 'paused' | 'quarantined';
-export type DigitalEmployeeRisk = 'low' | 'medium' | 'high';
-export type DigitalEmployeeTemplateSource = 'platform' | 'department';
-export type DigitalEmployeeTemplateStatus = 'certified' | 'review' | 'deprecated';
+export type DigitalPartnerLifecycle = 'draft' | 'testing' | 'pending_approval' | 'active' | 'paused' | 'quarantined';
+export type DigitalPartnerRisk = 'low' | 'medium' | 'high';
+export type DigitalPartnerTemplateSource = 'platform' | 'department';
+export type DigitalPartnerTemplateStatus = 'certified' | 'review' | 'deprecated';
 
-export interface DigitalEmployeeCapabilities {
+export interface DigitalPartnerCapabilities {
   agentId?: ID;
   model: string;
   knowledge: string[];
@@ -349,8 +349,8 @@ export interface DigitalEmployeeCapabilities {
  * 岗位授权契约：将数字伙伴的业务职责、可执行范围和人工升级条件结构化，
  * 而不是以不可审计的大段自由文本保存。
  */
-export type DigitalEmployeeExecutionMode = 'recommend' | 'approval_required' | 'execute' | 'prohibited';
-export interface DigitalEmployeeResponsibility {
+export type DigitalPartnerExecutionMode = 'recommend' | 'approval_required' | 'execute' | 'prohibited';
+export interface DigitalPartnerResponsibility {
   id: ID;
   title: string;
   objective: string;
@@ -359,14 +359,14 @@ export interface DigitalEmployeeResponsibility {
   evidenceRequired: boolean;
   workflowRef?: string;
 }
-export interface DigitalEmployeeCapabilityBoundary {
+export interface DigitalPartnerCapabilityBoundary {
   capabilityType: 'tool' | 'workflow' | 'skill';
   capabilityName: string;
-  mode: DigitalEmployeeExecutionMode;
+  mode: DigitalPartnerExecutionMode;
 }
-export interface DigitalEmployeeBoundaryPolicy {
-  responsibilities: DigitalEmployeeResponsibility[];
-  capabilityModes: DigitalEmployeeCapabilityBoundary[];
+export interface DigitalPartnerBoundaryPolicy {
+  responsibilities: DigitalPartnerResponsibility[];
+  capabilityModes: DigitalPartnerCapabilityBoundary[];
   dataClassification: 'internal' | 'confidential' | 'restricted';
   allowedEnvironments: WorkspaceEnvironmentKind[];
   handoff: {
@@ -377,7 +377,7 @@ export interface DigitalEmployeeBoundaryPolicy {
   };
 }
 
-export interface DigitalEmployee {
+export interface DigitalPartner {
   id: ID;
   workspaceId: ID;
   name: string;
@@ -389,16 +389,16 @@ export interface DigitalEmployee {
   serviceObject: string;
   version: string;
   environment: WorkspaceEnvironmentKind;
-  lifecycle: DigitalEmployeeLifecycle;
-  risk: DigitalEmployeeRisk;
+  lifecycle: DigitalPartnerLifecycle;
+  risk: DigitalPartnerRisk;
   /** Optional portrait URL; when absent UI renders a deterministic illustrated avatar. */
   avatarUrl?: string;
   responsibilities: string[];
   prohibitedActions: string[];
   handoffPolicy?: { triggers: string[]; approvalRequiredFor: string[] };
   /** 新版岗位授权契约；历史字段保留以兼容已发布员工与模板。 */
-  boundaryPolicy?: DigitalEmployeeBoundaryPolicy;
-  capabilities: DigitalEmployeeCapabilities;
+  boundaryPolicy?: DigitalPartnerBoundaryPolicy;
+  capabilities: DigitalPartnerCapabilities;
   memoryPolicy: { shortTermHours: number; workingDays: number; longTermCadence: 'daily' | 'weekly'; knowledgePromotion: 'approval_required' | 'disabled' };
   runtime: { calls24h: number; successRate: number; p95Ms: number; costToday: number; handoffs24h: number; anomalies: number };
   evaluation: { status: 'not_started' | 'passed' | 'failed' | 'running'; score?: number; lastRunAt?: ISODate };
@@ -428,7 +428,7 @@ export interface DigitalEmployee {
 }
 
 /** 员工配置的不可变版本记录；生产或高风险变更需先进入受控审批。 */
-export interface DigitalEmployeeConfigurationVersion {
+export interface DigitalPartnerConfigurationVersion {
   id: ID;
   employeeId: ID;
   version: string;
@@ -442,7 +442,7 @@ export interface DigitalEmployeeConfigurationVersion {
 }
 
 /** 可复用岗位蓝图；采用后会创建独立员工草稿并锁定模板版本。 */
-export interface DigitalEmployeeTemplate {
+export interface DigitalPartnerTemplate {
   id: ID;
   name: string;
   role: string;
@@ -450,14 +450,14 @@ export interface DigitalEmployeeTemplate {
   description: string;
   serviceObject: string;
   version: string;
-  risk: DigitalEmployeeRisk;
+  risk: DigitalPartnerRisk;
   responsibilities: string[];
   prohibitedActions: string[];
-  capabilities: DigitalEmployeeCapabilities;
-  memoryPolicy: DigitalEmployee['memoryPolicy'];
-  source: DigitalEmployeeTemplateSource;
+  capabilities: DigitalPartnerCapabilities;
+  memoryPolicy: DigitalPartner['memoryPolicy'];
+  source: DigitalPartnerTemplateSource;
   sourceName: string;
-  status: DigitalEmployeeTemplateStatus;
+  status: DigitalPartnerTemplateStatus;
   scope: 'organization' | 'workspace';
   /** 工作区模板必须绑定工作区；组织模板由平台统一维护。 */
   workspaceId?: ID;
@@ -469,14 +469,14 @@ export interface DigitalEmployeeTemplate {
   updatedAt: ISODate;
 }
 
-export interface DigitalEmployeeTemplateAdoption {
+export interface DigitalPartnerTemplateAdoption {
   id: ID;
   templateId: ID;
   templateVersion: string;
   employeeId: ID;
   workspaceId: ID;
   adoptedBy: string;
-  status: DigitalEmployeeLifecycle;
+  status: DigitalPartnerLifecycle;
   createdAt: ISODate;
 }
 
@@ -723,7 +723,7 @@ export interface MemoryRecord {
   workspaceId: ID;
   ownerId: ID;
   /** 关联数字伙伴；用于岗位维度检索与策略对照。 */
-  digitalEmployeeId?: ID;
+  digitalPartnerId?: ID;
   layer: MemoryLayer;
   scope: MemoryScope;
   title: string;
@@ -1306,7 +1306,7 @@ export interface Conversation {
   ownerId?: ID;
   correlationId?: string;
   /** 绑定的数字伙伴（主对象） */
-  digitalEmployeeId?: ID;
+  digitalPartnerId?: ID;
   /** @deprecated 执行内核；由数字伙伴 capabilities.agentId 派生 */
   agentId: ID;
   title: string;

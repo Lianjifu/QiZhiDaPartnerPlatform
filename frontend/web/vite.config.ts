@@ -11,11 +11,11 @@ export default defineConfig({
   resolve: {
     alias: [
       { find: '@', replacement: SRC },
-      { find: '@de/web-ui', replacement: PKG('ui/src/index.tsx') },
-      { find: '@de/web-api', replacement: PKG('api/src/index.ts') },
-      { find: '@de/web-types', replacement: PKG('types/src/index.ts') },
-      { find: '@de/web-hooks', replacement: PKG('hooks/src/index.ts') },
-      { find: '@de/web-utils', replacement: PKG('utils/src/index.ts') },
+      { find: '@qzda/web-ui', replacement: PKG('ui/src/index.tsx') },
+      { find: '@qzda/web-api', replacement: PKG('api/src/index.ts') },
+      { find: '@qzda/web-types', replacement: PKG('types/src/index.ts') },
+      { find: '@qzda/web-hooks', replacement: PKG('hooks/src/index.ts') },
+      { find: '@qzda/web-utils', replacement: PKG('utils/src/index.ts') },
     ],
   },
   server: {

@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/digital-employee-platform/backend/internal/server"
-	"github.com/digital-employee-platform/backend/internal/store"
+	"github.com/qizhida-partner-platform/backend/internal/server"
+	"github.com/qizhida-partner-platform/backend/internal/store"
 )
 
 func TestRAGPublishedOnly(t *testing.T) {
@@ -32,7 +32,7 @@ func TestRAGPublishedOnly(t *testing.T) {
 func TestConnectRagRetrieve(t *testing.T) {
 	h := server.New(store.New()).Handler()
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/connect/de.rag.v1.RagService/Retrieve",
+	req := httptest.NewRequest(http.MethodPost, "/connect/qzda.rag.v1.RagService/Retrieve",
 		bytes.NewBufferString(`{"query":"缓存","correlationId":"corr-test-1"}`))
 	req.Header.Set("Authorization", "Bearer mock-admin-token")
 	req.Header.Set("Content-Type", "application/json")
@@ -101,7 +101,7 @@ func TestCopilotStreamPersistsUnderConversationID(t *testing.T) {
 	h := server.New(st).Handler()
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/copilot/conversations/conv-1/stream",
-		bytes.NewBufferString(`{"content":"persist-me","digitalEmployeeId":"de-1","correlationId":"corr-persist-1","modelId":"sonnet-4"}`))
+		bytes.NewBufferString(`{"content":"persist-me","digitalPartnerId":"de-1","correlationId":"corr-persist-1","modelId":"sonnet-4"}`))
 	req.Header.Set("Authorization", "Bearer mock-admin-token")
 	req.Header.Set("X-Workspace-Id", "w1")
 	req.Header.Set("Content-Type", "application/json")
@@ -208,7 +208,7 @@ func TestCreateSessionAndApproveAction(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/sessions",
-		bytes.NewBufferString(`{"title":"审批联调","digitalEmployeeId":"de-1","digitalEmployeeName":"故障自愈助手"}`))
+		bytes.NewBufferString(`{"title":"审批联调","digitalPartnerId":"de-1","digitalPartnerName":"故障自愈助手"}`))
 	req.Header.Set("Authorization", "Bearer mock-admin-token")
 	req.Header.Set("X-Workspace-Id", "w1")
 	req.Header.Set("Content-Type", "application/json")
@@ -340,7 +340,7 @@ func TestListSessionsFiltersByWorkspaceHeader(t *testing.T) {
 
 func TestCopilotStreamDefaultSegmented(t *testing.T) {
 	h := server.New(store.New()).Handler()
-	body := `{"content":"第一段足够长的内容用于分段测试，超过四十个字。\n---\n第二段同样足够长，用于验证默认分段。","correlationId":"corr-seg-default","firstMessageId":"msg-seg-def-0","modelId":"sonnet-4","digitalEmployeeId":"de-1"}`
+	body := `{"content":"第一段足够长的内容用于分段测试，超过四十个字。\n---\n第二段同样足够长，用于验证默认分段。","correlationId":"corr-seg-default","firstMessageId":"msg-seg-def-0","modelId":"sonnet-4","digitalPartnerId":"de-1"}`
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/copilot/conversations/conv-seg-default/stream", bytes.NewBufferString(body))
 	req.Header.Set("Authorization", "Bearer mock-admin-token")

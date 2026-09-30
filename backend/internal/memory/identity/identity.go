@@ -20,7 +20,7 @@ import (
 // Profile is the durable identity of one digital employee.
 type Profile struct {
 	WorkspaceID       string   `json:"workspaceId"`
-	DigitalEmployeeID string   `json:"digitalEmployeeId"`
+	DigitalPartnerID string   `json:"digitalPartnerId"`
 	PreferredName     string   `json:"preferredName"`
 	Locale            string   `json:"locale"`
 	PrimaryLanguage   string   `json:"primaryLanguage"`
@@ -64,12 +64,12 @@ func (s *Store) Get(ws, de string) (Profile, error) {
 // Set replaces or creates the profile. Returns ErrInvalid if required
 // fields are blank.
 func (s *Store) Set(p Profile) error {
-	if strings.TrimSpace(p.WorkspaceID) == "" || strings.TrimSpace(p.DigitalEmployeeID) == "" {
+	if strings.TrimSpace(p.WorkspaceID) == "" || strings.TrimSpace(p.DigitalPartnerID) == "" {
 		return ErrInvalid
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.profiles[key(p.WorkspaceID, p.DigitalEmployeeID)] = p
+	s.profiles[key(p.WorkspaceID, p.DigitalPartnerID)] = p
 	return nil
 }
 
@@ -85,7 +85,7 @@ func (s *Store) Delete(ws, de string) error {
 	return nil
 }
 
-// ListAll returns profiles for a workspace, sorted by DigitalEmployeeID.
+// ListAll returns profiles for a workspace, sorted by DigitalPartnerID.
 func (s *Store) ListAll(ws string) []Profile {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -96,7 +96,7 @@ func (s *Store) ListAll(ws string) []Profile {
 		}
 		out = append(out, p)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].DigitalEmployeeID < out[j].DigitalEmployeeID })
+	sort.Slice(out, func(i, j int) bool { return out[i].DigitalPartnerID < out[j].DigitalPartnerID })
 	return out
 }
 

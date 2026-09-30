@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
-	runtimev1 "github.com/digital-employee-platform/backend/gen/de/runtime/v1"
-	"github.com/digital-employee-platform/backend/internal/knowledge/scope"
-	"github.com/digital-employee-platform/backend/pkg/contract"
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	runtimev1 "github.com/qizhida-partner-platform/backend/gen/qzda/runtime/v1"
+	"github.com/qizhida-partner-platform/backend/internal/knowledge/scope"
+	"github.com/qizhida-partner-platform/backend/pkg/contract"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 // handleConnect is the legacy Connect-JSON envelope gateway
@@ -29,13 +29,13 @@ func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 	corr := coalesce(str(body["correlationId"]), coalesce(str(body["correlation_id"]), s.Store.ID("corr")))
 
 	switch path {
-	case "de.collab.v1.CollabService/CreateConversation":
+	case "qzda.collab.v1.CollabService/CreateConversation":
 		id := identityFrom(r.Context())
 		title := coalesce(str(body["title"]), "新会话")
-		deID := coalesce(str(body["digitalEmployeeId"]), str(body["digital_employee_id"]))
+		deID := coalesce(str(body["digitalPartnerId"]), str(body["digital_employee_id"]))
 		item := map[string]any{
 			"id": s.Store.ID("conv"), "workspaceId": s.workspaceID(r),
-			"title": title, "digitalEmployeeId": deID,
+			"title": title, "digitalPartnerId": deID,
 			"updatedAt": time.Now().UTC().Format(time.RFC3339),
 		}
 		s.Store.Lock()
@@ -45,7 +45,7 @@ func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 		}
 		s.Store.Unlock()
 		writeConnect(w, item, nil)
-	case "de.collab.v1.CollabService/StreamTurn":
+	case "qzda.collab.v1.CollabService/StreamTurn":
 		cid := coalesce(str(body["conversationId"]), str(body["conversation_id"]))
 		if cid == "" {
 			writeErr(w, apperr.BadReq(apperr.BadRequest, "缺少 conversation_id"))
@@ -53,22 +53,22 @@ func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 		}
 		payload, _ := json.Marshal(map[string]any{
 			"content":           coalesce(str(body["content"]), str(body["message"])),
-			"digitalEmployeeId": coalesce(str(body["digitalEmployeeId"]), str(body["digital_employee_id"])),
+			"digitalPartnerId": coalesce(str(body["digitalPartnerId"]), str(body["digital_employee_id"])),
 			"correlationId":     corr,
 		})
 		r.Body = ioNopCloser(strings.NewReader(string(payload)))
 		r.URL.Path = "/api/copilot/conversations/" + cid + "/stream"
 		r.Header.Set("x-correlation-id", corr)
 		s.copilotStream(w, r)
-	case "de.rag.v1.RagService/Retrieve":
+	case "qzda.rag.v1.RagService/Retrieve":
 		data, err := s.retrievePublished(r, body, corr)
 		writeConnect(w, data, err)
-	case "de.runtime.v1.RuntimeService/Invoke":
+	case "qzda.runtime.v1.RuntimeService/Invoke":
 		out := s.runtimeReply(coalesce(str(body["input"]), str(body["prompt"])), coalesce(str(body["modelId"]), coalesce(str(body["model"]), "sonnet-4")), nil)
 		writeConnect(w, map[string]any{
 			"output": out, "graph": "minimal", "correlationId": corr, "tokens": len([]rune(out)),
 		}, nil)
-	case "de.runtime.v1.RuntimeService/Run":
+	case "qzda.runtime.v1.RuntimeService/Run":
 		runReq := &runtimev1.RunRequest{
 			Input:        coalesce(str(body["input"]), str(body["prompt"])),
 			ModelId:      coalesce(str(body["modelId"]), str(body["model"])),
@@ -106,7 +106,7 @@ func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 			"events":      events,
 			"replay":      false,
 		}, nil)
-	case "de.collab.v1.CollabService/ReplayTurn":
+	case "qzda.collab.v1.CollabService/ReplayTurn":
 		cid := coalesce(str(body["conversationId"]), str(body["conversation_id"]))
 		corr := coalesce(str(body["correlationId"]), str(body["correlation_id"]))
 		rec := s.lookupContextSnapshotCtx(r.Context(), s.workspaceID(r), cid, corr)
@@ -117,27 +117,27 @@ func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 		writeConnect(w, map[string]any{
 			"snapshot": rec, "events": rec["events"], "correlationId": corr, "replay": true,
 		}, nil)
-	case "de.employee.v1.EmployeeService/ResolveActive":
-		data, err := s.resolveActiveEmployee(r, coalesce(str(body["digitalEmployeeId"]), str(body["digital_employee_id"])))
+	case "qzda.partner.v1.PartnerService/ResolveActive":
+		data, err := s.resolveActiveEmployee(r, coalesce(str(body["digitalPartnerId"]), str(body["digital_partner_id"])))
 		writeConnect(w, data, err)
-	case "de.policy.v1.PolicyService/GetAccessGovernance":
+	case "qzda.policy.v1.PolicyService/GetAccessGovernance":
 		data, err := s.accessGovernance(r)
 		writeConnect(w, data, err)
-	case "de.policy.v1.PolicyService/EvaluateZeroTrust":
+	case "qzda.policy.v1.PolicyService/EvaluateZeroTrust":
 		id := identityFrom(r.Context())
 		data, err := s.evaluateZeroTrust(id, coalesce(str(body["resource"]), ""), coalesce(str(body["action"]), ""),
 			coalesce(str(body["classification"]), ""), body["external"] == true, corr)
 		writeConnect(w, data, err)
-	case "de.audit.v1.AuditService/ListAuditCenter":
+	case "qzda.audit.v1.AuditService/ListAuditCenter":
 		data, err := s.auditCenter(r)
 		writeConnect(w, data, err)
-	case "de.audit.v1.AuditService/ExportAudit":
+	case "qzda.audit.v1.AuditService/ExportAudit":
 		data, err := s.auditExport(r)
 		writeConnect(w, data, err)
-	case "de.platform.v1.PlatformService/ListWorkspaces":
+	case "qzda.platform.v1.PlatformService/ListWorkspaces":
 		data, err := s.listWorkspaces(r)
 		writeConnect(w, data, err)
-	case "de.platform.v1.PlatformService/CreateWorkspace":
+	case "qzda.platform.v1.PlatformService/CreateWorkspace":
 		data, err := s.createWorkspace(r)
 		writeConnect(w, data, err)
 	default:

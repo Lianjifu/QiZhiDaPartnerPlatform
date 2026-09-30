@@ -14,8 +14,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/digital-employee-platform/backend/internal/gateway"
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	"github.com/qizhida-partner-platform/backend/internal/gateway"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 var (

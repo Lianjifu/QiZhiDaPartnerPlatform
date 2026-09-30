@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 func randomShareToken() string {
@@ -119,7 +119,7 @@ func (s *Server) getSharedSession(r *http.Request) (any, error) {
 		}
 		return map[string]any{
 			"title":               coalesce(str(sess["title"]), "共享会话"),
-			"digitalEmployeeName": coalesce(str(sess["digitalEmployeeName"]), str(sess["agent"])),
+			"digitalPartnerName": coalesce(str(sess["digitalPartnerName"]), str(sess["agent"])),
 			"messages":            safe,
 			"readonly":            true,
 		}, nil

@@ -3,8 +3,8 @@ package server
 import (
 	"net/http"
 
-	"github.com/digital-employee-platform/backend/internal/auth"
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	"github.com/qizhida-partner-platform/backend/internal/auth"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 // listVaultKeys handles GET /api/vault/keys. Admin-only diagnostic surface

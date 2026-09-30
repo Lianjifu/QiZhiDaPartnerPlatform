@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package qzda.partner.v1;
+
+option go_package = "github.com/qizhida-partner-platform/backend/gen/qzda/partner/v1;partnerv1";
+
+service PartnerService {
+  rpc ResolveActive(ResolveActiveRequest) returns (ResolveActiveResponse);
+}
+
+message ResolveActiveRequest {
+  string workspace_id = 1;
+  string digital_partner_id = 2;
+}
+
+message ResolveActiveResponse {
+  string id = 1;
+  string name = 2;
+  string lifecycle = 3;
+  bool active = 4;
+  string reason = 5;
+}

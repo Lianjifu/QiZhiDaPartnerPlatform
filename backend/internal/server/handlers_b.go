@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/auth"
-	"github.com/digital-employee-platform/backend/internal/store"
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	"github.com/qizhida-partner-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/store"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 func (s *Server) listEmployees(r *http.Request) (any, error) {
@@ -45,7 +45,7 @@ func (s *Server) capabilityCatalog(r *http.Request) (any, error) {
 
 func (s *Server) getEmployee(r *http.Request) (any, error) {
 	id := identityFrom(r.Context())
-	eid := strings.TrimPrefix(r.URL.Path, "/api/digital-employees/")
+	eid := strings.TrimPrefix(r.URL.Path, "/api/partners/")
 	if i := strings.Index(eid, "/"); i >= 0 {
 		eid = eid[:i]
 	}
@@ -59,7 +59,7 @@ func (s *Server) getEmployee(r *http.Request) (any, error) {
 			return s.employeeWithRuntimeLocked(e), nil
 		}
 	}
-	return nil, apperr.NotFoundErr(apperr.DigitalEmployeeNotFound, "数字伙伴不存在")
+	return nil, apperr.NotFoundErr(apperr.DigitalPartnerNotFound, "数字伙伴不存在")
 }
 
 func (s *Server) createEmployee(r *http.Request) (any, error) {
@@ -74,7 +74,7 @@ func (s *Server) createEmployee(r *http.Request) (any, error) {
 	body, _ := decodeMap(r)
 	name := strings.TrimSpace(str(body["name"]))
 	if name == "" {
-		return nil, apperr.BadReq(apperr.DigitalEmployeeInvalid, "名称必填")
+		return nil, apperr.BadReq(apperr.DigitalPartnerInvalid, "名称必填")
 	}
 	item := map[string]any{
 		"id": s.Store.ID("de"), "workspaceId": ws, "name": name,
@@ -105,7 +105,7 @@ func (s *Server) createEmployee(r *http.Request) (any, error) {
 
 func (s *Server) patchEmployee(r *http.Request) (any, error) {
 	id := identityFrom(r.Context())
-	eid := strings.TrimPrefix(r.URL.Path, "/api/digital-employees/")
+	eid := strings.TrimPrefix(r.URL.Path, "/api/partners/")
 	body, _ := decodeMap(r)
 	s.Store.Lock()
 	defer s.Store.Unlock()
@@ -127,7 +127,7 @@ func (s *Server) patchEmployee(r *http.Request) (any, error) {
 		s.persistEmployeesLocked()
 		return e, nil
 	}
-	return nil, apperr.NotFoundErr(apperr.DigitalEmployeeNotFound, "数字伙伴不存在")
+	return nil, apperr.NotFoundErr(apperr.DigitalPartnerNotFound, "数字伙伴不存在")
 }
 
 func (s *Server) employeeAction(r *http.Request) (any, error) {
@@ -148,7 +148,7 @@ func (s *Server) employeeAction(r *http.Request) (any, error) {
 		}
 	}
 	if emp == nil {
-		return nil, apperr.NotFoundErr(apperr.DigitalEmployeeNotFound, "数字伙伴不存在")
+		return nil, apperr.NotFoundErr(apperr.DigitalPartnerNotFound, "数字伙伴不存在")
 	}
 	if err := s.requireWorkspaceAccess(id, str(emp["workspaceId"])); err != nil {
 		return nil, err
@@ -262,7 +262,7 @@ func (s *Server) validatePublishedCapabilities(emp map[string]any) error {
 	}
 	// Mock-shaped capabilities use display names / catalog options; allow non-empty model.
 	if str(caps["model"]) == "" && str(caps["modelRouteId"]) == "" {
-		return apperr.BadReq(apperr.DigitalEmployeeBinding, "须装配已发布模型")
+		return apperr.BadReq(apperr.DigitalPartnerBinding, "须装配已发布模型")
 	}
 	return nil
 }
@@ -336,7 +336,7 @@ func (s *Server) createTask(r *http.Request) (any, error) {
 	item := map[string]any{
 		"id": s.Store.ID("task"), "workspaceId": ws, "code": fmt.Sprintf("T-%d", time.Now().Unix()%100000),
 		"title": title, "status": "pending", "priority": coalesce(str(body["priority"]), "P2"),
-		"ownerId": id.ID, "ownerName": id.Name, "digitalEmployeeId": body["digitalEmployeeId"],
+		"ownerId": id.ID, "ownerName": id.Name, "digitalPartnerId": body["digitalPartnerId"],
 		"createdAt": time.Now().UTC().Format(time.RFC3339), "updatedAt": time.Now().UTC().Format(time.RFC3339),
 	}
 	s.Store.Lock()

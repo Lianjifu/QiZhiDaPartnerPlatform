@@ -1,5 +1,5 @@
 import { useId, useRef, useState } from 'react';
-import { cn } from '@de/web-utils';
+import { cn } from '@qzda/web-utils';
 import { formatTokenCount, type ContextUsage } from './composer-context';
 import { ComposerPortal } from './composer-portal';
 

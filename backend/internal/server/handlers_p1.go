@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/policy"
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	"github.com/qizhida-partner-platform/backend/internal/policy"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 func (s *Server) knowledgeExtra(key string) (any, error) {

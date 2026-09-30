@@ -4,7 +4,7 @@
 import { Link, Navigate, useLocation } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { useAuthStore } from '@/stores/authStore';
-import type { Permission, Role } from '@de/web-types';
+import type { Permission, Role } from '@qzda/web-types';
 
 interface Props {
   children: ReactNode;

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/auth"
 )
 
 const (
@@ -48,7 +48,7 @@ type toolRunContext struct {
 	Request         *http.Request
 	WorkspaceID     string
 	OwnerID         string
-	DigitalEmployee string
+	DigitalPartner string
 	ConversationID  string
 	CorrelationID   string
 	UserMessage     string
@@ -497,7 +497,7 @@ func (s *Server) runCopilotTool(ctx toolRunContext, t *registeredTool, call tool
 	case t.Name == "memory.recall" || t.Key == "builtin:memory.recall":
 		query := coalesce(str(call.Args["query"]), ctx.UserMessage)
 		s.Store.RLock()
-		hits := s.retrieveMemoryForTurnLocked(ctx.WorkspaceID, ctx.OwnerID, ctx.DigitalEmployee, ctx.ConversationID, query, ctx.Viewer)
+		hits := s.retrieveMemoryForTurnLocked(ctx.WorkspaceID, ctx.OwnerID, ctx.DigitalPartner, ctx.ConversationID, query, ctx.Viewer)
 		s.Store.RUnlock()
 		res := toolExecResult{Status: "success", DurationMs: int(time.Since(started).Milliseconds())}
 		if len(hits) == 0 {

@@ -7,7 +7,7 @@ import { useSearchParams } from 'react-router-dom';
 import ReactFlow, { Background, Controls, Handle, MarkerType, Position, useEdgesState, useNodesState, type Edge, type Node } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { useApiMutation, useApiQuery } from '@/services/query';
-import { Badge, Button, Input, KpiCard } from '@de/web-ui';
+import { Badge, Button, Input, KpiCard } from '@qzda/web-ui';
 import {
   Database, FileText, Brain, Layers, Search, Upload, ShieldCheck, BookOpen,
   Plus, Eye, RefreshCw, Tag as TagIcon, Download, Trash2,
@@ -15,8 +15,8 @@ import {
   Users, Network, Boxes, PlayCircle, Pencil, TrendingUp, Activity, Hash, ChevronRight,
   Sparkles,
 } from 'lucide-react';
-import type { KnowledgeAuditEvent, KnowledgeConsumerBinding, KnowledgeDoc, KnowledgeEvaluation, KnowledgeGovernancePolicy, KnowledgeGraphEntity, KnowledgeGraphRelation, KnowledgePackage, KnowledgeProcessingJob, KnowledgeRetrievalProfile, KnowledgeRetrievalResult, KnowledgeSourceConnection } from '@de/web-types';
-import { cn } from '@de/web-utils';
+import type { KnowledgeAuditEvent, KnowledgeConsumerBinding, KnowledgeDoc, KnowledgeEvaluation, KnowledgeGovernancePolicy, KnowledgeGraphEntity, KnowledgeGraphRelation, KnowledgePackage, KnowledgeProcessingJob, KnowledgeRetrievalProfile, KnowledgeRetrievalResult, KnowledgeSourceConnection } from '@qzda/web-types';
+import { cn } from '@qzda/web-utils';
 import { Modal, ConfirmDialog, EmptyState, RoleReadonlyBanner } from '@/components/shared';
 import { useAuthStore } from '@/stores/authStore';
 import { useWorkspaceStore } from '@/stores/workspaceStore';

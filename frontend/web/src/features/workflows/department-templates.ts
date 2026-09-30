@@ -2,7 +2,7 @@
  * 出厂默认流程模板（Certified）+ IT 高级库
  * 与 backend/builtin/workflows 对齐；API 不可用时作为前端回退源。
  */
-import type { WorkflowNodeKind } from '@de/web-types';
+import type { WorkflowNodeKind } from '@qzda/web-types';
 
 export type TemplateHealth = '健康' | '需授权';
 export type TemplateLibrary = 'default' | 'advanced';

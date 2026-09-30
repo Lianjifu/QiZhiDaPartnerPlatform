@@ -8,10 +8,10 @@ import {
   AlertCircle, AlertTriangle, Brain, BriefcaseBusiness, CheckCircle2, ChevronDown, ChevronRight,
   Clock, Database, Download, ExternalLink, Search, Shield, Wrench,
 } from 'lucide-react';
-import { Badge, Button, toast } from '@de/web-ui';
-import { cn } from '@de/web-utils';
+import { Badge, Button, toast } from '@qzda/web-ui';
+import { cn } from '@qzda/web-utils';
 import type { Citation } from '@/hooks/types';
-import type { DigitalEmployee } from '@de/web-types';
+import type { DigitalPartner } from '@qzda/web-types';
 import type { RunMode } from './composer-mode';
 import {
   buildExpertEvidencePack,
@@ -88,7 +88,7 @@ function formatToken(n: number | null): string {
 }
 
 export function ExpertContextPanel(props: {
-  employee: DigitalEmployee | null | undefined;
+  employee: DigitalPartner | null | undefined;
   overview: ExpertContextOverview;
   sessionOverview: ExpertContextOverview;
   messageOverview: ExpertContextOverview | null;

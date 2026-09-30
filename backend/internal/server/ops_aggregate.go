@@ -122,7 +122,7 @@ func (s *Server) opsOverviewLive(r *http.Request) (any, error) {
 		"source":           "live-aggregate",
 		"instanceId":       instanceID(),
 		"replicaRole":      s.replicaRole(),
-		"digitalEmployees": map[string]any{"active": activeDE, "pending": pendingDE},
+		"digitalPartners": map[string]any{"active": activeDE, "pending": pendingDE},
 		"tasks":            map[string]any{"open": openTasks, "risk": riskTasks},
 		"channels":         map[string]any{"deadLetters": dlq},
 		"governance": map[string]any{
@@ -156,10 +156,10 @@ func (s *Server) homeKPIsLive(r *http.Request) (any, error) {
 		return nil, err
 	}
 	m := ov.(map[string]any)
-	de := m["digitalEmployees"].(map[string]any)
+	de := m["digitalPartners"].(map[string]any)
 	tasks := m["tasks"].(map[string]any)
 	return map[string]any{
-		"activeDigitalEmployees": de["active"],
+		"activeDigitalPartners": de["active"],
 		"openTasks":              tasks["open"],
 		"riskTasks":              tasks["risk"],
 		"pendingApprovals":       m["governance"].(map[string]any)["pendingApprovals"],
@@ -203,7 +203,7 @@ func (s *Server) homeExtraLive(r *http.Request) (any, error) {
 		if title == "" {
 			title = code
 		}
-		actor := firstNonEmpty(str(t["digitalEmployeeName"]), str(t["assignee"]), "系统")
+		actor := firstNonEmpty(str(t["digitalPartnerName"]), str(t["assignee"]), "系统")
 		tone := "info"
 		st := str(t["status"])
 		if st == "completed" || st == "archived" {
@@ -280,7 +280,7 @@ func (s *Server) homeExtraLive(r *http.Request) (any, error) {
 		updated := str(t["updatedAt"])
 		alert := map[string]any{
 			"id": "task-alert-" + str(t["id"]), "level": level, "text": title,
-			"time": updated, "assignee": firstNonEmpty(str(t["digitalEmployeeName"]), str(t["assignee"])),
+			"time": updated, "assignee": firstNonEmpty(str(t["digitalPartnerName"]), str(t["assignee"])),
 			"taskCode": code, "workspaceId": ws, "source": "task",
 		}
 		alerts = append(alerts, alert)

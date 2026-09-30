@@ -18,13 +18,13 @@ import { useT } from '@/i18n';
 import { useUiStore } from '@/stores/uiStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
-import { Avatar } from '@de/web-ui';
-import { cn } from '@de/web-utils';
+import { Avatar } from '@qzda/web-ui';
+import { cn } from '@qzda/web-utils';
 import { useApiQuery } from '@/services/query';
 import { OnboardingGuide } from '@/features/onboarding/OnboardingGuide';
 import { getRoleNavGroups, navLabelKeyForPath } from '@/features/role-nav/role-nav';
 import { useQueryClient } from '@tanstack/react-query';
-import type { Workspace } from '@de/web-types';
+import type { Workspace } from '@qzda/web-types';
 
 const NAV_ICONS: Record<string, ComponentType<{ className?: string }>> = {
   Home, MessageSquare, ListChecks, BriefcaseBusiness, Workflow,

@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Badge, Button, Input } from '@de/web-ui';
+import { Badge, Button, Input } from '@qzda/web-ui';
 import { Boxes, FileText, Layers, PlayCircle, Plus, Search, ShieldCheck, Trash2 } from 'lucide-react';
-import type { KnowledgeDoc, KnowledgePackage } from '@de/web-types';
-import { cn } from '@de/web-utils';
+import type { KnowledgeDoc, KnowledgePackage } from '@qzda/web-types';
+import { cn } from '@qzda/web-utils';
 import { ConfirmDialog, EmptyState, Modal } from '@/components/shared';
 import {
   packageReadyToPublish,

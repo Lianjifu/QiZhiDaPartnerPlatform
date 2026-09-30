@@ -7,12 +7,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/auth"
-	"github.com/digital-employee-platform/backend/internal/channel"
-	"github.com/digital-employee-platform/backend/internal/knowledge/citation"
-	"github.com/digital-employee-platform/backend/internal/knowledge/citationlog"
-	memid "github.com/digital-employee-platform/backend/internal/memory/identity"
-	"github.com/digital-employee-platform/backend/internal/modelprov"
+	"github.com/qizhida-partner-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/channel"
+	"github.com/qizhida-partner-platform/backend/internal/knowledge/citation"
+	"github.com/qizhida-partner-platform/backend/internal/knowledge/citationlog"
+	memid "github.com/qizhida-partner-platform/backend/internal/memory/identity"
+	"github.com/qizhida-partner-platform/backend/internal/modelprov"
 )
 
 // logCitationsForRAG writes one citationlog row per hit into the global log
@@ -83,7 +83,7 @@ type participantContext struct {
 	WorkspaceID     string
 	ConversationID  string
 	CorrelationID   string
-	DigitalEmployee string
+	DigitalPartner string
 	SessionMode     string
 	RiskLevel       string
 	ModelID         string
@@ -121,7 +121,7 @@ func (s *Server) buildParticipantContext(in participantCtxInput, emp map[string]
 		WorkspaceID:     in.WorkspaceID,
 		ConversationID:  in.ConversationID,
 		CorrelationID:   in.CorrelationID,
-		DigitalEmployee: deID,
+		DigitalPartner: deID,
 		SessionMode:     coalesce(in.SessionModeHint, s.resolveDefaultSessionMode(deID)),
 		RiskLevel:       coalesce(in.RiskLevelHint, s.resolveDefaultRiskLevel(deID)),
 		Channel:         in.Channel,
@@ -176,7 +176,7 @@ func (s *Server) runParticipantTools(ctx context.Context, pc participantContext)
 		Request:         pc.Request,
 		WorkspaceID:     pc.WorkspaceID,
 		OwnerID:         pc.OwnerID,
-		DigitalEmployee: pc.DigitalEmployee,
+		DigitalPartner: pc.DigitalPartner,
 		ConversationID:  pc.ConversationID,
 		CorrelationID:   pc.CorrelationID,
 		UserMessage:     pc.UserMessage,
@@ -188,7 +188,7 @@ func (s *Server) runParticipantTools(ctx context.Context, pc participantContext)
 	if turnID == "" {
 		turnID = pc.ConversationID
 	}
-	turnID += ":" + pc.DigitalEmployee
+	turnID += ":" + pc.DigitalPartner
 
 	var out []map[string]any
 	var ragHits []map[string]any
@@ -220,7 +220,7 @@ func (s *Server) runParticipantTools(ctx context.Context, pc participantContext)
 			// path returns "denied not_implemented" today. Surface it in the
 			// toolCalls list so the audit trail is honest.
 			out = append(out, map[string]any{
-				"id":         fmt.Sprintf("tc_%s_%s", pc.DigitalEmployee, t.Name),
+				"id":         fmt.Sprintf("tc_%s_%s", pc.DigitalPartner, t.Name),
 				"name":       t.Name,
 				"args":       map[string]any{"input": pc.UserMessage},
 				"status":     "denied",
@@ -251,7 +251,7 @@ func (s *Server) runParticipantTools(ctx context.Context, pc participantContext)
 			ragHits = append(ragHits, hits...)
 		}
 		out = append(out, map[string]any{
-			"id":         fmt.Sprintf("tc_%s_%s", pc.DigitalEmployee, t.Name),
+			"id":         fmt.Sprintf("tc_%s_%s", pc.DigitalPartner, t.Name),
 			"name":       t.Name,
 			"args":       call.Args,
 			"status":     r.Status,
@@ -262,7 +262,7 @@ func (s *Server) runParticipantTools(ctx context.Context, pc participantContext)
 		})
 		if pc.Emit != nil {
 			pc.Emit("tool", "panel", map[string]any{
-				"participantId": pc.DigitalEmployee,
+				"participantId": pc.DigitalPartner,
 				"name":          t.Name,
 				"kind":          t.Kind,
 				"status":        r.Status,
@@ -291,7 +291,7 @@ func (s *Server) runParticipantTurn(ctx context.Context, pc participantContext) 
 		return s.testHooks.participantTurnOverride(ctx, pc)
 	}
 	started := time.Now()
-	res := participantTurnResult{ParticipantID: pc.DigitalEmployee, Status: "success"}
+	res := participantTurnResult{ParticipantID: pc.DigitalPartner, Status: "success"}
 
 	// Mem5: hard-no guard short-circuits before any LLM call.
 	if pc.IdentityPresent {
@@ -303,7 +303,7 @@ func (s *Server) runParticipantTurn(ctx context.Context, pc participantContext) 
 			if pc.Emit != nil {
 				pc.Emit("agent", "multi", map[string]any{
 					"status":        "refused",
-					"participantId": pc.DigitalEmployee,
+					"participantId": pc.DigitalPartner,
 					"reason":        reason,
 				})
 			}
@@ -327,12 +327,12 @@ func (s *Server) runParticipantTurn(ctx context.Context, pc participantContext) 
 	}
 
 	empMap := map[string]any{
-		"id":          pc.DigitalEmployee,
+		"id":          pc.DigitalPartner,
 		"name":        pc.Identity.PreferredName,
 		"description": pc.Identity.CustomFacts,
 	}
 	if empMap["name"] == "" {
-		empMap["name"] = pc.DigitalEmployee
+		empMap["name"] = pc.DigitalPartner
 	}
 	// ragSnippetsForPrompt type-asserts to map[string]any and reads m["results"],
 	// so we must wrap a slice of hits in that wrapper shape. Without the wrap
@@ -402,7 +402,7 @@ func (s *Server) runParticipantTurn(ctx context.Context, pc participantContext) 
 	if pc.Emit != nil {
 		pc.Emit("agent", "multi", map[string]any{
 			"status":        "delegated",
-			"participantId": pc.DigitalEmployee,
+			"participantId": pc.DigitalPartner,
 			"resultStatus":  res.Status,
 			"preview":       truncateRunes(res.Text, 160),
 			"durationMs":    res.DurationMs,
@@ -430,7 +430,7 @@ func (s *Server) attributedChannelSend(ctx context.Context, pc participantContex
 	if kind == "" {
 		pc.Emit("channel", "outbound", map[string]any{
 			"status":        "skipped",
-			"participantId": pc.DigitalEmployee,
+			"participantId": pc.DigitalPartner,
 			"channel":       pc.Channel,
 			"reason":        "no_adapter_for_channel",
 		})
@@ -442,7 +442,7 @@ func (s *Server) attributedChannelSend(ctx context.Context, pc participantContex
 	if dep == nil {
 		pc.Emit("channel", "outbound", map[string]any{
 			"status":        "skipped",
-			"participantId": pc.DigitalEmployee,
+			"participantId": pc.DigitalPartner,
 			"channel":       pc.Channel,
 			"reason":        "no_deployment_for_session",
 		})
@@ -455,7 +455,7 @@ func (s *Server) attributedChannelSend(ctx context.Context, pc participantContex
 	if str(dep["channel"]) != "" && str(dep["channel"]) != pc.Channel {
 		pc.Emit("channel", "outbound", map[string]any{
 			"status":        "skipped",
-			"participantId": pc.DigitalEmployee,
+			"participantId": pc.DigitalPartner,
 			"channel":       pc.Channel,
 			"reason":        "channel_mismatch:deployment=" + str(dep["channel"]),
 		})
@@ -472,7 +472,7 @@ func (s *Server) attributedChannelSend(ctx context.Context, pc participantContex
 	if credJSON == "" {
 		pc.Emit("channel", "outbound", map[string]any{
 			"status":        "skipped",
-			"participantId": pc.DigitalEmployee,
+			"participantId": pc.DigitalPartner,
 			"channel":       pc.Channel,
 			"reason":        "credentials_missing",
 		})
@@ -496,7 +496,7 @@ func (s *Server) attributedChannelSend(ctx context.Context, pc participantContex
 	if err != nil {
 		pc.Emit("channel", "outbound", map[string]any{
 			"status":        "failed",
-			"participantId": pc.DigitalEmployee,
+			"participantId": pc.DigitalPartner,
 			"channel":       pc.Channel,
 			"reason":        err.Error(),
 		})
@@ -507,7 +507,7 @@ func (s *Server) attributedChannelSend(ctx context.Context, pc participantContex
 	}
 	pc.Emit("channel", "outbound", map[string]any{
 		"status":        "attributed",
-		"participantId": pc.DigitalEmployee,
+		"participantId": pc.DigitalPartner,
 		"channel":       pc.Channel,
 		"messageId":     msgID,
 	})

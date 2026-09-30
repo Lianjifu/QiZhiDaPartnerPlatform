@@ -3,7 +3,7 @@ package server
 import (
 	"strings"
 
-	"github.com/digital-employee-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/auth"
 )
 
 // conversationIDFromPath extracts :id from:
@@ -124,7 +124,7 @@ func (s *Server) resolveConversationDetailLocked(id *auth.Identity, ws, cid stri
 			"id":                outID,
 			"workspaceId":       str(sess["workspaceId"]),
 			"title":             sess["title"],
-			"digitalEmployeeId": sess["digitalEmployeeId"],
+			"digitalPartnerId": sess["digitalPartnerId"],
 			"updatedAt":         updatedAt,
 			"messages":          messages,
 		}, false

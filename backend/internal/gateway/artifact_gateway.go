@@ -17,7 +17,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 // IdentityProvider is the minimal surface the gateway needs from a request

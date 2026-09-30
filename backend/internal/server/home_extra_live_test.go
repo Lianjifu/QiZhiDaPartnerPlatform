@@ -6,8 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/digital-employee-platform/backend/internal/server"
-	"github.com/digital-employee-platform/backend/internal/store"
+	"github.com/qizhida-partner-platform/backend/internal/server"
+	"github.com/qizhida-partner-platform/backend/internal/store"
 )
 
 func decodeHomeData(t *testing.T, rr *httptest.ResponseRecorder) map[string]any {
@@ -124,7 +124,7 @@ func TestOpsOverviewLive_PendingFromTasks(t *testing.T) {
 	if len(pending) < 1 {
 		t.Fatalf("expected pending items from review/open tasks, got %v", pending)
 	}
-	de, _ := data["digitalEmployees"].(map[string]any)
+	de, _ := data["digitalPartners"].(map[string]any)
 	health, _ := data["health"].(map[string]any)
 	if toNum(health["activeAgents"]) != toNum(de["active"]) {
 		t.Fatalf("health.activeAgents must match digitalEmployees.active")
@@ -152,10 +152,10 @@ func TestHomeKPIsLive_MatchesOpsOverview(t *testing.T) {
 	req2.Header.Set("x-workspace-id", "w1")
 	h.ServeHTTP(rr2, req2)
 	ov := decodeHomeData(t, rr2)
-	de, _ := ov["digitalEmployees"].(map[string]any)
+	de, _ := ov["digitalPartners"].(map[string]any)
 	tasks, _ := ov["tasks"].(map[string]any)
-	if toNum(kpis["activeDigitalEmployees"]) != toNum(de["active"]) {
-		t.Fatalf("active mismatch kpis=%v ov=%v", kpis["activeDigitalEmployees"], de["active"])
+	if toNum(kpis["activeDigitalPartners"]) != toNum(de["active"]) {
+		t.Fatalf("active mismatch kpis=%v ov=%v", kpis["activeDigitalPartners"], de["active"])
 	}
 	if toNum(kpis["openTasks"]) != toNum(tasks["open"]) {
 		t.Fatalf("openTasks mismatch")

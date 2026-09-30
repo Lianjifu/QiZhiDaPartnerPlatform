@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useApiMutation, useApiQuery } from '@/services/query';
-import { Badge, Button, Input, toast } from '@de/web-ui';
+import { Badge, Button, Input, toast } from '@qzda/web-ui';
 import {
   Wrench, Globe, Box, Upload, Network, RefreshCw, Sparkles, Search, CheckCircle2, AlertTriangle,
 } from 'lucide-react';
-import { cn } from '@de/web-utils';
-import type { SkillIntegration } from '@de/web-types';
+import { cn } from '@qzda/web-utils';
+import type { SkillIntegration } from '@qzda/web-types';
 import { Modal, EmptyState } from '@/components/shared';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 

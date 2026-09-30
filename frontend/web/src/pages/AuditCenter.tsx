@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Bot, Download, FileSearch, Filter, ListChecks, RefreshCw, ShieldCheck, Workflow } from 'lucide-react';
-import { Badge, Button, toast } from '@de/web-ui';
-import { cn } from '@de/web-utils';
+import { Badge, Button, toast } from '@qzda/web-ui';
+import { cn } from '@qzda/web-utils';
 import { useApiMutation, useApiQuery } from '@/services/query';
 import { useT } from '@/i18n';
 import { useAuthStore } from '@/stores/authStore';

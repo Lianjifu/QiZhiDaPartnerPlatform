@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, ClipboardList, Gavel, History, MessagesSquare, Pause, Play, RotateCcw, ShieldCheck, UserRound } from 'lucide-react';
-import type { ControlledTask, TaskAuditEvent, TaskLifecycleStage } from '@de/web-types';
-import { Badge, Input } from '@de/web-ui';
+import type { ControlledTask, TaskAuditEvent, TaskLifecycleStage } from '@qzda/web-types';
+import { Badge, Input } from '@qzda/web-ui';
 import { useApiMutation, useApiQuery } from '@/services/query';
 import { conversationHref, employeeLabel, getPrimaryAction, getStageMeta, nextStepLabel, riskLabel, sourceLabel, dispatchKindLabel, assistStatusLabel, normalizeControlledTask } from './task-ui';
 import { roleCanMutate } from '@/features/role-nav/role-nav';

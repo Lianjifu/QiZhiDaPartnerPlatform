@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/auth"
 )
 
 func (s *Server) runPilotdeckTool(ctx toolRunContext, t *registeredTool, call toolCallRequest, started time.Time) toolExecResult {
@@ -279,7 +279,7 @@ func (s *Server) runtimeAgent(ctx toolRunContext, call toolCallRequest, started 
 
 func (s *Server) runtimeTaskCreate(ctx toolRunContext, call toolCallRequest, started time.Time) toolExecResult {
 	title := firstNonEmpty(str(call.Args["title"]), str(call.Args["name"]), "Copilot 任务")
-	body := map[string]any{"title": title, "source": "copilot", "digitalEmployeeId": ctx.DigitalEmployee}
+	body := map[string]any{"title": title, "source": "copilot", "digitalPartnerId": ctx.DigitalPartner}
 	viewer := ctx.Viewer
 	if viewer == nil {
 		viewer = &auth.Identity{ID: ctx.OwnerID, Name: "copilot"}

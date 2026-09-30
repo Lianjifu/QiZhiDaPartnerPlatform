@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/digital-employee-platform/backend/internal/skills/signing"
+	"github.com/qizhida-partner-platform/backend/internal/skills/signing"
 )
 
 // TestTrustStoreRoundTripViaJSON exercises the full TrustStore →

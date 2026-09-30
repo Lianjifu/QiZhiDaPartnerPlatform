@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
-	platformv1 "github.com/digital-employee-platform/backend/gen/de/platform/v1"
+	platformv1 "github.com/qizhida-partner-platform/backend/gen/qzda/platform/v1"
 )
 
 type platformConnect struct{ s *Server }

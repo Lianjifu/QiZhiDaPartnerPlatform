@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/metrics"
+	"github.com/qizhida-partner-platform/backend/internal/metrics"
 )
 
 // Decision is the top-level verdict of a scan.

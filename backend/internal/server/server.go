@@ -12,27 +12,27 @@ import (
 	"sync"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/agentos"
-	"github.com/digital-employee-platform/backend/internal/auth"
-	"github.com/digital-employee-platform/backend/internal/channel"
-	"github.com/digital-employee-platform/backend/internal/deworkflow"
-	"github.com/digital-employee-platform/backend/internal/heartbeat"
-	"github.com/digital-employee-platform/backend/internal/infra"
-	"github.com/digital-employee-platform/backend/internal/multimodal"
-	"github.com/digital-employee-platform/backend/internal/pmsop"
-	memid "github.com/digital-employee-platform/backend/internal/memory/identity"
-	"github.com/digital-employee-platform/backend/internal/modelprov"
-	"github.com/digital-employee-platform/backend/internal/modelprov/trace"
-	"github.com/digital-employee-platform/backend/internal/policy"
-	"github.com/digital-employee-platform/backend/internal/skills/registry"
-	"github.com/digital-employee-platform/backend/internal/skills/signing"
-	"github.com/digital-employee-platform/backend/internal/runtimeenv"
-	"github.com/digital-employee-platform/backend/internal/gateway"
-	"github.com/digital-employee-platform/backend/internal/metrics"
-	"github.com/digital-employee-platform/backend/internal/store"
-	"github.com/digital-employee-platform/backend/internal/vault"
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
-	"github.com/digital-employee-platform/backend/pkg/response"
+	"github.com/qizhida-partner-platform/backend/internal/agentos"
+	"github.com/qizhida-partner-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/channel"
+	"github.com/qizhida-partner-platform/backend/internal/qzdaworkflow"
+	"github.com/qizhida-partner-platform/backend/internal/heartbeat"
+	"github.com/qizhida-partner-platform/backend/internal/infra"
+	"github.com/qizhida-partner-platform/backend/internal/multimodal"
+	"github.com/qizhida-partner-platform/backend/internal/pmsop"
+	memid "github.com/qizhida-partner-platform/backend/internal/memory/identity"
+	"github.com/qizhida-partner-platform/backend/internal/modelprov"
+	"github.com/qizhida-partner-platform/backend/internal/modelprov/trace"
+	"github.com/qizhida-partner-platform/backend/internal/policy"
+	"github.com/qizhida-partner-platform/backend/internal/skills/registry"
+	"github.com/qizhida-partner-platform/backend/internal/skills/signing"
+	"github.com/qizhida-partner-platform/backend/internal/runtimeenv"
+	"github.com/qizhida-partner-platform/backend/internal/gateway"
+	"github.com/qizhida-partner-platform/backend/internal/metrics"
+	"github.com/qizhida-partner-platform/backend/internal/store"
+	"github.com/qizhida-partner-platform/backend/internal/vault"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
+	"github.com/qizhida-partner-platform/backend/pkg/response"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -50,7 +50,7 @@ type Server struct {
 	Policy     *policy.Engine
 	Vault      *vault.Client
 	OIDC       auth.OIDCConfig
-	Workflows  *deworkflow.Engine
+	Workflows  *qzdaworkflow.Engine
 	ModelProbe *modelprov.Client
 	// Optional HTTP clients override Open API transport in tests.
 	FeishuHTTP   *http.Client
@@ -166,7 +166,7 @@ func New(st *store.Store) *Server {
 		Policy:        policy.New(),
 		Vault:         vault.NewFromEnv(),
 		OIDC:          auth.LoadOIDC(),
-		Workflows:     deworkflow.New(),
+		Workflows:     qzdaworkflow.New(),
 		ModelProbe:    modelprov.NewClient(),
 		TraceRecorder:    trace.NewRecorder(5000),
 		SkillRegistry:    defaultSkillRegistry(),
@@ -582,25 +582,25 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) {
 		data, err = s.auditExport(r)
 
 	// Phase B — Mock-aligned digital employees / tasks
-	case path == "/api/digital-employees" && method == http.MethodGet:
+	case path == "/api/partners" && method == http.MethodGet:
 		data, err = s.listEmployees(r)
-	case path == "/api/digital-employees" && method == http.MethodPost:
+	case path == "/api/partners" && method == http.MethodPost:
 		data, err = s.createEmployee(r)
-	case path == "/api/digital-employees/overview" && method == http.MethodGet:
+	case path == "/api/partners/overview" && method == http.MethodGet:
 		data, err = s.employeeOverview(r)
-	case path == "/api/digital-employee-templates" && method == http.MethodGet:
+	case path == "/api/partner-templates" && method == http.MethodGet:
 		data, err = s.listEmployeeTemplates(r)
-	case path == "/api/digital-employee-templates" && method == http.MethodPost:
+	case path == "/api/partner-templates" && method == http.MethodPost:
 		data, err = s.listEmployeeTemplates(r) // create uses same list seed shape via adopt flow primarily
-	case path == "/api/digital-employee-template-adoptions" && method == http.MethodGet:
+	case path == "/api/partner-template-adoptions" && method == http.MethodGet:
 		data, err = s.listTemplateAdoptions(r)
-	case path == "/api/digital-employee-capability-catalog" && method == http.MethodGet:
+	case path == "/api/partner-capability-catalog" && method == http.MethodGet:
 		data, err = s.capabilityCatalog(r)
-	case strings.HasPrefix(path, "/api/digital-employee-templates/") && strings.HasSuffix(path, "/adopt") && method == http.MethodPost:
+	case strings.HasPrefix(path, "/api/partner-templates/") && strings.HasSuffix(path, "/adopt") && method == http.MethodPost:
 		data, err = s.adoptTemplate(r)
-	case strings.HasPrefix(path, "/api/digital-employee-templates/") && method == http.MethodPatch:
+	case strings.HasPrefix(path, "/api/partner-templates/") && method == http.MethodPatch:
 		data, err = s.listEmployeeTemplates(r)
-	case strings.HasPrefix(path, "/api/digital-employees/") && (method == http.MethodGet || method == http.MethodPost || method == http.MethodPatch):
+	case strings.HasPrefix(path, "/api/partners/") && (method == http.MethodGet || method == http.MethodPost || method == http.MethodPatch):
 		data, err = s.digitalEmployeeRoute(r)
 	case path == "/api/tasks" && method == http.MethodGet:
 		data, err = s.listTasksAligned(r)

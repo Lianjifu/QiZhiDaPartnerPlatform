@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package qzda.platform.v1;
+
+option go_package = "github.com/qizhida-partner-platform/backend/gen/qzda/platform/v1;platformv1";
+
+// Phase A IDL skeleton — HTTP JSON paths remain the FE contract for now.
+service PlatformService {
+  rpc ListWorkspaces(ListWorkspacesRequest) returns (ListWorkspacesResponse);
+  rpc CreateWorkspace(CreateWorkspaceRequest) returns (Workspace);
+}
+
+message ListWorkspacesRequest {}
+message ListWorkspacesResponse { repeated Workspace items = 1; }
+
+message CreateWorkspaceRequest {
+  string name = 1;
+  string region = 2;
+  string plan = 3;
+}
+
+message Workspace {
+  string id = 1;
+  string tenant_id = 2;
+  string name = 3;
+  string region = 4;
+  string plan = 5;
+  string status = 6;
+  string owner_id = 7;
+  int32 member_count = 8;
+  int32 compliance_score = 9;
+  string created_at = 10;
+}

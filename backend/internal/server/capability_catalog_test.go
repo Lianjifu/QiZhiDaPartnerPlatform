@@ -7,14 +7,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/digital-employee-platform/backend/internal/store"
+	"github.com/qizhida-partner-platform/backend/internal/store"
 )
 
 func TestCapabilityCatalogAggregatesLiveAssets(t *testing.T) {
 	st := store.New()
 	srv := New(st)
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/digital-employee-capability-catalog", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/partner-capability-catalog", nil)
 	req.Header.Set("Authorization", "Bearer mock-admin-token")
 	req.Header.Set("X-Workspace-Id", "w1")
 	srv.Handler().ServeHTTP(rr, req)
@@ -106,7 +106,7 @@ func TestCapabilityCatalogCollabFetchesCapPeers(t *testing.T) {
 	collab.Store.Unlock()
 
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/digital-employee-capability-catalog", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/partner-capability-catalog", nil)
 	req.Header.Set("Authorization", "Bearer mock-admin-token")
 	req.Header.Set("X-Workspace-Id", "w1")
 	collab.Handler().ServeHTTP(rr, req)
@@ -133,7 +133,7 @@ func TestEmployeeConfigurationDraftPersistsCapabilities(t *testing.T) {
 	  "memoryPolicy":{"shortTermHours":24,"workingDays":7,"longTermCadence":"daily","knowledgePromotion":"approval_required"}
 	}`
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/digital-employees/de-2/configuration", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/partners/de-2/configuration", strings.NewReader(body))
 	req.Header.Set("Authorization", "Bearer mock-admin-token")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Workspace-Id", "w1")

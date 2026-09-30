@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/modelprov/trace"
+	"github.com/qizhida-partner-platform/backend/internal/modelprov/trace"
 )
 
 // Verdict describes what the caller should do with a SOP.

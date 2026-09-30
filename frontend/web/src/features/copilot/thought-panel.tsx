@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Brain, ChevronDown, ChevronRight } from 'lucide-react';
-import { cn } from '@de/web-utils';
+import { cn } from '@qzda/web-utils';
 import type { ChatMessageEx } from '@/hooks/types';
 import { thoughtKindLabel } from './human-thought';
 

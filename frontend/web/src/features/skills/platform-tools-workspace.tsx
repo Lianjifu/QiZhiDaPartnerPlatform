@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Badge, Button, Input, KpiCard } from '@de/web-ui';
+import { Badge, Button, Input, KpiCard } from '@qzda/web-ui';
 import {
   BookOpen,
   Brain,
@@ -20,7 +20,7 @@ import {
   Wrench,
   Zap,
 } from 'lucide-react';
-import { cn } from '@de/web-utils';
+import { cn } from '@qzda/web-utils';
 import { EmptyState } from '@/components/shared';
 import { useApiQuery } from '@/services/query';
 import { clampMemoryPage, memoryPageCount, paginateItems } from '@/features/memory/record-list';

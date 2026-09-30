@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AlertCircle, LoaderCircle, Plus } from 'lucide-react';
-import type { ControlledTask, Priority, TaskLifecycleStage } from '@de/web-types';
-import { Input } from '@de/web-ui';
+import type { ControlledTask, Priority, TaskLifecycleStage } from '@qzda/web-types';
+import { Input } from '@qzda/web-ui';
 import { Drawer, RoleReadonlyBanner } from '@/components/shared';
 import { useApiMutation, useApiQuery } from '@/services/query';
 import { TaskActionSummary, type TaskPreset } from '@/features/tasks/TaskActionSummary';

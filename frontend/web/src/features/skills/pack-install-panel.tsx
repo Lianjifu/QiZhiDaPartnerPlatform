@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Badge, Button, Input } from '@de/web-ui';
+import { Badge, Button, Input } from '@qzda/web-ui';
 import { Box, CheckCircle2, Cpu, Package, ShieldAlert } from 'lucide-react';
 import { useApiMutation, useApiQuery } from '@/services/query';
 

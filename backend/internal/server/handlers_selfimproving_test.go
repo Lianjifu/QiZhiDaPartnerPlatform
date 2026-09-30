@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/modelprov/trace"
-	"github.com/digital-employee-platform/backend/internal/server"
-	"github.com/digital-employee-platform/backend/internal/store"
+	"github.com/qizhida-partner-platform/backend/internal/modelprov/trace"
+	"github.com/qizhida-partner-platform/backend/internal/server"
+	"github.com/qizhida-partner-platform/backend/internal/store"
 )
 
 func setupSelfImprovingHarness(t *testing.T) http.Handler {

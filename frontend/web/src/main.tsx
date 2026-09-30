@@ -6,7 +6,7 @@ import App from './App';
 import { I18nProvider } from './i18n';
 import './styles/global.css';
 import 'reactflow/dist/style.css';
-import { setApiClient, ApiClient, mockHandler } from '@de/web-api';
+import { setApiClient, ApiClient, mockHandler } from '@qzda/web-api';
 import { useWorkspaceStore } from './stores/workspaceStore';
 import { useAuthStore } from './stores/authStore';
 import { apiBaseURL, isDemoApiMode } from './lib/api-mode';

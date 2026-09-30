@@ -20,7 +20,7 @@ func TestServiceModeOwnsPath(t *testing.T) {
 		{ModeSys, "/api/skills", false},
 		{ModeCollab, "/api/tasks", true},
 		{ModeCollab, "/api/copilot/conversations", true},
-		{ModeCollab, "/api/digital-employees", true},
+		{ModeCollab, "/api/partners", true},
 		{ModeCollab, "/api/models/providers", false},
 		{ModeCap, "/api/model-providers", true},
 		{ModeCap, "/api/knowledge/packages", true},
@@ -42,9 +42,9 @@ func TestServiceModeOwnsPath(t *testing.T) {
 		{ModeAudit, "/api/audits", true},
 		{ModeAudit, "/v1/events", true},
 		{ModeAudit, "/api/workspaces", false},
-		{ModePolicy, "/de.policy.v1.PolicyService/EvaluateZeroTrust", true},
-		{ModeAudit, "/de.audit.v1.AuditService/ListAuditCenter", true},
-		{ModeCap, "/de.policy.v1.PolicyService/EvaluateZeroTrust", false},
+		{ModePolicy, "/qzda.policy.v1.PolicyService/EvaluateZeroTrust", true},
+		{ModeAudit, "/qzda.audit.v1.AuditService/ListAuditCenter", true},
+		{ModeCap, "/qzda.policy.v1.PolicyService/EvaluateZeroTrust", false},
 	}
 	for _, tc := range cases {
 		if got := tc.mode.OwnsPath(tc.path); got != tc.want {

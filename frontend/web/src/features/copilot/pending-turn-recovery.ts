@@ -1,4 +1,4 @@
-import { getApiClient } from '@de/web-api';
+import { getApiClient } from '@qzda/web-api';
 
 export type TurnStatus = 'running' | 'done' | 'cancelled' | 'failed';
 

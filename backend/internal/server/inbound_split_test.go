@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/digital-employee-platform/backend/internal/feishu"
-	"github.com/digital-employee-platform/backend/internal/server"
-	"github.com/digital-employee-platform/backend/internal/store"
-	"github.com/digital-employee-platform/backend/internal/vault"
+	"github.com/qizhida-partner-platform/backend/internal/feishu"
+	"github.com/qizhida-partner-platform/backend/internal/server"
+	"github.com/qizhida-partner-platform/backend/internal/store"
+	"github.com/qizhida-partner-platform/backend/internal/vault"
 )
 
 func TestCollabCopilotPostTurnDelegatesToCap(t *testing.T) {
@@ -77,7 +77,7 @@ func TestCapInboundSessionLandsOnCollab(t *testing.T) {
 	capStore.ChannelDeploys = append([]map[string]any{{
 		"id": "dep-split", "workspaceId": "w1", "name": "飞书拆分", "kind": "feishu",
 		"status": "active", "credentialRef": "vault://channel-deployments/dep-split/credential",
-		"connectionMode": "webhook", "digitalEmployeeId": "de-1",
+		"connectionMode": "webhook", "digitalPartnerId": "de-1",
 		"webhookPath": "/api/channel/feishu/events/dep-split",
 	}}, capStore.ChannelDeploys...)
 	capStore.Unlock()

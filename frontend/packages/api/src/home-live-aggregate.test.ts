@@ -16,12 +16,12 @@ describe('home-live-aggregate', () => {
       tasks: [
         {
           id: 't1', code: 'TSK-1', title: 'P0 处置', status: 'in_progress', priority: 'P0',
-          digitalEmployeeName: '夜航', updatedAt: new Date().toISOString(),
+          digitalPartnerName: '夜航', updatedAt: new Date().toISOString(),
           sla: { risk: 'overdue', remainingMin: -5 },
         },
         {
           id: 't2', code: 'TSK-2', title: '待复核', status: 'review', priority: 'P1',
-          digitalEmployeeName: '青禾', updatedAt: new Date().toISOString(),
+          digitalPartnerName: '青禾', updatedAt: new Date().toISOString(),
         },
         {
           id: 't3', code: 'TSK-3', title: '已完成', status: 'completed', priority: 'P3',
@@ -109,15 +109,15 @@ describe('mockHandler home/ops live-aggregate', () => {
   it('GET /api/operations/overview uses digital employees not agent market', async () => {
     const overview = await mockHandler('/api/operations/overview', { method: 'GET', headers: admin }) as any;
     expect(overview.source).toBe('live-aggregate');
-    expect(overview.digitalEmployees).toBeTruthy();
-    expect(overview.health.activeAgents).toBe(overview.digitalEmployees.active);
+    expect(overview.digitalPartners).toBeTruthy();
+    expect(overview.health.activeAgents).toBe(overview.digitalPartners.active);
     expect(overview.governance?.unpublishedAgents).toBeUndefined();
   });
 
   it('GET /api/home/kpis reports live-aggregate source', async () => {
     const kpis = await mockHandler('/api/home/kpis', { method: 'GET', headers: admin }) as any;
     expect(kpis.source).toBe('live-aggregate');
-    expect(typeof kpis.activeDigitalEmployees).toBe('number');
+    expect(typeof kpis.activeDigitalPartners).toBe('number');
   });
 });
 
@@ -131,7 +131,7 @@ describe('ops overview builder', () => {
         { id: 'b', workspaceId: 'w1', lifecycle: 'pending_approval' },
       ],
     });
-    expect(overview.digitalEmployees).toEqual({ active: 1, pending: 1 });
+    expect(overview.digitalPartners).toEqual({ active: 1, pending: 1 });
     expect(overview.pending[0].to).toContain('/tasks');
   });
 });

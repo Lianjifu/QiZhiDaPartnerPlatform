@@ -1,4 +1,4 @@
-module github.com/digital-employee-platform/backend
+module github.com/qizhida-partner-platform/backend
 
 go 1.25.0
 

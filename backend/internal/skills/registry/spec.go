@@ -61,7 +61,7 @@ type Spec struct {
 	RequiredPerms    []string          `json:"requiredPerms"`
 	Tags             []string          `json:"tags"`
 	ArgSchema        map[string]ArgDef `json:"argSchema,omitempty"`
-	OwnerDigitalEmployee string         `json:"ownerDigitalEmployee,omitempty"`
+	OwnerDigitalPartner string         `json:"ownerDigitalPartner,omitempty"`
 }
 
 // ArgDef describes one accepted argument.

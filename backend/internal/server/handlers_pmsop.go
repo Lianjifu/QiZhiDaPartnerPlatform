@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/digital-employee-platform/backend/internal/auth"
-	"github.com/digital-employee-platform/backend/internal/metrics"
-	"github.com/digital-employee-platform/backend/internal/pmsop"
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
-	"github.com/digital-employee-platform/backend/pkg/response"
+	"github.com/qizhida-partner-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/metrics"
+	"github.com/qizhida-partner-platform/backend/internal/pmsop"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
+	"github.com/qizhida-partner-platform/backend/pkg/response"
 )
 
 func (s *Server) initPMsop() {

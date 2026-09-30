@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/auth"
 )
 
 const (
@@ -493,8 +493,8 @@ func (s *Server) skillRun(ctx toolRunContext, t *registeredTool, sk map[string]a
 			return
 		}
 		s.recordSkillInvocationWithRequest(ctx.Request, ctx.WorkspaceID, sk, ms, ok, actor, source)
-		if ctx.DigitalEmployee != "" {
-			s.recordEmployeeRuntime(ctx.DigitalEmployee, ms, ok)
+		if ctx.DigitalPartner != "" {
+			s.recordEmployeeRuntime(ctx.DigitalPartner, ms, ok)
 		}
 	}
 

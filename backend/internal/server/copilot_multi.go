@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/agentos"
-	"github.com/digital-employee-platform/backend/internal/modelprov"
+	"github.com/qizhida-partner-platform/backend/internal/agentos"
+	"github.com/qizhida-partner-platform/backend/internal/modelprov"
 )
 
 const multiAgentMaxSpecialists = 3
@@ -164,7 +164,7 @@ func specialistSystemPrompt(emp map[string]any) string {
 // the supervisor's persona.
 func (s *Server) runMultiAgentTurn(ctx context.Context, in reactTurnInput) reactTurnResult {
 	reg := in.Registry
-	supervisorID := in.DigitalEmployee
+	supervisorID := in.DigitalPartner
 	cands := s.listActiveSpecialists(in.WorkspaceID, supervisorID)
 	picks := pickSpecialists(cands, in.UserMessage, multiAgentMaxSpecialists)
 
@@ -218,7 +218,7 @@ func (s *Server) runMultiAgentTurn(ctx context.Context, in reactTurnInput) react
 	if t := registryLookup(reg, "knowledge.retrieve"); t != nil && t.Enabled {
 		runCtx := toolRunContext{
 			Request: in.Request, WorkspaceID: in.WorkspaceID,
-			DigitalEmployee: in.DigitalEmployee, ConversationID: in.ConversationID,
+			DigitalPartner: in.DigitalPartner, ConversationID: in.ConversationID,
 			CorrelationID: in.CorrelationID, UserMessage: in.UserMessage, Viewer: in.Viewer,
 		}
 		if in.Viewer != nil {
@@ -341,7 +341,7 @@ func (s *Server) runMultiAgentTurn(ctx context.Context, in reactTurnInput) react
 		toolCalls = append(toolCalls, map[string]any{
 			"id":         fmt.Sprintf("tc_agent_%s", r.ParticipantID),
 			"name":       "agent.delegate",
-			"args":       map[string]any{"employeeId": r.ParticipantID},
+			"args":       map[string]any{"partnerId": r.ParticipantID},
 			"status":     r.Status,
 			"result":     truncateRunes(r.Text, 400),
 			"durationMs": r.DurationMs,
@@ -430,7 +430,7 @@ func (s *Server) dispatchParticipants(ctx context.Context, pcs []participantCont
 	for i := range pcs {
 		i := i
 		tasks[i] = agentos.Task{
-			ID: pcs[i].DigitalEmployee,
+			ID: pcs[i].DigitalPartner,
 			Fn: func(tctx context.Context) agentos.Result {
 				r := s.runParticipantTurn(tctx, pcs[i])
 				return agentos.Result{
@@ -465,7 +465,7 @@ func (s *Server) dispatchParticipants(ctx context.Context, pcs []participantCont
 			if pcs[i].Emit != nil {
 				pcs[i].Emit("agent", "multi", map[string]any{
 					"status":        "failed",
-					"participantId": pcs[i].DigitalEmployee,
+					"participantId": pcs[i].DigitalPartner,
 					"reason":        r.Reason,
 				})
 			}

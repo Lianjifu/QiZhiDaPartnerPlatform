@@ -1,5 +1,5 @@
 {
-  "name": "@de/web-hooks",
+  "name": "@qzda/web-hooks",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -13,7 +13,7 @@
     "lint": "echo 'lint stub'"
   },
   "dependencies": {
-    "@de/web-types": "workspace:*"
+    "@qzda/web-types": "workspace:*"
   },
   "peerDependencies": {
     "react": "^18.3.0"

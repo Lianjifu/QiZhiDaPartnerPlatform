@@ -3,7 +3,7 @@ package server
 import (
 	"testing"
 
-	"github.com/digital-employee-platform/backend/internal/store"
+	"github.com/qizhida-partner-platform/backend/internal/store"
 )
 
 func TestCaptureEmployeeBindingFreezesPublishedVersions(t *testing.T) {
@@ -19,7 +19,7 @@ func TestCaptureEmployeeBindingFreezesPublishedVersions(t *testing.T) {
 		},
 	}
 	got := captureEmployeeBinding(emp, "w1")
-	if str(got["employeeId"]) != "de-1" || str(got["modelRouteId"]) != "rp-p0" {
+	if str(got["partnerId"]) != "de-1" || str(got["modelRouteId"]) != "rp-p0" {
 		t.Fatalf("%#v", got)
 	}
 	if str(got["modelId"]) != "rp-p0" {
@@ -47,7 +47,7 @@ func TestEmployeeBindingFrozenOnSnapshotLookup(t *testing.T) {
 	}
 	rec := buildContextSnapshotRecord(map[string]any{
 		"id": "snap-bind", "workspaceId": "w1", "conversationId": "conv-bind",
-		"correlationId": "corr-bind-1", "employeeId": "de-freeze",
+		"correlationId": "corr-bind-1", "partnerId": "de-freeze",
 		"employeeBinding": captureEmployeeBinding(emp, "w1"),
 	})
 	srv.persistContextSnapshot(rec)

@@ -19,7 +19,7 @@ func (s *Server) queueToolAuthorization(ctx toolRunContext, tool *registeredTool
 	}
 	s.Store.Lock()
 	actionID, authReq := s.createPendingAuthorizationLocked(
-		ctx.WorkspaceID, ctx.ConversationID, ctx.DigitalEmployee,
+		ctx.WorkspaceID, ctx.ConversationID, ctx.DigitalPartner,
 		tool, call, ctx.Viewer, risk, ctx.CorrelationID,
 	)
 	now := time.Now().UTC().Format(time.RFC3339)

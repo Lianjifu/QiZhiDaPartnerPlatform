@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/digital-employee-platform/backend/pkg/contract"
+	"github.com/qizhida-partner-platform/backend/pkg/contract"
 )
 
 func TestInferNarrativePhase(t *testing.T) {

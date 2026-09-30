@@ -21,7 +21,7 @@ import ReactFlow, {
   type NodeMouseHandler,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { Badge, Button } from '@de/web-ui';
+import { Badge, Button } from '@qzda/web-ui';
 import {
   Play, Save, Download, Zap, ShieldCheck, Cpu, GitBranch, Bell, FileText,
   Wrench, Database, PlayCircle, ChevronRight, Activity, CheckCircle2, Clock,
@@ -30,8 +30,8 @@ import {
   Edit3, Copy, Box, ArrowRight, GripVertical, RefreshCw,
   Undo2, Redo2, FileJson, MessageSquare, StepForward, StepBack, SkipForward, SkipBack, History as HistoryIcon,
 } from 'lucide-react';
-import type { DigitalEmployee, KnowledgePackage, KnowledgeRetrievalProfile, Workflow, WorkflowNodeKind, WorkflowSkill } from '@de/web-types';
-import { cn } from '@de/web-utils';
+import type { DigitalPartner, KnowledgePackage, KnowledgeRetrievalProfile, Workflow, WorkflowNodeKind, WorkflowSkill } from '@qzda/web-types';
+import { cn } from '@qzda/web-utils';
 import { Drawer, ConfirmDialog, RoleReadonlyBanner } from '@/components/shared';
 import { useApiMutation, useApiQuery } from '@/services/query';
 import { useAuthStore } from '@/stores/authStore';
@@ -665,7 +665,7 @@ export default function Workflows() {
   const generationHistory = generationHistoryData ?? [];
   const { data: templateAssetsData, refetch: refetchTemplates } = useApiQuery<Array<Partial<WorkflowTemplateAsset> & { id: string; name: string }>>(['workflow-templates'], '/api/workflow-templates');
   const templateAssets = templateAssetsData ?? [];
-  const { data: employeesData } = useApiQuery<DigitalEmployee[]>(['digital-employees'], '/api/digital-employees');
+  const { data: employeesData } = useApiQuery<DigitalPartner[]>(['digital-employees'], '/api/partners');
   const workspaceDepartments = useMemo(() => {
     const keys = new Set<DepartmentKey>();
     for (const employee of employeesData ?? []) {

@@ -5,8 +5,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/digital-employee-platform/backend/internal/policy"
-	"github.com/digital-employee-platform/backend/pkg/response"
+	"github.com/qizhida-partner-platform/backend/internal/policy"
+	"github.com/qizhida-partner-platform/backend/pkg/response"
 )
 
 // handleLocalPolicyEvaluate serves POST /v1/evaluate on de-sys (default) or de-policy.

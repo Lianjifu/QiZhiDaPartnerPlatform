@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/auth"
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	"github.com/qizhida-partner-platform/backend/internal/auth"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 // Lifecycle stages aligned with ControlledTask / createTaskDomain.
@@ -283,8 +283,8 @@ func buildControlledTask(idGen func(string) string, ws string, body map[string]a
 		"ownerName":           actor.Name,
 		"createdBy":           actor.ID,
 		"assignee":            coalesce(str(body["assignee"]), actor.Name),
-		"digitalEmployeeId":   body["digitalEmployeeId"],
-		"digitalEmployeeName": body["digitalEmployeeName"],
+		"digitalPartnerId":   body["digitalPartnerId"],
+		"digitalPartnerName": body["digitalPartnerName"],
 		"agentId":             body["agentId"],
 		"source":              source,
 		"dispatchKind":        nilIfEmpty(dispatchKind),
@@ -474,7 +474,7 @@ func filterTasksQuery(tasks []map[string]any, q map[string]string) []map[string]
 			continue
 		}
 		if agent != "" && agent != "all" {
-			if str(t["digitalEmployeeId"]) != agent && str(t["digitalEmployeeName"]) != agent {
+			if str(t["digitalPartnerId"]) != agent && str(t["digitalPartnerName"]) != agent {
 				continue
 			}
 		}
@@ -514,7 +514,7 @@ func filterTasksQuery(tasks []map[string]any, q map[string]string) []map[string]
 			}
 		}
 		if search != "" {
-			blob := strings.ToLower(str(t["title"]) + " " + str(t["code"]) + " " + str(t["assignee"]) + " " + str(t["digitalEmployeeName"]) + " " + str(t["source"]))
+			blob := strings.ToLower(str(t["title"]) + " " + str(t["code"]) + " " + str(t["assignee"]) + " " + str(t["digitalPartnerName"]) + " " + str(t["source"]))
 			if !strings.Contains(blob, search) {
 				continue
 			}

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/digital-employee-platform/backend/internal/server"
-	"github.com/digital-employee-platform/backend/internal/store"
+	"github.com/qizhida-partner-platform/backend/internal/server"
+	"github.com/qizhida-partner-platform/backend/internal/store"
 )
 
 func TestEvaluateFailsIncompleteEmployee(t *testing.T) {
@@ -22,7 +22,7 @@ func TestEvaluateFailsIncompleteEmployee(t *testing.T) {
 	}
 	h := server.New(st).Handler()
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/digital-employees/de-2/evaluate", bytes.NewBufferString(`{}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/partners/de-2/evaluate", bytes.NewBufferString(`{}`))
 	req.Header.Set("Authorization", "Bearer mock-admin-token")
 	req.Header.Set("Content-Type", "application/json")
 	h.ServeHTTP(rr, req)
@@ -46,14 +46,14 @@ func TestReleaseGatesProfileIncomplete(t *testing.T) {
 	}
 	h := server.New(st).Handler()
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/digital-employees/de-2/release", bytes.NewBufferString(`{}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/partners/de-2/release", bytes.NewBufferString(`{}`))
 	req.Header.Set("Authorization", "Bearer mock-admin-token")
 	req.Header.Set("Content-Type", "application/json")
 	h.ServeHTTP(rr, req)
 	if rr.Code != 400 {
 		t.Fatalf("expected 400 got %d %s", rr.Code, rr.Body.String())
 	}
-	if !strings.Contains(rr.Body.String(), "E_DIGITAL_EMPLOYEE_PROFILE_INCOMPLETE") {
+	if !strings.Contains(rr.Body.String(), "E_DIGITAL_PARTNER_PROFILE_INCOMPLETE") {
 		t.Fatalf("body %s", rr.Body.String())
 	}
 }

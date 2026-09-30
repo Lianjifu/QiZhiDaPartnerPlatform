@@ -4,9 +4,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useApiMutation, useApiQuery } from '@/services/query';
-import { Badge, Button, Avatar } from '@de/web-ui';
+import { Badge, Button, Avatar } from '@qzda/web-ui';
 import { PageSkeleton } from '@/components/PageSkeleton';
-import { DigitalEmployeeAvatar } from '@/components/DigitalEmployeeAvatar';
+import { DigitalPartnerAvatar } from '@/components/DigitalPartnerAvatar';
 import {
   Activity, ArrowRight, BellRing, BookOpen, Bot, Brain,
   Check, CheckCircle2, ChevronDown, ChevronRight, Clock, HeartPulse,
@@ -16,8 +16,8 @@ import {
 import {
   Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts';
-import { cn } from '@de/web-utils';
-import type { DigitalEmployee, Task } from '@de/web-types';
+import { cn } from '@qzda/web-utils';
+import type { DigitalPartner, Task } from '@qzda/web-types';
 import { EmptyState, RoleReadonlyBanner } from '@/components/shared';
 import { useAuthStore } from '@/stores/authStore';
 import { employeePrimaryLabel, employeeSecondaryLabel } from '@/lib/digital-employees';
@@ -85,7 +85,7 @@ export default function Home() {
 
   const { data: tasks, isLoading: lTasks } = useApiQuery<Task[]>(['home', 'tasks'], '/api/tasks');
   const { data: extra, isLoading: lExtra, isFetching: fetchingExtra, refetch: refetchExtra } = useApiQuery<any>(['home', 'extra'], '/api/home/extra');
-  const { data: employees = [], isLoading: lEmployees } = useApiQuery<DigitalEmployee[]>(['digital-employees'], '/api/digital-employees');
+  const { data: employees = [], isLoading: lEmployees } = useApiQuery<DigitalPartner[]>(['digital-employees'], '/api/partners');
   const { data: operations } = useApiQuery<any>(['operations', 'overview'], '/api/operations/overview');
   /** Compact aggregate; kept for parity checks / future widgets (lists remain display source of truth). */
   useApiQuery<any>(['home', 'kpis'], '/api/home/kpis');
@@ -263,7 +263,7 @@ export default function Home() {
         id: `task-${t.id}`,
         kind: 'task',
         title: t.title,
-        subtitle: t.digitalEmployeeName ?? t.assignee,
+        subtitle: t.digitalPartnerName ?? t.assignee,
         hour: d.getHours(),
         minute: d.getMinutes(),
         dateKey: toDateKey(d),
@@ -325,7 +325,7 @@ export default function Home() {
         title: t.title,
         status: done ? '已完成' : attention ? '需关注' : t.status === 'in_progress' ? '进行中' : '待处理',
         statusTone: done ? 'success' : attention ? 'error' : t.status === 'in_progress' ? 'info' : 'neutral',
-        attribution: t.digitalEmployeeName ?? t.assignee ?? '—',
+        attribution: t.digitalPartnerName ?? t.assignee ?? '—',
         time: formatWhen(raw),
         dateKey: Number.isFinite(ts) ? toDateKey(new Date(ts)) : undefined,
         to: `/tasks?task=${encodeURIComponent(t.code)}`,
@@ -454,7 +454,7 @@ export default function Home() {
               <>
                 <div className="home-spotlight__head">
                   <div className="home-spotlight__identity">
-                    <DigitalEmployeeAvatar employee={featured} size={52} />
+                    <DigitalPartnerAvatar employee={featured} size={52} />
                     <div className="min-w-0">
                       <p className="home-spotlight__label">数字伙伴 · 今日焦点</p>
                       <h2 className="home-spotlight__name">{employeePrimaryLabel(featured)}</h2>
@@ -499,7 +499,7 @@ export default function Home() {
                           title={employeePrimaryLabel(emp)}
                           onClick={() => navigate(`/partners?employeeId=${emp.id}`)}
                         >
-                          <DigitalEmployeeAvatar employee={emp} size={28} rounded="full" />
+                          <DigitalPartnerAvatar employee={emp} size={28} rounded="full" />
                         </button>
                       ))}
                       {employees.length > featuredPool.length && (
@@ -792,9 +792,9 @@ function InProgressTask({ t }: { t: Task }) {
       </div>
       <div className="task-list__title">{t.title}</div>
       <div className="task-list__meta">
-        <Avatar name={t.assignee ?? t.digitalEmployeeName ?? '?'} size={18} />
-        {t.digitalEmployeeName && (
-          <span className="task-list__meta-item"><Bot className="h-3 w-3 text-[var(--brand)]" />{t.digitalEmployeeName}</span>
+        <Avatar name={t.assignee ?? t.digitalPartnerName ?? '?'} size={18} />
+        {t.digitalPartnerName && (
+          <span className="task-list__meta-item"><Bot className="h-3 w-3 text-[var(--brand)]" />{t.digitalPartnerName}</span>
         )}
         <span className={cn('task-list__meta-item ml-auto font-mono', slaError ? 'text-[var(--danger)]' : slaWarn ? 'text-[var(--warning)]' : 'text-[var(--text-muted)]')}>
           <Clock className="h-3 w-3" />{sla.text}

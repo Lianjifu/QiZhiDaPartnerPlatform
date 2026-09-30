@@ -5,12 +5,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/auth"
-	"github.com/digital-employee-platform/backend/internal/dingtalk"
-	"github.com/digital-employee-platform/backend/internal/feishu"
-	"github.com/digital-employee-platform/backend/internal/wecom"
-	"github.com/digital-employee-platform/backend/internal/weixin"
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	"github.com/qizhida-partner-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/dingtalk"
+	"github.com/qizhida-partner-platform/backend/internal/feishu"
+	"github.com/qizhida-partner-platform/backend/internal/wecom"
+	"github.com/qizhida-partner-platform/backend/internal/weixin"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 func (s *Server) requireChannelRead(r *http.Request) (*auth.Identity, error) {

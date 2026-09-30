@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Button, Input } from '@de/web-ui';
+import { Button, Input } from '@qzda/web-ui';
 import {
   Upload, Trash2, FileCode2, CheckCircle2, X,
 } from 'lucide-react';
-import { cn } from '@de/web-utils';
+import { cn } from '@qzda/web-utils';
 import { Modal } from '@/components/shared';
 import { KIND_META, KIND_PROFILE, type SkillRow } from './skill-ui';
 

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 // fixtureRoot returns the absolute path to a fixture directory under testdata/.

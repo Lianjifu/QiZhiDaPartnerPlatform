@@ -1,18 +1,18 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Badge, Button } from '@de/web-ui';
+import { Badge, Button } from '@qzda/web-ui';
 import { Modal } from '@/components/shared';
-import { DigitalEmployeeAvatar } from '@/components/DigitalEmployeeAvatar';
+import { DigitalPartnerAvatar } from '@/components/DigitalPartnerAvatar';
 import { useApiMutation, useApiQuery } from '@/services/query';
-import { compareDigitalEmployees, employeePrimaryLabel, employeeSecondaryLabel, isDepartmentHead } from '@/lib/digital-employees';
-import type { DigitalEmployee, Task } from '@de/web-types';
+import { compareDigitalPartners, employeePrimaryLabel, employeeSecondaryLabel, isDepartmentHead } from '@/lib/digital-employees';
+import type { DigitalPartner, Task } from '@qzda/web-types';
 import { MessageSquare, Network, SendHorizontal, UsersRound } from 'lucide-react';
-import { cn } from '@de/web-utils';
+import { cn } from '@qzda/web-utils';
 
 type DispatchKind = 'assign' | 'assist';
 
-function lifecycleTone(lifecycle: DigitalEmployee['lifecycle']): 'success' | 'warn' | 'neutral' | 'error' | 'info' {
+function lifecycleTone(lifecycle: DigitalPartner['lifecycle']): 'success' | 'warn' | 'neutral' | 'error' | 'info' {
   if (lifecycle === 'active') return 'success';
   if (lifecycle === 'pending_approval' || lifecycle === 'testing') return 'warn';
   if (lifecycle === 'quarantined') return 'error';
@@ -20,7 +20,7 @@ function lifecycleTone(lifecycle: DigitalEmployee['lifecycle']): 'success' | 'wa
   return 'neutral';
 }
 
-function lifecycleLabel(lifecycle: DigitalEmployee['lifecycle']) {
+function lifecycleLabel(lifecycle: DigitalPartner['lifecycle']) {
   return ({
     draft: '草稿',
     testing: '试运行',
@@ -31,23 +31,23 @@ function lifecycleLabel(lifecycle: DigitalEmployee['lifecycle']) {
   } as const)[lifecycle];
 }
 
-export function DepartmentTeamPanel({ head }: { head: DigitalEmployee }) {
+export function DepartmentTeamPanel({ head }: { head: DigitalPartner }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data: employees = [] } = useApiQuery<DigitalEmployee[]>(['digital-employees'], '/api/digital-employees');
+  const { data: employees = [] } = useApiQuery<DigitalPartner[]>(['digital-employees'], '/api/partners');
   const [mode, setMode] = useState<DispatchKind | null>(null);
   const [targetId, setTargetId] = useState<string | null>(null);
 
   const departmentMembers = useMemo(
     () => employees
       .filter((item) => item.department === head.department && item.id !== head.id && !isDepartmentHead(item))
-      .sort(compareDigitalEmployees),
+      .sort(compareDigitalPartners),
     [employees, head.department, head.id],
   );
   const assistCandidates = useMemo(
     () => employees
       .filter((item) => item.department !== head.department && item.lifecycle === 'active' && !isDepartmentHead(item))
-      .sort(compareDigitalEmployees),
+      .sort(compareDigitalPartners),
     [employees, head.department],
   );
   const onDuty = departmentMembers.filter((item) => item.lifecycle === 'active');
@@ -102,7 +102,7 @@ export function DepartmentTeamPanel({ head }: { head: DigitalEmployee }) {
         ) : departmentMembers.map((member) => (
           <article key={member.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-3">
             <div className="flex min-w-0 items-center gap-3">
-              <DigitalEmployeeAvatar employee={member} size={36} />
+              <DigitalPartnerAvatar employee={member} size={36} />
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-1.5">
                   <span className="truncate text-sm font-medium">{employeePrimaryLabel(member)}</span>
@@ -156,9 +156,9 @@ function HeadDispatchModal({
   onClose,
   onCreated,
 }: {
-  head: DigitalEmployee;
+  head: DigitalPartner;
   kind: DispatchKind;
-  employees: DigitalEmployee[];
+  employees: DigitalPartner[];
   initialTargetId: string | null;
   onClose: () => void;
   onCreated: (task: Task) => void;
@@ -189,8 +189,8 @@ function HeadDispatchModal({
       priority: crossDept ? 'P2' : 'P1',
       status: crossDept ? 'review' : 'pending',
       assignee: target.owner,
-      digitalEmployeeId: target.id,
-      digitalEmployeeName: employeePrimaryLabel(target),
+      digitalPartnerId: target.id,
+      digitalPartnerName: employeePrimaryLabel(target),
       agentId: target.capabilities.agentId,
       coordinatorId: head.id,
       coordinatorName: employeePrimaryLabel(head),
@@ -237,7 +237,7 @@ function HeadDispatchModal({
         </label>
         {target && (
           <div className={cn('flex items-center gap-3 rounded-lg px-3 py-2.5 text-xs text-[var(--text-secondary)]')} style={{ boxShadow: 'var(--saas-ring)' }}>
-            <DigitalEmployeeAvatar employee={target} size={32} />
+            <DigitalPartnerAvatar employee={target} size={32} />
             <div>
               <div className="font-medium text-[var(--text)]">{employeePrimaryLabel(target)}</div>
               <div className="mt-0.5 text-[11px] text-[var(--text-muted)]">{employeeSecondaryLabel(target)} · 风险 {target.risk === 'high' ? '高' : target.risk === 'medium' ? '中' : '低'}</div>

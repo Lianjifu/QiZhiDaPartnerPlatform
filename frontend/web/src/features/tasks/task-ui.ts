@@ -1,4 +1,4 @@
-import type { ControlledTask, TaskLifecycleStage, TaskRisk } from '@de/web-types';
+import type { ControlledTask, TaskLifecycleStage, TaskRisk } from '@qzda/web-types';
 
 export const STAGES: TaskLifecycleStage[] = ['pending', 'running', 'human_action', 'risk', 'completed'];
 
@@ -63,8 +63,8 @@ export function nextStepLabel(task: Pick<ControlledTask, 'lifecycleStage' | 'exe
   return '查看详情';
 }
 
-export function employeeLabel(task: Pick<ControlledTask, 'digitalEmployeeName' | 'digitalEmployeeId' | 'agentId'>) {
-  return task.digitalEmployeeName ?? task.digitalEmployeeId ?? '未指定';
+export function employeeLabel(task: Pick<ControlledTask, 'digitalPartnerName' | 'digitalPartnerId' | 'agentId'>) {
+  return task.digitalPartnerName ?? task.digitalPartnerId ?? '未指定';
 }
 
 /** 真实 API 可能缺 links/governance 等字段；统一补默认避免运行时崩溃 */
@@ -78,8 +78,8 @@ export function normalizeControlledTask(raw: Partial<ControlledTask> & Pick<Cont
     priority: raw.priority ?? 'P2',
     status: raw.status ?? 'pending',
     assignee: raw.assignee,
-    digitalEmployeeId: raw.digitalEmployeeId,
-    digitalEmployeeName: raw.digitalEmployeeName,
+    digitalPartnerId: raw.digitalPartnerId,
+    digitalPartnerName: raw.digitalPartnerName,
     agentId: raw.agentId,
     progress: raw.progress ?? { done: 0, total: 1 },
     tags: raw.tags ?? [],
@@ -122,11 +122,11 @@ export function normalizeControlledTask(raw: Partial<ControlledTask> & Pick<Cont
   };
 }
 
-export function conversationHref(task: Pick<ControlledTask, 'links' | 'digitalEmployeeId'> | { links?: ControlledTask['links']; digitalEmployeeId?: string }) {
+export function conversationHref(task: Pick<ControlledTask, 'links' | 'digitalPartnerId'> | { links?: ControlledTask['links']; digitalPartnerId?: string }) {
   const conversationId = task.links?.conversationId;
   if (!conversationId) return null;
   const params = new URLSearchParams();
   params.set('session', conversationId);
-  if (task.digitalEmployeeId) params.set('employeeId', task.digitalEmployeeId);
+  if (task.digitalPartnerId) params.set('employeeId', task.digitalPartnerId);
   return `/copilot?${params.toString()}`;
 }

@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/auth"
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	"github.com/qizhida-partner-platform/backend/internal/auth"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 func (s *Server) approveAction(r *http.Request) (any, error) {
@@ -303,7 +303,7 @@ func (s *Server) executeAction(r *http.Request) (any, error) {
 		s.Store.Persist("actions")
 		return nil, apperr.BadReq(apperr.BadRequest, "该动作执行器未接入或禁止直接执行："+toolName)
 	}
-	deID := str(action["digitalEmployeeId"])
+	deID := str(action["digitalPartnerId"])
 	corr := str(authReq["correlationId"])
 	risk := str(authReq["riskLevel"])
 	toolKey := coalesce(str(authReq["toolKey"]), toolKind+":"+slugToolName(toolName))
@@ -312,7 +312,7 @@ func (s *Server) executeAction(r *http.Request) (any, error) {
 
 	runCtx := toolRunContext{
 		Request: r, WorkspaceID: ws, OwnerID: id.ID, Viewer: id,
-		DigitalEmployee: deID, ConversationID: cid, CorrelationID: corr,
+		DigitalPartner: deID, ConversationID: cid, CorrelationID: corr,
 		UserMessage: coalesce(userMsg, coalesce(str(args["input"]), coalesce(str(args["content"]), toolName))),
 		SessionMode: sessionModeExecute, RiskLevel: risk,
 	}

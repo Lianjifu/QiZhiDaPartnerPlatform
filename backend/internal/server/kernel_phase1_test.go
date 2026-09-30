@@ -11,13 +11,13 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	collabv1 "github.com/digital-employee-platform/backend/gen/de/collab/v1"
-	"github.com/digital-employee-platform/backend/gen/de/collab/v1/collabv1connect"
-	"github.com/digital-employee-platform/backend/internal/auth"
-	"github.com/digital-employee-platform/backend/internal/feishu"
-	"github.com/digital-employee-platform/backend/internal/server"
-	"github.com/digital-employee-platform/backend/internal/store"
-	"github.com/digital-employee-platform/backend/internal/vault"
+	collabv1 "github.com/qizhida-partner-platform/backend/gen/qzda/collab/v1"
+	"github.com/qizhida-partner-platform/backend/gen/qzda/collab/v1/collabv1connect"
+	"github.com/qizhida-partner-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/feishu"
+	"github.com/qizhida-partner-platform/backend/internal/server"
+	"github.com/qizhida-partner-platform/backend/internal/store"
+	"github.com/qizhida-partner-platform/backend/internal/vault"
 )
 
 func TestMockTokenForbiddenWhenBanMock(t *testing.T) {
@@ -220,7 +220,7 @@ func TestFeishuWebhookReusesSessionForSameChatID(t *testing.T) {
 	st.ChannelDeploys = append([]map[string]any{{
 		"id": "dep-feishu-route", "workspaceId": "w1", "name": "飞书路由", "kind": "feishu",
 		"status": "active", "credentialRef": "vault://channel-deployments/dep-feishu-route/credential",
-		"connectionMode": "webhook", "digitalEmployeeId": "de-1",
+		"connectionMode": "webhook", "digitalPartnerId": "de-1",
 		"webhookPath": "/api/channel/feishu/events/dep-feishu-route",
 	}}, st.ChannelDeploys...)
 	st.Unlock()

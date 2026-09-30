@@ -3,7 +3,7 @@
  * P0–P3：岗位契约、工具明细、记忆命中、证据导出。
  */
 import type { ChatMessageEx, Citation, ToolCall } from '@/hooks/types';
-import type { DigitalEmployee } from '@de/web-types';
+import type { DigitalPartner } from '@qzda/web-types';
 import type { RunMode } from './composer-mode';
 import { runModeLabel } from './composer-mode';
 
@@ -125,7 +125,7 @@ function pushMemory(
 }
 
 /** 从数字伙伴档案提炼岗位契约（无档案返回 null）。 */
-export function deriveExpertJobContract(employee: DigitalEmployee | null | undefined): ExpertJobContract | null {
+export function deriveExpertJobContract(employee: DigitalPartner | null | undefined): ExpertJobContract | null {
   if (!employee) return null;
   const structured = (employee.boundaryPolicy?.responsibilities ?? [])
     .map((item) => item.title || item.objective)
@@ -336,7 +336,7 @@ export type ExpertEvidencePack = {
 
 export function buildExpertEvidencePack(opts: {
   scope: 'session' | 'message';
-  employee: DigitalEmployee | null | undefined;
+  employee: DigitalPartner | null | undefined;
   runMode: RunMode;
   riskLevel: string;
   overview: ExpertContextOverview;

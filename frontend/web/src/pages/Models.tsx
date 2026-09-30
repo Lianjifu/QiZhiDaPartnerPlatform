@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Activity, AlertTriangle, CheckCircle2, Cloud, Download, FileKey2, FlaskConical, History, Network, Pencil, Plus, RefreshCw, Route, ShieldCheck, Trash2 } from 'lucide-react';
-import { Badge, Button, Input, KpiCard, toast } from '@de/web-ui';
-import type { ModelAuditEvent, ModelGovernanceSnapshot, ModelProvider, ProviderImpact, ProviderTier, RoutingPolicyDraft, RoutingPolicyVersion } from '@de/web-types';
+import { Badge, Button, Input, KpiCard, toast } from '@qzda/web-ui';
+import type { ModelAuditEvent, ModelGovernanceSnapshot, ModelProvider, ProviderImpact, ProviderTier, RoutingPolicyDraft, RoutingPolicyVersion } from '@qzda/web-types';
 import { useApiMutation, useApiQuery } from '@/services/query';
 import { ConfirmDialog, EmptyState, Modal, RoleReadonlyBanner } from '@/components/shared';
 import { useAuthStore } from '@/stores/authStore';
@@ -50,7 +50,7 @@ import {
   type ProviderConnectDraft,
 } from '@/features/models/provider-connect';
 import { useT } from '@/i18n';
-import { cn } from '@de/web-utils';
+import { cn } from '@qzda/web-utils';
 
 const WORKSPACES: Array<{ key: ModelWorkspaceTab; labelKey: string; icon: typeof Cloud; description: string }> = [
   { key: 'access', labelKey: 'module.models.tabs.access', icon: Cloud, description: '接入供应商、验证连通性，并管理凭据引用与退役影响。' },

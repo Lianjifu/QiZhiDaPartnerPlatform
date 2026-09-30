@@ -20,7 +20,7 @@
  *  - 旧 ChatMessageEx 字段保留（同时新增企业级字段）
  */
 import { useCallback, useEffect, useReducer, useRef } from 'react';
-import { getApiClient } from '@de/web-api';
+import { getApiClient } from '@qzda/web-api';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useAuthStore } from '@/stores/authStore';
 import { isMockChatMode, streamCopilotTurn, type CopilotSSEEvent } from '@/features/copilot/copilot-stream';
@@ -294,7 +294,7 @@ function reducer(s: State, a: Action): State {
           || next.runMode !== existing.runMode
           || next.reasoningEffort !== existing.reasoningEffort
           || next.riskLevel !== existing.riskLevel
-          || next.digitalEmployeeId !== existing.digitalEmployeeId
+          || next.digitalPartnerId !== existing.digitalPartnerId
           || next.pinned !== existing.pinned
           || next.lastActiveAt !== existing.lastActiveAt
           || next.messages !== existing.messages
@@ -369,7 +369,7 @@ function reducer(s: State, a: Action): State {
         && existing.title === next.title
         && existing.status === next.status
         && existing.lifecycle === next.lifecycle
-        && existing.digitalEmployeeId === next.digitalEmployeeId
+        && existing.digitalPartnerId === next.digitalPartnerId
         && existing.sessionMode === next.sessionMode
         && existing.riskLevel === next.riskLevel
         && (existing.unread ?? 0) === (next.unread ?? 0)
@@ -1171,7 +1171,7 @@ export function useChat(agentMeta?: { name: string }) {
       text: string,
       ctrl: AbortController,
       correlationIdStr: string,
-      digitalEmployeeId?: string,
+      digitalPartnerId?: string,
       opts?: { skipAppend?: boolean; agentName?: string; modelId?: string; enabledTools?: string[]; conversationId?: string; modeHint?: string; reflectHint?: string; sessionMode?: 'investigate' | 'execute'; runMode?: 'ask' | 'plan' | 'agent'; reasoningEffort?: 'off' | 'standard' | 'deep'; riskLevel?: 'low' | 'medium' | 'high'; attachmentIds?: string[]; clientMsgId?: string; replyMode?: 'single' | 'segmented' | 'stepwise' },
     ) => {
       const agentName = opts?.agentName ?? '岗位专家';
@@ -1674,7 +1674,7 @@ export function useChat(agentMeta?: { name: string }) {
         conversationId: opts?.conversationId ?? sid,
         content: text,
         correlationId: correlationIdStr,
-        digitalEmployeeId,
+        digitalPartnerId,
         modelId,
         enabledTools: opts?.enabledTools,
         modeHint: opts?.modeHint,
@@ -1717,7 +1717,7 @@ export function useChat(agentMeta?: { name: string }) {
       text: string,
       ctrl: AbortController,
       corr: string,
-      digitalEmployeeId?: string,
+      digitalPartnerId?: string,
       opts?: { replyId?: string; skipAppend?: boolean; agentName?: string; modelId?: string; enabledTools?: string[]; conversationId?: string; modeHint?: string; reflectHint?: string; sessionMode?: 'investigate' | 'execute'; runMode?: 'ask' | 'plan' | 'agent'; reasoningEffort?: 'off' | 'standard' | 'deep'; riskLevel?: 'low' | 'medium' | 'high'; attachmentIds?: string[]; clientMsgId?: string; replyMode?: 'single' | 'segmented' | 'stepwise' },
     ) => {
       const replyId = opts?.replyId ?? uid('m_');
@@ -1725,7 +1725,7 @@ export function useChat(agentMeta?: { name: string }) {
         const reply = generateMockReply(text);
         startStream(sid, replyId, { ...reply, id: replyId }, ctrl, corr, { skipAppend: opts?.skipAppend });
       } else {
-        startBackendStream(sid, replyId, text, ctrl, corr, digitalEmployeeId, {
+        startBackendStream(sid, replyId, text, ctrl, corr, digitalPartnerId, {
           skipAppend: opts?.skipAppend,
           agentName: opts?.agentName,
           modelId: opts?.modelId,
@@ -1750,9 +1750,9 @@ export function useChat(agentMeta?: { name: string }) {
 
   const setDraft = useCallback((v: string) => dispatch({ type: 'set_draft', value: v }), []);
 
-  const newSession = useCallback(async (opts?: { digitalEmployeeId?: string; digitalEmployeeName?: string; agentKey?: string; modelId?: string; enabledTools?: string[] }) => {
-    const expertName = opts?.digitalEmployeeName
-      ?? (opts?.digitalEmployeeId ? (agentMeta?.name ?? '岗位专家') : '助手');
+  const newSession = useCallback(async (opts?: { digitalPartnerId?: string; digitalPartnerName?: string; agentKey?: string; modelId?: string; enabledTools?: string[] }) => {
+    const expertName = opts?.digitalPartnerName
+      ?? (opts?.digitalPartnerId ? (agentMeta?.name ?? '岗位专家') : '助手');
     const workspaceId = useWorkspaceStore.getState().currentWorkspaceId ?? 'w1';
     const owner = useAuthStore.getState().user;
     const modelId = opts?.modelId ?? '';
@@ -1763,8 +1763,8 @@ export function useChat(agentMeta?: { name: string }) {
       preview: '',
       agent: expertName,
       agentKey: opts?.agentKey,
-      digitalEmployeeId: opts?.digitalEmployeeId,
-      digitalEmployeeName: opts?.digitalEmployeeId ? expertName : undefined,
+      digitalPartnerId: opts?.digitalPartnerId,
+      digitalPartnerName: opts?.digitalPartnerId ? expertName : undefined,
       status: 'active',
       lifecycle: 'active',
       group: 'today',
@@ -1791,13 +1791,13 @@ export function useChat(agentMeta?: { name: string }) {
           id: string;
           conversationId?: string;
           title?: string;
-          digitalEmployeeId?: string;
-          digitalEmployeeName?: string;
+          digitalPartnerId?: string;
+          digitalPartnerName?: string;
           modelId?: string;
         }>('/api/sessions', {
           title: '新会话',
-          digitalEmployeeId: opts?.digitalEmployeeId,
-          digitalEmployeeName: opts?.digitalEmployeeId ? expertName : undefined,
+          digitalPartnerId: opts?.digitalPartnerId,
+          digitalPartnerName: opts?.digitalPartnerId ? expertName : undefined,
           modelId,
         });
         const sess = buildLocal(created.id, created.conversationId || created.id);
@@ -1869,8 +1869,8 @@ export function useChat(agentMeta?: { name: string }) {
     // 关键：用 update_session 打补丁，禁止 sync 整表 messages
     patchSessionLocal(session.id, {
       title: session.title,
-      digitalEmployeeId: session.digitalEmployeeId,
-      digitalEmployeeName: session.digitalEmployeeName,
+      digitalPartnerId: session.digitalPartnerId,
+      digitalPartnerName: session.digitalPartnerName,
       agent: session.agent,
       modelId: session.modelId,
       enabledTools: session.enabledTools,
@@ -1893,7 +1893,7 @@ export function useChat(agentMeta?: { name: string }) {
         method: 'PATCH',
         body: {
           title: session.title,
-          digitalEmployeeId: session.digitalEmployeeId ?? '',
+          digitalPartnerId: session.digitalPartnerId ?? '',
           modelId: session.modelId,
           enabledTools: session.enabledTools,
           status: session.status === 'archived' || session.lifecycle === 'archived'
@@ -2076,9 +2076,9 @@ export function useChat(agentMeta?: { name: string }) {
       ctrl.abort();
     }, DEFAULT_TIMEOUT_MS);
 
-    const deId = opts?.digitalEmployeeId ?? sess?.digitalEmployeeId;
-    const replyName = sess?.digitalEmployeeId
-      ? (sess.digitalEmployeeName ?? sess.agent ?? '岗位专家')
+    const deId = opts?.digitalPartnerId ?? sess?.digitalPartnerId;
+    const replyName = sess?.digitalPartnerId
+      ? (sess.digitalPartnerName ?? sess.agent ?? '岗位专家')
       : '助手';
     const modelId = opts?.modelId ?? opts?.model ?? sess?.modelId;
     const enabledTools = opts?.enabledTools ?? sess?.enabledTools;
@@ -2130,12 +2130,12 @@ export function useChat(agentMeta?: { name: string }) {
     const modelId = opts?.modelId ?? sess.modelId;
     const enabledTools = opts?.enabledTools ?? sess.enabledTools;
     setTimeout(() => {
-      launchReply(state.activeId, text, ctrl, corr, sess.digitalEmployeeId, {
+      launchReply(state.activeId, text, ctrl, corr, sess.digitalPartnerId, {
         modelId,
         enabledTools,
         conversationId: sess.conversationId ?? state.activeId,
-        agentName: sess.digitalEmployeeId
-          ? (sess.digitalEmployeeName ?? sess.agent ?? '岗位专家')
+        agentName: sess.digitalPartnerId
+          ? (sess.digitalPartnerName ?? sess.agent ?? '岗位专家')
           : '助手',
         sessionMode: opts?.sessionMode ?? sess.sessionMode,
         runMode: opts?.runMode ?? sess.runMode,
@@ -2159,8 +2159,8 @@ export function useChat(agentMeta?: { name: string }) {
     dispatch({ type: 'set_active_correlation', id: corr });
 
     const replyId = uid('m_');
-    const agentName = sess.digitalEmployeeId
-      ? (sess.digitalEmployeeName ?? sess.agent ?? '岗位专家')
+    const agentName = sess.digitalPartnerId
+      ? (sess.digitalPartnerName ?? sess.agent ?? '岗位专家')
       : '助手';
     const placeholder: ChatMessageEx = {
       id: replyId,
@@ -2187,7 +2187,7 @@ export function useChat(agentMeta?: { name: string }) {
     timeoutRef.current = setTimeout(() => ctrl.abort(), DEFAULT_TIMEOUT_MS);
 
     setTimeout(() => {
-      launchReply(state.activeId, userMsg.content, ctrl, corr, sess.digitalEmployeeId, {
+      launchReply(state.activeId, userMsg.content, ctrl, corr, sess.digitalPartnerId, {
         replyId,
         skipAppend: true,
         agentName,
@@ -2379,7 +2379,7 @@ export function useChat(agentMeta?: { name: string }) {
       title: `${session?.title ?? '专家协同会话'} · 待办事项`,
       priority: 'P1',
       assignee: actor.name,
-      digitalEmployeeId: session?.digitalEmployeeId,
+      digitalPartnerId: session?.digitalPartnerId,
       correlationId: message.correlationId,
       conversationId,
       links: { conversationId },

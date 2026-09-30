@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/pmsop"
+	"github.com/qizhida-partner-platform/backend/internal/pmsop"
 )
 
 func fixedNow() time.Time { return time.Date(2026, 9, 8, 10, 0, 0, 0, time.UTC) }

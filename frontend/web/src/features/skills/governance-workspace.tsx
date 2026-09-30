@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useApiMutation, useApiQuery } from '@/services/query';
-import { Badge, Button, Input } from '@de/web-ui';
+import { Badge, Button, Input } from '@qzda/web-ui';
 import {
   ShieldCheck, Activity, AlertTriangle, Search, CheckCircle2, PauseCircle, ShieldAlert,
 } from 'lucide-react';
-import { cn } from '@de/web-utils';
-import type { SkillGovernanceIncident, SkillGovernanceEvent, SkillRuntimeHealth } from '@de/web-types';
+import { cn } from '@qzda/web-utils';
+import type { SkillGovernanceIncident, SkillGovernanceEvent, SkillRuntimeHealth } from '@qzda/web-types';
 import { Modal, EmptyState } from '@/components/shared';
 
 export function GovernanceWorkspace({

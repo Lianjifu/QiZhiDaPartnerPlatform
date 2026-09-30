@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/modelprov"
-	"github.com/digital-employee-platform/backend/internal/modelprov/trace"
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	"github.com/qizhida-partner-platform/backend/internal/modelprov"
+	"github.com/qizhida-partner-platform/backend/internal/modelprov/trace"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 // resolvedTurn is the concrete provider + model used for one Copilot turn.

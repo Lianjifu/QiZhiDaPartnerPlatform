@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/digital-employee-platform/backend/internal/modelprov"
+	"github.com/qizhida-partner-platform/backend/internal/modelprov"
 )
 
 const reflectMaxRounds = 2

@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/metrics"
+	"github.com/qizhida-partner-platform/backend/internal/metrics"
 )
 
 var processStart = time.Now()

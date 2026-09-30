@@ -4,14 +4,14 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useApiMutation, useApiQuery } from '@/services/query';
-import { Badge, Button, KpiCard, Progress, toast } from '@de/web-ui';
+import { Badge, Button, KpiCard, Progress, toast } from '@qzda/web-ui';
 import {
   Building2, ShieldCheck, Bell, CreditCard, Database, Clock3, HardDrive,
   CheckCircle2, Plus, Key, Webhook, RotateCcw, Download, Trash2, Copy,
   Settings as SettingsIcon, ShieldAlert, ScrollText, Users, Link2, Activity,
   AlertTriangle, Bot, Coins, Fingerprint, Timer, ExternalLink,
 } from 'lucide-react';
-import { cn } from '@de/web-utils';
+import { cn } from '@qzda/web-utils';
 import { useT } from '@/i18n';
 import Governance from '@/pages/Governance';
 import ZeroTrust from '@/pages/ZeroTrust';

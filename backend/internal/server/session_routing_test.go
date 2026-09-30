@@ -3,8 +3,8 @@ package server
 import (
 	"testing"
 
-	"github.com/digital-employee-platform/backend/internal/store"
-	"github.com/digital-employee-platform/backend/pkg/contract"
+	"github.com/qizhida-partner-platform/backend/internal/store"
+	"github.com/qizhida-partner-platform/backend/pkg/contract"
 )
 
 func TestResolveDefaultSessionModeMissing(t *testing.T) {

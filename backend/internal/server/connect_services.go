@@ -8,20 +8,20 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/digital-employee-platform/backend/gen/de/audit/v1/auditv1connect"
-	collabv1 "github.com/digital-employee-platform/backend/gen/de/collab/v1"
-	"github.com/digital-employee-platform/backend/gen/de/collab/v1/collabv1connect"
-	commonv1 "github.com/digital-employee-platform/backend/gen/de/common/v1"
-	employeev1 "github.com/digital-employee-platform/backend/gen/de/employee/v1"
-	"github.com/digital-employee-platform/backend/gen/de/employee/v1/employeev1connect"
-	"github.com/digital-employee-platform/backend/gen/de/platform/v1/platformv1connect"
-	"github.com/digital-employee-platform/backend/gen/de/policy/v1/policyv1connect"
-	ragv1 "github.com/digital-employee-platform/backend/gen/de/rag/v1"
-	"github.com/digital-employee-platform/backend/gen/de/rag/v1/ragv1connect"
-	runtimev1 "github.com/digital-employee-platform/backend/gen/de/runtime/v1"
-	"github.com/digital-employee-platform/backend/gen/de/runtime/v1/runtimev1connect"
-	"github.com/digital-employee-platform/backend/pkg/contract"
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	"github.com/qizhida-partner-platform/backend/gen/qzda/audit/v1/auditv1connect"
+	collabv1 "github.com/qizhida-partner-platform/backend/gen/qzda/collab/v1"
+	"github.com/qizhida-partner-platform/backend/gen/qzda/collab/v1/collabv1connect"
+	commonv1 "github.com/qizhida-partner-platform/backend/gen/qzda/common/v1"
+	partnerv1 "github.com/qizhida-partner-platform/backend/gen/qzda/partner/v1"
+	"github.com/qizhida-partner-platform/backend/gen/qzda/partner/v1/partnerv1connect"
+	"github.com/qizhida-partner-platform/backend/gen/qzda/platform/v1/platformv1connect"
+	"github.com/qizhida-partner-platform/backend/gen/qzda/policy/v1/policyv1connect"
+	ragv1 "github.com/qizhida-partner-platform/backend/gen/qzda/rag/v1"
+	"github.com/qizhida-partner-platform/backend/gen/qzda/rag/v1/ragv1connect"
+	runtimev1 "github.com/qizhida-partner-platform/backend/gen/qzda/runtime/v1"
+	"github.com/qizhida-partner-platform/backend/gen/qzda/runtime/v1/runtimev1connect"
+	"github.com/qizhida-partner-platform/backend/pkg/contract"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 // mountConnectRPC registers buf-generated Connect handlers for unified modes.
@@ -45,7 +45,7 @@ func (s *Server) mountConnectRPCForMode(mux *http.ServeMux, mode ServiceMode) {
 	if all || mode == ModeCollab {
 		p, h := collabv1connect.NewCollabServiceHandler(&collabConnect{s})
 		mux.Handle(p, h)
-		p, h = employeev1connect.NewEmployeeServiceHandler(&employeeConnect{s})
+		p, h = partnerv1connect.NewPartnerServiceHandler(&partnerConnect{s})
 		mux.Handle(p, h)
 	}
 	if all || mode == ModePolicy || (mode == ModeSys && sysAbsorbsCrosscutting()) {
@@ -121,13 +121,13 @@ func (c *collabConnect) CreateConversation(ctx context.Context, req *connect.Req
 	}
 	item := &collabv1.Conversation{
 		Id: c.s.Store.ID("conv"), WorkspaceId: ws, Title: title,
-		DigitalEmployeeId: req.Msg.GetDigitalEmployeeId(),
+		DigitalPartnerId: req.Msg.GetDigitalPartnerId(),
 		UpdatedAt:         time.Now().UTC().Format(time.RFC3339),
 	}
 	c.s.Store.Lock()
 	c.s.Store.Conversations = append([]map[string]any{{
 		"id": item.Id, "workspaceId": item.WorkspaceId, "title": item.Title,
-		"digitalEmployeeId": item.DigitalEmployeeId, "updatedAt": item.UpdatedAt,
+		"digitalPartnerId": item.DigitalPartnerId, "updatedAt": item.UpdatedAt,
 	}}, c.s.Store.Conversations...)
 	if id != nil {
 		c.s.Store.AppendAudit(ws, id.Name, "创建协作会话", item.Title, "success", "")
@@ -153,7 +153,7 @@ func (c *collabConnect) StreamTurn(ctx context.Context, req *connect.Request[col
 	body := map[string]any{
 		"content":           msg.GetContent(),
 		"correlationId":     corr,
-		"digitalEmployeeId": msg.GetDigitalEmployeeId(),
+		"digitalPartnerId": msg.GetDigitalPartnerId(),
 		"clientMsgId":       msg.GetClientMsgId(),
 		"modelId":           msg.GetModelId(),
 		"modeHint":          msg.GetModeHint(),
@@ -221,7 +221,7 @@ func mapToProtoSnapshot(rec map[string]any) *commonv1.ContextSnapshot {
 		System:        str(rec["system"]),
 		HistoryTurns:  int32(intFrom(rec["historyTurns"])),
 		RagHits:       int32(intFrom(rec["ragHits"])),
-		EmployeeId:    str(rec["employeeId"]),
+		PartnerId:    str(rec["partnerId"]),
 		BuiltAt:       str(rec["builtAt"]),
 		SessionMode:   contract.SessionModeToProto(str(rec["sessionMode"])),
 	}
@@ -243,16 +243,16 @@ func mapToProtoSnapshot(rec map[string]any) *commonv1.ContextSnapshot {
 	return snap
 }
 
-type employeeConnect struct{ s *Server }
+type partnerConnect struct{ s *Server }
 
-func (c *employeeConnect) ResolveActive(ctx context.Context, req *connect.Request[employeev1.ResolveActiveRequest]) (*connect.Response[employeev1.ResolveActiveResponse], error) {
+func (c *partnerConnect) ResolveActive(ctx context.Context, req *connect.Request[partnerv1.ResolveActiveRequest]) (*connect.Response[partnerv1.ResolveActiveResponse], error) {
 	r := requestFromConnect(ctx, req.Header())
-	raw, err := c.s.resolveActiveEmployee(r, req.Msg.GetDigitalEmployeeId())
+	raw, err := c.s.resolveActiveEmployee(r, req.Msg.GetDigitalPartnerId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	m, _ := raw.(map[string]any)
-	out := &employeev1.ResolveActiveResponse{
+	out := &partnerv1.ResolveActiveResponse{
 		Id: str(m["id"]), Name: str(m["name"]), Lifecycle: str(m["lifecycle"]),
 		Reason: str(m["reason"]), Active: m["active"] == true,
 	}

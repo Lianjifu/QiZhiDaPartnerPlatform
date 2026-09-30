@@ -3,7 +3,7 @@ package server
 import (
 	"strings"
 
-	"github.com/digital-employee-platform/backend/pkg/contract"
+	"github.com/qizhida-partner-platform/backend/pkg/contract"
 )
 
 // liveAnswerStream 在 LLM 生成过程中实时向客户端推送 delta，避免等全文完成后再回放。

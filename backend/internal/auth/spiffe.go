@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-const defaultTrustDomain = "de.local"
+const defaultTrustDomain = "qzda.local"
 
 // SPIFFETrustDomain returns DE_SPIFFE_TRUST_DOMAIN or de.local.
 func SPIFFETrustDomain() string {

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/store"
+	"github.com/qizhida-partner-platform/backend/internal/store"
 )
 
 func TestCMDBLookupPlatformCatalog(t *testing.T) {

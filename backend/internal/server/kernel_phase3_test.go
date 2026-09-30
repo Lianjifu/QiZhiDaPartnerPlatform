@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/digital-employee-platform/backend/internal/server"
-	"github.com/digital-employee-platform/backend/internal/store"
-	"github.com/digital-employee-platform/backend/internal/vault"
-	"github.com/digital-employee-platform/backend/internal/wecom"
+	"github.com/qizhida-partner-platform/backend/internal/server"
+	"github.com/qizhida-partner-platform/backend/internal/store"
+	"github.com/qizhida-partner-platform/backend/internal/vault"
+	"github.com/qizhida-partner-platform/backend/internal/wecom"
 )
 
 func TestWecomWebhookReusesSessionForSameUser(t *testing.T) {
@@ -38,7 +38,7 @@ func TestWecomWebhookReusesSessionForSameUser(t *testing.T) {
 	st.ChannelDeploys = append([]map[string]any{{
 		"id": "dep-wecom-route", "workspaceId": "w1", "name": "企微路由", "kind": "wecom",
 		"status": "active", "credentialRef": "vault://channel-deployments/dep-wecom-route/credential",
-		"connectionMode": "webhook", "digitalEmployeeId": "de-1",
+		"connectionMode": "webhook", "digitalPartnerId": "de-1",
 		"webhookPath": "/api/channel/wecom/events/dep-wecom-route",
 	}}, st.ChannelDeploys...)
 	st.Unlock()
@@ -75,7 +75,7 @@ func TestProductionEmployeeApproveRequiresDualApproval(t *testing.T) {
 	h := server.New(store.New()).Handler()
 
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/digital-employees/de-2/approve", nil)
+	req := httptest.NewRequest(http.MethodPost, "/api/partners/de-2/approve", nil)
 	req.Header.Set("Authorization", "Bearer mock-user-token")
 	req.Header.Set("X-Workspace-Id", "w1")
 	h.ServeHTTP(rr, req)
@@ -87,7 +87,7 @@ func TestProductionEmployeeApproveRequiresDualApproval(t *testing.T) {
 	}
 
 	rr = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodPost, "/api/digital-employees/de-2/approve", nil)
+	req = httptest.NewRequest(http.MethodPost, "/api/partners/de-2/approve", nil)
 	req.Header.Set("Authorization", "Bearer mock-admin-token")
 	req.Header.Set("X-Workspace-Id", "w1")
 	h.ServeHTTP(rr, req)
@@ -347,7 +347,7 @@ func TestProductionEmployeeSubmitAdminDirectRelease(t *testing.T) {
 	h := server.New(st).Handler()
 	tok := mustAdminJWT(t)
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/digital-employees/de-hr/submit", bytes.NewBufferString(`{}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/partners/de-hr/submit", bytes.NewBufferString(`{}`))
 	req.Header.Set("Authorization", "Bearer "+tok)
 	req.Header.Set("X-Workspace-Id", "w1")
 	req.Header.Set("Content-Type", "application/json")
@@ -379,7 +379,7 @@ func TestProductionEmployeeSubmitNonAdminStaysPending(t *testing.T) {
 	st.Unlock()
 	h := server.New(st).Handler()
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/digital-employees/de-hr/submit", bytes.NewBufferString(`{}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/partners/de-hr/submit", bytes.NewBufferString(`{}`))
 	req.Header.Set("Authorization", "Bearer mock-user-token")
 	req.Header.Set("X-Workspace-Id", "w1")
 	req.Header.Set("Content-Type", "application/json")

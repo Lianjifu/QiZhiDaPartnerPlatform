@@ -26,7 +26,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/metrics"
+	"github.com/qizhida-partner-platform/backend/internal/metrics"
 )
 
 // Parser turns file bytes into a typed value. A nil error keeps the

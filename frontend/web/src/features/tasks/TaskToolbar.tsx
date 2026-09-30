@@ -1,6 +1,6 @@
 import { Check, ChevronDown, List, Plus, Search, TableProperties } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import type { ControlledTask, Priority, TaskLifecycleStage, TaskRisk } from '@de/web-types';
+import type { ControlledTask, Priority, TaskLifecycleStage, TaskRisk } from '@qzda/web-types';
 import { getStageMeta, riskLabel } from './task-ui';
 
 export type TaskFilters = {
@@ -40,8 +40,8 @@ export function TaskToolbar({ filters, onChange, view, onViewChange, tasks, onCr
   const employees = Array.from(
     new Map(
       tasks
-        .filter((task) => task.digitalEmployeeId || task.digitalEmployeeName)
-        .map((task) => [task.digitalEmployeeId ?? task.digitalEmployeeName!, task.digitalEmployeeName ?? task.digitalEmployeeId!]),
+        .filter((task) => task.digitalPartnerId || task.digitalPartnerName)
+        .map((task) => [task.digitalPartnerId ?? task.digitalPartnerName!, task.digitalPartnerName ?? task.digitalPartnerId!]),
     ).entries(),
   );
   return <div className="task-toolbar">

@@ -2,7 +2,7 @@
  * API 客户端层 — 默认请求真实后端（粗粒度网关 / Vite 代理）。
  * Mock 适配器仅在应用入口显式注入时启用（VITE_USE_MOCK=true）。
  */
-import type { ApiResponse } from '@de/web-types';
+import type { ApiResponse } from '@qzda/web-types';
 
 export interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';

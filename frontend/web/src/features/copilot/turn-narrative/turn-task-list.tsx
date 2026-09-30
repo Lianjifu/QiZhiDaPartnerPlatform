@@ -1,5 +1,5 @@
 import { CheckCircle2, Circle, Loader2, XCircle } from 'lucide-react';
-import { cn } from '@de/web-utils';
+import { cn } from '@qzda/web-utils';
 import type { TurnTaskItem } from './types';
 
 type Props = {

@@ -1,4 +1,4 @@
-import type { ModelConnectProtocol, ProviderTier } from '@de/web-types';
+import type { ModelConnectProtocol, ProviderTier } from '@qzda/web-types';
 
 export type ProviderConnectFieldKey =
   | 'displayName'

@@ -12,10 +12,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/infra"
-	"github.com/digital-employee-platform/backend/internal/runtimeenv"
-	"github.com/digital-employee-platform/backend/internal/server"
-	"github.com/digital-employee-platform/backend/internal/store"
+	"github.com/qizhida-partner-platform/backend/internal/infra"
+	"github.com/qizhida-partner-platform/backend/internal/runtimeenv"
+	"github.com/qizhida-partner-platform/backend/internal/server"
+	"github.com/qizhida-partner-platform/backend/internal/store"
 )
 
 // Options configures Listen address and ServiceMode.

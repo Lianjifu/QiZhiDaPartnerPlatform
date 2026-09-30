@@ -2,7 +2,7 @@
  * 当前工作区状态 — 多工作区切换
  */
 import { create } from 'zustand';
-import type { Workspace } from '@de/web-types';
+import type { Workspace } from '@qzda/web-types';
 
 interface WorkspaceState {
   current: Workspace | null;

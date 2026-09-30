@@ -6,8 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/digital-employee-platform/backend/internal/server"
-	"github.com/digital-employee-platform/backend/internal/store"
+	"github.com/qizhida-partner-platform/backend/internal/server"
+	"github.com/qizhida-partner-platform/backend/internal/store"
 )
 
 // First-screen GETs that must not 404 when VITE_USE_MOCK=false.
@@ -23,10 +23,10 @@ func TestPageSmokeGETs(t *testing.T) {
 		"/api/home/team",
 		"/api/home/alerts",
 		"/api/operations/overview",
-		"/api/digital-employees",
-		"/api/digital-employees/overview",
-		"/api/digital-employee-templates",
-		"/api/digital-employee-capability-catalog",
+		"/api/partners",
+		"/api/partners/overview",
+		"/api/partner-templates",
+		"/api/partner-capability-catalog",
 		"/api/tasks",
 		"/api/model-providers",
 		"/api/model-routing/policies",

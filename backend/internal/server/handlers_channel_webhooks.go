@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/dingtalk"
-	"github.com/digital-employee-platform/backend/internal/wecom"
-	"github.com/digital-employee-platform/backend/pkg/contract"
+	"github.com/qizhida-partner-platform/backend/internal/dingtalk"
+	"github.com/qizhida-partner-platform/backend/internal/wecom"
+	"github.com/qizhida-partner-platform/backend/pkg/contract"
 )
 
 // handleWecomWebhook serves GET/POST /api/channel/wecom/events/{deploymentId}

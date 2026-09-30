@@ -7,7 +7,7 @@ import { FileText, Lock } from 'lucide-react';
 
 type SharedPayload = {
   title?: string;
-  digitalEmployeeName?: string;
+  digitalPartnerName?: string;
   readonly?: boolean;
   messages?: Array<{ id?: string; role?: string; content?: string; createdAt?: string }>;
 };
@@ -51,7 +51,7 @@ export default function CopilotShare() {
         <div>
           <h1 className="text-lg font-semibold">{data.title || '共享会话'}</h1>
           <p className="mt-1 text-xs text-[var(--text-muted)]">
-            {data.digitalEmployeeName ? `${data.digitalEmployeeName} · ` : ''}只读分享 · 已脱敏
+            {data.digitalPartnerName ? `${data.digitalPartnerName} · ` : ''}只读分享 · 已脱敏
           </p>
         </div>
       </div>

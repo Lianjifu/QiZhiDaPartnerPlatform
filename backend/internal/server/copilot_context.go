@@ -6,11 +6,11 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/digital-employee-platform/backend/internal/auth"
-	"github.com/digital-employee-platform/backend/internal/knowledge/citation"
-	membudget "github.com/digital-employee-platform/backend/internal/memory/budget"
-	memret "github.com/digital-employee-platform/backend/internal/memory/retrieval"
-	"github.com/digital-employee-platform/backend/internal/modelprov"
+	"github.com/qizhida-partner-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/knowledge/citation"
+	membudget "github.com/qizhida-partner-platform/backend/internal/memory/budget"
+	memret "github.com/qizhida-partner-platform/backend/internal/memory/retrieval"
+	"github.com/qizhida-partner-platform/backend/internal/modelprov"
 )
 
 const (
@@ -278,7 +278,7 @@ func (s *Server) retrieveMemoryForTurnLocked(ws, ownerID, deID, excludeSourceID,
 				continue
 			}
 		}
-		memDE := str(m["digitalEmployeeId"])
+		memDE := str(m["digitalPartnerId"])
 		// DE-id scoping must be strict: when the specialist is bound to a
 		// specific digital employee, unkeyed memories (memDE=="" — legacy
 		// admin ingest, task writes without DE) must NOT leak across every

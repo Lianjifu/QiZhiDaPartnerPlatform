@@ -2,7 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { lazy, Suspense, type ReactNode } from 'react';
 import { AppLayout } from './layouts/AppLayout';
 import { ProtectedRoute } from './router/ProtectedRoute';
-import { ToastHost, Spinner } from '@de/web-ui';
+import { ToastHost, Spinner } from '@qzda/web-ui';
 import { ErrorBoundary, RouteErrorBoundary } from './components/ErrorBoundary';
 import { NotFound } from './pages/NotFound';
 import { useAuthStore } from './stores/authStore';
@@ -13,7 +13,7 @@ const Copilot = lazy(() => import('./pages/Copilot'));
 const CopilotShare = lazy(() => import('./pages/CopilotShare'));
 const Tasks = lazy(() => import('./pages/Tasks'));
 const Workspaces = lazy(() => import('./pages/Workspaces'));
-const DigitalEmployees = lazy(() => import('./pages/DigitalEmployees'));
+const DigitalPartners = lazy(() => import('./pages/DigitalPartners'));
 const Workflows = lazy(() => import('./pages/Workflows'));
 const WorkflowOrchestrationSession = lazy(() => import('./pages/WorkflowOrchestrationSession'));
 const Knowledge = lazy(() => import('./pages/Knowledge'));
@@ -63,7 +63,7 @@ export default function App() {
             <Route path="/copilot/:id" element={<ProtectedRoute roles={['user', 'admin', 'auditor']}><ErrorBoundary><Copilot /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/tasks" element={<ProtectedRoute roles={['user', 'admin', 'auditor']}><ErrorBoundary><Tasks /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/workspaces" element={<ProtectedRoute roles={['admin']}><ErrorBoundary><Workspaces /></ErrorBoundary></ProtectedRoute>} />
-            <Route path="/partners" element={<ProtectedRoute roles={['user', 'admin', 'auditor']}><ErrorBoundary><DigitalEmployees /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/partners" element={<ProtectedRoute roles={['user', 'admin', 'auditor']}><ErrorBoundary><DigitalPartners /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/workflows" element={<ProtectedRoute permission="workflow.read" roles={['user', 'admin', 'auditor']}><ErrorBoundary><Workflows /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/workflows/orchestration" element={<ProtectedRoute permission="workflow.read" roles={['user', 'admin']}><ErrorBoundary><WorkflowOrchestrationSession /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/workflows/orchestration/:sessionId" element={<ProtectedRoute permission="workflow.read" roles={['user', 'admin']}><ErrorBoundary><WorkflowOrchestrationSession /></ErrorBoundary></ProtectedRoute>} />

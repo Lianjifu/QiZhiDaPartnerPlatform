@@ -1,10 +1,10 @@
 /**
- * @de/web-ui — PSSP 设计系统组件库
+ * @qzda/web-ui — PSSP 设计系统组件库
  * 与 docs/视觉设计规范.md Token 对齐
  * 双主题自适应（light / dark）
  */
 import { forwardRef, useState, type ButtonHTMLAttributes, type HTMLAttributes, type InputHTMLAttributes, type ReactNode } from 'react';
-import { cn } from '@de/web-utils';
+import { cn } from '@qzda/web-utils';
 
 // ============ Button ============
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline';

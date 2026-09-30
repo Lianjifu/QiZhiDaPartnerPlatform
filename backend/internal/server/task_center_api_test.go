@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/digital-employee-platform/backend/internal/server"
-	"github.com/digital-employee-platform/backend/internal/store"
+	"github.com/qizhida-partner-platform/backend/internal/server"
+	"github.com/qizhida-partner-platform/backend/internal/store"
 )
 
 func TestTaskCenterProductionAPI(t *testing.T) {
@@ -22,7 +22,7 @@ func TestTaskCenterProductionAPI(t *testing.T) {
 
 	// Create with dispatch assist semantics (user as submitter)
 	rr := httptest.NewRecorder()
-	body := `{"title":"跨部协办测试","dispatchKind":"assist","assignee":"李婷","digitalEmployeeId":"de-it","digitalEmployeeName":"青禾"}`
+	body := `{"title":"跨部协办测试","dispatchKind":"assist","assignee":"李婷","digitalPartnerId":"de-it","digitalPartnerName":"青禾"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/tasks", strings.NewReader(body))
 	as(req, "mock-user-token")
 	h.ServeHTTP(rr, req)

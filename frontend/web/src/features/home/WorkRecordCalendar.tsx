@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { cn } from '@de/web-utils';
+import { cn } from '@qzda/web-utils';
 import {
   type CalendarCell,
   WEEKDAY_LABELS_MON,

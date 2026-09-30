@@ -2,7 +2,7 @@
  * 通用 TanStack Query 封装 — 统一错误处理 / 鉴权注入
  */
 import { useQuery, useMutation, useQueryClient, type UseQueryOptions, type UseMutationOptions } from '@tanstack/react-query';
-import { getApiClient } from '@de/web-api';
+import { getApiClient } from '@qzda/web-api';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 
 export function useApiQuery<T>(

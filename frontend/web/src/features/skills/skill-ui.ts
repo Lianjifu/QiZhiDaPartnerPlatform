@@ -1,7 +1,7 @@
 import {
   Wrench, Globe, Box, AlertTriangle, ShieldAlert, ShieldCheck,
 } from 'lucide-react';
-import type { Skill, SkillRuntimeHealth, CapabilityRef } from '@de/web-types';
+import type { Skill, SkillRuntimeHealth, CapabilityRef } from '@qzda/web-types';
 
 export const KIND_META: Record<string, { label: string; tone: 'info' | 'success' | 'warn'; icon: typeof Wrench; exec: string }> = {
   skill: { label: 'Skill', tone: 'info', icon: Wrench, exec: 'gVisor 沙箱' },

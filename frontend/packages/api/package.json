@@ -1,5 +1,5 @@
 {
-  "name": "@de/web-api",
+  "name": "@qzda/web-api",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -14,8 +14,8 @@
     "lint": "echo 'lint stub'"
   },
   "dependencies": {
-    "@de/web-types": "workspace:*",
-    "@de/web-utils": "workspace:*"
+    "@qzda/web-types": "workspace:*",
+    "@qzda/web-utils": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.5.0",

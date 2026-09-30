@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/memory/provenance"
+	"github.com/qizhida-partner-platform/backend/internal/memory/provenance"
 )
 
 // Store is an in-memory control-plane state (Phase A–C default; PG later).
@@ -249,7 +249,7 @@ func controlledTask(id, ws, code, title, priority, status, stage, ownerID, deID,
 	return map[string]any{
 		"id": id, "workspaceId": ws, "code": code, "title": title, "priority": priority,
 		"status": status, "lifecycleStage": stage, "ownerId": ownerID, "ownerName": ownerID,
-		"digitalEmployeeId": deID, "digitalEmployeeName": "工作伙伴", "assignee": ownerID, "source": source,
+		"digitalPartnerId": deID, "digitalPartnerName": "工作伙伴", "assignee": ownerID, "source": source,
 		"progress": map[string]any{"done": 1, "total": 3}, "tags": []string{},
 		"sla":        map[string]any{"remainingMin": 45, "risk": "none", "escalated": false},
 		"execution":  map[string]any{"retryCount": 0, "paused": false, "currentStep": "执行中"},
@@ -400,7 +400,7 @@ func (s *Store) seed() {
 		{"id": "tpl-sre", "name": "SRE 值班工作伙伴", "role": "SRE", "department": "信息技术部", "scope": "organization", "status": "certified", "source": "platform", "sourceName": "平台模板", "description": "故障响应与变更护栏", "serviceObject": "运维团队", "version": "1.0.0", "risk": "medium", "responsibilities": []string{"故障响应", "变更护栏"}, "prohibitedActions": []string{"生产直接写库"}, "capabilities": map[string]any{"model": "gpt-4o", "knowledge": []string{"运维知识库"}, "skills": []string{"docx", "summarize"}, "tools": []string{}, "workflows": []string{"故障自愈技能"}, "channels": []string{"Web"}}, "memoryPolicy": map[string]any{"shortTermHours": 24, "workingDays": 7, "longTermCadence": "daily", "knowledgePromotion": "approval_required"}, "applicableEnvironments": []string{"sandbox", "staging", "production"}, "adoptionCount": 1, "tags": []string{"sre"}, "publishedAt": "2026-07-01T00:00:00Z", "updatedAt": "2026-07-01T00:00:00Z"},
 	}
 	s.TemplateAdoptions = []map[string]any{
-		{"id": "adopt-1", "templateId": "tpl-sre", "templateVersion": "1.0.0", "employeeId": "de-1", "workspaceId": "w1", "adoptedBy": "平台管理员", "status": "active", "createdAt": "2026-07-01T00:00:00Z"},
+		{"id": "adopt-1", "templateId": "tpl-sre", "templateVersion": "1.0.0", "partnerId": "de-1", "workspaceId": "w1", "adoptedBy": "平台管理员", "status": "active", "createdAt": "2026-07-01T00:00:00Z"},
 	}
 	s.Employees = []map[string]any{
 		{
@@ -441,7 +441,7 @@ func (s *Store) seed() {
 		},
 	}
 	s.ConfigVersions = []map[string]any{
-		{"id": "cfg-1", "employeeId": "de-1", "version": "配置 v1", "status": "current", "changeSummary": "初始配置", "changedFields": []string{"岗位档案"}, "updatedBy": "平台管理员", "updatedById": "u1", "updatedAt": "2026-07-15T00:00:00Z"},
+		{"id": "cfg-1", "partnerId": "de-1", "version": "配置 v1", "status": "current", "changeSummary": "初始配置", "changedFields": []string{"岗位档案"}, "updatedBy": "平台管理员", "updatedById": "u1", "updatedAt": "2026-07-15T00:00:00Z"},
 	}
 
 	s.Tasks = []map[string]any{
@@ -488,8 +488,8 @@ func (s *Store) seed() {
 	}
 
 	s.Conversations = []map[string]any{
-		{"id": "s1", "workspaceId": "w1", "title": "Redis OOM 处理", "digitalEmployeeId": "de-1", "updatedAt": "2026-07-22T12:53:42Z", "messages": []map[string]any{}},
-		{"id": "conv-1", "workspaceId": "w1", "title": "缓存延迟排查", "digitalEmployeeId": "de-1", "updatedAt": "2026-07-22T08:00:00Z", "messages": []map[string]any{}},
+		{"id": "s1", "workspaceId": "w1", "title": "Redis OOM 处理", "digitalPartnerId": "de-1", "updatedAt": "2026-07-22T12:53:42Z", "messages": []map[string]any{}},
+		{"id": "conv-1", "workspaceId": "w1", "title": "缓存延迟排查", "digitalPartnerId": "de-1", "updatedAt": "2026-07-22T08:00:00Z", "messages": []map[string]any{}},
 	}
 	s.Messages["s1"] = []map[string]any{
 		{"id": "msg-s1-1", "role": "user", "content": "prod-redis-01 内存打满了，怎么扩容？", "createdAt": "2026-07-22T12:47:00Z"},
@@ -516,7 +516,7 @@ func (s *Store) seed() {
 		{
 			"id": "s1", "workspaceId": "w1", "ownerId": "u1", "title": "Redis OOM 处理",
 			"preview": "建议先确认 maxmemory 与 eviction policy，再评估是否扩容到 16GB。", "agent": "SRE 故障处置专员",
-			"digitalEmployeeId": "de-1", "digitalEmployeeName": "SRE 故障处置专员",
+			"digitalPartnerId": "de-1", "digitalPartnerName": "SRE 故障处置专员",
 			"conversationId": "s1", "status": "active",
 			"createdAt": "2026-07-22T12:47:00Z", "updatedAt": "2026-07-22T12:53:42Z",
 			"lastMessageAt": "2026-07-22T12:53:42Z", "pinned": true,
@@ -524,7 +524,7 @@ func (s *Store) seed() {
 		{
 			"id": "sess-1", "workspaceId": "w1", "ownerId": "u1", "title": "缓存延迟排查",
 			"preview": "建议先检查 Redis 慢查询与热点 key。", "agent": "SRE 故障处置专员",
-			"digitalEmployeeId": "de-1", "digitalEmployeeName": "SRE 故障处置专员",
+			"digitalPartnerId": "de-1", "digitalPartnerName": "SRE 故障处置专员",
 			"conversationId": "conv-1", "status": "active",
 			"createdAt": "2026-07-22T08:00:00Z", "updatedAt": "2026-07-22T08:00:05Z",
 			"lastMessageAt": "2026-07-22T08:00:05Z",
@@ -642,7 +642,7 @@ func (s *Store) seed() {
 	}
 	s.MemoryRecords = []map[string]any{
 		{
-			"id": "mem-short-1", "workspaceId": "w1", "ownerId": "u1", "digitalEmployeeId": "de-sre",
+			"id": "mem-short-1", "workspaceId": "w1", "ownerId": "u1", "digitalPartnerId": "de-sre",
 			"layer": "short_term", "scope": "user", "title": "Redis OOM 会话上下文",
 			"content":        "当前会话已确认 prod-redis-01 的 maxmemory 风险，等待双重审批执行。",
 			"classification": "internal", "sourceType": "conversation", "sourceId": "cv1",
@@ -650,7 +650,7 @@ func (s *Store) seed() {
 			"expiresAt": "2026-07-22T08:00:00.000Z", "createdAt": "2026-07-21T08:12:00.000Z", "updatedAt": "2026-07-21T08:24:00.000Z",
 		},
 		{
-			"id": "mem-work-1", "workspaceId": "w1", "ownerId": "u1", "digitalEmployeeId": "de-sre",
+			"id": "mem-work-1", "workspaceId": "w1", "ownerId": "u1", "digitalPartnerId": "de-sre",
 			"layer": "working", "scope": "team", "title": "TSK-20260713-001 处置上下文",
 			"content":        "已完成内存趋势验证与大 Key 识别；人工接管前需保留执行证据。",
 			"classification": "internal", "sourceType": "task", "sourceId": "t1",
@@ -658,7 +658,7 @@ func (s *Store) seed() {
 			"expiresAt": "2026-08-20T00:00:00.000Z", "createdAt": "2026-07-13T08:24:00.000Z", "updatedAt": "2026-07-21T08:24:00.000Z",
 		},
 		{
-			"id": "mem-long-1", "workspaceId": "w1", "ownerId": "u1", "digitalEmployeeId": "de-sre",
+			"id": "mem-long-1", "workspaceId": "w1", "ownerId": "u1", "digitalPartnerId": "de-sre",
 			"layer": "long_term", "scope": "workspace", "title": "Redis OOM 处置偏好",
 			"content":        "生产 Redis OOM 优先检索已发布 Runbook；涉及配置写入必须由 SRE 与管理员完成双重审批。",
 			"classification": "restricted", "sourceType": "workflow", "sourceId": "wf1",
@@ -666,7 +666,7 @@ func (s *Store) seed() {
 			"createdAt": "2026-07-18T09:00:00.000Z", "updatedAt": "2026-07-21T08:24:00.000Z",
 		},
 		{
-			"id": "mem-long-pending", "workspaceId": "w1", "ownerId": "u1", "digitalEmployeeId": "de-alert-ops",
+			"id": "mem-long-pending", "workspaceId": "w1", "ownerId": "u1", "digitalPartnerId": "de-alert-ops",
 			"layer": "long_term", "scope": "workspace", "title": "告警静默窗口经验",
 			"content":        "重大活动窗口内对已知抖动告警可建议静默，但不得自动关闭 P1；需值班经理确认后执行。",
 			"classification": "confidential", "sourceType": "task", "sourceId": "t2",
@@ -674,7 +674,7 @@ func (s *Store) seed() {
 			"createdAt": "2026-07-20T10:00:00.000Z", "updatedAt": "2026-07-21T09:00:00.000Z",
 		},
 		{
-			"id": "mem-long-2", "workspaceId": "w2", "ownerId": "u2", "digitalEmployeeId": "de-capacity",
+			"id": "mem-long-2", "workspaceId": "w2", "ownerId": "u2", "digitalPartnerId": "de-capacity",
 			"layer": "long_term", "scope": "workspace", "title": "预发扩容验收规则",
 			"content":        "预发扩容先完成 10% 灰度与回滚演练，再提交生产发布审批。",
 			"classification": "internal", "sourceType": "task", "sourceId": "t6",

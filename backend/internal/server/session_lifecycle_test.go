@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/store"
+	"github.com/qizhida-partner-platform/backend/internal/store"
 )
 
 func sessionDo(t *testing.T, h http.Handler, method, path, body string) *httptest.ResponseRecorder {
@@ -45,7 +45,7 @@ func TestTouchSessionMaterializesOrphan(t *testing.T) {
 		t.Fatalf("sessions=%d", len(st.Sessions))
 	}
 	sess := st.Sessions[0]
-	if str(sess["id"]) != "conv-orphan" || str(sess["digitalEmployeeId"]) != "de-5" {
+	if str(sess["id"]) != "conv-orphan" || str(sess["digitalPartnerId"]) != "de-5" {
 		t.Fatalf("session=%v", sess)
 	}
 	if str(sess["title"]) == "" || str(sess["title"]) == "新会话" {

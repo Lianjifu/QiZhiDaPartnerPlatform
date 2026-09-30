@@ -1,4 +1,4 @@
-import type { ChannelDeployment, DeliveryPolicyStatus } from '@de/web-types';
+import type { ChannelDeployment, DeliveryPolicyStatus } from '@qzda/web-types';
 
 export function deploymentDeletionAction(deletionAllowed: boolean) {
   return deletionAllowed ? { disabled: false, label: '删除部署' } : { disabled: true, label: '已被策略引用' };

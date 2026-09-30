@@ -11,12 +11,12 @@ import (
 	"strings"
 	"time"
 
-	commonv1 "github.com/digital-employee-platform/backend/gen/de/common/v1"
-	runtimev1 "github.com/digital-employee-platform/backend/gen/de/runtime/v1"
-	"github.com/digital-employee-platform/backend/internal/auth"
-	"github.com/digital-employee-platform/backend/internal/modelprov"
-	"github.com/digital-employee-platform/backend/pkg/contract"
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	commonv1 "github.com/qizhida-partner-platform/backend/gen/qzda/common/v1"
+	runtimev1 "github.com/qizhida-partner-platform/backend/gen/qzda/runtime/v1"
+	"github.com/qizhida-partner-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/modelprov"
+	"github.com/qizhida-partner-platform/backend/pkg/contract"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 const (
@@ -198,13 +198,13 @@ func runtimeLoopPayload(in reactTurnInput) map[string]any {
 		"firstMessageId": in.FirstMessageID,
 		"envelope": map[string]any{
 			"tenantId": tenant, "workspaceId": in.WorkspaceID, "actorId": actor,
-			"sessionId": in.ConversationID, "employeeId": in.DigitalEmployee,
+			"sessionId": in.ConversationID, "partnerId": in.DigitalPartner,
 			"correlationId": in.CorrelationID, "sessionMode": in.SessionMode, "riskLevel": in.RiskLevel,
 		},
 		"snapshot": map[string]any{
 			"id": in.SnapshotID, "correlationId": in.CorrelationID, "system": in.System,
 			"historyTurns": len(in.Messages), "toolRegistry": tools,
-			"employeeId": in.DigitalEmployee, "sessionMode": in.SessionMode,
+			"partnerId": in.DigitalPartner, "sessionMode": in.SessionMode,
 			"employeeBinding": in.Binding, "memoryProvenance": in.MemoryProvenance,
 		},
 	}
@@ -289,9 +289,9 @@ func (s *Server) reactInputFromRunRequest(r *http.Request, req *runtimev1.RunReq
 			corr = snap.GetCorrelationId()
 		}
 	}
-	employee := env.GetEmployeeId()
+	employee := env.GetPartnerId()
 	if snap != nil && employee == "" {
-		employee = snap.GetEmployeeId()
+		employee = snap.GetPartnerId()
 	}
 	var viewer *auth.Identity
 	if r != nil {
@@ -303,7 +303,7 @@ func (s *Server) reactInputFromRunRequest(r *http.Request, req *runtimev1.RunReq
 		Request: r, WorkspaceID: ws, ModelID: req.GetModelId(), System: system,
 		Messages: messages, Registry: registry, UserMessage: input,
 		ConversationID: env.GetSessionId(), CorrelationID: corr,
-		DigitalEmployee: employee,
+		DigitalPartner: employee,
 		Viewer:          viewer, Emit: emit, ModeHint: modeHint, SkipStream: true,
 		MaxSteps: int(req.GetMaxSteps()), SnapshotID: snapID,
 		SessionMode: contract.SessionModeFromProto(env.GetSessionMode()),
@@ -349,7 +349,7 @@ func envelopeFromRunJSON(body map[string]any) *commonv1.Envelope {
 		ActorId:         str(raw["actorId"]),
 		CorrelationId:   coalesce(str(raw["correlationId"]), str(raw["correlation_id"])),
 		SessionId:       coalesce(str(raw["sessionId"]), str(raw["session_id"])),
-		EmployeeId:      coalesce(str(raw["employeeId"]), str(raw["employee_id"])),
+		PartnerId:      coalesce(str(raw["partnerId"]), str(raw["partner_id"])),
 		ChannelThreadId: coalesce(str(raw["channelThreadId"]), str(raw["channel_thread_id"])),
 		Channel:         contract.ChannelKindToProto(str(raw["channel"])),
 		SessionMode:     contract.SessionModeToProto(str(raw["sessionMode"])),

@@ -80,7 +80,7 @@ func (s *Server) conversationIDsForEmployeeLocked(ws, deID string) map[string]st
 		if ws != "" && str(sess["workspaceId"]) != "" && str(sess["workspaceId"]) != ws {
 			continue
 		}
-		if str(sess["digitalEmployeeId"]) != deID {
+		if str(sess["digitalPartnerId"]) != deID {
 			continue
 		}
 		cid := coalesce(str(sess["conversationId"]), str(sess["id"]))
@@ -92,7 +92,7 @@ func (s *Server) conversationIDsForEmployeeLocked(ws, deID string) map[string]st
 		if ws != "" && str(conv["workspaceId"]) != "" && str(conv["workspaceId"]) != ws {
 			continue
 		}
-		if str(conv["digitalEmployeeId"]) != deID {
+		if str(conv["digitalPartnerId"]) != deID {
 			continue
 		}
 		if id := str(conv["id"]); id != "" {
@@ -100,7 +100,7 @@ func (s *Server) conversationIDsForEmployeeLocked(ws, deID string) map[string]st
 		}
 	}
 	for _, mem := range s.Store.MemoryRecords {
-		if str(mem["digitalEmployeeId"]) != deID {
+		if str(mem["digitalPartnerId"]) != deID {
 			continue
 		}
 		if ws != "" && str(mem["workspaceId"]) != "" && str(mem["workspaceId"]) != ws {
@@ -179,7 +179,7 @@ func (s *Server) handoffs24hLocked(ws, deID, empName string, cutoff time.Time) i
 
 func (s *Server) memoryCallsForEmployeeLocked(ws, deID string, cutoff, today time.Time) (calls, succ int, cost float64) {
 	for _, mem := range s.Store.MemoryRecords {
-		if str(mem["digitalEmployeeId"]) != deID {
+		if str(mem["digitalPartnerId"]) != deID {
 			continue
 		}
 		if wid := str(mem["workspaceId"]); wid != "" && ws != "" && wid != ws {
@@ -364,7 +364,7 @@ func (s *Server) realEmployeeEvidenceLocked(emp map[string]any, limit int) []map
 	if len(out) < limit {
 		for i := len(s.Store.MemoryRecords) - 1; i >= 0 && len(out) < limit; i-- {
 			mem := s.Store.MemoryRecords[i]
-			if str(mem["digitalEmployeeId"]) != deID {
+			if str(mem["digitalPartnerId"]) != deID {
 				continue
 			}
 			if str(mem["layer"]) != "" && str(mem["layer"]) != "short_term" {

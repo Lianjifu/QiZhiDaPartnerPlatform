@@ -3,14 +3,14 @@ package server
 import (
 	"testing"
 
-	"github.com/digital-employee-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/auth"
 )
 
 func TestBuildControlledTaskDispatchAssist(t *testing.T) {
 	actor := &auth.Identity{ID: "u1", Name: "管理员", Role: "admin"}
 	item := buildControlledTask(func(p string) string { return p + "-1" }, "w1", map[string]any{
 		"title": "跨部协办", "dispatchKind": "assist", "assignee": "李婷",
-		"digitalEmployeeId": "de-it", "collaboratorIds": []any{"de-it"},
+		"digitalPartnerId": "de-it", "collaboratorIds": []any{"de-it"},
 	}, actor)
 	if str(item["source"]) != "dispatch" {
 		t.Fatalf("source=%v", item["source"])

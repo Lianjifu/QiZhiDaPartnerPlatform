@@ -4,9 +4,9 @@ import {
   CheckCircle2, ChevronLeft, ChevronRight, ClipboardCheck, ListChecks,
   Send, ShieldCheck, Sparkles, Wrench, X,
 } from 'lucide-react';
-import { Button } from '@de/web-ui';
-import { cn } from '@de/web-utils';
-import type { Role } from '@de/web-types';
+import { Button } from '@qzda/web-ui';
+import { cn } from '@qzda/web-utils';
+import type { Role } from '@qzda/web-types';
 import { resolveAppRole, type AppRole } from '@/features/role-nav/role-nav';
 
 type OnboardingGuideProps = {

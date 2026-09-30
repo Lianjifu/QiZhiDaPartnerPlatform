@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/digital-employee-platform/backend/internal/skills/registry"
+	"github.com/qizhida-partner-platform/backend/internal/skills/registry"
 )
 
 // defaultSkillRegistry returns a Registry pre-populated with the platform's

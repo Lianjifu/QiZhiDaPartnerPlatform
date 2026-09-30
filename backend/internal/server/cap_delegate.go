@@ -9,7 +9,7 @@ type copilotPostTurnPayload struct {
 	WorkspaceID       string           `json:"workspaceId"`
 	OwnerID           string           `json:"ownerId"`
 	OwnerName         string           `json:"ownerName"`
-	DigitalEmployeeID string           `json:"digitalEmployeeId"`
+	DigitalPartnerID string           `json:"digitalPartnerId"`
 	ConversationID    string           `json:"conversationId"`
 	CorrelationID     string           `json:"correlationId"`
 	MessageID         string           `json:"messageId"`

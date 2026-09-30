@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/auth"
-	"github.com/digital-employee-platform/backend/internal/multimodal"
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
-	"github.com/digital-employee-platform/backend/pkg/response"
+	"github.com/qizhida-partner-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/multimodal"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
+	"github.com/qizhida-partner-platform/backend/pkg/response"
 )
 
 // initMultimodal builds the registry + registers the built-in stub

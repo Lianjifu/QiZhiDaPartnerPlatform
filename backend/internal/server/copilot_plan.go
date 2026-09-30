@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/digital-employee-platform/backend/internal/modelprov"
+	"github.com/qizhida-partner-platform/backend/internal/modelprov"
 )
 
 const planMaxSteps = 6
@@ -106,7 +106,7 @@ func (s *Server) runPlanExecuteTurn(ctx context.Context, in reactTurnInput) reac
 	var lastRT resolvedTurn
 	runCtx := toolRunContext{
 		Request: in.Request, WorkspaceID: in.WorkspaceID,
-		DigitalEmployee: in.DigitalEmployee, ConversationID: in.ConversationID,
+		DigitalPartner: in.DigitalPartner, ConversationID: in.ConversationID,
 		CorrelationID: in.CorrelationID, UserMessage: in.UserMessage, Viewer: in.Viewer,
 		SessionMode: in.SessionMode, RiskLevel: in.RiskLevel,
 	}

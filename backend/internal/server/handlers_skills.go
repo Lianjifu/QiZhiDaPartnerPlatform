@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/auth"
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	"github.com/qizhida-partner-platform/backend/internal/auth"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 func requireSkillRead(id *auth.Identity) error {

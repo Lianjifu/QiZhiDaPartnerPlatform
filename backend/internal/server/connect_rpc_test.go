@@ -9,21 +9,21 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	auditv1 "github.com/digital-employee-platform/backend/gen/de/audit/v1"
-	"github.com/digital-employee-platform/backend/gen/de/audit/v1/auditv1connect"
-	collabv1 "github.com/digital-employee-platform/backend/gen/de/collab/v1"
-	"github.com/digital-employee-platform/backend/gen/de/collab/v1/collabv1connect"
-	commonv1 "github.com/digital-employee-platform/backend/gen/de/common/v1"
-	platformv1 "github.com/digital-employee-platform/backend/gen/de/platform/v1"
-	"github.com/digital-employee-platform/backend/gen/de/platform/v1/platformv1connect"
-	policyv1 "github.com/digital-employee-platform/backend/gen/de/policy/v1"
-	"github.com/digital-employee-platform/backend/gen/de/policy/v1/policyv1connect"
-	ragv1 "github.com/digital-employee-platform/backend/gen/de/rag/v1"
-	"github.com/digital-employee-platform/backend/gen/de/rag/v1/ragv1connect"
-	runtimev1 "github.com/digital-employee-platform/backend/gen/de/runtime/v1"
-	"github.com/digital-employee-platform/backend/gen/de/runtime/v1/runtimev1connect"
-	"github.com/digital-employee-platform/backend/internal/server"
-	"github.com/digital-employee-platform/backend/internal/store"
+	auditv1 "github.com/qizhida-partner-platform/backend/gen/qzda/audit/v1"
+	"github.com/qizhida-partner-platform/backend/gen/qzda/audit/v1/auditv1connect"
+	collabv1 "github.com/qizhida-partner-platform/backend/gen/qzda/collab/v1"
+	"github.com/qizhida-partner-platform/backend/gen/qzda/collab/v1/collabv1connect"
+	commonv1 "github.com/qizhida-partner-platform/backend/gen/qzda/common/v1"
+	platformv1 "github.com/qizhida-partner-platform/backend/gen/qzda/platform/v1"
+	"github.com/qizhida-partner-platform/backend/gen/qzda/platform/v1/platformv1connect"
+	policyv1 "github.com/qizhida-partner-platform/backend/gen/qzda/policy/v1"
+	"github.com/qizhida-partner-platform/backend/gen/qzda/policy/v1/policyv1connect"
+	ragv1 "github.com/qizhida-partner-platform/backend/gen/qzda/rag/v1"
+	"github.com/qizhida-partner-platform/backend/gen/qzda/rag/v1/ragv1connect"
+	runtimev1 "github.com/qizhida-partner-platform/backend/gen/qzda/runtime/v1"
+	"github.com/qizhida-partner-platform/backend/gen/qzda/runtime/v1/runtimev1connect"
+	"github.com/qizhida-partner-platform/backend/internal/server"
+	"github.com/qizhida-partner-platform/backend/internal/store"
 )
 
 func TestConnectRPCRagRetrieve(t *testing.T) {
@@ -58,7 +58,7 @@ func TestConnectRPCCreateConversation(t *testing.T) {
 	})}, "http://test")
 
 	res, err := client.CreateConversation(context.Background(), connect.NewRequest(&collabv1.CreateConversationRequest{
-		Title: "RPC 会话", DigitalEmployeeId: "de-1",
+		Title: "RPC 会话", DigitalPartnerId: "de-1",
 	}))
 	if err != nil {
 		t.Fatal(err)
@@ -71,7 +71,7 @@ func TestConnectRPCCreateConversation(t *testing.T) {
 func TestConnectJSONGatewayStillWorks(t *testing.T) {
 	h := server.New(store.New()).Handler()
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/connect/de.runtime.v1.RuntimeService/Invoke",
+	req := httptest.NewRequest(http.MethodPost, "/connect/qzda.runtime.v1.RuntimeService/Invoke",
 		bytes.NewBufferString(`{"input":"hi"}`))
 	req.Header.Set("Authorization", "Bearer mock-admin-token")
 	req.Header.Set("Content-Type", "application/json")
@@ -84,7 +84,7 @@ func TestConnectJSONGatewayStillWorks(t *testing.T) {
 func TestConnectJSONGatewayPlatformListWorkspaces(t *testing.T) {
 	h := server.New(store.New()).Handler()
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/connect/de.platform.v1.PlatformService/ListWorkspaces",
+	req := httptest.NewRequest(http.MethodPost, "/connect/qzda.platform.v1.PlatformService/ListWorkspaces",
 		bytes.NewBufferString(`{}`))
 	req.Header.Set("Authorization", "Bearer mock-admin-token")
 	req.Header.Set("Content-Type", "application/json")
@@ -215,7 +215,7 @@ func TestConnectJSONGatewayRuntimeRun(t *testing.T) {
 	t.Setenv("DE_RUNTIME_MODE", "local")
 	h := server.New(store.New()).Handler()
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/connect/de.runtime.v1.RuntimeService/Run",
+	req := httptest.NewRequest(http.MethodPost, "/connect/qzda.runtime.v1.RuntimeService/Run",
 		bytes.NewBufferString(`{"input":"hello run","correlationId":"corr-json-run-1","snapshot":{"id":"snap-json-1"}}`))
 	req.Header.Set("Authorization", "Bearer mock-admin-token")
 	req.Header.Set("X-Workspace-Id", "w1")

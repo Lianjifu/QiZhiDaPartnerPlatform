@@ -6,9 +6,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/digital-employee-platform/backend/internal/auth"
-	"github.com/digital-employee-platform/backend/internal/runtimeenv"
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	"github.com/qizhida-partner-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/runtimeenv"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 type ctxKey string

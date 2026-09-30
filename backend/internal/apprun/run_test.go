@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/apprun"
-	"github.com/digital-employee-platform/backend/internal/infra"
-	"github.com/digital-employee-platform/backend/internal/server"
-	"github.com/digital-employee-platform/backend/internal/store"
+	"github.com/qizhida-partner-platform/backend/internal/apprun"
+	"github.com/qizhida-partner-platform/backend/internal/infra"
+	"github.com/qizhida-partner-platform/backend/internal/server"
+	"github.com/qizhida-partner-platform/backend/internal/store"
 )
 
 // stubServer is a thin wrapper exposing the shutdown tracking the helper

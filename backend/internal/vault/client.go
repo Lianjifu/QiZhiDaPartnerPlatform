@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/metrics"
+	"github.com/qizhida-partner-platform/backend/internal/metrics"
 )
 
 // Client resolves credentialRef → secret material. Never logs plaintext.

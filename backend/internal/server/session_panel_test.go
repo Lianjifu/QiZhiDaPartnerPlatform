@@ -8,13 +8,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/auth"
-	"github.com/digital-employee-platform/backend/internal/channel"
-	"github.com/digital-employee-platform/backend/internal/knowledge/citationlog"
-	memid "github.com/digital-employee-platform/backend/internal/memory/identity"
-	"github.com/digital-employee-platform/backend/internal/store"
-	"github.com/digital-employee-platform/backend/internal/vault"
-	"github.com/digital-employee-platform/backend/pkg/contract"
+	"github.com/qizhida-partner-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/channel"
+	"github.com/qizhida-partner-platform/backend/internal/knowledge/citationlog"
+	memid "github.com/qizhida-partner-platform/backend/internal/memory/identity"
+	"github.com/qizhida-partner-platform/backend/internal/store"
+	"github.com/qizhida-partner-platform/backend/internal/vault"
+	"github.com/qizhida-partner-platform/backend/pkg/contract"
 )
 
 // TestBuildParticipantContextWiresAll5Modules exercises the per-participant
@@ -68,8 +68,8 @@ func TestBuildParticipantContextWiresAll5Modules(t *testing.T) {
 		RiskLevelHint:   "",
 	}, emp)
 
-	if pc.DigitalEmployee != "de-sre" {
-		t.Fatalf("DE id not propagated: %q", pc.DigitalEmployee)
+	if pc.DigitalPartner != "de-sre" {
+		t.Fatalf("DE id not propagated: %q", pc.DigitalPartner)
 	}
 	if pc.SessionMode != contract.SessionModeExecute {
 		t.Fatalf("expected sessionMode=execute from spec, got %q", pc.SessionMode)
@@ -114,7 +114,7 @@ func TestRunParticipantTurnRefused(t *testing.T) {
 	// Salary hard-no.
 	if err := prof.Set(memid.Profile{
 		WorkspaceID:       "ws-1",
-		DigitalEmployeeID: "de-hr",
+		DigitalPartnerID: "de-hr",
 		HardNo:            []string{"工资", "薪资", "薪酬"},
 	}); err != nil {
 		t.Fatalf("identity Set: %v", err)
@@ -128,7 +128,7 @@ func TestRunParticipantTurnRefused(t *testing.T) {
 
 	pc := participantContext{
 		WorkspaceID:     "ws-1",
-		DigitalEmployee: "de-hr",
+		DigitalPartner: "de-hr",
 		SessionMode:     contract.SessionModeInvestigate,
 		RiskLevel:       contract.RiskLevelMedium,
 		ModelID:         "model-p0",
@@ -209,7 +209,7 @@ func TestRunParticipantTurnHonorsParentContextCancellation(t *testing.T) {
 
 	pc := participantContext{
 		WorkspaceID:     "ws-1",
-		DigitalEmployee: "de-x",
+		DigitalPartner: "de-x",
 		SessionMode:     contract.SessionModeInvestigate,
 		RiskLevel:       contract.RiskLevelMedium,
 		ModelID:         "model-p0",
@@ -270,7 +270,7 @@ func TestAttributedChannelSend(t *testing.T) {
 	t.Run("feishu emits attributed", func(t *testing.T) {
 		s, mock := makeServer(t)
 		var got capturedEvent
-		pc := participantContext{DigitalEmployee: "de-x", WorkspaceID: "ws-1", ConversationID: "conv-1", Channel: "feishu"}
+		pc := participantContext{DigitalPartner: "de-x", WorkspaceID: "ws-1", ConversationID: "conv-1", Channel: "feishu"}
 		pc.Emit = func(cat, ev string, m map[string]any) { got = capturedEvent{category: cat, event: ev, payload: m} }
 		s.attributedChannelSend(context.Background(), pc, "hello world")
 		if got.category != "channel" || got.event != "outbound" {
@@ -290,7 +290,7 @@ func TestAttributedChannelSend(t *testing.T) {
 	t.Run("dingtalk emits attributed via default mock", func(t *testing.T) {
 		s, _ := makeServer(t)
 		var got capturedEvent
-		pc := participantContext{DigitalEmployee: "de-x", WorkspaceID: "ws-1", ConversationID: "conv-1", Channel: "dingtalk"}
+		pc := participantContext{DigitalPartner: "de-x", WorkspaceID: "ws-1", ConversationID: "conv-1", Channel: "dingtalk"}
 		pc.Emit = func(cat, ev string, m map[string]any) { got = capturedEvent{category: cat, event: ev, payload: m} }
 		s.attributedChannelSend(context.Background(), pc, "hi")
 		// NewDefaultRegistry seeds all four kinds with mock adapters; since
@@ -306,7 +306,7 @@ func TestAttributedChannelSend(t *testing.T) {
 	t.Run("unknown channel emits skipped", func(t *testing.T) {
 		s, _ := makeServer(t)
 		var got capturedEvent
-		pc := participantContext{DigitalEmployee: "de-x", WorkspaceID: "ws-1", ConversationID: "conv-1", Channel: "rocketchat"}
+		pc := participantContext{DigitalPartner: "de-x", WorkspaceID: "ws-1", ConversationID: "conv-1", Channel: "rocketchat"}
 		pc.Emit = func(cat, ev string, m map[string]any) { got = capturedEvent{category: cat, event: ev, payload: m} }
 		s.attributedChannelSend(context.Background(), pc, "hi")
 		if got.payload["status"] != "skipped" || got.payload["reason"] != "no_adapter_for_channel" {
@@ -317,7 +317,7 @@ func TestAttributedChannelSend(t *testing.T) {
 	t.Run("missing session emits skipped no_deployment", func(t *testing.T) {
 		s, _ := makeServer(t)
 		var got capturedEvent
-		pc := participantContext{DigitalEmployee: "de-x", WorkspaceID: "ws-1", ConversationID: "conv-does-not-exist", Channel: "feishu"}
+		pc := participantContext{DigitalPartner: "de-x", WorkspaceID: "ws-1", ConversationID: "conv-does-not-exist", Channel: "feishu"}
 		pc.Emit = func(cat, ev string, m map[string]any) { got = capturedEvent{category: cat, event: ev, payload: m} }
 		s.attributedChannelSend(context.Background(), pc, "hi")
 		if got.payload["status"] != "skipped" || got.payload["reason"] != "no_deployment_for_session" {
@@ -327,7 +327,7 @@ func TestAttributedChannelSend(t *testing.T) {
 
 	t.Run("no emit when Emit is nil", func(t *testing.T) {
 		s, _ := makeServer(t)
-		pc := participantContext{DigitalEmployee: "de-x", WorkspaceID: "ws-1", ConversationID: "conv-1", Channel: "feishu", Emit: nil}
+		pc := participantContext{DigitalPartner: "de-x", WorkspaceID: "ws-1", ConversationID: "conv-1", Channel: "feishu", Emit: nil}
 		s.attributedChannelSend(context.Background(), pc, "hi") // must not panic
 	})
 }
@@ -339,7 +339,7 @@ func TestRunParticipantToolsEmptyTools(t *testing.T) {
 	s := &Server{Store: store.NewEmpty(), IdentityProfiles: memid.NewStore()}
 	pc := participantContext{
 		WorkspaceID:     "ws-1",
-		DigitalEmployee: "de-empty",
+		DigitalPartner: "de-empty",
 		Tools:           nil,
 	}
 	hits, summaries := s.runParticipantTools(context.Background(), pc)

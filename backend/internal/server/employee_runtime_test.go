@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/store"
+	"github.com/qizhida-partner-platform/backend/internal/store"
 )
 
 func TestComputeEmployeeRuntimeFromMemory(t *testing.T) {
@@ -19,19 +19,19 @@ func TestComputeEmployeeRuntimeFromMemory(t *testing.T) {
 	now := time.Now().UTC()
 	st.MemoryRecords = []map[string]any{
 		{
-			"id": "memory-1", "workspaceId": "w4", "digitalEmployeeId": "de-5",
+			"id": "memory-1", "workspaceId": "w4", "digitalPartnerId": "de-5",
 			"layer": "short_term", "status": "active", "title": "会话上下文 · @skill:docx 输出招聘模版",
 			"content": "用户：输出文档\n助手：已生成", "sourceId": "conv-8",
 			"createdAt": now.Add(-2 * time.Hour).Format(time.RFC3339),
 		},
 		{
-			"id": "memory-2", "workspaceId": "w4", "digitalEmployeeId": "de-5",
+			"id": "memory-2", "workspaceId": "w4", "digitalPartnerId": "de-5",
 			"layer": "short_term", "status": "active", "title": "会话上下文 · 入职需要准备哪些材料？",
 			"content": "用户：材料\n助手：清单", "sourceId": "conv-9",
 			"createdAt": now.Add(-1 * time.Hour).Format(time.RFC3339),
 		},
 		{
-			"id": "memory-dream", "workspaceId": "w4", "digitalEmployeeId": "de-5",
+			"id": "memory-dream", "workspaceId": "w4", "digitalPartnerId": "de-5",
 			"layer": "working", "status": "active", "title": "Dream 压缩 · conv-8",
 			"createdAt": now.Format(time.RFC3339),
 		},

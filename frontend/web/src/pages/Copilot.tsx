@@ -26,7 +26,7 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useApiQuery } from '@/services/query';
 import { useQueryClient } from '@tanstack/react-query';
-import { Avatar, Badge, Button, Input, Row, CollapsedPanelHandle, toast } from '@de/web-ui';
+import { Avatar, Badge, Button, Input, Row, CollapsedPanelHandle, toast } from '@qzda/web-ui';
 import {
   Bot, Search, ListChecks as ListChecksIcon, Wrench, Workflow as WorkflowIcon, FileText, ShieldCheck,
   AlertTriangle, Upload, MoreHorizontal, Download,
@@ -39,12 +39,12 @@ import {
   Archive as ArchiveIcon, MessageSquareWarning, ShieldAlert, Check, Plug, PlugZap, Pencil,
   BriefcaseBusiness, Presentation,
 } from 'lucide-react';
-import { cn } from '@de/web-utils';
+import { cn } from '@qzda/web-utils';
 import { AuthorizationModal } from '@/components/AuthorizationModal';
-import { DigitalEmployeeAvatar } from '@/components/DigitalEmployeeAvatar';
-import { compareDigitalEmployees, employeePrimaryLabel, employeeSecondaryLabel, isDepartmentHead } from '@/lib/digital-employees';
+import { DigitalPartnerAvatar } from '@/components/DigitalPartnerAvatar';
+import { compareDigitalPartners, employeePrimaryLabel, employeeSecondaryLabel, isDepartmentHead } from '@/lib/digital-employees';
 import { Modal } from '@/components/shared';
-import type { DigitalEmployee, ModelProvider, RoutingPolicyDraft } from '@de/web-types';
+import type { DigitalPartner, ModelProvider, RoutingPolicyDraft } from '@qzda/web-types';
 import { buildCopilotModelOptions, defaultCopilotModelKey, matchCopilotModelKey, resolveCopilotModelId, resolveSendModelId, isDemoCopilotModelKey } from '@/features/copilot/copilot-models';
 import { DebugPanel } from '@/components/DebugPanel';
 import { useChat } from '@/hooks/useChat';
@@ -109,7 +109,7 @@ import { resolveHydratedMessages } from '@/features/copilot/conversation-merge';
 import { collapseDuplicateArtifactSegments } from '@/features/copilot/artifact-segment';
 import { readCopilotLastSession } from '@/lib/copilot-workspace';
 import { authHeader } from '@/lib/api-headers';
-import { getApiClient } from '@de/web-api';
+import { getApiClient } from '@qzda/web-api';
 import { deriveExpertContextOverview, deriveTurnProgress } from '@/features/copilot/expert-context';
 import { ExpertContextPanel } from '@/features/copilot/expert-context-panel';
 import { sessionHistoryPresentation } from '@/features/copilot/layout';
@@ -135,8 +135,8 @@ interface SessionItem {
   title?: string;
   preview?: string;
   agent?: string;
-  digitalEmployeeId?: string;
-  digitalEmployeeName?: string;
+  digitalPartnerId?: string;
+  digitalPartnerName?: string;
   status?: 'active' | 'done' | 'closed' | 'archived' | string;
   createdAt?: string;
   updatedAt?: string;
@@ -199,9 +199,9 @@ function toChatSession(session: SessionItem): ChatSession {
     conversationId: session.conversationId ?? session.id,
     title: session.title || '未命名会话',
     preview: session.preview || '暂无消息',
-    agent: session.digitalEmployeeName ?? session.agent ?? (session.digitalEmployeeId ? '岗位专家' : '助手'),
-    digitalEmployeeId: session.digitalEmployeeId,
-    digitalEmployeeName: session.digitalEmployeeName ?? session.agent,
+    agent: session.digitalPartnerName ?? session.agent ?? (session.digitalPartnerId ? '岗位专家' : '助手'),
+    digitalPartnerId: session.digitalPartnerId,
+    digitalPartnerName: session.digitalPartnerName ?? session.agent,
     status: session.status === 'closed' || session.status === 'done' ? 'closed' : (session.status === 'archived' ? 'archived' : 'active'),
     lifecycle: session.status === 'closed' || session.status === 'done' ? 'idle' : 'active',
     group: sessionGroup(stamp),
@@ -475,7 +475,7 @@ export default function Copilot() {
     window.addEventListener('pointerup', onUp);
   }, [persistDetailsW]);
 
-  const { data: employeesData } = useApiQuery<DigitalEmployee[]>(['digital-employees'], '/api/digital-employees');
+  const { data: employeesData } = useApiQuery<DigitalPartner[]>(['digital-employees'], '/api/partners');
   const employees = useMemo(() => employeesData ?? [], [employeesData]);
   const { data: modelProvidersData } = useApiQuery<ModelProvider[]>(['model-providers', 'copilot'], '/api/model-providers');
   const { data: routingPoliciesData } = useApiQuery<RoutingPolicyDraft[]>(['model-routing-policies', 'copilot'], '/api/model-routing/policies');
@@ -496,7 +496,7 @@ export default function Copilot() {
   }, [modelOptions, currentModelKey]);
 
   const onDutyEmployees = useMemo(
-    () => employees.filter((item) => item.lifecycle === 'active').sort(compareDigitalEmployees),
+    () => employees.filter((item) => item.lifecycle === 'active').sort(compareDigitalPartners),
     [employees],
   );
   const { data: slashCmdsData } = useApiQuery<{ cmd?: string; desc?: string; icon?: string; category?: string; name?: string; description?: string }[]>(
@@ -545,7 +545,7 @@ export default function Copilot() {
   }, [currentWorkspaceId, chat.clearActive, queryClient, routeSessionId, navigate]);
 
   // 专家工具链：必须在任何引用它的 effect / 回调之前初始化，避免 TDZ
-  const activeEmployeeId = activeSession?.digitalEmployeeId ?? employeeIdFromQuery ?? undefined;
+  const activeEmployeeId = activeSession?.digitalPartnerId ?? employeeIdFromQuery ?? undefined;
   const activeEmployee = employees.find((item) => item.id === activeEmployeeId) ?? null;
   const availableTools = useMemo(() => buildExpertTools(activeEmployee), [activeEmployee]);
   const enabledToolCount = enabledTools.length;
@@ -677,13 +677,13 @@ export default function Copilot() {
     description: expertDescription,
   };
 
-  // 会话残留失效 digitalEmployeeId（如已删除的 SRE）时清掉，避免 UI 冒充专家
+  // 会话残留失效 digitalPartnerId（如已删除的 SRE）时清掉，避免 UI 冒充专家
   useEffect(() => {
-    if (!employeesData || !activeSession?.digitalEmployeeId || activeEmployee) return;
+    if (!employeesData || !activeSession?.digitalPartnerId || activeEmployee) return;
     chat.syncSession({
       ...activeSession,
-      digitalEmployeeId: undefined,
-      digitalEmployeeName: undefined,
+      digitalPartnerId: undefined,
+      digitalPartnerName: undefined,
       agent: '助手',
       agentKey: undefined,
     });
@@ -820,13 +820,13 @@ export default function Copilot() {
       setExpertPickerOpen(true);
       return;
     }
-    const existing = Object.values(chat.state.sessions).find((session) => session.digitalEmployeeId === employee.id && session.status === 'active' && sessionInWorkspace(session, currentWorkspaceId));
+    const existing = Object.values(chat.state.sessions).find((session) => session.digitalPartnerId === employee.id && session.status === 'active' && sessionInWorkspace(session, currentWorkspaceId));
     if (existing) {
       chat.switchSession(existing.id);
     } else if (canMutate) {
       void chat.newSession({
-        digitalEmployeeId: employee.id,
-        digitalEmployeeName: employeePrimaryLabel(employee),
+        digitalPartnerId: employee.id,
+        digitalPartnerName: employeePrimaryLabel(employee),
         agentKey: employee.capabilities.agentId,
         modelId: sendModelId,
         enabledTools: enabledTools.length ? enabledTools : defaultEnabledToolKeys(availableTools),
@@ -839,7 +839,7 @@ export default function Copilot() {
     setSearchParams({}, { replace: true });
   }, [historyReady, employeeIdFromQuery, employees, chat.state.sessions, chat.switchSession, chat.newSession, navigate, setSearchParams, canMutate, currentWorkspaceId, sendModelId, enabledTools, availableTools]);
 
-  const startSessionWithExpert = (employee: DigitalEmployee) => {
+  const startSessionWithExpert = (employee: DigitalPartner) => {
     if (!canMutate) return;
     if (employee.lifecycle !== 'active') return;
     const active = chat.activeSession;
@@ -855,8 +855,8 @@ export default function Copilot() {
       }
       chat.persistSession({
         ...active,
-        digitalEmployeeId: employee.id,
-        digitalEmployeeName: employeePrimaryLabel(employee),
+        digitalPartnerId: employee.id,
+        digitalPartnerName: employeePrimaryLabel(employee),
         agent: employeePrimaryLabel(employee),
         agentKey: employee.capabilities.agentId,
       });
@@ -866,8 +866,8 @@ export default function Copilot() {
       return;
     }
     void chat.newSession({
-      digitalEmployeeId: employee.id,
-      digitalEmployeeName: employeePrimaryLabel(employee),
+      digitalPartnerId: employee.id,
+      digitalPartnerName: employeePrimaryLabel(employee),
       agentKey: employee.capabilities.agentId,
       modelId: sendModelId,
       enabledTools: enabledTools.length ? enabledTools : defaultEnabledToolKeys(availableTools),
@@ -1117,7 +1117,7 @@ export default function Copilot() {
             {
               title: action.title,
               priority: 'P2',
-              digitalEmployeeId: sess.digitalEmployeeId,
+              digitalPartnerId: sess.digitalPartnerId,
               conversationId,
               links: { conversationId },
               source: 'conversation',
@@ -1845,7 +1845,7 @@ export default function Copilot() {
       generationElapsedSec={streamingAssistant?.id === m.id ? generationElapsedSec : undefined}
     />
   );
-  const canOpenExpertContext = Boolean(currentSession && (activeEmployee || currentSession.digitalEmployeeId || hasSessionContext));
+  const canOpenExpertContext = Boolean(currentSession && (activeEmployee || currentSession.digitalPartnerId || hasSessionContext));
   const selectedDocumentArtifact = useMemo(() => {
     if (contextSelection.artifact) return contextSelection.artifact;
     for (const message of contextMessages) {
@@ -2198,7 +2198,7 @@ export default function Copilot() {
             <div className="copilot-header__actions shrink-0">
               <button type="button" onClick={openRebindExpertPicker} className="copilot-toolbar-btn copilot-toolbar-btn--expert hidden sm:inline-flex" title={hasBoundExpert ? '查看或改绑数字伙伴' : '选择数字伙伴（可选）'}>
                 <span className="copilot-toolbar-btn__icon relative !bg-transparent !p-0" style={{ boxShadow: 'none' }}>
-                  <DigitalEmployeeAvatar
+                  <DigitalPartnerAvatar
                     employee={activeEmployee ?? { id: 'assistant', name: expertName }}
                     size={22}
                   />
@@ -2303,7 +2303,7 @@ export default function Copilot() {
                   <div className="copilot-message-list px-4 sm:px-8 md:px-12 pb-4 pt-0" aria-live="polite" aria-label={`${expertName}正在思考`}>
                     <div className="copilot-message copilot-message--assistant flex gap-3">
                       <div className="shrink-0 pt-0.5">
-                        <DigitalEmployeeAvatar
+                        <DigitalPartnerAvatar
                           employee={activeEmployee ?? { id: 'assistant', name: expertName }}
                           size={28}
                           className="copilot-message__avatar copilot-message__avatar--assistant"
@@ -2339,7 +2339,7 @@ export default function Copilot() {
                 <div className="w-full max-w-2xl">
                   <div className="text-center mb-8">
                     {activeEmployee ? (
-                      <div className="mx-auto mb-4 inline-flex overflow-hidden rounded-full"><DigitalEmployeeAvatar employee={activeEmployee} size={56} /></div>
+                      <div className="mx-auto mb-4 inline-flex overflow-hidden rounded-full"><DigitalPartnerAvatar employee={activeEmployee} size={56} /></div>
                     ) : (
                       <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-[var(--bg-elevated)] text-[var(--text-secondary)]" style={{ boxShadow: 'var(--saas-ring), var(--saas-elev-2)' }}>
                         <BriefcaseBusiness className="h-7 w-7" />
@@ -2860,7 +2860,7 @@ export default function Copilot() {
                   ? `交接中 · ${handoffOwner}`
                   : (
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--bg-elevated)] px-2 py-0.5 text-[var(--text)]">
-                      <DigitalEmployeeAvatar employee={activeEmployee ?? { id: 'assistant', name: expertName }} size={12} />
+                      <DigitalPartnerAvatar employee={activeEmployee ?? { id: 'assistant', name: expertName }} size={12} />
                       <span>与 {expertName} 协作中</span>
                       {riskLevel !== 'low' && (
                         <span className={cn('rounded-sm px-1 text-[9px] font-medium uppercase tracking-wide', riskLevel === 'high' ? 'bg-[var(--danger)]/15 text-[var(--danger)]' : 'bg-[var(--warning)]/15 text-[var(--warning)]')}>
@@ -2944,7 +2944,7 @@ export default function Copilot() {
             <div className="flex items-start justify-between gap-3">
               <div className="flex min-w-0 items-start gap-2.5">
                 <span className="copilot-agent-details__avatar shrink-0 overflow-hidden rounded-full">
-                  <DigitalEmployeeAvatar
+                  <DigitalPartnerAvatar
                     employee={activeEmployee ?? { id: 'assistant', name: expertName }}
                     size={32}
                   />
@@ -3071,7 +3071,7 @@ export default function Copilot() {
                 className="copilot-expert-option"
               >
                 <span className="copilot-expert-option__avatar">
-                  <DigitalEmployeeAvatar employee={employee} size={36} />
+                  <DigitalPartnerAvatar employee={employee} size={36} />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex flex-wrap items-center gap-2">
@@ -3689,7 +3689,7 @@ function MessageBubble({
   copiedId: string | null;
   agentName?: string;
   expertRole?: string;
-  expert?: Pick<DigitalEmployee, 'id' | 'name' | 'department' | 'avatarUrl' | 'capabilities'> | { id: string; name: string; department?: string; avatarUrl?: string; capabilities?: DigitalEmployee['capabilities'] };
+  expert?: Pick<DigitalPartner, 'id' | 'name' | 'department' | 'avatarUrl' | 'capabilities'> | { id: string; name: string; department?: string; avatarUrl?: string; capabilities?: DigitalPartner['capabilities'] };
   onOpenContext: (tab: WorkbenchContextTab, messageId?: string, artifact?: SkillArtifactLink, options?: { startSlide?: number }) => void;
   selectedContextMessageId?: string;
   messageRef?: (element: HTMLDivElement | null) => void;
@@ -3759,7 +3759,7 @@ function MessageBubble({
               <Wrench className="h-3.5 w-3.5" />
             </div>
           ) : (
-            <DigitalEmployeeAvatar
+            <DigitalPartnerAvatar
               employee={expert ?? { id: 'expert', name: agentDisplayName }}
               size={28}
               className="copilot-message__avatar copilot-message__avatar--assistant"

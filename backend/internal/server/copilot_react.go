@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/digital-employee-platform/backend/internal/auth"
-	"github.com/digital-employee-platform/backend/internal/modelprov"
+	"github.com/qizhida-partner-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/modelprov"
 )
 
 const reactMaxSteps = 10
@@ -26,7 +26,7 @@ type reactTurnInput struct {
 	UserMessage     string
 	ConversationID  string
 	CorrelationID   string
-	DigitalEmployee string
+	DigitalPartner string
 	Viewer          *auth.Identity
 	Emit            reactEmitFunc
 	ModeHint        string
@@ -101,7 +101,7 @@ func (s *Server) runReactTurn(ctx context.Context, in reactTurnInput) reactTurnR
 	var lastRT resolvedTurn
 	runCtx := toolRunContext{
 		Request: in.Request, WorkspaceID: in.WorkspaceID, OwnerID: "",
-		DigitalEmployee: in.DigitalEmployee, ConversationID: in.ConversationID,
+		DigitalPartner: in.DigitalPartner, ConversationID: in.ConversationID,
 		CorrelationID: in.CorrelationID, UserMessage: in.UserMessage, Viewer: in.Viewer,
 		SessionMode: in.SessionMode, RiskLevel: in.RiskLevel,
 	}

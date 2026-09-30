@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 func evalRecallMin() float64 {

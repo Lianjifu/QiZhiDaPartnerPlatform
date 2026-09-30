@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/auth"
-	"github.com/digital-employee-platform/backend/internal/store"
+	"github.com/qizhida-partner-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/store"
 )
 
 func TestAssembleCopilotChatMessages_IncludesPriorTurns(t *testing.T) {
@@ -121,14 +121,14 @@ func TestRetrieveMemoryForTurn_SkipsCurrentConversationShortTerm(t *testing.T) {
 	st.Lock()
 	st.MemoryRecords = []map[string]any{
 		{
-			"id": "m1", "workspaceId": "w1", "ownerId": "u1", "digitalEmployeeId": "de-5",
+			"id": "m1", "workspaceId": "w1", "ownerId": "u1", "digitalPartnerId": "de-5",
 			"layer": "short_term", "scope": "user", "status": "active",
 			"title": "本会话", "content": "用户：本会话内容\n助手：回复",
 			"sourceId": "conv-current", "createdAt": now, "updatedAt": now,
 			"expiresAt": time.Now().UTC().Add(24 * time.Hour).Format(time.RFC3339),
 		},
 		{
-			"id": "m2", "workspaceId": "w1", "ownerId": "u1", "digitalEmployeeId": "de-5",
+			"id": "m2", "workspaceId": "w1", "ownerId": "u1", "digitalPartnerId": "de-5",
 			"layer": "working", "scope": "team", "status": "active",
 			"title": "催办偏好", "content": "用户喜欢邮件催办入职材料",
 			"sourceId": "conv-old", "createdAt": now, "updatedAt": now,

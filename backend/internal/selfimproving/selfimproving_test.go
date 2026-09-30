@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/digital-employee-platform/backend/internal/modelprov/trace"
-	"github.com/digital-employee-platform/backend/internal/selfimproving"
+	"github.com/qizhida-partner-platform/backend/internal/modelprov/trace"
+	"github.com/qizhida-partner-platform/backend/internal/selfimproving"
 )
 
 func fixedNow() time.Time {

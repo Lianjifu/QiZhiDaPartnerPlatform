@@ -1,7 +1,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { X } from 'lucide-react';
-import { cn } from '@de/web-utils';
-import { Button } from '@de/web-ui';
+import { cn } from '@qzda/web-utils';
+import { Button } from '@qzda/web-ui';
 
 export type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/digital-employee-platform/backend/internal/store"
+	"github.com/qizhida-partner-platform/backend/internal/store"
 )
 
 func TestSplitAssistantSegmentsDelimiter(t *testing.T) {

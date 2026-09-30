@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Clock3, LockKeyhole, Plus, RefreshCw, ShieldAlert, SlidersHorizontal } from 'lucide-react';
-import { Badge, Button, Input, toast } from '@de/web-ui';
-import { cn } from '@de/web-utils';
-import type { TemporaryAuthorization, ZeroTrustEvent, ZeroTrustPolicy } from '@de/web-types';
+import { Badge, Button, Input, toast } from '@qzda/web-ui';
+import { cn } from '@qzda/web-utils';
+import type { TemporaryAuthorization, ZeroTrustEvent, ZeroTrustPolicy } from '@qzda/web-types';
 import { useApiMutation, useApiQuery } from '@/services/query';
 import { useAuthStore } from '@/stores/authStore';
 import { useT } from '@/i18n';

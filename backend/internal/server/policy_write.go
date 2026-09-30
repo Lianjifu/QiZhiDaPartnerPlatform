@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/digital-employee-platform/backend/internal/depolicy"
-	"github.com/digital-employee-platform/backend/internal/policy"
-	apperr "github.com/digital-employee-platform/backend/pkg/errors"
+	"github.com/qizhida-partner-platform/backend/internal/qzdapolicy"
+	"github.com/qizhida-partner-platform/backend/internal/policy"
+	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
 // evaluateWrite runs policy (DE_POLICY_URL → de-sys when set) and audits the decision.
@@ -50,7 +50,7 @@ func (s *Server) evaluateWriteLocked(r *http.Request, resource, action string, e
 
 // decidePolicy prefers peer policy service (DE_POLICY_URL → de-sys or de-policy /v1/evaluate), else local Engine.
 func (s *Server) decidePolicy(ctx context.Context, in policy.Input) policy.Decision {
-	if c := depolicy.NewClientFromEnv(); c.Available() {
+	if c := qzdapolicy.NewClientFromEnv(); c.Available() {
 		if d, err := c.Evaluate(ctx, in); err == nil {
 			return d
 		}

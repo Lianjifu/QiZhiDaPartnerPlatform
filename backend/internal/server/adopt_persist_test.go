@@ -8,7 +8,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/digital-employee-platform/backend/internal/store"
+	"github.com/qizhida-partner-platform/backend/internal/store"
 )
 
 func TestAdoptTemplatePersistsWhenEnabled(t *testing.T) {
@@ -25,7 +25,7 @@ func TestAdoptTemplatePersistsWhenEnabled(t *testing.T) {
 	})
 	h := New(st).Handler()
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/digital-employee-templates/tpl-sre/adopt",
+	req := httptest.NewRequest(http.MethodPost, "/api/partner-templates/tpl-sre/adopt",
 		bytes.NewBufferString(`{"name":"采纳测试岗"}`))
 	req.Header.Set("Authorization", "Bearer mock-admin-token")
 	req.Header.Set("Content-Type", "application/json")
