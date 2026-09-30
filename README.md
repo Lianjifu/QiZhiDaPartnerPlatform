@@ -495,7 +495,7 @@ coarse 模式下，上图 `qzda-app` 内域调用拆到 `qzda-collab` / `qzda-sy
 | **环境** | `DE_ENV=development` 默认联调（空库 + hydrate，不灌 ACME seed）；`demo` 仅内存 |
 | **运营聚合** | `/api/home/*`、`/api/operations/overview` 为 live-aggregate；成本仅认 UsageMeters，否则 `—` |
 | **办公开箱** | 冷启动 ensure 知识包 / `autoInstall` 岗位包 / Certified 流程 / `de-office`；个人模板 `wft-user-*` 不覆盖 |
-| **本机二进制** | LaunchAgent 读 `backend/bin/de-*`；改 Go 后须 `make build` 再 kickstart |
+| **本机二进制** | LaunchAgent 读 `backend/bin/qzda-*`；改 Go 后须 `make build` 再 kickstart |
 | **观测** | `/metrics`；Copilot 流式经网关超时约 180s |
 
 ### 仓库结构
@@ -605,7 +605,7 @@ curl -sS http://127.0.0.1:8089/healthz
 
 ### LaunchAgent
 
-栈读 `backend/bin/de-*`。改 Go 必须重编再重启：
+栈读 `backend/bin/qzda-*`。改 Go 必须重编再重启：
 
 ```bash
 cd backend && make build
@@ -613,6 +613,8 @@ launchctl kickstart -k "gui/$(id -u)/com.qizhida.dev-stack"
 ```
 
 脚本：[`scripts/dev-stack/run-stack.sh`](scripts/dev-stack/run-stack.sh)（默认 `DE_STACK=monolith`，`DE_ENV=development`）。
+
+> 仓库外的 LaunchAgent 文件位于 `~/Library/LaunchAgents/com.qizhida.dev-stack.plist`(Phase 3 已迁移;升级到 main 前请确认)。详见 [`backend/deploy/MIGRATION-de-to-qzda.md`](backend/deploy/MIGRATION-de-to-qzda.md)。
 
 ### 前端与登录
 
@@ -667,6 +669,8 @@ cd ../backend && make test && make test-python && make smoke-monolith
 | [`backend/deploy/topology-split.md`](backend/deploy/topology-split.md) | 部署拓扑 |
 | [`backend/README.md`](backend/README.md) | 控制面命令与 `builtin/` |
 | [`docs/视觉设计规范.md`](docs/视觉设计规范.md) | UI 规范 |
+| [`CHANGELOG.md`](CHANGELOG.md) | 品牌升级与发布说明(三阶段迁移记录) |
+| [`backend/deploy/MIGRATION-de-to-qzda.md`](backend/deploy/MIGRATION-de-to-qzda.md) | Phase 3 外部集成迁移(OIDC client / Kafka 包名 / SPIFFE trust domain) |
 
 ---
 

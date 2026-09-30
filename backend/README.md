@@ -16,8 +16,10 @@
 | [docs/后端架构规划.md](../docs/后端架构规划.md) | 服务边界与交付阶段 |
 | [docs/后端微服务重构方案.md](../docs/后端微服务重构方案.md) | 粗粒度拆分演进 |
 | [deploy/topology-split.md](deploy/topology-split.md) | monolith / coarse 切流 |
+| [deploy/MIGRATION-de-to-qzda.md](deploy/MIGRATION-de-to-qzda.md) | Phase 3 外部集成迁移指南(OIDC client / Kafka 包名 / SPIFFE trust domain) |
 | [docs/环境与数据模式.md](../docs/环境与数据模式.md) | `DE_ENV`、Persist、办公开箱 |
 | [api/routes.md](api/routes.md) | HTTP 路由契约 |
+| [../CHANGELOG.md](../CHANGELOG.md) | 三阶段品牌迁移总账 |
 
 ---
 
@@ -290,7 +292,7 @@ backend/
 | `internal/server` | 路由与领域 handler（六边形迁包进行中） |
 | `builtin/` | 知识 / 技能 / 流程 / 场景出厂源 |
 | `services/*/SERVICE.md` | 各部署单元说明 |
-| `bin/de-*` | 改 Go 后须 `make build` 再 kickstart |
+| `bin/qzda-*` | 改 Go 后须 `make build` 再 kickstart |
 
 ---
 
