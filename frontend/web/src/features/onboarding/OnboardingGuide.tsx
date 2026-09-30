@@ -47,7 +47,7 @@ export const VALUE_CARDS = [
   {
     icon: Bot,
     title: '能力资产统一',
-    description: '模型、知识、技能、记忆与消息渠道统一接入，供数字工作伙伴复用编排。',
+    description: '模型、知识、技能、记忆与消息渠道统一接入，供数字伙伴复用编排。',
   },
   {
     icon: ClipboardCheck,
@@ -65,7 +65,7 @@ export const JOURNEY_CARDS = [
   {
     number: '02',
     title: '编排上岗',
-    description: '组合数字工作伙伴与工作流程，完成试运行、评测与双重审批后上岗。',
+    description: '组合数字伙伴与工作流程，完成试运行、评测与双重审批后上岗。',
   },
   {
     number: '03',
@@ -82,10 +82,10 @@ const ROLE_WELCOME: Record<AppRole, { title: string; body: string; journeyTitle:
     journeyBody: '发起协作 → 处理待办 → 引用知识与技能，全程可追溯。',
   },
   admin: {
-    title: '让数字工作伙伴在受控边界内协同工作',
+    title: '让数字伙伴在受控边界内协同工作',
     body: '从能力接入、编排上岗到受控运营，统一身份权限、记忆渠道与审计证据。',
-    journeyTitle: '建立数字工作伙伴执行闭环',
-    journeyBody: '沿「能力 → 编排 → 运营」完成企业级数字工作伙伴启用。',
+    journeyTitle: '建立数字伙伴执行闭环',
+    journeyBody: '沿「能力 → 编排 → 运营」完成企业级数字伙伴启用。',
   },
   auditor: {
     title: '以审计与核查为中心',
@@ -134,9 +134,9 @@ export function OnboardingGuide({ open, onClose, role }: OnboardingGuideProps) {
             <div className="pr-7 sm:pr-9">
               <div className="flex items-center gap-1.5 text-[10px] font-semibold text-[var(--brand)] sm:gap-2 sm:text-xs">
                 <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                数字工作伙伴平台
+                企智搭 · 数字伙伴平台
               </div>
-              <p className="mt-3 text-xs font-medium text-[var(--text-secondary)] sm:mt-4 sm:text-sm">欢迎进入数字工作伙伴平台</p>
+              <p className="mt-3 text-xs font-medium text-[var(--text-secondary)] sm:mt-4 sm:text-sm">欢迎进入企智搭 · 数字伙伴平台</p>
               <h1 id="onboarding-title" className="mt-1.5 max-w-md text-base font-semibold leading-snug text-[var(--brand)] sm:text-[26px] sm:leading-tight">
                 {welcome.title}
               </h1>

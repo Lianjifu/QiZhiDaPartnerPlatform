@@ -1,8 +1,8 @@
-# 数字工作伙伴平台
+# 企智搭 · 数字伙伴平台 (QiZhiDa · PartnerPlatform)
 
-企业级 **岗位数字工作伙伴** 编排与治理控制台：把大模型、企业知识、技能/工具与工作流，装配为可上岗的数字工作伙伴，在受控边界内完成协作、执行与审计。
+企业级 **数字伙伴** 编排与治理控制台：把大模型、企业知识、技能/工具与工作流，装配为可上岗的数字伙伴，在受控边界内完成协作、执行与审计。
 
-> **安全零信任，驱动先进生产力**  
+> **安全零信任，驱动先进生产力**
 > 持续验证守住身份、权限、数据与执行边界；以能力复用与用量治理，让每一次协同可托付、可度量。
 
 冷启动即带 **办公开箱**（知识 × 技能 × 流程 + `de-office` 办公助手）：制度问答、会议纪要、周报、假勤等场景无需先手工灌库。
@@ -35,10 +35,10 @@
 
 ## 产品主轴
 
-一切能力围绕 **一位数字工作伙伴** 运转：先装配可信身份，再进入人机协同，最后沉淀可度量结果。模型 / 知识 / 技能 / 记忆 / 渠道是 **供给**，不是主叙事。
+一切能力围绕 **一位数字伙伴** 运转：先装配可信身份，再进入人机协同，最后沉淀可度量结果。模型 / 知识 / 技能 / 记忆 / 渠道是 **供给**，不是主叙事。
 
 <p align="center">
-  <img src="./docs/images/brand/partner-axis.png" alt="数字工作伙伴图" width="100%" />
+  <img src="./docs/images/brand/partner-axis.png" alt="数字伙伴图" width="100%" />
 </p>
 
 | 我们是 | 我们不是 |
@@ -187,14 +187,14 @@ cd ../frontend && pnpm install && pnpm --filter web dev
 ## 功能模块
 
 侧栏按**用户工作顺序**组织；底层 Agent 只作执行内核，**不作**一级入口。  
-细则见 [`docs/数字工作伙伴平台-功能模块文档.md`](docs/数字工作伙伴平台-功能模块文档.md)。
+细则见 [`docs/数字伙伴平台-功能模块文档.md`](docs/数字伙伴平台-功能模块文档.md)。
 
 ### 导航信息架构
 
 ```text
 运营总览                                              ← 度量入口
 协作：专家协作 → 任务中心                              ← 人机处置
-编排：数字工作伙伴 → 工作流程                          ← 岗位与确定性路径
+编排：数字伙伴 → 工作流程                          ← 岗位与确定性路径
 能力：模型 → 知识 → 技能 → 记忆 → 渠道                 ← 已发布资产供给
 账号：工作区 · 平台设置
         └─ 访问控制 · 持续验证 · 审计中心              ← 信任治理
@@ -217,7 +217,7 @@ flowchart TB
   end
 
   subgraph Orch["编排"]
-    M05[数字工作伙伴<br/>含 de-office]
+    M05[数字伙伴<br/>含 de-office]
     M06[工作流程<br/>办公开箱 / 个人模板]
   end
 
@@ -264,7 +264,7 @@ flowchart TB
 | M02 | 专家协作 | `/copilot` | 协作 | 与在岗伙伴会话；研判 / 执行、审核、交接 |
 | M03 | 任务中心 | `/tasks` | 协作 | 任务生命周期、复核与 SLA |
 | M04 | 工作区 | `/workspaces` | 账号 | 业务域隔离、环境与配额 |
-| M05 | 数字工作伙伴 | `/partners` | 编排 | 岗位装配与上岗；含 `de-office` |
+| M05 | 数字伙伴 | `/partners` | 编排 | 岗位装配与上岗；含 `de-office` |
 | M06 | 工作流程 | `/workflows` | 编排 | 办公开箱 / 部门 / 个人模板；画布与发布 |
 | M07 | 模型服务 | `/models` | 能力 | 供应商、路由发布 / 回滚、治理审计 |
 | M08 | 知识中心 | `/knowledge` | 能力 | 资产与知识包；含办公开箱 `kp.office.*` |
@@ -285,7 +285,7 @@ flowchart TB
 
 | 文档 | 用途 |
 |------|------|
-| [`docs/数字工作伙伴平台-架构文档.md`](docs/数字工作伙伴平台-架构文档.md) | L0 / L1 / L2 产品与领域架构 |
+| [`docs/数字伙伴平台-架构文档.md`](docs/数字伙伴平台-架构文档.md) | L0 / L1 / L2 产品与领域架构 |
 | [`docs/后端架构规划.md`](docs/后端架构规划.md) | 服务边界与演进阶段 |
 | [`backend/deploy/topology-split.md`](backend/deploy/topology-split.md) | monolith / coarse 切流 |
 | [`docs/环境与数据模式.md`](docs/环境与数据模式.md) | `DE_ENV`、Persist、办公开箱冷启动 |
@@ -501,7 +501,7 @@ coarse 模式下，上图 `de-app` 内域调用拆到 `de-collab` / `de-sys`(pol
 ### 仓库结构
 
 ```text
-digital-employee-platform/
+qizhida-partner-platform/
 ├── README.md                      # GitHub 项目介绍（本文件）
 ├── frontend/                      # pnpm workspace 控制台
 │   ├── web/                       # React 18 + Vite 应用（:5173）
@@ -535,8 +535,8 @@ digital-employee-platform/
 │   ├── 实施方案-对齐生产写路径.md  # 近端五项工作流
 │   ├── 审计-硬删PersistDelete覆盖.md
 │   ├── 环境与数据模式.md
-│   ├── 数字工作伙伴平台-架构文档.md
-│   ├── 数字工作伙伴平台-功能模块文档.md
+│   ├── 数字伙伴平台-架构文档.md
+│   ├── 数字伙伴平台-功能模块文档.md
 │   └── …                          # 后端规划 · 规格 · 视觉等
 └── .github/workflows/             # backend-contract（test + 契约；smoke 手动）
 ```
@@ -661,8 +661,8 @@ cd ../backend && make test && make test-python && make smoke-monolith
 | 文档 | 用途 |
 |------|------|
 | [`docs/环境与数据模式.md`](docs/环境与数据模式.md) | `DE_ENV`、Postgres、硬删除、岗位包、办公开箱 |
-| [`docs/数字工作伙伴平台-功能模块文档.md`](docs/数字工作伙伴平台-功能模块文档.md) | 模块 Tab / 路由 / 成熟度 |
-| [`docs/数字工作伙伴平台-架构文档.md`](docs/数字工作伙伴平台-架构文档.md) | L0 / L1 / L2 |
+| [`docs/数字伙伴平台-功能模块文档.md`](docs/数字伙伴平台-功能模块文档.md) | 模块 Tab / 路由 / 成熟度 |
+| [`docs/数字伙伴平台-架构文档.md`](docs/数字伙伴平台-架构文档.md) | L0 / L1 / L2 |
 | [`docs/后端架构规划.md`](docs/后端架构规划.md) · [`docs/后端微服务重构方案.md`](docs/后端微服务重构方案.md) | 后端演进 |
 | [`backend/deploy/topology-split.md`](backend/deploy/topology-split.md) | 部署拓扑 |
 | [`backend/README.md`](backend/README.md) | 控制面命令与 `builtin/` |
@@ -672,7 +672,7 @@ cd ../backend && make test && make test-python && make smoke-monolith
 
 ## 路线图
 
-围绕三支柱推进：**敢托付**（零信任 / 审核 / 沙箱）→ **愿协作**（作用域 / 流程 / 多模态）→ **花得明白**（计量 / ROI）。细则见 [`docs/数字工作伙伴平台-架构文档.md`](docs/数字工作伙伴平台-架构文档.md) · [`docs/后端架构规划.md`](docs/后端架构规划.md)。
+围绕三支柱推进：**敢托付**（零信任 / 审核 / 沙箱）→ **愿协作**（作用域 / 流程 / 多模态）→ **花得明白**（计量 / ROI）。细则见 [`docs/数字伙伴平台-架构文档.md`](docs/数字伙伴平台-架构文档.md) · [`docs/后端架构规划.md`](docs/后端架构规划.md)。
 
 ```mermaid
 flowchart LR

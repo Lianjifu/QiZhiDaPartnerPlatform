@@ -54,7 +54,7 @@ import { cn } from '@de/web-utils';
 
 const WORKSPACES: Array<{ key: ModelWorkspaceTab; labelKey: string; icon: typeof Cloud; description: string }> = [
   { key: 'access', labelKey: 'module.models.tabs.access', icon: Cloud, description: '接入供应商、验证连通性，并管理凭据引用与退役影响。' },
-  { key: 'routing', labelKey: 'module.models.tabs.routing', icon: Route, description: '按业务等级维护主/降级模型与数据边界；校验通过后发布不可变路由快照，供数字工作伙伴与工作流引用。' },
+  { key: 'routing', labelKey: 'module.models.tabs.routing', icon: Route, description: '按业务等级维护主/降级模型与数据边界；校验通过后发布不可变路由快照，供数字伙伴与工作流引用。' },
   { key: 'governance', labelKey: 'module.models.tabs.governance', icon: Activity, description: '观察运行健康、预算占用与地域分布；在 sandbox 隔离范围验证已发布路由的降级链。' },
   { key: 'audit', labelKey: 'module.models.tabs.audit', icon: History, description: '追溯接入、校验、发布、回滚、退役与演练结果。' },
 ];
@@ -753,7 +753,7 @@ function RoutingWorkspace({ policies, models, description, onOpen }: { policies:
       <div className="mx-4 mt-3 grid gap-2 rounded-xl bg-[var(--bg)] p-3 text-[11px] leading-5 text-[var(--text-secondary)] sm:grid-cols-3" style={{ boxShadow: 'var(--saas-ring)' }} aria-label="路由定位与边界">
         <div>
           <div className="font-semibold text-[var(--text)]">定位</div>
-          <p className="mt-1">企业模型调度中枢：按等级把数字工作伙伴 / 工作流请求导向已准入模型，并锁定数据与预算边界。</p>
+          <p className="mt-1">企业模型调度中枢：按等级把数字伙伴 / 工作流请求导向已准入模型，并锁定数据与预算边界。</p>
         </div>
         <div>
           <div className="font-semibold text-[var(--text)]">职责</div>
@@ -790,7 +790,7 @@ function RoutingWorkspace({ policies, models, description, onOpen }: { policies:
           <EmptyState
             icon={Route}
             title={policies.length === 0 ? '暂无路由策略' : '当前筛选下无策略'}
-            description={policies.length === 0 ? '创建草稿并完成校验后可发布不可变版本，供数字工作伙伴能力装配引用。' : '切换状态筛选，或新建其他等级的路由草稿。'}
+            description={policies.length === 0 ? '创建草稿并完成校验后可发布不可变版本，供数字伙伴能力装配引用。' : '切换状态筛选，或新建其他等级的路由草稿。'}
           />
         </div>
       ) : (
@@ -877,7 +877,7 @@ function GovernanceWorkspace({
       <div className="mx-4 mt-3 grid gap-2 rounded-xl bg-[var(--bg)] p-3 text-[11px] leading-5 text-[var(--text-secondary)] sm:grid-cols-3" style={{ boxShadow: 'var(--saas-ring)' }} aria-label="治理定位与边界">
         <div>
           <div className="font-semibold text-[var(--text)]">定位</div>
-          <p className="mt-1">运行态观察面：看健康、预算与地域是否仍满足数字工作伙伴调用边界。</p>
+          <p className="mt-1">运行态观察面：看健康、预算与地域是否仍满足数字伙伴调用边界。</p>
         </div>
         <div>
           <div className="font-semibold text-[var(--text)]">职责</div>
@@ -2013,7 +2013,7 @@ function CreatePolicyForm({ canWrite, workspaceId, models, onSubmit }: { canWrit
   return (
     <div className="space-y-4">
       <div className="rounded-lg bg-[var(--bg)] px-3 py-2 text-[11px] leading-5 text-[var(--text-muted)]" style={{ boxShadow: 'var(--saas-ring)' }}>
-        路由策略供数字工作伙伴与工作流引用已发布版本；本表单不接入供应商、不写入 API Key。
+        路由策略供数字伙伴与工作流引用已发布版本；本表单不接入供应商、不写入 API Key。
       </div>
       <Field label="业务等级">
         <select value={level} onChange={(event) => setLevel(event.target.value as RoutingPolicyLevel)} className="h-9 w-full rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 text-xs">

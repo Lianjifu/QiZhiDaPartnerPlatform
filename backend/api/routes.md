@@ -15,7 +15,7 @@
 | GET/PATCH | `/api/zero-trust/*` |
 | GET | `/api/audit-center` |
 
-## 数字工作伙伴 / 任务
+## 数字伙伴 / 任务
 
 | Method | Path |
 |--------|------|

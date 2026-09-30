@@ -64,7 +64,7 @@ export default function Login() {
                 <Bot className="h-5 w-5" />
               </div>
               <div>
-                <div className="text-lg font-bold">企业可信数字工作伙伴平台</div>
+                <div className="text-lg font-bold">企业可信企智搭 · 数字伙伴平台</div>
                 <div className="text-xs opacity-80">专家团队协同 · 岗位边界清晰</div>
               </div>
             </div>
@@ -77,7 +77,7 @@ export default function Login() {
             <p className="text-sm opacity-90 leading-relaxed">
               以持续验证守住身份、权限、数据与执行边界，
               <br />
-              让数字工作伙伴在受控协同中创造可衡量的业务价值。
+              让数字伙伴在受控协同中创造可衡量的业务价值。
               <br />
               以能力复用与精细化用量治理，重构智能执行成本。
             </p>
@@ -107,7 +107,7 @@ export default function Login() {
         <form className="flex flex-col justify-center p-8 md:p-10" onSubmit={submit}>
           <div className="mb-1 flex items-center gap-2 md:hidden">
             <div className="grid h-9 w-9 place-items-center rounded-md bg-gradient-to-br from-[var(--brand)] to-[var(--purple)] text-sm font-bold text-white">DE</div>
-            <span className="text-base font-bold">数字工作伙伴平台</span>
+            <span className="text-base font-bold">企智搭 · 数字伙伴平台</span>
           </div>
 
           <h2 className="mb-1 text-xl font-bold text-[var(--text)]">欢迎登录</h2>

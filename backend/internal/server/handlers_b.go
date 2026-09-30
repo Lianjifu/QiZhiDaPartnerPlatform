@@ -59,7 +59,7 @@ func (s *Server) getEmployee(r *http.Request) (any, error) {
 			return s.employeeWithRuntimeLocked(e), nil
 		}
 	}
-	return nil, apperr.NotFoundErr(apperr.DigitalEmployeeNotFound, "数字工作伙伴不存在")
+	return nil, apperr.NotFoundErr(apperr.DigitalEmployeeNotFound, "数字伙伴不存在")
 }
 
 func (s *Server) createEmployee(r *http.Request) (any, error) {
@@ -69,7 +69,7 @@ func (s *Server) createEmployee(r *http.Request) (any, error) {
 		return nil, err
 	}
 	if !auth.Has(id, "agent.write") {
-		return nil, apperr.Forbidden(apperr.RoleForbidden, "无权创建数字工作伙伴")
+		return nil, apperr.Forbidden(apperr.RoleForbidden, "无权创建数字伙伴")
 	}
 	body, _ := decodeMap(r)
 	name := strings.TrimSpace(str(body["name"]))
@@ -98,7 +98,7 @@ func (s *Server) createEmployee(r *http.Request) (any, error) {
 	s.Store.Lock()
 	defer s.Store.Unlock()
 	s.Store.Employees = append([]map[string]any{item}, s.Store.Employees...)
-	s.Store.AppendAudit(ws, id.Name, "创建数字工作伙伴草稿", name, "success", "")
+	s.Store.AppendAudit(ws, id.Name, "创建数字伙伴草稿", name, "success", "")
 	s.persistEmployeesLocked()
 	return item, nil
 }
@@ -123,11 +123,11 @@ func (s *Server) patchEmployee(r *http.Request) (any, error) {
 			e[k] = v
 		}
 		e["updatedAt"] = time.Now().UTC().Format(time.RFC3339)
-		s.Store.AppendAudit(str(e["workspaceId"]), id.Name, "更新数字工作伙伴配置", str(e["name"]), "success", "")
+		s.Store.AppendAudit(str(e["workspaceId"]), id.Name, "更新数字伙伴配置", str(e["name"]), "success", "")
 		s.persistEmployeesLocked()
 		return e, nil
 	}
-	return nil, apperr.NotFoundErr(apperr.DigitalEmployeeNotFound, "数字工作伙伴不存在")
+	return nil, apperr.NotFoundErr(apperr.DigitalEmployeeNotFound, "数字伙伴不存在")
 }
 
 func (s *Server) employeeAction(r *http.Request) (any, error) {
@@ -148,7 +148,7 @@ func (s *Server) employeeAction(r *http.Request) (any, error) {
 		}
 	}
 	if emp == nil {
-		return nil, apperr.NotFoundErr(apperr.DigitalEmployeeNotFound, "数字工作伙伴不存在")
+		return nil, apperr.NotFoundErr(apperr.DigitalEmployeeNotFound, "数字伙伴不存在")
 	}
 	if err := s.requireWorkspaceAccess(id, str(emp["workspaceId"])); err != nil {
 		return nil, err
@@ -172,7 +172,7 @@ func (s *Server) employeeAction(r *http.Request) (any, error) {
 				"requestedBy": id.Name, "requestedById": id.ID,
 			}
 			emp["updatedAt"] = now
-			s.Store.AppendAudit(str(emp["workspaceId"]), id.Name, "申请数字工作伙伴上岗", str(emp["name"]), "success", "待管理员审批")
+			s.Store.AppendAudit(str(emp["workspaceId"]), id.Name, "申请数字伙伴上岗", str(emp["name"]), "success", "待管理员审批")
 			mutated = true
 			return emp, nil
 		}
@@ -183,7 +183,7 @@ func (s *Server) employeeAction(r *http.Request) (any, error) {
 			"approver": id.Name, "approverId": id.ID,
 		}
 		emp["updatedAt"] = now
-		s.Store.AppendAudit(str(emp["workspaceId"]), id.Name, "数字工作伙伴上岗", str(emp["name"]), "success", "")
+		s.Store.AppendAudit(str(emp["workspaceId"]), id.Name, "数字伙伴上岗", str(emp["name"]), "success", "")
 		mutated = true
 		return emp, nil
 	case "approve":
@@ -230,7 +230,7 @@ func (s *Server) employeeAction(r *http.Request) (any, error) {
 			"countersigner": relMap["countersigner"], "countersignerId": relMap["countersignerId"],
 		}
 		emp["updatedAt"] = now
-		s.Store.AppendAudit(str(emp["workspaceId"]), id.Name, "确认数字工作伙伴上岗", str(emp["name"]), "success", "")
+		s.Store.AppendAudit(str(emp["workspaceId"]), id.Name, "确认数字伙伴上岗", str(emp["name"]), "success", "")
 		mutated = true
 		return emp, nil
 	case "reject":
@@ -242,12 +242,12 @@ func (s *Server) employeeAction(r *http.Request) (any, error) {
 		}
 		emp["lifecycle"] = "draft"
 		emp["updatedAt"] = time.Now().UTC().Format(time.RFC3339)
-		s.Store.AppendAudit(str(emp["workspaceId"]), id.Name, "驳回数字工作伙伴上岗", str(emp["name"]), "success", "")
+		s.Store.AppendAudit(str(emp["workspaceId"]), id.Name, "驳回数字伙伴上岗", str(emp["name"]), "success", "")
 		mutated = true
 		return emp, nil
 	case "pause":
 		emp["lifecycle"] = "paused"
-		s.Store.AppendAudit(str(emp["workspaceId"]), id.Name, "暂停数字工作伙伴", str(emp["name"]), "success", "")
+		s.Store.AppendAudit(str(emp["workspaceId"]), id.Name, "暂停数字伙伴", str(emp["name"]), "success", "")
 		mutated = true
 		return emp, nil
 	default:

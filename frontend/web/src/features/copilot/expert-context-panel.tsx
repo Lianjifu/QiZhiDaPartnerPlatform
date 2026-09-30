@@ -280,7 +280,7 @@ export function ExpertContextPanel(props: {
             </div>
           ) : (
             <div className="copilot-ecx-empty">
-              <p>当前会话尚未绑定在岗数字工作伙伴。</p>
+              <p>当前会话尚未绑定在岗数字伙伴。</p>
               {onPickExpert ? <Button size="sm" onClick={onPickExpert}>选择专家</Button> : null}
             </div>
           )}

@@ -88,6 +88,6 @@
 - Skills：真 Vault secretRef、生产 gVisor runsc、去掉本地 policy-sim
 - 非 Models/Memory 域的字段级与 Mock 100% 一致（Models/Memory 已字段级对齐）
 
-已推进：控制面持久化、生产禁密码登录、apps 镜像、OPA/OpenSearch、Authentik、观测基线、RunToken HMAC、SPIFFE、路径拆分网关、skill 隔离与策略供应链、**de-policy / de-audit 微服务**、**P3 staging**（`make compose-up-staging` + `.env.staging`）、写路径 `evaluateWrite`（release/employee/skill/workflow）、Copilot/审计失败指标与告警、数字工作伙伴配置/上岗门禁向 Mock 靠拢、**记忆中心 P0–P2**（approve→草稿知识包、TTL、容量门禁、refinement 实跑）。
+已推进：控制面持久化、生产禁密码登录、apps 镜像、OPA/OpenSearch、Authentik、观测基线、RunToken HMAC、SPIFFE、路径拆分网关、skill 隔离与策略供应链、**de-policy / de-audit 微服务**、**P3 staging**（`make compose-up-staging` + `.env.staging`）、写路径 `evaluateWrite`（release/employee/skill/workflow）、Copilot/审计失败指标与告警、数字伙伴配置/上岗门禁向 Mock 靠拢、**记忆中心 P0–P2**（approve→草稿知识包、TTL、容量门禁、refinement 实跑）。
 
 回归：`make test` 含 `TestPageSmokeGETs` / `TestEvaluateFailsIncompleteEmployee` / `TestSkillCenterP0|P1|P2|P3*` / `TestMemory*`。

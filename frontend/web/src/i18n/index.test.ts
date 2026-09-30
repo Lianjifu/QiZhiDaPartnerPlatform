@@ -54,7 +54,8 @@ describe('enterprise navigation translations', () => {
     expect(DICTS['zh-CN']['nav.agents.auditor']).toBe('伙伴档案');
     expect([...DICTS['zh-CN']['nav.agents']].length).toBe(4);
     expect([...DICTS['zh-CN']['nav.agents.auditor']].length).toBe(4);
-    expect(DICTS['zh-CN']['app.title']).toBe('数字工作伙伴平台');
+    expect(DICTS['zh-CN']['app.title']).toBe('企智搭 · 数字伙伴平台');
+    expect(DICTS['en-US']['app.title']).toBe('QiZhiDa · PartnerPlatform');
     expect(DICTS['en-US']['nav.agents']).toBe('Partners');
     expect(DICTS['zh-CN']['module.agents.tabs.market']).not.toContain('工厂');
   });

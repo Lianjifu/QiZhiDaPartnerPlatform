@@ -428,7 +428,7 @@ function Deployments({
           })}
         </div>
       ) : (
-        <EmptyState icon={Cloud} title="暂无渠道部署" description="接入飞书、企微或钉钉等投递通道后，数字工作伙伴通知与告警才能出站。" action={canWrite ? <Button size="sm" onClick={onNew}><Plus className="h-3.5 w-3.5" />接入渠道</Button> : undefined} />
+        <EmptyState icon={Cloud} title="暂无渠道部署" description="接入飞书、企微或钉钉等投递通道后，数字伙伴通知与告警才能出站。" action={canWrite ? <Button size="sm" onClick={onNew}><Plus className="h-3.5 w-3.5" />接入渠道</Button> : undefined} />
       )}
     </div>
   );
@@ -450,7 +450,7 @@ function Routing({
       <div className="channels-section-head">
         <div>
           <h2>投递路由 · {policies.length}</h2>
-          <p>事件、目标组、主渠道与降级链通过版本化发布生效；供数字工作伙伴告警与任务通知引用。</p>
+          <p>事件、目标组、主渠道与降级链通过版本化发布生效；供数字伙伴告警与任务通知引用。</p>
         </div>
       </div>
       {policies.length ? (
@@ -475,7 +475,7 @@ function Routing({
                   <tr key={p.id}>
                     <td>
                       <strong>{p.eventType}</strong>
-                      <small>数字工作伙伴 / 告警协同</small>
+                      <small>数字伙伴 / 告警协同</small>
                     </td>
                     <td>{p.audience}</td>
                     <td>{primary?.name ?? p.primaryDeploymentId}</td>

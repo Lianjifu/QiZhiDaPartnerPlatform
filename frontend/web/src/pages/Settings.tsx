@@ -272,7 +272,7 @@ function TenantPanel({
     <div className="settings-section">
       <section className="settings-kpis">
         <KpiCard label="席位占用" value={seats} sub={`/ ${seatLimit}`} icon={Users} tone="brand" size="comfortable" />
-        <KpiCard label="数字工作伙伴" value={agents} sub={`/ ${agentLimit}`} icon={Bot} tone="success" size="comfortable" />
+        <KpiCard label="数字伙伴" value={agents} sub={`/ ${agentLimit}`} icon={Bot} tone="success" size="comfortable" />
         <KpiCard label="月费" value={billing?.price ?? '$5,000'} icon={CreditCard} tone="info" size="comfortable" />
         <KpiCard label="方案" value={billing?.plan === 'Enterprise Plus' ? 'Ent+' : (billing?.plan ?? 'Ent+')} icon={ShieldCheck} tone="warn" size="comfortable" />
       </section>
@@ -291,7 +291,7 @@ function TenantPanel({
         <div className="settings-quota-strip__item">
           <div className="settings-quota-strip__label">
             <Bot className="h-3.5 w-3.5" />
-            <span>数字工作伙伴配额</span>
+            <span>数字伙伴配额</span>
             <strong className="font-mono">{agents}/{agentLimit}</strong>
           </div>
           <div className="settings-quota-strip__track" aria-hidden>
@@ -313,7 +313,7 @@ function TenantPanel({
           <PanelHeader
             icon={Building2}
             title="租户信息"
-            description="租户档案与配额边界；数字工作伙伴上限受套餐约束。"
+            description="租户档案与配额边界；数字伙伴上限受套餐约束。"
             trailing={(
               <Button
                 size="sm"
@@ -344,7 +344,7 @@ function TenantPanel({
             </label>
             <Field label="创建时间" value={tenantProfile?.createdAt ?? '2024-03-12'} />
             <Field label="席位" value={<span className="font-mono">{seats} / {seatLimit}</span>} />
-            <Field label="数字工作伙伴" value={<span className="font-mono">{agents} / {agentLimit}</span>} />
+            <Field label="数字伙伴" value={<span className="font-mono">{agents} / {agentLimit}</span>} />
             <Field label="订阅" value={<span className="font-mono">{billing?.price ?? '$5,000'} / 月</span>} />
             <Field label="状态" value={<Badge tone="success">生产运行中</Badge>} />
           </div>
@@ -421,7 +421,7 @@ function SecurityPanel({ onGotoAccess }: { onGotoAccess: () => void }) {
         <PanelHeader
           icon={Fingerprint}
           title="企业身份认证"
-          description="数字工作伙伴与成员共用企业身份源；强制 MFA 与会话轮换，关键变更写入审计。"
+          description="数字伙伴与成员共用企业身份源；强制 MFA 与会话轮换，关键变更写入审计。"
           trailing={(
             <Badge tone="success">
               <CheckCircle2 className="mr-1 inline h-3 w-3" />
@@ -475,7 +475,7 @@ function SecurityPanel({ onGotoAccess }: { onGotoAccess: () => void }) {
         </div>
 
         <div className="settings-panel__foot">
-          身份策略变更需管理员权限；数字工作伙伴运行身份继承企业 SSO，并受持续验证策略约束。
+          身份策略变更需管理员权限；数字伙伴运行身份继承企业 SSO，并受持续验证策略约束。
         </div>
       </section>
     </div>
@@ -506,7 +506,7 @@ function BackupPanel({ backups }: { backups: any[] }) {
         <PanelHeader
           icon={HardDrive}
           title="数据保留与恢复"
-          description="覆盖数字工作伙伴运行记忆索引、知识与配置快照；恢复需管理员审批。"
+          description="覆盖数字伙伴运行记忆索引、知识与配置快照；恢复需管理员审批。"
           trailing={(
             <Button size="sm" loading={requestBackup.isPending} onClick={() => requestBackup.mutate({ scope: 'full' })}>
               <RotateCcw className="h-3 w-3" />立即备份
@@ -595,7 +595,7 @@ function IntegrationPanel({ apiKeys, webhooks }: { apiKeys: any[]; webhooks: any
         <PanelHeader
           icon={Webhook}
           title="Webhook 回调"
-          description="订阅数字工作伙伴告警、升级与审计事件；失败进入重试与死信。"
+          description="订阅数字伙伴告警、升级与审计事件；失败进入重试与死信。"
           trailing={<Button size="sm"><Plus className="h-3 w-3" />添加</Button>}
         />
         <div className="settings-table-head settings-table-head--hooks">
@@ -641,7 +641,7 @@ function BillingPanel({ billing }: { billing: any }) {
     { key: 'cost', label: '本月成本', used: `$${usage.cost}`, limit: `$${usage.budget}`, pct: (usage.cost / usage.budget) * 100, tone: usage.cost / usage.budget >= 0.8 ? 'warn' as const : 'success' as const, icon: Coins },
     { key: 'tokens', label: 'Token 消耗', used: `${(usage.tokens / 1e6).toFixed(1)}M`, limit: `${(usage.tokenBudget / 1e6).toFixed(0)}M`, pct: (usage.tokens / usage.tokenBudget) * 100, tone: 'primary' as const, icon: Activity },
     { key: 'seats', label: '席位', used: String(usage.seats), limit: String(usage.seatLimit), pct: (usage.seats / usage.seatLimit) * 100, tone: 'primary' as const, icon: Users },
-    { key: 'agents', label: '数字工作伙伴', used: String(usage.agents), limit: String(usage.agentLimit), pct: (usage.agents / usage.agentLimit) * 100, tone: usage.agents / usage.agentLimit >= 0.8 ? 'warn' as const : 'success' as const, icon: Bot },
+    { key: 'agents', label: '数字伙伴', used: String(usage.agents), limit: String(usage.agentLimit), pct: (usage.agents / usage.agentLimit) * 100, tone: usage.agents / usage.agentLimit >= 0.8 ? 'warn' as const : 'success' as const, icon: Bot },
   ];
   const budgetPct = Math.round((usage.cost / usage.budget) * 100);
   const warnCount = quotas.filter((q) => q.pct >= 80).length;
@@ -664,7 +664,7 @@ function BillingPanel({ billing }: { billing: any }) {
             <BillingFact label="计费周期" value="按月 · 自然月结算" />
             <BillingFact label="下次扣款" value={billing.nextBilling} />
             <BillingFact label="席位上限" value={`${usage.seatLimit} 席`} />
-            <BillingFact label="数字工作伙伴上限" value={`${usage.agentLimit} 个`} />
+            <BillingFact label="数字伙伴上限" value={`${usage.agentLimit} 个`} />
           </div>
           <div className="settings-panel__foot">
             <Button size="sm" variant="secondary"><Download className="h-3 w-3" />导出账单</Button>
@@ -675,7 +675,7 @@ function BillingPanel({ billing }: { billing: any }) {
           <PanelHeader
             icon={Bot}
             title="配额用量"
-            description="按租户聚合席位、数字工作伙伴与 Token 消耗。"
+            description="按租户聚合席位、数字伙伴与 Token 消耗。"
             trailing={warnCount > 0 ? (
               <Badge tone="warn"><AlertTriangle className="mr-1 inline h-3 w-3" />{warnCount} 项接近上限</Badge>
             ) : (
@@ -708,7 +708,7 @@ function BillingPanel({ billing }: { billing: any }) {
       </div>
 
       <section className={cn(panelClass, 'settings-panel__foot')}>
-        套餐用量按租户聚合；Token 与运行成本达 80% 时将触发预算告警。升级方案或扩容数字工作伙伴席位请联系企业客户成功经理。
+        套餐用量按租户聚合；Token 与运行成本达 80% 时将触发预算告警。升级方案或扩容数字伙伴席位请联系企业客户成功经理。
       </section>
     </div>
   );

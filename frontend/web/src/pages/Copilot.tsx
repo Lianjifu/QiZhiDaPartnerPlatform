@@ -1,5 +1,5 @@
 /**
- * P2 会话 · Copilot（企业级数字工作伙伴会话）
+ * P2 会话 · Copilot（企业级数字伙伴会话）
  * 核心能力:
  *  1. 消息状态机（queued / streaming / succeeded / failed / cancelled / expired / moderated）
  *  2. 多会话管理（增/删/置顶/星标/归档/分享/TTL）
@@ -638,8 +638,8 @@ export default function Copilot() {
     : (currentModel?.label ?? '助手');
   const expertMeta = hasBoundExpert ? employeeSecondaryLabel(activeEmployee!) : null;
   const expertDescription = hasBoundExpert
-    ? (activeEmployee!.description ?? '选择在岗数字工作伙伴后开始专家协作。')
-    : '未绑定数字工作伙伴，将以通用助手直接调用已选模型。可点选专家后改绑。';
+    ? (activeEmployee!.description ?? '选择在岗数字伙伴后开始专家协作。')
+    : '未绑定数字伙伴，将以通用助手直接调用已选模型。可点选专家后改绑。';
   const expertSuggestions = useMemo(
     () => (activeEmployee ? buildExpertSuggestions(activeEmployee) : []),
     [activeEmployee],
@@ -985,7 +985,7 @@ export default function Copilot() {
     const printWindow = window.open('', '_blank', 'noopener,noreferrer');
     if (!printWindow) return;
 
-    const title = escapeHtml(currentSession.title || '数字工作伙伴会话审计记录');
+    const title = escapeHtml(currentSession.title || '数字伙伴会话审计记录');
     const exportedAt = new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'medium' }).format(new Date());
     printWindow.document.write(`<!doctype html>
       <html lang="zh-CN"><head><meta charset="utf-8" /><title>${title} · 审计记录</title>
@@ -1000,7 +1000,7 @@ export default function Copilot() {
       </style></head><body>
         <h1>${title}</h1><div class="meta">会话 ID：${escapeHtml(currentSession.id)} · 导出时间：${exportedAt}</div>
         <div class="rule"></div><h2>审计明细</h2><pre>${escapeHtml(auditData)}</pre>
-        <div class="footer">由数字工作伙伴平台生成。请在系统打印对话框中选择“另存为 PDF”。</div>
+        <div class="footer">由企智搭 · 数字伙伴平台生成。请在系统打印对话框中选择“另存为 PDF”。</div>
       </body></html>`);
     printWindow.document.close();
     printWindow.focus();
@@ -1364,10 +1364,10 @@ export default function Copilot() {
     }
 
     if (!sendModelId) {
-      window.alert('当前工作区没有可用模型。请先在「模型中心」接入并探测供应商，或为数字工作伙伴装配可用模型。');
+      window.alert('当前工作区没有可用模型。请先在「模型中心」接入并探测供应商，或为数字伙伴装配可用模型。');
       return;
     }
-    // 无数字工作伙伴也可直接对话（通用助手 + 已选模型）；选专家为增强能力，非硬门槛
+    // 无数字伙伴也可直接对话（通用助手 + 已选模型）；选专家为增强能力，非硬门槛
     const draft = chat.state.draftInput.trim();
     const mapped = mapRunModeToDispatch(runMode, availableTools, enabledTools);
     let tools = mergeMentionedTools(mapped.enabledTools, chat.state.draftInput, availableTools.map((t) => t.key));
@@ -2196,7 +2196,7 @@ export default function Copilot() {
             </div>
 
             <div className="copilot-header__actions shrink-0">
-              <button type="button" onClick={openRebindExpertPicker} className="copilot-toolbar-btn copilot-toolbar-btn--expert hidden sm:inline-flex" title={hasBoundExpert ? '查看或改绑数字工作伙伴' : '选择数字工作伙伴（可选）'}>
+              <button type="button" onClick={openRebindExpertPicker} className="copilot-toolbar-btn copilot-toolbar-btn--expert hidden sm:inline-flex" title={hasBoundExpert ? '查看或改绑数字伙伴' : '选择数字伙伴（可选）'}>
                 <span className="copilot-toolbar-btn__icon relative !bg-transparent !p-0" style={{ boxShadow: 'none' }}>
                   <DigitalEmployeeAvatar
                     employee={activeEmployee ?? { id: 'assistant', name: expertName }}
@@ -2354,7 +2354,7 @@ export default function Copilot() {
                     ) : (
                       <>
                         <h2 className="text-xl font-semibold text-[var(--text)]">{canMutate ? '选择在岗专家' : '协作记录核查'}</h2>
-                        <p className="text-sm text-[var(--text-muted)] mt-1">{canMutate ? '专家协作面向已上岗的数字工作伙伴；请先选择协作对象再开始会话。' : '请从左侧选择已有会话核查证据与审批轨迹。'}</p>
+                        <p className="text-sm text-[var(--text-muted)] mt-1">{canMutate ? '专家协作面向已上岗的数字伙伴；请先选择协作对象再开始会话。' : '请从左侧选择已有会话核查证据与审批轨迹。'}</p>
                         {canMutate && (
                           <Button size="sm" className="mt-4" onClick={openNewSessionPicker}>
                             <BriefcaseBusiness className="h-3.5 w-3.5" />选择在岗专家
@@ -2362,7 +2362,7 @@ export default function Copilot() {
                         )}
                         {canMutate && onDutyEmployees.length === 0 && (
                           <p className="mt-3 text-[11px] text-[var(--text-muted)]">
-                            当前工作区暂无在岗员工，请先到 <Link to="/partners" className="text-[var(--brand)]">数字工作伙伴</Link> 完成上岗。
+                            当前工作区暂无在岗员工，请先到 <Link to="/partners" className="text-[var(--brand)]">数字伙伴</Link> 完成上岗。
                           </p>
                         )}
                       </>
@@ -2497,7 +2497,7 @@ export default function Copilot() {
               {mentionPane === 'skill' && (
                 filterByQuery(mentionSkillItems, mentionQuery.replace(/^(skill|tool|workflow):?/i, '')).length === 0 ? (
                   <p className="px-3 py-3 text-[11px] leading-5 text-[var(--text-muted)]">
-                    {hasBoundExpert ? '当前专家未装配可用技能/工具。请到「能力装配」绑定后再试。' : '请先绑定在岗数字工作伙伴，再通过 @ 选用其装配技能。'}
+                    {hasBoundExpert ? '当前专家未装配可用技能/工具。请到「能力装配」绑定后再试。' : '请先绑定在岗数字伙伴，再通过 @ 选用其装配技能。'}
                   </p>
                 ) : filterByQuery(mentionSkillItems, mentionQuery.replace(/^(skill|tool|workflow):?/i, '')).map((t) => (
                   <button
@@ -2618,7 +2618,7 @@ export default function Copilot() {
               <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-1">
                 {modelOptions.length === 0 && (
                   <div className="px-3 py-3 text-[12px] leading-5 text-[var(--text-secondary)]">
-                    当前工作区暂无可用模型。请到「模型中心」接入供应商并完成探测；数字工作伙伴装配的模型会在此显示。
+                    当前工作区暂无可用模型。请到「模型中心」接入供应商并完成探测；数字伙伴装配的模型会在此显示。
                   </div>
                 )}
                 {modelOptions.map((m) => (
@@ -2686,8 +2686,8 @@ export default function Copilot() {
                 {availableTools.length === 0 ? (
                   <div className="px-3 py-4 text-[11px] leading-5 text-[var(--text-muted)]">
                     {hasBoundExpert
-                      ? '当前专家尚未装配工具或技能。请到「数字工作伙伴」能力装配中启用后再会话启用。'
-                      : '未绑定数字工作伙伴，本会话无可装配工具链。可先选择在岗专家。'}
+                      ? '当前专家尚未装配工具或技能。请到「数字伙伴」能力装配中启用后再会话启用。'
+                      : '未绑定数字伙伴，本会话无可装配工具链。可先选择在岗专家。'}
                   </div>
                 ) : availableTools.map((t) => {
                   const on = enabledTools.includes(t.key);
@@ -3039,8 +3039,8 @@ export default function Copilot() {
         onClose={() => { setExpertPickerOpen(false); setExpertPickerQuery(''); setRebindBlockedReason(null); }}
         title={expertPickerMode === 'rebind' ? '改绑岗位专家' : '选择在岗专家'}
         description={expertPickerMode === 'rebind'
-          ? '将当前会话改绑到另一位在岗数字工作伙伴。存在待审批写操作时不可改绑。'
-          : '仅展示已上岗数字工作伙伴。确认后将创建新会话并绑定所选岗位专家。'}
+          ? '将当前会话改绑到另一位在岗数字伙伴。存在待审批写操作时不可改绑。'
+          : '仅展示已上岗数字伙伴。确认后将创建新会话并绑定所选岗位专家。'}
         size="lg"
       >
         <div className="space-y-3">
@@ -3091,7 +3091,7 @@ export default function Copilot() {
             {!filteredExperts.length && (
               <div className="copilot-expert-empty rounded-xl bg-[var(--bg-elevated)] px-4 py-8 text-center text-xs text-[var(--text-muted)]">
                 {onDutyEmployees.length === 0
-                  ? <>当前工作区暂无在岗员工。请先到 <Link to="/partners" className="font-medium text-[var(--text)] underline-offset-2 hover:underline" onClick={() => setExpertPickerOpen(false)}>数字工作伙伴</Link> 完成上岗发布。</>
+                  ? <>当前工作区暂无在岗员工。请先到 <Link to="/partners" className="font-medium text-[var(--text)] underline-offset-2 hover:underline" onClick={() => setExpertPickerOpen(false)}>数字伙伴</Link> 完成上岗发布。</>
                   : '未找到匹配的在岗专家，请调整搜索词。'}
               </div>
             )}

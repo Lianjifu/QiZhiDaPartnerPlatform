@@ -97,7 +97,7 @@ export function DepartmentTeamPanel({ head }: { head: DigitalEmployee }) {
       <div className="space-y-2">
         {departmentMembers.length === 0 ? (
           <p className="rounded-lg border border-dashed border-[var(--border)] px-3 py-6 text-center text-xs text-[var(--text-muted)]">
-            本部门暂无其他数字工作伙伴。
+            本部门暂无其他数字伙伴。
           </p>
         ) : departmentMembers.map((member) => (
           <article key={member.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-3">

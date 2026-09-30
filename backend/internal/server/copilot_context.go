@@ -612,7 +612,7 @@ func buildCopilotSystemPromptWithEffort(emp map[string]any, ragHits any, memoryH
 		b.WriteString("请用中文简洁、可执行地回答，严格遵守岗位边界；涉及审批、写操作或敏感数据时提示人工接管。\n")
 		b.WriteString("若用户使用「刚才/上面/之前」等指代，请结合对话历史与跨会话记忆作答，不要假装遗忘。\n")
 	} else {
-		b.WriteString("你是企业数字工作伙伴平台的协作助手。请用中文简洁、可执行地回答。\n")
+		b.WriteString("你是企业企智搭 · 数字伙伴平台的协作助手。请用中文简洁、可执行地回答。\n")
 		b.WriteString("若用户使用「刚才/上面/之前」等指代，请结合对话历史与跨会话记忆作答。\n")
 	}
 	if g := reasoningEffortGuidance(reasoningEffort); g != "" {

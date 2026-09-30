@@ -439,7 +439,7 @@ export function PlatformToolsWorkspace() {
 
           <p className="rounded-lg border border-dashed border-[var(--border)] px-4 py-3 text-[11px] leading-5 text-[var(--text-muted)]">
             <Wrench className="mr-1 inline h-3.5 w-3.5" />
-            运行时工具需在数字工作伙伴「能力装配」中勾选后才会对 Copilot 生效；带「需审批」标记的工具在执行写操作前会触发治理拦截。
+            运行时工具需在数字伙伴「能力装配」中勾选后才会对 Copilot 生效；带「需审批」标记的工具在执行写操作前会触发治理拦截。
           </p>
         </>
       )}

@@ -116,7 +116,7 @@ describe('workflow AI assisted drafting', () => {
     expect(mockSource).toContain('knowledge.retrieve_runbook');
     expect(mockSource).toContain('mockOrchestrationTemplateCandidates');
     expect(orchestrationSource).toContain('画布预览仅用于示例编排');
-    expect(orchestrationSource).toContain('供数字工作伙伴装配');
+    expect(orchestrationSource).toContain('供数字伙伴装配');
     expect(orchestrationSource).toContain('由工作伙伴研判处置路径，经双重审批后执行受控恢复');
     expect(orchestrationSource).not.toContain('当 Redis 触发 OOM 告警时自动处理');
   });
@@ -138,7 +138,7 @@ describe('workflow AI assisted drafting', () => {
 
 describe('workflow canvas orchestration', () => {
   it('states digital-employee skill publish path on canvas', () => {
-    expect(workflowsSource).toContain('供数字工作伙伴能力装配');
+    expect(workflowsSource).toContain('供数字伙伴能力装配');
     expect(workflowsSource).toContain('本页不直接发起专家协作上岗');
     expect(workflowsSource).toContain('执行受控恢复');
     expect(workflowsSource).toContain('执行受控动作');

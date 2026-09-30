@@ -9,8 +9,8 @@ export type Locale = 'zh-CN' | 'en-US';
 type Dict = Record<string, string>;
 
 const zh: Dict = {
-  'app.title': '数字工作伙伴平台',
-  'app.shortName': 'DE',
+  'app.title': '企智搭 · 数字伙伴平台',
+  'app.shortName': 'QZD',
   'nav.home': '运营总览',
   'nav.copilot': '专家协作',
   'nav.copilot.auditor': '协作记录',
@@ -85,7 +85,7 @@ const zh: Dict = {
   'module.knowledge.tabs.graph': '知识图谱',
   'module.knowledge.tabs.governance': '引用治理',
   'module.memory.title': '记忆中心',
-  'module.memory.subtitle': '受控管理数字工作伙伴的会话上下文、任务经验和可审核的长期记忆。',
+  'module.memory.subtitle': '受控管理数字伙伴的会话上下文、任务经验和可审核的长期记忆。',
   'module.memory.guardrail': '运行记忆不等于权威知识',
   'module.memory.tabs.overview': '记忆概览',
   'module.memory.tabs.shortTerm': '短期记忆',
@@ -123,7 +123,7 @@ const zh: Dict = {
   'module.settings.tabs.integration': '开发集成',
   'module.settings.tabs.usage': '套餐用量',
   'module.skills.title': '技能中心',
-  'module.skills.subtitle': '统一接入、治理原子技能与流程技能，供数字工作伙伴能力装配与调用。',
+  'module.skills.subtitle': '统一接入、治理原子技能与流程技能，供数字伙伴能力装配与调用。',
   'module.agents.tabs.catalog': '专家目录',
   'module.agents.tabs.roleSetup': '岗位配置',
   'module.agents.tabs.capabilities': '能力装配',
@@ -133,7 +133,7 @@ const zh: Dict = {
   'module.agents.tabs.evaluation': '质量评测',
   'module.agents.tabs.monitoring': '运行管理',
   'module.workflows.title': '工作流程',
-  'module.workflows.subtitle': '编排标准作业流程，校验版本后发布技能，供数字工作伙伴装配调用。',
+  'module.workflows.subtitle': '编排标准作业流程，校验版本后发布技能，供数字伙伴装配调用。',
   'module.workflows.tabs.templates': '流程模板',
   'module.workflows.tabs.canvas': '流程编排',
   'module.workflows.tabs.publishSkill': '发布技能',
@@ -151,7 +151,7 @@ const zh: Dict = {
   'module.skills.summary.store': '可安装目录来自平台内置、企业 Registry 同步与工作区晋升；安装前执行供应链预检。',
   'module.skills.summary.integration': '导入通用 Skill，或接入企业 MCP、Tool 并完成连通性校验。',
   'module.skills.summary.governance': '查看运行证据、权限范围、沙箱策略与审计记录。',
-  'module.skills.summary.workflowSkills': '流程技能来自工作流程发布，供数字工作伙伴装配调用。',
+  'module.skills.summary.workflowSkills': '流程技能来自工作流程发布，供数字伙伴装配调用。',
   'home.title': '运营总览',
   'home.subtitle': '专家团队在岗状态、待处理事项与成本产出',
   'home.kpi.tasks': '今日任务',
@@ -171,13 +171,13 @@ const zh: Dict = {
   'notfound.desc': '路径不在平台功能模块中。',
   'notfound.back': '返回上页',
   'notfound.home': '返回运营总览',
-  'search.placeholder': '搜索任务、数字工作伙伴、文档...',
+  'search.placeholder': '搜索任务、数字伙伴、文档...',
   'search.empty': '没有找到相关结果',
 };
 
 const en: Dict = {
-  'app.title': 'Digital Work Partners',
-  'app.shortName': 'DE',
+  'app.title': 'QiZhiDa · PartnerPlatform',
+  'app.shortName': 'QZD',
   'nav.home': 'Overview',
   'nav.copilot': 'Workbench',
   'nav.copilot.auditor': 'Collab Log',

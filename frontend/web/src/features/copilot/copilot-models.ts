@@ -134,7 +134,7 @@ export function defaultCopilotModelKey(options: CopilotModelOption[]): string {
   return (anyActive ?? options[0])?.key ?? '';
 }
 
-/** 将数字工作伙伴装配的模型/路由名解析为运行配置 key。 */
+/** 将数字伙伴装配的模型/路由名解析为运行配置 key。 */
 export function matchCopilotModelKey(
   options: CopilotModelOption[],
   bound: string | undefined | null,

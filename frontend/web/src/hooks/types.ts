@@ -1,5 +1,5 @@
 /**
- * 会话模块共享类型 — 企业级数字工作伙伴会话规范
+ * 会话模块共享类型 — 企业级数字伙伴会话规范
  *
  * 在原有 ChatMessageEx / ChatSession 基础上扩展：
  *  - 消息生命周期状态机
@@ -325,7 +325,7 @@ export interface ChatSession {
   /** @deprecated 展示用岗位专家名称；请优先使用 digitalEmployeeName / digitalEmployeeId */
   agent: string;
   agentKey?: string;
-  /** 绑定的在岗数字工作伙伴（主对象） */
+  /** 绑定的在岗数字伙伴（主对象） */
   digitalEmployeeId?: string;
   digitalEmployeeName?: string;
   status: 'active' | 'done' | 'closed' | 'archived';
@@ -393,7 +393,7 @@ export interface SendMessageInput {
   text: string;
   /** 携带附件（图片 / 文件） */
   attachments?: { name: string; size: string; type: 'file' | 'image'; url?: string }[];
-  /** 显式指定数字工作伙伴（默认沿用会话绑定） */
+  /** 显式指定数字伙伴（默认沿用会话绑定） */
   digitalEmployeeId?: string;
   /** @deprecated 内部执行内核引用 */
   agentId?: string;

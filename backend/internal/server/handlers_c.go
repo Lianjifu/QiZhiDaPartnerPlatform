@@ -655,13 +655,13 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 	} else if empMap != nil && empMap["active"] == false {
 		// Stale / offline binding must not block LLM turns
 		emit("stage", "employee", map[string]any{
-			"status": "ok", "employee": nil, "warning": coalesce(str(empMap["reason"]), "数字工作伙伴不可用"),
+			"status": "ok", "employee": nil, "warning": coalesce(str(empMap["reason"]), "数字伙伴不可用"),
 		})
 	} else {
 		emit("stage", "employee", map[string]any{"status": "ok", "employee": empMap})
 	}
 
-	// 模型优先级：显式运行配置 > 数字工作伙伴装配模型/路由 > 演示别名
+	// 模型优先级：显式运行配置 > 数字伙伴装配模型/路由 > 演示别名
 	modelID := resolveCopilotModelID(requestedModel, empMap)
 
 	now := time.Now().UTC().Format(time.RFC3339)
@@ -1314,7 +1314,7 @@ func (s *Server) runtimeReply(prompt, modelID string, enabledTools []string) str
 	if len(enabledTools) > 0 {
 		toolHint = "；可用工具：" + strings.Join(enabledTools, ",")
 	}
-	return "（de-core 退化回复 · " + modelID + "）已收到：" + prompt + "。建议结合知识检索与已上岗数字工作伙伴能力继续排查" + toolHint + "。"
+	return "（de-core 退化回复 · " + modelID + "）已收到：" + prompt + "。建议结合知识检索与已上岗数字伙伴能力继续排查" + toolHint + "。"
 }
 
 func writeSSE(w http.ResponseWriter, event string, data any) {

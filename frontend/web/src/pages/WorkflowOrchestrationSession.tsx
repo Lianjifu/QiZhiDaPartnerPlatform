@@ -179,7 +179,7 @@ type KnowledgeDocLite = { id: string; title: string; source: string; status: str
 const DEFAULT_GOAL = '当生产 Redis 触发 OOM 告警时，由工作伙伴研判处置路径，经双重审批后执行受控恢复，写入审计并通知值班负责人';
 
 function dependencyTypeLabel(type: SessionCandidate['dependencies'][number]['type']) {
-  if (type === 'agent') return '数字工作伙伴';
+  if (type === 'agent') return '数字伙伴';
   if (type === 'mcp') return 'MCP';
   return '工具';
 }
@@ -620,7 +620,7 @@ export default function WorkflowOrchestrationSessionPage() {
     try {
       const applied = await applyApi.mutateAsync({ candidateId: activeCandidate.id });
       setSession(adoptSession(applied));
-      showToast(`已创建隔离草稿 ${applied.revisionId}，专家复核后可发布为流程技能供数字工作伙伴装配`, 'success');
+      showToast(`已创建隔离草稿 ${applied.revisionId}，专家复核后可发布为流程技能供数字伙伴装配`, 'success');
       navigate('/workflows');
     } catch (error) {
       showToast(error instanceof Error ? error.message : '应用失败', 'error');
@@ -1045,7 +1045,7 @@ export default function WorkflowOrchestrationSessionPage() {
 
                 <div className="flex items-start gap-2 rounded-md bg-[var(--info-bg)] px-3 py-2 text-[11px] text-[var(--info)]">
                   <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  画布预览仅用于示例编排；应用隔离草稿后仍须专家配置、校验并发布流程技能，供数字工作伙伴装配。
+                  画布预览仅用于示例编排；应用隔离草稿后仍须专家配置、校验并发布流程技能，供数字伙伴装配。
                 </div>
               </div>
             </>

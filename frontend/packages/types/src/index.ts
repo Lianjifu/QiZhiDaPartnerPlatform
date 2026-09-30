@@ -1,5 +1,5 @@
 /**
- * 跨模块共享类型 — 来自「数字工作伙伴平台 v3.0」架构文档
+ * 跨模块共享类型 — 来自「企智搭 · 数字伙伴平台 v3.0」架构文档
  * 这里只放真正跨多个模块共享的类型；模块私有类型放在各模块 internal 目录。
  */
 
@@ -211,13 +211,13 @@ export interface Task {
   priority: Priority;
   status: TaskStatus;
   assignee?: string;
-  /** 绑定的在岗数字工作伙伴（主对象） */
+  /** 绑定的在岗数字伙伴（主对象） */
   digitalEmployeeId?: ID;
   /** 展示用岗位专家名称；以员工档案为准，列表可缓存 */
   digitalEmployeeName?: string;
-  /** @deprecated 执行内核；由数字工作伙伴 capabilities.agentId 派生，不对外主称 */
+  /** @deprecated 执行内核；由数字伙伴 capabilities.agentId 派生，不对外主称 */
   agentId?: ID;
-  /** 发起调度的部门负责人数字工作伙伴 */
+  /** 发起调度的部门负责人数字伙伴 */
   coordinatorId?: ID;
   coordinatorName?: string;
   /** assign=本部门派工；assist=跨部门协办 */
@@ -315,9 +315,9 @@ export interface Agent {
   isStarred?: boolean;
 }
 
-// ============ 数字工作伙伴 ============
+// ============ 数字伙伴 ============
 /**
- * 数字工作伙伴是面向业务岗位的一等对象；Agent 仅是其底层执行内核之一。
+ * 数字伙伴是面向业务岗位的一等对象；Agent 仅是其底层执行内核之一。
  * 业务身份、职责边界、受控能力、上岗状态和运行证据均收敛在此对象。
  */
 export type DigitalEmployeeLifecycle = 'draft' | 'testing' | 'pending_approval' | 'active' | 'paused' | 'quarantined';
@@ -346,7 +346,7 @@ export interface DigitalEmployeeCapabilities {
 }
 
 /**
- * 岗位授权契约：将数字工作伙伴的业务职责、可执行范围和人工升级条件结构化，
+ * 岗位授权契约：将数字伙伴的业务职责、可执行范围和人工升级条件结构化，
  * 而不是以不可审计的大段自由文本保存。
  */
 export type DigitalEmployeeExecutionMode = 'recommend' | 'approval_required' | 'execute' | 'prohibited';
@@ -722,7 +722,7 @@ export interface MemoryRecord {
   id: ID;
   workspaceId: ID;
   ownerId: ID;
-  /** 关联数字工作伙伴；用于岗位维度检索与策略对照。 */
+  /** 关联数字伙伴；用于岗位维度检索与策略对照。 */
   digitalEmployeeId?: ID;
   layer: MemoryLayer;
   scope: MemoryScope;
@@ -1305,9 +1305,9 @@ export interface Conversation {
   workspaceId?: ID;
   ownerId?: ID;
   correlationId?: string;
-  /** 绑定的数字工作伙伴（主对象） */
+  /** 绑定的数字伙伴（主对象） */
   digitalEmployeeId?: ID;
-  /** @deprecated 执行内核；由数字工作伙伴 capabilities.agentId 派生 */
+  /** @deprecated 执行内核；由数字伙伴 capabilities.agentId 派生 */
   agentId: ID;
   title: string;
   messages: ChatMessage[];

@@ -20,7 +20,7 @@ func EmbeddedChatEnabled() bool {
 func EmbeddedChatRequest(userMsg, system string) ChatRequest {
 	sys := strings.TrimSpace(system)
 	if sys == "" {
-		sys = "你是企业数字工作伙伴平台的内置对话助手。请用中文简洁、可执行地回答，并遵守岗位边界。"
+		sys = "你是企业企智搭 · 数字伙伴平台的内置对话助手。请用中文简洁、可执行地回答，并遵守岗位边界。"
 	}
 	return ChatRequest{
 		Protocol: "embedded",

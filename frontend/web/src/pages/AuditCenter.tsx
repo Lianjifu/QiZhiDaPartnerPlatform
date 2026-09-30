@@ -24,7 +24,7 @@ function domainOf(row: AuditRow): Exclude<DomainFilter, 'all'> {
   const blob = `${row.action} ${row.target}`;
   if (/工作流|流程|发布技能|workflow/i.test(blob)) return 'workflow';
   if (/任务|审批|交接|授权|结案/.test(blob)) return 'task';
-  if (/数字工作伙伴|员工|上岗|评测|岗位/.test(blob)) return 'employee';
+  if (/数字伙伴|员工|上岗|评测|岗位/.test(blob)) return 'employee';
   return 'task';
 }
 

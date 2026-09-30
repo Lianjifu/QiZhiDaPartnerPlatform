@@ -98,7 +98,7 @@ func (s *Server) listResolvedTurns(ctx context.Context, ws, requested string) []
 				}
 			}
 		}
-		// 数字工作伙伴装配的「企业通用路由 v2」等：按路由名/ID 解析到主模型（显式选择，允许 offline 探测）
+		// 数字伙伴装配的「企业通用路由 v2」等：按路由名/ID 解析到主模型（显式选择，允许 offline 探测）
 		for _, route := range s.Store.ModelRoutes {
 			if str(route["workspaceId"]) != "" && str(route["workspaceId"]) != ws {
 				continue

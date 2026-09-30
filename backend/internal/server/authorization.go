@@ -13,7 +13,7 @@ import (
 )
 
 // createPendingAuthorizationLocked builds a single-approver authorization request.
-// Copilot 写操作由智能体发起、登录用户人工审核：requester 记数字工作伙伴，不把会话用户当作发起人。
+// Copilot 写操作由智能体发起、登录用户人工审核：requester 记数字伙伴，不把会话用户当作发起人。
 // Caller must hold Store.Lock. Returns actionID and the authorizationRequest map.
 func (s *Server) createPendingAuthorizationLocked(
 	ws, cid, deID string,

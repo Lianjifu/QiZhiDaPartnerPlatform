@@ -124,7 +124,7 @@ function pushMemory(
   }
 }
 
-/** 从数字工作伙伴档案提炼岗位契约（无档案返回 null）。 */
+/** 从数字伙伴档案提炼岗位契约（无档案返回 null）。 */
 export function deriveExpertJobContract(employee: DigitalEmployee | null | undefined): ExpertJobContract | null {
   if (!employee) return null;
   const structured = (employee.boundaryPolicy?.responsibilities ?? [])

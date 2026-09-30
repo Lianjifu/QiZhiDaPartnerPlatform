@@ -138,7 +138,7 @@ function pushUnique(
 }
 
 /**
- * 从数字工作伙伴能力装配构建本会话工具链（平台 → 技能 → 运行时 → 企业工具）。
+ * 从数字伙伴能力装配构建本会话工具链（平台 → 技能 → 运行时 → 企业工具）。
  */
 export function buildExpertTools(employee?: ExpertToolSource | null): CopilotToolDef[] {
   const out: CopilotToolDef[] = [];

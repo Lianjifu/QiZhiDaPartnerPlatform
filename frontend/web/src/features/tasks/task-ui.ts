@@ -58,7 +58,7 @@ export function nextStepLabel(task: Pick<ControlledTask, 'lifecycleStage' | 'exe
   if (task.lifecycleStage === 'completed' || task.lifecycleStage === 'archived') return '可归档';
   if (task.lifecycleStage === 'pending') return '待开始';
   if (task.lifecycleStage === 'human_action') return '待专家确认';
-  if (task.lifecycleStage === 'running') return '与数字工作伙伴协同中';
+  if (task.lifecycleStage === 'running') return '与数字伙伴协同中';
   if (task.lifecycleStage === 'risk') return '需处置风险';
   return '查看详情';
 }

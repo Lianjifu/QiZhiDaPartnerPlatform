@@ -374,12 +374,12 @@ func (s *Server) homeExtraLive(r *http.Request) (any, error) {
 	if healthy > 0 {
 		suggestions = append(suggestions, map[string]any{
 			"id": "sg-collab", "tone": "info",
-			"text": "在岗数字工作伙伴可发起专家协作。", "action": "开始协作", "to": "/copilot",
+			"text": "在岗数字伙伴可发起专家协作。", "action": "开始协作", "to": "/copilot",
 		})
 	} else if totalAgents == 0 {
 		suggestions = append(suggestions, map[string]any{
 			"id": "sg-onboard", "tone": "info",
-			"text": "当前工作区尚未装配数字工作伙伴。", "action": "打开工作伙伴", "to": "/partners",
+			"text": "当前工作区尚未装配数字伙伴。", "action": "打开工作伙伴", "to": "/partners",
 		})
 	}
 

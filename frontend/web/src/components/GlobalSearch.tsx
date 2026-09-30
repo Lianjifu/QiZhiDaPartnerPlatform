@@ -1,5 +1,5 @@
 /**
- * 全局搜索（⌘K）— 任务 / 数字工作伙伴 / 文档
+ * 全局搜索（⌘K）— 任务 / 数字伙伴 / 文档
  */
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -107,7 +107,7 @@ export function GlobalSearch() {
         className="relative flex-1 max-w-md h-9 rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] pl-9 pr-12 text-left text-sm text-[var(--text-muted)] hover:border-[var(--brand)] transition-colors"
       >
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" />
-        <span className="leading-9">搜索任务、数字工作伙伴、文档...</span>
+        <span className="leading-9">搜索任务、数字伙伴、文档...</span>
         <kbd className="absolute right-2 top-1/2 -translate-y-1/2 rounded bg-[var(--bg)] px-1.5 py-0.5 text-[10px] font-mono border border-[var(--border)]">
           ⌘K
         </kbd>
@@ -132,7 +132,7 @@ export function GlobalSearch() {
                 ref={inputRef}
                 value={q}
                 onChange={(e) => { setQ(e.target.value); setActive(0); }}
-                placeholder="搜索任务、数字工作伙伴、文档..."
+                placeholder="搜索任务、数字伙伴、文档..."
                 className="flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--text-muted)]"
                 aria-label="搜索输入"
               />

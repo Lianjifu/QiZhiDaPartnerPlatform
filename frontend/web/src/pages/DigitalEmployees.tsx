@@ -61,7 +61,7 @@ function readOperationsPageSize() {
 }
 
 const tabs: Array<{ key: ModuleTab; labelKey: string; icon: typeof BriefcaseBusiness; description: string }> = [
-  { key: 'catalog', labelKey: 'module.agents.tabs.catalog', icon: UsersRound, description: '按岗位与部门发现、筛选专家团队中的数字工作伙伴。' },
+  { key: 'catalog', labelKey: 'module.agents.tabs.catalog', icon: UsersRound, description: '按岗位与部门发现、筛选专家团队中的数字伙伴。' },
   { key: 'roleSetup', labelKey: 'module.agents.tabs.roleSetup', icon: BriefcaseBusiness, description: '维护岗位授权契约：档案、职责边界、人工接管与记忆策略。' },
   { key: 'capabilities', labelKey: 'module.agents.tabs.capabilities', icon: Layers3, description: '仅引用已发布的模型、知识、技能与流程技能。' },
   { key: 'release', labelKey: 'module.agents.tabs.release', icon: Route, description: '质量评测、上岗门禁与受控审批。' },
@@ -322,12 +322,12 @@ export default function DigitalEmployees() {
             {canMutate && (
               <div className="flex shrink-0 gap-2">
                 <button type="button" className="de-employee-btn" onClick={() => { setTab('catalog'); setTemplateOpen(true); }}><Sparkles className="h-3.5 w-3.5" />从岗位蓝图创建</button>
-                <button type="button" className="de-employee-btn de-employee-btn--primary" onClick={() => { setTab('catalog'); setCreateOpen(true); }}><Plus className="h-3.5 w-3.5" />新建数字工作伙伴</button>
+                <button type="button" className="de-employee-btn de-employee-btn--primary" onClick={() => { setTab('catalog'); setCreateOpen(true); }}><Plus className="h-3.5 w-3.5" />新建数字伙伴</button>
               </div>
             )}
           </div>
           <div className="px-5"><RoleReadonlyBanner className="mb-2 flex items-start gap-2 rounded-lg bg-[var(--info-bg)] px-3 py-2 text-[11px] leading-5 text-[var(--info)]" /></div>
-          <div className="de-employee-tabs flex overflow-x-auto px-3" role="tablist" aria-label="数字工作伙伴功能">
+          <div className="de-employee-tabs flex overflow-x-auto px-3" role="tablist" aria-label="数字伙伴功能">
             {tabs.map((item) => {
               const TabIcon = item.icon;
               return (
@@ -373,8 +373,8 @@ export default function DigitalEmployees() {
                 <h2 className="text-sm font-semibold">专家目录</h2>
                 <p className="mt-1 text-xs text-[var(--text-muted)]">
                   {catalogSegment === 'all'
-                    ? '按岗位与部门发现可协作的数字工作伙伴；上岗门禁在「上岗发布」中推进。'
-                    : (catalogSegments.find((item) => item.key === catalogSegment) as { hint?: string } | undefined)?.hint ?? '按分类浏览数字工作伙伴。'}
+                    ? '按岗位与部门发现可协作的数字伙伴；上岗门禁在「上岗发布」中推进。'
+                    : (catalogSegments.find((item) => item.key === catalogSegment) as { hint?: string } | undefined)?.hint ?? '按分类浏览数字伙伴。'}
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -392,7 +392,7 @@ export default function DigitalEmployees() {
                 <span className="text-xs text-[var(--text-muted)]">{catalogItems.length} 位专家</span>
               </div>
             </div>
-            {isLoading ? <div className="p-8 text-center text-xs text-[var(--text-muted)]">正在载入数字工作伙伴…</div> : catalogItems.length === 0 ? <EmptyState icon={BriefcaseBusiness} title="没有匹配的数字工作伙伴" description="调整筛选或分类条件，或新建岗位数字工作伙伴。" /> : (
+            {isLoading ? <div className="p-8 text-center text-xs text-[var(--text-muted)]">正在载入数字伙伴…</div> : catalogItems.length === 0 ? <EmptyState icon={BriefcaseBusiness} title="没有匹配的数字伙伴" description="调整筛选或分类条件，或新建岗位数字伙伴。" /> : (
               <div className="space-y-4 p-4">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {catalogPageItems.map((employee) => <EmployeeCard key={employee.id} employee={employee} onSelect={() => setSelectedId(employee.id)} />)}
@@ -409,7 +409,7 @@ export default function DigitalEmployees() {
               </div>
             )}
           </section>
-          <Modal open={templateOpen} onClose={() => setTemplateOpen(false)} title="从岗位蓝图创建" description="采用经治理验证的岗位模板，在当前工作区创建数字工作伙伴；仍需完善配置、完成评测后即可申请上岗。" size="xl"><EmployeePlaza employees={employees} onCreate={() => setCreateOpen(true)} onAdopt={(employeeId) => { setTemplateOpen(false); setSelectedId(employeeId); }} onClose={() => setTemplateOpen(false)} /></Modal>
+          <Modal open={templateOpen} onClose={() => setTemplateOpen(false)} title="从岗位蓝图创建" description="采用经治理验证的岗位模板，在当前工作区创建数字伙伴；仍需完善配置、完成评测后即可申请上岗。" size="xl"><EmployeePlaza employees={employees} onCreate={() => setCreateOpen(true)} onAdopt={(employeeId) => { setTemplateOpen(false); setSelectedId(employeeId); }} onClose={() => setTemplateOpen(false)} /></Modal>
         </>}
 
         {tab === 'roleSetup' && (
@@ -574,7 +574,7 @@ function EmployeePlaza({ employees, onCreate, onAdopt, onClose }: { employees: D
               <div className="de-employee-icon-tile grid h-8 w-8 place-items-center rounded-lg"><Sparkles className="h-4 w-4" /></div>
               <h3 className="text-base font-semibold">岗位蓝图</h3>
             </div>
-            <p className="mt-2 max-w-2xl text-xs leading-5 text-[var(--text-muted)]">采用已认证蓝图创建数字工作伙伴；仍需配置、评测后申请上岗。步骤：选蓝图 → 创建员工 → 完善门禁。</p>
+            <p className="mt-2 max-w-2xl text-xs leading-5 text-[var(--text-muted)]">采用已认证蓝图创建数字伙伴；仍需配置、评测后申请上岗。步骤：选蓝图 → 创建员工 → 完善门禁。</p>
           </div>
           <div className="flex flex-wrap gap-2">
             {isAdmin && canMutate && <Button size="sm" variant="secondary" onClick={() => setPublishOpen(true)}><Plus className="h-3.5 w-3.5" />发布部门蓝图</Button>}
@@ -702,7 +702,7 @@ function PublishDepartmentTemplateModal({ open, onClose }: { open: boolean; onCl
     if (!name.trim() || !role.trim() || !department.trim()) return;
     publish.mutate({ name, role, department, serviceObject, description, risk, tags: tags.split(/[，,]/).map((tag) => tag.trim()).filter(Boolean) });
   };
-  return <Modal open={open} onClose={onClose} title="发布部门蓝图" description="蓝图仅在当前工作区共享，发布后进入待认证状态；不会直接创建或上岗数字工作伙伴。" size="md" footer={<><Button variant="ghost" onClick={onClose}>取消</Button><Button loading={publish.isPending} disabled={!name.trim() || !role.trim() || !department.trim()} onClick={submit}>提交认证</Button></>}><div className="grid gap-4"><div className="rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2.5 text-xs leading-5 text-[var(--text-muted)]">蓝图承载岗位边界与默认能力；模型、知识、技能、工作流和渠道仍须在各自中心完成治理与发布。</div><div className="grid gap-3 sm:grid-cols-2"><Field label="蓝图名称" value={name} onChange={setName} placeholder="例如：变更风险分析专员" required /><Field label="岗位角色" value={role} onChange={setRole} placeholder="例如：变更影响评估" required /><Field label="所属部门" value={department} onChange={setDepartment} placeholder="例如：信息技术部" required /><Field label="服务对象" value={serviceObject} onChange={setServiceObject} placeholder="例如：应用交付团队" /><SelectField label="风险等级" value={risk} onChange={(value) => setRisk(value as DigitalEmployee['risk'])} options={[['low', '低风险'], ['medium', '中风险'], ['high', '高风险']]} /><Field label="能力标签" value={tags} onChange={setTags} placeholder="例如：变更、风险评估" /></div><label className="grid gap-1.5 text-xs font-medium">岗位说明<textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={3} placeholder="说明岗位服务目标、默认职责与需要人工介入的边界。" className="rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-xs font-normal outline-none focus:border-[var(--brand)]" /></label>{error && <p role="alert" className="rounded-lg border border-[var(--danger)]/30 bg-[var(--danger-light)] px-3 py-2 text-xs text-[var(--danger)]">{error}</p>}</div></Modal>;
+  return <Modal open={open} onClose={onClose} title="发布部门蓝图" description="蓝图仅在当前工作区共享，发布后进入待认证状态；不会直接创建或上岗数字伙伴。" size="md" footer={<><Button variant="ghost" onClick={onClose}>取消</Button><Button loading={publish.isPending} disabled={!name.trim() || !role.trim() || !department.trim()} onClick={submit}>提交认证</Button></>}><div className="grid gap-4"><div className="rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2.5 text-xs leading-5 text-[var(--text-muted)]">蓝图承载岗位边界与默认能力；模型、知识、技能、工作流和渠道仍须在各自中心完成治理与发布。</div><div className="grid gap-3 sm:grid-cols-2"><Field label="蓝图名称" value={name} onChange={setName} placeholder="例如：变更风险分析专员" required /><Field label="岗位角色" value={role} onChange={setRole} placeholder="例如：变更影响评估" required /><Field label="所属部门" value={department} onChange={setDepartment} placeholder="例如：信息技术部" required /><Field label="服务对象" value={serviceObject} onChange={setServiceObject} placeholder="例如：应用交付团队" /><SelectField label="风险等级" value={risk} onChange={(value) => setRisk(value as DigitalEmployee['risk'])} options={[['low', '低风险'], ['medium', '中风险'], ['high', '高风险']]} /><Field label="能力标签" value={tags} onChange={setTags} placeholder="例如：变更、风险评估" /></div><label className="grid gap-1.5 text-xs font-medium">岗位说明<textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={3} placeholder="说明岗位服务目标、默认职责与需要人工介入的边界。" className="rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-xs font-normal outline-none focus:border-[var(--brand)]" /></label>{error && <p role="alert" className="rounded-lg border border-[var(--danger)]/30 bg-[var(--danger-light)] px-3 py-2 text-xs text-[var(--danger)]">{error}</p>}</div></Modal>;
 }
 
 function OnboardingManagementView({ employees, onSelect, onGoToModule }: { employees: DigitalEmployee[]; onSelect: (id: string) => void; onGoToModule: (tab: ModuleTab) => void }) {
@@ -2423,7 +2423,7 @@ function CapabilityAssemblySelector({ catalog, capabilities, policy, onChangeCap
 }
 
 function ProfileContent({ employee }: { employee: DigitalEmployee }) {
-  return <div className="space-y-4"><div><h3 className="text-sm font-semibold">岗位档案</h3><p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">数字工作伙伴以岗位责任服务业务对象，不以底层模型或技术组件作为业务身份。</p></div><div className="grid grid-cols-2 gap-3"><Metric label="花名" value={employee.name} /><Metric label="岗位名称" value={employee.role} /><Metric label="所属部门" value={employee.department} /><Metric label="岗位负责人" value={employee.owner} /><Metric label="服务对象" value={employee.serviceObject} /><Metric label="人工接管负责人" value={employee.escalationOwner} /><Metric label="运行环境" value={employee.environment === 'production' ? '生产' : employee.environment === 'staging' ? '预发' : '沙箱'} /><Metric label="风险等级" value={riskMeta[employee.risk].label} /></div><div className="rounded-lg border border-[var(--border)] bg-[var(--bg)] p-4 text-xs leading-6 text-[var(--text-secondary)]">{employee.description}</div></div>;
+  return <div className="space-y-4"><div><h3 className="text-sm font-semibold">岗位档案</h3><p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">数字伙伴以岗位责任服务业务对象，不以底层模型或技术组件作为业务身份。</p></div><div className="grid grid-cols-2 gap-3"><Metric label="花名" value={employee.name} /><Metric label="岗位名称" value={employee.role} /><Metric label="所属部门" value={employee.department} /><Metric label="岗位负责人" value={employee.owner} /><Metric label="服务对象" value={employee.serviceObject} /><Metric label="人工接管负责人" value={employee.escalationOwner} /><Metric label="运行环境" value={employee.environment === 'production' ? '生产' : employee.environment === 'staging' ? '预发' : '沙箱'} /><Metric label="风险等级" value={riskMeta[employee.risk].label} /></div><div className="rounded-lg border border-[var(--border)] bg-[var(--bg)] p-4 text-xs leading-6 text-[var(--text-secondary)]">{employee.description}</div></div>;
 }
 function StructuredBoundaryContent({ employee }: { employee: DigitalEmployee }) {
   const policy = resolveBoundaryPolicy(employee);
@@ -2474,14 +2474,14 @@ function CreateEmployeeModal({ open, onClose, loading, onCreate }: { open: boole
     <Modal
       open={open}
       onClose={onClose}
-      title="新建数字工作伙伴"
+      title="新建数字伙伴"
       description="填写花名与岗位信息即可创建。创建后进入「配置中」，请继续完善授权契约与能力装配，完成评测后再申请上岗。"
       size="md"
       footer={(
         <>
           <Button variant="ghost" onClick={onClose}>取消</Button>
           <Button loading={loading} disabled={!name.trim() || !role.trim() || !department.trim()} onClick={submit}>
-            创建数字工作伙伴
+            创建数字伙伴
           </Button>
         </>
       )}

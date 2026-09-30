@@ -25,7 +25,7 @@ export function NotFound() {
 
         <h1 className="text-2xl font-bold mb-2">页面不存在</h1>
         <p className="text-sm text-[var(--text-muted)] mb-4">
-          路径 <code className="rounded bg-[var(--bg)] border border-[var(--border)] px-1.5 py-0.5 font-mono text-[12px] text-[var(--brand)]">{loc.pathname}</code> 不在数字工作伙伴平台的 11 个模块中。
+          路径 <code className="rounded bg-[var(--bg)] border border-[var(--border)] px-1.5 py-0.5 font-mono text-[12px] text-[var(--brand)]">{loc.pathname}</code> 不在企智搭 · 数字伙伴平台的 11 个模块中。
         </p>
 
         <div className="flex gap-2 justify-center mb-6">

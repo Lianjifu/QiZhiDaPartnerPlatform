@@ -10,7 +10,7 @@ export type MentionCategory = {
 };
 
 export const MENTION_CATEGORIES: MentionCategory[] = [
-  { kind: 'expert', key: '@expert', label: '专家', desc: '在岗数字工作伙伴' },
+  { kind: 'expert', key: '@expert', label: '专家', desc: '在岗数字伙伴' },
   { kind: 'skill', key: '@skill', label: '技能', desc: '已装配技能 / 工具 / 流程' },
   { kind: 'doc', key: '@doc', label: '文档', desc: '知识库 / Runbook' },
   { kind: 'member', key: '@member', label: '成员', desc: '协作同事' },

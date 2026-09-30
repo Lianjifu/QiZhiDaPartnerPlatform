@@ -102,7 +102,7 @@ export default function Workspaces() {
                 {tab === 'overview' && (
                   <div className="space-y-4">
                     <div className="grid grid-cols-3 gap-3">
-                      <KpiInline label="数字工作伙伴" value={`${agents.length}`} sub="已纳入目录" tone="brand" />
+                      <KpiInline label="数字伙伴" value={`${agents.length}`} sub="已纳入目录" tone="brand" />
                       <KpiInline label="可用技能" value={`${tools?.enabled ?? 0}/${tools?.total ?? 0}`} sub="已启用" tone="success" />
                       <KpiInline label="发布环境" value={`${environments.length}`} sub="按环境隔离" />
                     </div>
@@ -136,7 +136,7 @@ export default function Workspaces() {
                 {tab === 'resources' && (
                   <div>
                     <div className="mb-2 text-xs font-semibold flex items-center justify-between">
-                      <span>已接入数字工作伙伴 ({agents.length})</span>
+                      <span>已接入数字伙伴 ({agents.length})</span>
                       <Button size="sm" variant="secondary"><Plus className="h-3 w-3" />添加</Button>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
@@ -191,7 +191,7 @@ export default function Workspaces() {
                   </div>
                 )}
 
-                {tab === 'quota' && <div className="grid grid-cols-2 gap-3">{quota && Object.entries(quota).map(([name, value]: any) => <KpiInline key={name} label={name === 'budgetUsd' ? '模型预算' : name === 'tokens' ? 'Token' : name === 'concurrency' ? '并发' : name === 'agents' ? '数字工作伙伴' : '席位'} value={`${value.used}/${value.limit}`} sub={`使用率 ${Math.round(value.used / value.limit * 100)}%`} tone={value.used / value.limit > .8 ? 'brand' : 'success'} />)}</div>}
+                {tab === 'quota' && <div className="grid grid-cols-2 gap-3">{quota && Object.entries(quota).map(([name, value]: any) => <KpiInline key={name} label={name === 'budgetUsd' ? '模型预算' : name === 'tokens' ? 'Token' : name === 'concurrency' ? '并发' : name === 'agents' ? '数字伙伴' : '席位'} value={`${value.used}/${value.limit}`} sub={`使用率 ${Math.round(value.used / value.limit * 100)}%`} tone={value.used / value.limit > .8 ? 'brand' : 'success'} />)}</div>}
                 {tab === 'settings' && <div className="space-y-3 rounded-lg border border-[var(--border)] p-4 text-xs"><div><strong>工作区负责人</strong><p className="mt-1 text-[var(--text-muted)]">负责人变更、冻结与归档均需记录原因和影响范围。</p></div><div className="flex flex-wrap gap-2"><select aria-label="选择新负责人" value={transferOwnerId} onChange={(event) => setTransferOwnerId(event.target.value)} className="h-8 min-w-[160px] rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 text-xs"><option value="">选择工作区成员</option>{members.filter((member) => member.id !== active.ownerId).map((member) => <option key={member.id} value={member.id}>{member.name} · {member.role}</option>)}</select><Button size="sm" variant="secondary" disabled={!transferOwnerId} loading={transferWorkspace.isPending} onClick={() => transferWorkspace.mutate({ ownerId: transferOwnerId, reason: '运营管理员发起负责人移交' })}>移交负责人</Button><Button size="sm" variant="secondary" loading={freezeWorkspace.isPending} onClick={() => freezeWorkspace.mutate({ reason: '运营管理员发起冻结' })}>冻结工作区</Button></div></div>}
               </div></div>
             </>
@@ -322,7 +322,7 @@ function CreateWizard({ onClose, onCreated }: { onClose: () => void; onCreated: 
                 onChange={setSeatsLimit}
               />
               <QuotaLimitControl
-                label="数字工作伙伴"
+                label="数字伙伴"
                 value={agentsLimit}
                 min={1}
                 max={20}

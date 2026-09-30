@@ -144,7 +144,7 @@ const NODE_COLORS: Record<WorkflowNodeKind, string> = {
 const NODE_DESCS: Record<WorkflowNodeKind, string> = {
   trigger: '接收外部系统 Webhook 请求', schedule: '按 Cron 或日历规则发起流程', event: '订阅监控告警或消息事件',
   retrieve: '查询知识库、运行手册与历史证据', transform: '映射、清洗并标准化上下文数据',
-  decision: '由数字工作伙伴分析上下文并生成处置决策', condition: '基于表达式判断后续路径', approval: '按审批人、超时与签名规则复核', policy: '校验风险等级、权限和变更策略',
+  decision: '由数字伙伴分析上下文并生成处置决策', condition: '基于表达式判断后续路径', approval: '按审批人、超时与签名规则复核', policy: '校验风险等级、权限和变更策略',
   branch: '按条件选择唯一处置路径', parallel: '并发执行多个独立步骤并汇聚',
   execute: '调用已纳管 Skill 完成受控处置动作', http: '调用企业内部或第三方 API', mcp: '调用受控 MCP 工具', task: '创建人工处置任务并回传结果',
   retry: '按退避策略自动重试可恢复失败', compensate: '执行补偿动作或回滚变更', audit: '写入可追溯的审计证据', notify: '通过飞书、企微、钉钉等通知结果',
@@ -154,7 +154,7 @@ type NodeLibraryCategory = 'trigger' | 'context' | 'decision' | 'action' | 'gove
 type NodeRisk = 'standard' | 'review' | 'sensitive';
 
 const NODE_LIBRARY_GROUPS: Array<{ id: NodeLibraryCategory; label: string; desc: string; kinds: WorkflowNodeKind[] }> = [
-  { id: 'trigger', label: '触发与输入', desc: '定义数字工作伙伴何时开始工作', kinds: ['trigger', 'schedule', 'event'] },
+  { id: 'trigger', label: '触发与输入', desc: '定义数字伙伴何时开始工作', kinds: ['trigger', 'schedule', 'event'] },
   { id: 'context', label: '上下文与数据', desc: '补齐处置所需的证据与变量', kinds: ['retrieve', 'transform'] },
   { id: 'decision', label: '智能决策', desc: '由规则或工作伙伴研判决定处置路径', kinds: ['decision', 'condition', 'branch', 'parallel'] },
   { id: 'action', label: '执行与协同', desc: '调用受控能力或派发人工工作', kinds: ['execute', 'http', 'mcp', 'task'] },
@@ -878,7 +878,7 @@ export default function Workflows() {
     },
   );
   const [skillName, setSkillName] = useState('生产故障处置流程技能');
-  const [skillDesc, setSkillDesc] = useState('由工作流程发布的标准作业能力，可供数字工作伙伴在能力装配中引用。');
+  const [skillDesc, setSkillDesc] = useState('由工作流程发布的标准作业能力，可供数字伙伴在能力装配中引用。');
   const [skillSourceVersion, setSkillSourceVersion] = useState('');
   const [skillRiskLevel, setSkillRiskLevel] = useState<WorkflowSkill['riskLevel']>('mid');
   useEffect(() => {
@@ -1289,7 +1289,7 @@ export default function Workflows() {
     setTab('canvas');
     setSidePanel('properties');
     setAiGenerateOpen(false);
-    showToast(`已创建隔离草稿 ${applied.revisionId}，专家复核后可发布为流程技能供数字工作伙伴装配`, 'success');
+    showToast(`已创建隔离草稿 ${applied.revisionId}，专家复核后可发布为流程技能供数字伙伴装配`, 'success');
   }, [activeVersion, applyGenerationApi, canWrite, edges, generationResult, nodes, pushHistory, showToast, versions]);
   const discardGeneration = useCallback(() => {
     if (generationResult) discardGenerationApi.mutate({ id: generationResult.id });
@@ -1808,7 +1808,7 @@ export default function Workflows() {
                 <div className="wf-publish__eyebrow"><Sparkles className="h-3.5 w-3.5" />流程能力沉淀</div>
                 <h2 className="wf-publish__title">发布为流程技能</h2>
                 <p className="wf-publish__lead">
-                  将已通过运行前校验的流程版本写入技能中心，供数字工作伙伴在能力装配中引用。
+                  将已通过运行前校验的流程版本写入技能中心，供数字伙伴在能力装配中引用。
                   「调用需审批」指执行时双重审批，与本页发布门禁不同。
                 </p>
               </div>
@@ -2061,7 +2061,7 @@ export default function Workflows() {
                 </div>
                 <div className="wf-boundary__card">
                   <strong>发布技能</strong>
-                  <span>把流程沉淀为数字工作伙伴可装配能力，不替代版本发布。</span>
+                  <span>把流程沉淀为数字伙伴可装配能力，不替代版本发布。</span>
                   <Button size="sm" variant="ghost" onClick={() => setTab('publishSkill')}>去发布技能</Button>
                 </div>
               </div>
@@ -2439,7 +2439,7 @@ const AI_PROMPT_EXAMPLES = [
 ] as const;
 
 function dependencyTypeLabel(type: GenerationResult['dependencies'][number]['type']) {
-  if (type === 'agent') return '数字工作伙伴';
+  if (type === 'agent') return '数字伙伴';
   if (type === 'mcp') return 'MCP';
   return '工具';
 }
@@ -2548,10 +2548,10 @@ function WorkflowAIGeneratorDrawer({
             </div>
           </div>
           <div className="grid gap-2 sm:grid-cols-3">{([['structure', '结构校验'], ['dependencies', '依赖检查'], ['risk', '风险扫描']] as const).map(([key, label]) => <div key={key} className="rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-3"><div className="text-[11px] text-[var(--text-muted)]">{label}</div><div className={cn('mt-1 text-xs font-semibold', result.checks[key] === 'passed' ? 'text-[var(--success)]' : 'text-[var(--warning)]')}>{result.checks[key] === 'passed' ? '通过' : '需要专家复核'}</div></div>)}</div>
-          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-4"><div className="mb-3 text-xs font-semibold text-[var(--text)]">工具、MCP 与数字工作伙伴依赖</div><div className="space-y-2">{result.dependencies.map((dep) => <div key={`${dep.type}-${dep.name}`} className="flex items-center justify-between gap-3 text-xs"><span className="text-[var(--text-secondary)]">{dep.name}<span className="ml-2 text-[10px] text-[var(--text-muted)]">{dependencyTypeLabel(dep.type)}</span></span><Badge tone={dep.status === 'available' ? 'success' : 'warn'} className="text-[10px]">{dep.status === 'available' ? '可用' : '缺失权限'}</Badge></div>)}</div></div>
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-4"><div className="mb-3 text-xs font-semibold text-[var(--text)]">工具、MCP 与数字伙伴依赖</div><div className="space-y-2">{result.dependencies.map((dep) => <div key={`${dep.type}-${dep.name}`} className="flex items-center justify-between gap-3 text-xs"><span className="text-[var(--text-secondary)]">{dep.name}<span className="ml-2 text-[10px] text-[var(--text-muted)]">{dependencyTypeLabel(dep.type)}</span></span><Badge tone={dep.status === 'available' ? 'success' : 'warn'} className="text-[10px]">{dep.status === 'available' ? '可用' : '缺失权限'}</Badge></div>)}</div></div>
           {result.risks.length > 0 && <div className="rounded-lg border border-[var(--warning)]/30 bg-[var(--warning-bg)] p-4"><div className="mb-2 flex items-center gap-2 text-xs font-semibold text-[var(--warning)]"><AlertTriangle className="h-3.5 w-3.5" />风险与权限提示</div>{result.risks.map((risk) => <div key={risk.node} className="text-xs leading-5 text-[var(--text-secondary)]">{risk.level} · {risk.text}</div>)}</div>}
           {result.warnings.length > 0 && <div><div className="mb-2 text-xs font-semibold text-[var(--text)]">专家复核建议</div><ul className="space-y-1 text-xs leading-5 text-[var(--text-muted)]">{result.warnings.map((warning) => <li key={warning}>• {warning}</li>)}</ul></div>}
-          <div className="flex items-center gap-2 rounded-md bg-[var(--info-bg)] px-3 py-2 text-[11px] text-[var(--info)]"><ShieldCheck className="h-3.5 w-3.5 shrink-0" />应用隔离草稿 → 专家配置与校验 → 发布流程技能 → 数字工作伙伴能力装配。</div>
+          <div className="flex items-center gap-2 rounded-md bg-[var(--info-bg)] px-3 py-2 text-[11px] text-[var(--info)]"><ShieldCheck className="h-3.5 w-3.5 shrink-0" />应用隔离草稿 → 专家配置与校验 → 发布流程技能 → 数字伙伴能力装配。</div>
         </div>
       ) : null}
     </Drawer>
@@ -2706,7 +2706,7 @@ function CanvasView(props: {
     <div className="flex h-full min-h-0 min-w-0 flex-col">
       {actionToolbar}
       <div className="shrink-0 border-b border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2 text-[11px] leading-5 text-[var(--text-muted)] md:px-5">
-        本页用于编排受控处置流程草稿。版本治理请点「当前版本」进入抽屉 / 版本中心；完成后请到「发布技能」发布为流程技能，供数字工作伙伴能力装配；本页不直接发起专家协作上岗。
+        本页用于编排受控处置流程草稿。版本治理请点「当前版本」进入抽屉 / 版本中心；完成后请到「发布技能」发布为流程技能，供数字伙伴能力装配；本页不直接发起专家协作上岗。
         {structureIssues.filter((item) => item.severity === 'failed').length > 0 && (
           <span className="ml-2 text-[var(--warning)]">结构门禁：{structureIssues.filter((item) => item.severity === 'failed').map((item) => item.message).join('；')}</span>
         )}
@@ -4021,7 +4021,7 @@ function TemplatePreviewModalInner({
               </div>
               <div className={cn('rounded-xl border p-4', template.risk === 'L3' ? 'border-[var(--warning)]/30 bg-[var(--warning-bg)]' : 'border-[var(--info)]/25 bg-[var(--info-bg)]')}>
                 <div className={cn('flex items-center gap-2 text-xs font-semibold', template.risk === 'L3' ? 'text-[var(--warning)]' : 'text-[var(--info)]')}><ShieldCheck className="h-4 w-4" />{template.risk} 治理门禁</div>
-                <p className="mt-2 text-[11px] leading-5 text-[var(--text-secondary)]">创建隔离草稿后进入编排；外部执行前需完成依赖授权、双重审批、审计留痕与补偿校验。未发布流程技能不可被数字工作伙伴调用。</p>
+                <p className="mt-2 text-[11px] leading-5 text-[var(--text-secondary)]">创建隔离草稿后进入编排；外部执行前需完成依赖授权、双重审批、审计留痕与补偿校验。未发布流程技能不可被数字伙伴调用。</p>
               </div>
             </section>
 

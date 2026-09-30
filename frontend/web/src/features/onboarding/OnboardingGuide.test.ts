@@ -46,7 +46,7 @@ describe('OnboardingGuide copy', () => {
   it('journey cards follow 能力 → 编排上岗 → 受控运营', () => {
     expect(JOURNEY_CARDS.map((c) => c.title)).toEqual(['能力接入', '编排上岗', '受控运营']);
     expect(JOURNEY_CARDS[0].description).toMatch(/记忆|消息渠道/);
-    expect(JOURNEY_CARDS[1].description).toMatch(/数字工作伙伴|工作流程/);
+    expect(JOURNEY_CARDS[1].description).toMatch(/数字伙伴|工作流程/);
     expect(JOURNEY_CARDS[2].description).toMatch(/持续验证|审计/);
   });
 });

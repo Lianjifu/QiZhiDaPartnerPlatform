@@ -456,7 +456,7 @@ export default function Home() {
                   <div className="home-spotlight__identity">
                     <DigitalEmployeeAvatar employee={featured} size={52} />
                     <div className="min-w-0">
-                      <p className="home-spotlight__label">数字工作伙伴 · 今日焦点</p>
+                      <p className="home-spotlight__label">数字伙伴 · 今日焦点</p>
                       <h2 className="home-spotlight__name">{employeePrimaryLabel(featured)}</h2>
                       <p className="home-spotlight__meta">{employeeSecondaryLabel(featured)} · {featured.department}</p>
                     </div>
@@ -512,9 +512,9 @@ export default function Home() {
             ) : (
               <EmptyState
                 icon={Bot}
-                title="尚未装配数字工作伙伴"
+                title="尚未装配数字伙伴"
                 description="先创建或从上岗模板引入岗位，运营总览将展示在岗专家"
-                action={<Link to="/partners" className="text-xs text-[var(--brand)] hover:underline">打开数字工作伙伴</Link>}
+                action={<Link to="/partners" className="text-xs text-[var(--brand)] hover:underline">打开数字伙伴</Link>}
               />
             )}
           </section>

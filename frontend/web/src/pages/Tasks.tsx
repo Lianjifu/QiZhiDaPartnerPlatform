@@ -149,7 +149,7 @@ export default function Tasks() {
       {selectedCurrent && <div className="task-detail-drawer-body"><TaskLifecycleDrawer task={selectedCurrent} onPendingChange={setDrawerPending} /></div>}
     </Drawer>
     {canMutate && (
-      <Drawer open={newTaskOpen} onClose={() => setNewTaskOpen(false)} title="新建任务" description="创建后由任务台统一记录状态与审计。" width={440} footer={<button type="button" className="task-create-btn" disabled={!newTitle.trim() || create.isPending} onClick={() => create.mutate({ title: newTitle.trim(), priority: 'P1', actor })}><Plus size={16} />{create.isPending ? '创建中…' : '创建任务'}</button>}><label className="task-new-label">任务标题<Input autoFocus value={newTitle} onChange={(event) => setNewTitle(event.target.value)} placeholder="描述需要与数字工作伙伴协同处置的事项" /></label></Drawer>
+      <Drawer open={newTaskOpen} onClose={() => setNewTaskOpen(false)} title="新建任务" description="创建后由任务台统一记录状态与审计。" width={440} footer={<button type="button" className="task-create-btn" disabled={!newTitle.trim() || create.isPending} onClick={() => create.mutate({ title: newTitle.trim(), priority: 'P1', actor })}><Plus size={16} />{create.isPending ? '创建中…' : '创建任务'}</button>}><label className="task-new-label">任务标题<Input autoFocus value={newTitle} onChange={(event) => setNewTitle(event.target.value)} placeholder="描述需要与数字伙伴协同处置的事项" /></label></Drawer>
     )}
   </main>;
 }

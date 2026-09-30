@@ -314,7 +314,7 @@ func (s *Server) digitalEmployeeRoute(r *http.Request) (any, error) {
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	// api/digital-employees/:id/...
 	if len(parts) < 3 {
-		return nil, apperr.NotFoundErr(apperr.DigitalEmployeeNotFound, "数字工作伙伴不存在")
+		return nil, apperr.NotFoundErr(apperr.DigitalEmployeeNotFound, "数字伙伴不存在")
 	}
 	eid := parts[2]
 	action, sub := "", ""
@@ -335,7 +335,7 @@ func (s *Server) digitalEmployeeRoute(r *http.Request) (any, error) {
 		}
 	}
 	if emp == nil {
-		return nil, apperr.NotFoundErr(apperr.DigitalEmployeeNotFound, "数字工作伙伴不存在")
+		return nil, apperr.NotFoundErr(apperr.DigitalEmployeeNotFound, "数字伙伴不存在")
 	}
 	if err := s.requireWorkspaceAccess(id, str(emp["workspaceId"])); err != nil {
 		return nil, err
@@ -388,7 +388,7 @@ func (s *Server) digitalEmployeeRoute(r *http.Request) (any, error) {
 	}
 	if action == "configuration" && r.Method == http.MethodPost {
 		if id.Role == "auditor" {
-			return nil, apperr.Forbidden(apperr.RoleForbidden, "无权写入数字工作伙伴")
+			return nil, apperr.Forbidden(apperr.RoleForbidden, "无权写入数字伙伴")
 		}
 		body, _ := decodeMap(r)
 		if err := validateEmployeeConfigurationBody(body); err != nil {
@@ -421,7 +421,7 @@ func (s *Server) digitalEmployeeRoute(r *http.Request) (any, error) {
 	}
 
 	if id.Role == "auditor" && r.Method != http.MethodGet {
-		return nil, apperr.Forbidden(apperr.RoleForbidden, "无权写入数字工作伙伴")
+		return nil, apperr.Forbidden(apperr.RoleForbidden, "无权写入数字伙伴")
 	}
 	body, _ := decodeMap(r)
 
@@ -604,11 +604,11 @@ func (s *Server) digitalEmployeeRoute(r *http.Request) (any, error) {
 				}
 			}
 		} else if action != "" {
-			return nil, apperr.NotFoundErr(apperr.NotFound, "未知数字工作伙伴动作")
+			return nil, apperr.NotFoundErr(apperr.NotFound, "未知数字伙伴动作")
 		}
 	}
 	emp["updatedAt"] = time.Now().UTC().Format(time.RFC3339)
-	s.Store.AppendAudit(str(emp["workspaceId"]), id.Name, "数字工作伙伴:"+coalesce(action, "更新"), str(emp["name"]), "success", "")
+	s.Store.AppendAudit(str(emp["workspaceId"]), id.Name, "数字伙伴:"+coalesce(action, "更新"), str(emp["name"]), "success", "")
 	s.persistEmployeesLocked()
 	return emp, nil
 }

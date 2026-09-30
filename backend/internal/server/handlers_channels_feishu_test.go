@@ -19,7 +19,7 @@ func TestFeishuChannelCreateAndVerify(t *testing.T) {
 	})
 	mux.HandleFunc("/open-apis/bot/v3/info", func(w http.ResponseWriter, _ *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"code": 0, "bot": map[string]any{"open_id": "ou_feishu_bot", "app_name": "数字工作伙伴机器人"},
+			"code": 0, "bot": map[string]any{"open_id": "ou_feishu_bot", "app_name": "数字伙伴机器人"},
 		})
 	})
 	fs := httptest.NewServer(mux)
@@ -81,7 +81,7 @@ func TestFeishuChannelCreateAndVerify(t *testing.T) {
 	if strAny(verified.Data["botOpenId"]) != "ou_feishu_bot" {
 		t.Fatalf("botOpenId=%v", verified.Data["botOpenId"])
 	}
-	if strAny(verified.Data["botName"]) != "数字工作伙伴机器人" {
+	if strAny(verified.Data["botName"]) != "数字伙伴机器人" {
 		t.Fatalf("botName=%v", verified.Data["botName"])
 	}
 }

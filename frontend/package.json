@@ -2,7 +2,7 @@
   "name": "digital-employee-platform",
   "version": "0.1.0",
   "private": true,
-  "description": "企业级数字工作伙伴平台 — 前端 (React 18 + Vite 5 + TS + shadcn/ui)",
+  "description": "企智搭 · 数字伙伴平台 — 前端 (React 18 + Vite 5 + TS + shadcn/ui)",
   "scripts": {
     "dev": "pnpm --filter web dev",
     "build": "pnpm --filter web build",

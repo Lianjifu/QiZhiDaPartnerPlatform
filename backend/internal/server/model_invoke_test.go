@@ -264,7 +264,7 @@ func TestCopilotStreamAllowsMissingEmployee(t *testing.T) {
 		t.Fatalf("status %d %s", rr.Code, rr.Body.String())
 	}
 	body := rr.Body.String()
-	if strings.Contains(body, "未找到数字工作伙伴") {
+	if strings.Contains(body, "未找到数字伙伴") {
 		t.Fatalf("should not fail on missing employee: %s", body)
 	}
 	if strings.Contains(body, `"type":"error"`) && strings.Contains(body, `"stage":"employee"`) {

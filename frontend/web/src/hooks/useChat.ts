@@ -777,9 +777,9 @@ const REPLY_TEMPLATES: { match: RegExp; reply: (q: string) => ReplyMock }[] = [
     reply: () => ({
       role: 'assistant',
       agentName: '知识答疑',
-      content: '**数字工作伙伴平台使用指南**（v3.0）：\n\n**核心模块**：\n- **首页** — 业务总览（KPI / 健康度 / 告警）\n- **会话**（Copilot）— 与数字工作伙伴协同处理工作\n- **任务** — 任务管理与双签审批\n- **工作区** — 多租户隔离与成员协作\n- **智能体** — 智能体能力管理\n- **工作流** — DAG 可视化编排\n- **知识** — RAG 检索与知识资产管理\n- **技能** — Skill / MCP / Tool（gVisor 沙箱）\n- **模型** — 多 Provider 与分级路由\n- **渠道** — 飞书 / 企微 / 钉钉 / Webhook\n- **设置** — 租户 / 成员 / 合规 / 计费\n\n**快速上手**：\n1. 按 `⌘K` 全局搜索\n2. 输入 `/` 唤起命令面板\n3. 输入 `@` 提及智能体、技能或文档\n4. 主题切换在顶栏右侧\n5. 在左侧栏进入所需模块',
+      content: '**企智搭 · 数字伙伴平台使用指南**（v3.0）：\n\n**核心模块**：\n- **首页** — 业务总览（KPI / 健康度 / 告警）\n- **会话**（Copilot）— 与数字伙伴协同处理工作\n- **任务** — 任务管理与双签审批\n- **工作区** — 多租户隔离与成员协作\n- **智能体** — 智能体能力管理\n- **工作流** — DAG 可视化编排\n- **知识** — RAG 检索与知识资产管理\n- **技能** — Skill / MCP / Tool（gVisor 沙箱）\n- **模型** — 多 Provider 与分级路由\n- **渠道** — 飞书 / 企微 / 钉钉 / Webhook\n- **设置** — 租户 / 成员 / 合规 / 计费\n\n**快速上手**：\n1. 按 `⌘K` 全局搜索\n2. 输入 `/` 唤起命令面板\n3. 输入 `@` 提及智能体、技能或文档\n4. 主题切换在顶栏右侧\n5. 在左侧栏进入所需模块',
       citations: [
-        { id: 'c1', docId: 'rb-platform-v3', source: 'Runbook', page: 1, score: 0.95, rerankScore: 0.97, evalLabel: 'gold', text: '数字工作伙伴平台使用指南 v3.0 ...' },
+        { id: 'c1', docId: 'rb-platform-v3', source: 'Runbook', page: 1, score: 0.95, rerankScore: 0.97, evalLabel: 'gold', text: '企智搭 · 数字伙伴平台使用指南 v3.0 ...' },
       ],
       metrics: { ttftMs: 220, durationMs: 720, promptTokens: 240, completionTokens: 180, cacheHits: 3, model: 'Haiku-4.5', provider: 'anthropic' },
     }),

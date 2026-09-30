@@ -71,7 +71,7 @@ func looksLikeMultiAgent(msg, lower string) bool {
 	if containsAnyFold(msg, lower,
 		"跨部门", "联合", "会商", "多方", "协作会诊", "拉上", "一起看",
 		"运维和", "和人事", "和财务", "和法务", "和客服", "和安全",
-		"多专家", "多个数字工作伙伴",
+		"多专家", "多个数字伙伴",
 	) {
 		return true
 	}

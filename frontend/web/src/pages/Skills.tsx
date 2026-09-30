@@ -551,11 +551,11 @@ export default function Skills() {
               <div className="skills-workflow__intro">
                 <div className="min-w-0 flex-1">
                   <p className="skills-workflow__intro-text">
-                    流程技能来自「工作流程 → 发布技能」。仅<strong>已发布</strong>项可装配给数字工作伙伴；「调用需审批」表示执行时需双重审批。高风险草稿需管理员完成治理发布。
+                    流程技能来自「工作流程 → 发布技能」。仅<strong>已发布</strong>项可装配给数字伙伴；「调用需审批」表示执行时需双重审批。高风险草稿需管理员完成治理发布。
                   </p>
                   <div className="skills-workflow__links">
                     <Link to="/workflows">前往工作流程</Link>
-                    <Link to="/partners">数字工作伙伴装配</Link>
+                    <Link to="/partners">数字伙伴装配</Link>
                   </div>
                 </div>
               </div>

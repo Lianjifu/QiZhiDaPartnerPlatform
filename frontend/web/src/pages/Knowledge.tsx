@@ -659,7 +659,7 @@ export default function Knowledge() {
             <div className="knowledge-workspace-heading">
               <div>
                 <div className="text-sm font-semibold">检索验证台</div>
-                <p>验证数字工作伙伴在真实问题下的证据覆盖、相关度与响应性能。</p>
+                <p>验证数字伙伴在真实问题下的证据覆盖、相关度与响应性能。</p>
               </div>
               <Badge tone="success"><CheckCircle2 className="mr-1 h-3 w-3" />检索服务可用</Badge>
             </div>
