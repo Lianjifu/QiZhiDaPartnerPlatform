@@ -15,9 +15,19 @@ import uuid
 from pathlib import Path
 
 # 允许直接 ``from generate_docx import ...`` 导入 backend/scripts/generate_docx.py。
-# 上溯 3 级得到 backend/,再拼 ``scripts``。
-_SCRIPTS = Path(__file__).resolve().parents[3] / "scripts"
-if str(_SCRIPTS) not in sys.path:
+# 沿父目录向上搜索 ``scripts/generate_docx.py``,兼容:
+# - 本地:backend/services/qzda-skill-runtime/app/docx_gen.py → parents[3] = backend
+# - 镜像:/app/app/docx_gen.py（Dockerfile 把 app/ 拷到 /app/app/ 下）
+def _find_scripts_root(start: Path) -> Path | None:
+    for parent in start.resolve().parents:
+        candidate = parent / "scripts" / "generate_docx.py"
+        if candidate.is_file():
+            return parent / "scripts"
+    return None
+
+
+_SCRIPTS = _find_scripts_root(Path(__file__))
+if _SCRIPTS and str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
 from generate_docx import generate_docx, normalize_title  # noqa: E402

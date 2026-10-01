@@ -7,30 +7,33 @@
 # 3. 解析 DE_SKILL_SANDBOX：声明的能力 (runsc | gvisor-local) 与实际能力求交集
 # 4. 透传到 uvicorn
 #
-# 检测方法：
-# - /proc/1/cmdline 含 "runsc"            → runsc-ptrace
-# - /proc/1/cmdline 含 "runsc-kvm"        → runsc-kvm
-# - /proc/1/cmdline 含 "runc"             → runc
-# - /proc/1/cgroup path 含 "docker" 但都不是 → 兜底为 process
+# 检测方法（容器内只能感知 OCI 命名空间，无法看到 host 上的 runsc 进程）：
+# - /proc/version 含 "gvisor"           → runsc-ptrace（默认后端）
+# - /proc/version 含 "gvisor" + /dev/kvm → runsc-kvm（host 暴露 KVM）
+# - /proc/1/cmdline 含 "runc"           → runc
+# - 兜底 → process
 set -euo pipefail
 
 log() { echo "[entrypoint] $*" >&2; }
 
 detect_runtime() {
+  local version=""
+  if [[ -r /proc/version ]]; then
+    version="$(cat /proc/version 2>/dev/null || true)"
+  fi
+
+  if [[ "${version,,}" == *"gvisor"* ]]; then
+    if [[ -e /dev/kvm ]]; then
+      echo "runsc-kvm"
+    else
+      echo "runsc-ptrace"
+    fi
+    return
+  fi
+
   local cmdline=""
   if [[ -r /proc/1/cmdline ]]; then
     cmdline="$(tr '\0' ' ' < /proc/1/cmdline 2>/dev/null || true)"
-  fi
-
-  if [[ -x /usr/local/bin/runsc ]]; then
-    if [[ "$cmdline" == *"runsc-kvm"* ]]; then
-      echo "runsc-kvm"
-      return
-    fi
-    if [[ "$cmdline" == *"runsc"* ]]; then
-      echo "runsc-ptrace"
-      return
-    fi
   fi
 
   if [[ "$cmdline" == *"runc"* ]]; then

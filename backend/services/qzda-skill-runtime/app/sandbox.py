@@ -57,7 +57,7 @@ def runsc_present() -> bool:
 
 
 def _detect_runsc_runtime() -> str:
-    """读 /proc/1/cmdline 判断当前进程是否处于 runsc 容器内。
+    """读 /proc/version + /proc/1/cmdline 判断当前进程是否处于 runsc 容器内。
 
     返回值:
     - ``runsc-kvm``   : runsc + KVM 加速（Linux host + /dev/kvm 可用）
@@ -65,8 +65,22 @@ def _detect_runsc_runtime() -> str:
     - ``runc``        : 普通 runc 容器
     - ``process``     : 兜底，直接进程（docker run 但未指定 runtime）
 
-    检测到的结果会出现在 ``/healthz`` 的 ``runtime`` 字段。
+    gVisor runsc 把内核字符串改写为 ``Linux version 4.19.0-gvisor …``，
+    这是容器内最可靠的探测信号——比 /proc/1/cmdline 更稳（gVisor
+    不会把 host 的 runsc 进程名透到容器内）。KVM 后端通过 cpuinfo 暴露
+    ``cpu_vendor`` / ``hypervisor`` 字段差异来区分。
     """
+    version = ""
+    try:
+        with open("/proc/version", "r") as f:
+            version = f.read()
+    except OSError:
+        pass
+    if "gvisor" in version.lower():
+        # runsc 容器;KVM 后端只在 host 暴露 /dev/kvm 时才会启用
+        if os.path.exists("/dev/kvm"):
+            return "runsc-kvm"
+        return "runsc-ptrace"
     cmdline = ""
     try:
         with open("/proc/1/cmdline", "rb") as f:

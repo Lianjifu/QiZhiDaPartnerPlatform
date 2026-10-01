@@ -737,8 +737,8 @@ services:
 
   qzda-skill-runtime:
     build:
-      context: ../services/qzda-skill-runtime
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: services/qzda-skill-runtime/Dockerfile
     image: qzda-skill-runtime:local
     container_name: qzda-skill-runtime
     restart: unless-stopped

@@ -20,12 +20,16 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY requirements.txt .
+COPY services/qzda-skill-runtime/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app/ ./app/
-COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY services/qzda-skill-runtime/app/ ./app/
+COPY services/qzda-skill-runtime/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# backend/scripts/ 是 ``from generate_docx import ...`` 的目标;docx_gen 用
+# 向上搜索 (``_find_scripts_root``) 找到 /app/scripts/,所以这里必须落到 /app/scripts/。
+COPY scripts/ /app/scripts/
 
 EXPOSE 8093
 
