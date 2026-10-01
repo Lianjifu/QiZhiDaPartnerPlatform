@@ -63,10 +63,11 @@ import type {
 import { sleep } from '@qzda/web-utils';
 import {
   buildHomeExtraLive,
-  buildOpsOverviewLive,
   normalizeEmployeeCapabilities,
   type HomeExtraLive,
 } from './home-live-aggregate';
+import { dispatchM01Handler, type M01Context } from './m01-mock-handlers';
+export * from './home-live-aggregate';
 
 // ============ 静态 Mock 数据（来自功能模块文档） ============
 
@@ -2872,7 +2873,10 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
     }
   }
 
-  // 首页 / 运营：live-aggregate（与后端 ops_aggregate 对齐）
+  // 工作区控制面：当前 Mock 登录用户仅能访问 tenant-acme 的成员工作区。
+  const workspaceContext = () => ({ workspaceId: opts.headers?.['x-workspace-id'] ?? identity?.workspaceId ?? 'w1', actor: identity?.name ?? opts.headers?.['x-mock-actor'] ?? '王昊', canWrite: identity ? identity.permissions.includes('workspace.write') : (opts.headers?.['x-mock-permissions'] ? opts.headers['x-mock-permissions'].includes('workspace.write') : true) });
+
+  // M01 路由（运营总览）：委托给 m01-mock-handlers.ts 的 dispatcher，行为与内联实现等价。
   const requestedWorkspaceId = opts.headers?.['x-workspace-id'] ?? identity?.workspaceId ?? 'w1';
   const homeExtraLiveFor = (workspaceId: string) => {
     const members = (mockWorkspaceMembers[workspaceId as keyof typeof mockWorkspaceMembers] ?? []).map((member) => ({
@@ -2891,49 +2895,21 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
       slaAlerts: source.slaAlerts.map((alert) => ({ ...alert, ...homeAlertAcknowledgements.get(`${workspaceId}:${alert.id}`) })),
     };
   };
-  if (path === '/api/home/kpis') {
-    const extra = homeExtraLiveFor(requestedWorkspaceId);
-    return {
-      activeDigitalPartners: extra.operationalMetrics.activeAgents,
-      openTasks: extra.taskCompletion.doing + extra.taskCompletion.review + extra.taskCompletion.todo,
-      riskTasks: extra.slaAlerts.length,
-      pendingApprovals: mockReleaseApprovals.filter((item) => item.workspaceId === requestedWorkspaceId && item.status === 'pending').length,
-      deadLetters: deliveryAttempts.filter((item) => item.workspaceId === requestedWorkspaceId && item.status === 'dead_letter').length,
-      generatedAt: extra.generatedAt,
-      source: 'live-aggregate',
-    };
-  }
-  const homeExtra = () => homeExtraLiveFor(requestedWorkspaceId);
-  if (path === '/api/home/events') return homeExtra().recentActivities;
-  if (path === '/api/home/extra') return homeExtra();
-  if (path === '/api/home/team') return homeExtra().teamMembers;
-  const homeAlertAction = path.match(/^\/api\/home\/alerts\/([^/]+)\/acknowledge$/);
-  if (homeAlertAction && method === 'POST') {
-    if (identity?.role !== 'admin') throw new Error('E_ROLE_FORBIDDEN: 仅管理员可确认运营告警');
-    const alertId = homeAlertAction[1];
-    const alert = homeExtraLiveFor(requestedWorkspaceId).slaAlerts.find((item) => item.id === alertId);
-    if (!alert) throw new Error('E_HOME_ALERT_NOT_FOUND: 告警不存在或不属于当前工作区');
-    const note = String((opts.body as { note?: string } | undefined)?.note ?? '').trim();
-    if (alert.level === 'P0' && !note) throw new Error('E_ACK_NOTE_REQUIRED: P0 告警确认必须记录处置说明');
-    const acknowledgement = { acknowledgedAt: new Date().toISOString(), acknowledgedBy: identity.name, acknowledgementNote: note || '已确认，待进入任务处置。' };
-    homeAlertAcknowledgements.set(`${requestedWorkspaceId}:${alertId}`, acknowledgement);
-    appendDomainEvent('确认 SLA 告警', alert.taskCode, 'success');
-    return { id: alertId, ...acknowledgement };
-  }
-  if (path === '/api/home/alerts') {
-    return homeExtraLiveFor(requestedWorkspaceId).slaAlerts.map((alert) => ({
-      id: alert.id,
-      severity: alert.level,
-      tone: alert.level === 'P0' ? 'danger' as const : alert.level === 'P1' ? 'warning' as const : 'info' as const,
-      title: `${alert.level} · ${alert.text}`,
-      meta: `${alert.assignee} · ${alert.taskCode}`,
-      taskCode: alert.taskCode,
-      acknowledged: alert.acknowledged,
-    }));
-  }
+  const m01Result = dispatchM01Handler({
+    homeExtraLiveFor,
+    mockIdentity: mockIdentity as unknown as M01Context['mockIdentity'],
+    workspaceContext,
+    mockReleaseApprovals,
+    deliveryAttempts,
+    mockDigitalPartners: mockDigitalPartners as unknown as M01Context['mockDigitalPartners'],
+    mockUsageMeters,
+    mockBackups,
+    homeAlertAcknowledgements,
+    appendDomainEvent,
+    taskDomain: taskDomain as unknown as M01Context['taskDomain'],
+  } satisfies M01Context, path, method, identity, requestedWorkspaceId, opts.body);
+  if (m01Result !== undefined) return m01Result;
 
-  // 工作区控制面：当前 Mock 登录用户仅能访问 tenant-acme 的成员工作区。
-  const workspaceContext = () => ({ workspaceId: opts.headers?.['x-workspace-id'] ?? identity?.workspaceId ?? 'w1', actor: identity?.name ?? opts.headers?.['x-mock-actor'] ?? '王昊', canWrite: identity ? identity.permissions.includes('workspace.write') : (opts.headers?.['x-mock-permissions'] ? opts.headers['x-mock-permissions'].includes('workspace.write') : true) });
   const workspaceAudit = (workspaceId: string, action: string, target: string, result: 'success' | 'failed' = 'success', reason?: string) => { const context = workspaceContext(); const event: WorkspaceAuditEvent = { id: mockId('workspace_audit'), workspaceId, time: new Date().toISOString(), actor: context.actor, action, target, result, reason, correlationId: mockId('workspace_corr') }; workspaceAudits.unshift(event); return event; };
   const requireWorkspace = (workspaceId: string, write = false) => { const context = workspaceContext(); const workspace = mockWorkspaces.find((item) => item.id === workspaceId && item.tenantId === (identity?.tenantId ?? 'tenant-acme')); if (!workspace) throw new Error('E_WORKSPACE_NOT_FOUND'); if (identity ? !identity.workspaceIds.includes(workspaceId) : context.workspaceId !== workspaceId) throw new Error('E_WORKSPACE_SCOPE: 无权访问其他工作区资源'); if (write && !context.canWrite) throw new Error('E_WORKSPACE_WRITE_FORBIDDEN'); return workspace; };
   const currentWorkspaceId = workspaceContext().workspaceId;
@@ -3157,21 +3133,8 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
   const workspaceResource = path.match(/^\/api\/workspaces\/([^/]+)\/(bindings|environments|policy|quota|audit)$/);
   if (workspaceResource) { const [, id, resource] = workspaceResource; requireWorkspace(id, method !== 'GET'); const records: Record<string, any> = { bindings: workspaceBindings.filter((item) => item.workspaceId === id), environments: workspaceEnvironments.filter((item) => item.workspaceId === id), policy: workspacePolicies.find((item) => item.workspaceId === id), quota: workspaceQuotas.find((item) => item.workspaceId === id), audit: workspaceAudits.filter((item) => item.workspaceId === id) }; if (method === 'GET') return records[resource]; const body = (opts.body ?? {}) as any; if (resource === 'bindings') { const binding: WorkspaceBinding = { id: mockId('binding'), workspaceId: id, environment: body.environment ?? 'sandbox', kind: body.kind, name: body.name, status: 'active' }; workspaceBindings.unshift(binding); workspaceAudit(id, '绑定资源', binding.name); return binding; } if (resource === 'policy') { if ((body.dataClassification === 'restricted' || records.policy?.dataClassification === 'restricted') && body.egressAllowed) throw new Error('E_WORKSPACE_EGRESS_BLOCKED'); const policy = workspacePolicies.find((item) => item.workspaceId === id); if (policy) Object.assign(policy, body); else workspacePolicies.push({ workspaceId: id, dataClassification: 'internal', egressAllowed: false, toolAllowlist: [], retentionDays: 365, exceptionStatus: 'none', ...body }); workspaceAudit(id, '更新工作区策略', id); return workspacePolicies.find((item) => item.workspaceId === id); } return records[resource]; }
 
-  // 跨资产运营视图：数字伙伴 + 任务 live-aggregate（对齐后端 opsOverviewLive）
-  if (path === '/api/operations/overview' && method === 'GET') {
-    const deadLetters = deliveryAttempts.filter((item) => item.workspaceId === currentWorkspaceId && item.status === 'dead_letter');
-    const pendingApprovals = mockReleaseApprovals.filter((item) => item.workspaceId === currentWorkspaceId && item.status === 'pending').length;
-    const pendingBackups = mockBackups.filter((item: any) => (item.workspaceId === currentWorkspaceId || !item.workspaceId) && item.status === 'pending_approval').length;
-    return buildOpsOverviewLive({
-      workspaceId: currentWorkspaceId,
-      tasks: taskDomain.list().filter((task) => !task.workspaceId || task.workspaceId === currentWorkspaceId),
-      employees: mockDigitalPartners.filter((item) => item.workspaceId === currentWorkspaceId),
-      deadLetterCount: deadLetters.length,
-      pendingApprovals,
-      pendingBackups,
-      usageUnits: mockUsageMeters.filter((item) => item.workspaceId === currentWorkspaceId).reduce((sum, item) => sum + (item.units ?? 0), 0),
-    });
-  }
+  // 跨资产运营视图：数字伙伴 + 任务 live-aggregate（对齐后端 opsOverviewLive）—— 委托给 m01-mock-handlers.ts dispatcher
+  // （执行顺序上 dispatcher 已在文件顶部抢答；此处保留以防万一 dispatcher 漏匹配）。
 
   // 记忆中心：短期、工作、长期记忆各自独立保留周期；长期记忆只能受控提炼为知识候选。
   if (path === '/api/memory/overview' && method === 'GET') {

@@ -3,6 +3,7 @@
  * 支持中英双语，localStorage 持久化
  */
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { homeI18n } from '@/features/operations-overview/i18n';
 
 export type Locale = 'zh-CN' | 'en-US';
 
@@ -152,10 +153,7 @@ const zh: Dict = {
   'module.skills.summary.integration': '导入通用 Skill，或接入企业 MCP、Tool 并完成连通性校验。',
   'module.skills.summary.governance': '查看运行证据、权限范围、沙箱策略与审计记录。',
   'module.skills.summary.workflowSkills': '流程技能来自工作流程发布，供数字伙伴装配调用。',
-  'home.title': '运营总览',
-  'home.subtitle': '专家团队在岗状态、待处理事项与成本产出',
-  'home.kpi.tasks': '今日任务',
-  'home.kpi.health': '系统健康度',
+  ...homeI18n.zh,
   'tasks.title': '任务中心',
   'tasks.col.todo': '进行中',
   'tasks.col.review': '待复核',
@@ -166,11 +164,9 @@ const zh: Dict = {
   'error.title': '页面遇到问题',
   'error.desc': '抱歉，组件渲染时发生错误。',
   'error.retry': '重试',
-  'error.home': '返回运营总览',
   'notfound.title': '页面不存在',
   'notfound.desc': '路径不在平台功能模块中。',
   'notfound.back': '返回上页',
-  'notfound.home': '返回运营总览',
   'search.placeholder': '搜索任务、数字伙伴、文档...',
   'search.empty': '没有找到相关结果',
 };
@@ -319,10 +315,7 @@ const en: Dict = {
   'module.skills.summary.integration': 'Import skills or connect enterprise MCP and Tool integrations.',
   'module.skills.summary.governance': 'Review runtime evidence, permissions, sandbox policy, and audit trails.',
   'module.skills.summary.workflowSkills': 'Workflow skills published from workflows for digital work partner binding.',
-  'home.title': 'Overview',
-  'home.subtitle': 'Expert team status, inbox, and cost with outcomes',
-  'home.kpi.tasks': 'Tasks Today',
-  'home.kpi.health': 'System Health',
+  ...homeI18n.en,
   'tasks.title': 'Tasks',
   'tasks.col.todo': 'In Progress',
   'tasks.col.review': 'In Review',
@@ -333,11 +326,9 @@ const en: Dict = {
   'error.title': 'Something went wrong',
   'error.desc': 'Sorry, a component rendering error occurred.',
   'error.retry': 'Retry',
-  'error.home': 'Back to Overview',
   'notfound.title': 'Page Not Found',
   'notfound.desc': 'The path is not part of the platform modules.',
   'notfound.back': 'Go Back',
-  'notfound.home': 'Back to Overview',
   'search.placeholder': 'Search tasks, digital work partners, docs...',
   'search.empty': 'No results found',
 };
