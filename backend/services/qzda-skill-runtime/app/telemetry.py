@@ -137,6 +137,22 @@ skill_subprocess_duration_seconds: Histogram = Histogram(
     ["exit_code"],
     buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60],
 )
+# 阶段 4 #8:127.0.0.1:8080 egress proxy 健康度;0 = down,1 = up
+egress_proxy_up: Gauge = Gauge(
+    "egress_proxy_up",
+    "Egress proxy (127.0.0.1:8080) liveness",
+)
+# 阶段 4 #8:proxy 重启次数(累计),便于发现 flapping
+egress_proxy_restart_total: Counter = Counter(
+    "egress_proxy_restart_total",
+    "Egress proxy supervisor-driven restarts",
+)
+# 阶段 4 #6:rate limiter 拒绝次数,按 scope 维度(ws_actor / ip / ws)
+rate_limit_rejected_total: Counter = Counter(
+    "rate_limit_rejected_total",
+    "Requests rejected by rate limiter",
+    ["scope"],
+)
 
 
 # ---- metrics (OTel MeterProvider) --------------------------------------------

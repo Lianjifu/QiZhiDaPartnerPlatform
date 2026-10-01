@@ -755,7 +755,10 @@ services:
     environment:
       DE_BIND_HOST: "0.0.0.0"
       DE_BIND_PORT: "8093"
-      DE_SKILL_RUN_SECRET: ${DE_SKILL_RUN_SECRET:-qzda-skill-run-dev}
+      # 阶段 4 #2:fail-closed — secret 来自 secrets mount(/etc/qzda/skill-run-secret),
+      # 不再 fallback 到开发占位 qzda-skill-run-dev。生产必须 mount 文件,否则
+      # skill_runtime 主进程 lifespan 主动 skill_secret() 抛 RuntimeError 退出。
+      DE_SKILL_RUN_SECRET_FILE: /etc/qzda/skill-run-secret
       DE_SKILL_SANDBOX: ${DE_SKILL_SANDBOX:-runsc}
       DE_SKILL_REQUIRE_ISOLATION: "1"
       DE_SKILL_RUNTIME: ${DE_SKILL_RUNTIME:-runc}
@@ -768,6 +771,16 @@ services:
       PROMETHEUS_MULTIPROC_DIR: "/tmp/prom-multiproc"
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       DE_SKILL_AUDIT: ${DE_SKILL_AUDIT:-1}
+      # 阶段 4 #6:rate limit 默认 60 req/min per (ws,actor) + IP。开发 / 测试
+      # 环境覆盖:export DE_SKILL_RATE_LIMIT_PER_MIN=10000 即可临时放开。
+      DE_SKILL_RATE_LIMIT_PER_MIN: ${DE_SKILL_RATE_LIMIT_PER_MIN:-60}
+      # 阶段 4 #3:信任的 signer key IDs(CSV),Python 校验 .signed marker 时用。
+      # 留空 = 所有包都被拒(fail-closed)。weather 包对应的 ID 在 tools/sign-skill
+      # 跑一次后会落到 DEPLOY_TRUSTED_KEYS_DIR 注入。
+      DE_SKILL_TRUSTED_KEY_IDS: ${DE_SKILL_TRUSTED_KEY_IDS:-ed25519:dev-placeholder}
+    # 阶段 4 #2:secret 文件 mount。挂到 /etc/qzda/skill-run-secret,只读。
+    secrets:
+      - skill_run_secret
     ports:
       - "8093:8093"
     healthcheck:
@@ -855,6 +868,12 @@ volumes:
   qzda_authentik_media:
   qzda_prometheus:
   qzda_grafana:
+
+# 阶段 4 #2:RunToken HMAC 密钥。生产部署时应换成 Vault Agent sidecar 写入文件;
+# 开发期手动 ``openssl rand -hex 32 > backend/deploy/secrets/skill-run-secret``。
+secrets:
+  skill_run_secret:
+    file: ./secrets/skill-run-secret
 
 networks:
   qzda_net:

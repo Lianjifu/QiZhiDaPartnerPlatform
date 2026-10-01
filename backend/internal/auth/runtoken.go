@@ -26,10 +26,24 @@ type RunTokenClaims struct {
 }
 
 func skillRunSecret() string {
-	if v := strings.TrimSpace(os.Getenv("DE_SKILL_RUN_SECRET")); v != "" {
-		return v
+	// 阶段 4 #2:fail-closed — 三处来源按优先级查找,全部缺失/为占位值
+	// 则返回 "",由 MintRunToken / VerifyRunToken 在启动期调用者那里
+	// 决定是否 panic(便于 compose / k8s 立刻重启,而不是"先起来等 token 再挂")。
+	//
+	// 1. DE_SKILL_RUN_SECRET_FILE(Docker secrets 长语法 mount,默认 /etc/qzda/skill-run-secret)
+	// 2. DE_SKILL_RUN_SECRET 环境变量 — 拒绝硬编码占位 "qzda-skill-run-dev"
+	if path := os.Getenv("DE_SKILL_RUN_SECRET_FILE"); path != "" {
+		if data, err := os.ReadFile(path); err == nil {
+			v := strings.TrimSpace(string(data))
+			if v != "" {
+				return v
+			}
+		}
 	}
-	return "qzda-skill-run-dev"
+	if env := strings.TrimSpace(os.Getenv("DE_SKILL_RUN_SECRET")); env != "" && env != "qzda-skill-run-dev" {
+		return env
+	}
+	return ""
 }
 
 // MintRunToken issues a short-lived token (default 5m).

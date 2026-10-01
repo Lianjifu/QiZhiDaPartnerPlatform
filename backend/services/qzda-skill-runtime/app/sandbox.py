@@ -14,6 +14,7 @@ import hmac
 import json
 import os
 import re
+import resource
 import shutil
 import socket
 import subprocess
@@ -41,10 +42,31 @@ _SCRIPT_RE = re.compile(
 def skill_secret() -> str:
     """读取 RunToken 签名密钥。
 
-    优先取环境变量 ``DE_SKILL_RUN_SECRET``,默认 ``qzda-skill-run-dev``
-    是开发占位,生产必须显式注入(否则签名可被伪造)。
+    阶段 4:fail-closed — 三处来源按优先级查找,全部缺失则抛 ``RuntimeError``,
+    lifespan 立即退出,沙箱不会以默认密钥服务请求。
+
+    查找顺序:
+    1. ``DE_SKILL_RUN_SECRET_FILE``(Docker secrets 长语法 mount 的文件,默认
+       ``/etc/qzda/skill-run-secret``)。
+    2. ``DE_SKILL_RUN_SECRET`` 环境变量 — 必须**不是**硬编码默认值
+       ``qzda-skill-run-dev``(生产拒绝接受开发占位密钥)。
     """
-    return os.environ.get("DE_SKILL_RUN_SECRET") or "qzda-skill-run-dev"
+    path = os.environ.get("DE_SKILL_RUN_SECRET_FILE", "/etc/qzda/skill-run-secret")
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            value = f.read().strip()
+        if value:
+            return value
+    except OSError:
+        pass
+    env = os.environ.get("DE_SKILL_RUN_SECRET", "").strip()
+    if env and env != "qzda-skill-run-dev":
+        return env
+    raise RuntimeError(
+        "DE_SKILL_RUN_SECRET not provisioned: set DE_SKILL_RUN_SECRET_FILE "
+        "(Docker secrets mount) or DE_SKILL_RUN_SECRET env var; hardcoded "
+        "'qzda-skill-run-dev' is rejected in non-dev environments"
+    )
 
 
 def runsc_present() -> bool:
@@ -202,6 +224,47 @@ def safe_under(root: Path, rel: str) -> Path | None:
     return None
 
 
+def _default_prlimit() -> tuple[int, int, int]:
+    """读 ``DE_SKILL_DEFAULT_PIDS/CPU_SECS/MEM_MB``,env 缺失时用安全默认。"""
+    pids = int(os.environ.get("DE_SKILL_DEFAULT_PIDS") or "64")
+    cpu = int(os.environ.get("DE_SKILL_DEFAULT_CPU_SECS") or "30")
+    mem = int(os.environ.get("DE_SKILL_DEFAULT_MEM_MB") or "512")
+    return max(1, pids), max(1, cpu), max(64, mem)
+
+
+def make_preexec(pids: int | None = None, cpu_secs: int | None = None,
+                 mem_mb: int | None = None):
+    """构造 ``subprocess.Popen(preexec_fn=...)`` 调用,夹紧子进程 RLIMIT_*。
+
+    阶段 4 #4 — ``prlimit(2)`` 在 ``preexec_fn`` 里跑,不需 SYS_ADMIN 也能限:
+    - ``RLIMIT_NPROC``:子进程可派生进程数(防 fork bomb)
+    - ``RLIMIT_CPU``:CPU 秒数(超时触发 SIGKILL)
+    - ``RLIMIT_AS``:虚拟内存字节数(防单 skill 吃光 1GiB 容器内存)
+
+    注意:
+    - 在 fork 之后、子进程 exec 之前同步跑;改当前进程 RLIMIT 会爆炸。
+    - 必须返回 ``None``,因为这是个 ``preexec_fn``(Python 3.x 严格要求返回 None)。
+    - 失败时吞 OSError:沙箱比"什么都跑不了"重要,失败退化为无限。
+    """
+    default_pids, default_cpu, default_mem = _default_prlimit()
+    p = pids if pids is not None else default_pids
+    c = cpu_secs if cpu_secs is not None else default_cpu
+    m = mem_mb if mem_mb is not None else default_mem
+
+    def _set_rlimits() -> None:
+        try:
+            resource.setrlimit(resource.RLIMIT_NPROC, (p, p))
+            resource.setrlimit(resource.RLIMIT_CPU, (c, c + 1))
+            resource.setrlimit(
+                resource.RLIMIT_AS, (m * 1024 * 1024, m * 1024 * 1024)
+            )
+        except (OSError, ValueError):
+            # 容器/平台不支持某 limit 时静默退化,不要让 sandbox 完全跑不起来
+            pass
+
+    return _set_rlimits
+
+
 def run_package_script(
     package_path: str,
     scripts: list[str],
@@ -209,6 +272,7 @@ def run_package_script(
     timeout_sec: int,
     allowed_egress: list[str] | None = None,
     correlation_id: str | None = None,
+    workspace_id: str | None = None,
 ) -> tuple[bool, str, int]:
     """执行技能包内白名单脚本。
 
@@ -280,6 +344,15 @@ def run_package_script(
     env = {k: v for k, v in os.environ.items() if not any(k == p or k.startswith(p) for p in FORBIDDEN_ENV)}
     env["DE_SKILL_PACKAGE_ROOT"] = str(root)
     env["DE_SKILL_WORK_DIR"] = str(root)
+    # 阶段 4 #5:透传 workspace_id 给子进程,审计 + 日志 tag 一致
+    if workspace_id:
+        env["DE_WORKSPACE_ID"] = str(workspace_id)
+    # 阶段 4 #1:LD_PRELOAD 拦截非环回 IPv4 connect → 重定向到 127.0.0.1:8080,
+    # 让 curl/wget/node fetch 等不走 stdlib 的客户端也能被 egress policy 覆盖。
+    # .so 不存在时 silently 降级(开发期 / 单元测试环境可能未编译)。
+    lib_path = "/app/lib/libqzda_egress.so"
+    if os.path.isfile(lib_path):
+        env["LD_PRELOAD"] = lib_path
     # 阶段 3:把 correlation_id + 遥测/审计开关透传给子进程,这样 audit_hooks 安装
     # 后记录的 syscall 计数可以携带同一 correlation_id,前端 trace 一致。
     if correlation_id:
@@ -323,6 +396,7 @@ def run_package_script(
             text=True,
             timeout=max(1, min(timeout_sec, 120)),
             check=False,
+            preexec_fn=make_preexec(),  # 阶段 4 #4 RLIMIT_NPROC/AS/CPU
         )
     except subprocess.TimeoutExpired:
         return False, f"script timeout after {timeout_sec}s: {rel}", int((time.time() - started) * 1000)
@@ -330,11 +404,15 @@ def run_package_script(
         return False, f"runtime binary missing: {exc}", int((time.time() - started) * 1000)
     out = (proc.stdout or "").strip()
     err = (proc.stderr or "").strip()
+    # 阶段 4 #4:识别 RLIMIT 触发的信号退出(SIGKILL=-9 / SIGXCPU=24 / SIGTERM=-15)
+    rlimit_killed = proc.returncode in (-9, -15) or proc.returncode == 24
     lines = [
         f"package={root}",
         f"script={rel}",
         f"exit={proc.returncode}",
     ]
+    if rlimit_killed:
+        lines.append("rlimit_killed=true")  # 阶段 4 #4:审计 reason 段区分信号 vs 普通非零
     if out:
         lines.append("--- stdout ---")
         lines.append(_truncate_lines(out, 100, 200))  # 按行截断保留首 100 + 尾 200

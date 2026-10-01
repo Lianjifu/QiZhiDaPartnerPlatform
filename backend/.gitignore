@@ -14,3 +14,6 @@ sign-skill-pack
 sign-skill
 verify-skill
 check-skill
+# Phase 4 #2 — Docker secrets mounted into qzda-skill-runtime; per-host
+# generation (see deploy/README.md / compose.yml `secrets:` block).
+deploy/secrets/

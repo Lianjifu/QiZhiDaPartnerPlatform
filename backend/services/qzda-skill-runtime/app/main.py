@@ -23,20 +23,26 @@ from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from app import audit_hooks
 from app.artifact_harvest import harvest_office_artifact
 from app.docx_gen import artifact_dir, build_docx_artifact, is_docx_request
+from app.egress import DnsGate
 from app.egress_proxy import EgressProxy
+from app.rate_limit import build_default as build_rate_limit
+from app.rate_limit import rate_limit_keys
 from app.sandbox import (
     FORBIDDEN_ENV,
     control_plane_probe,
     run_package_script,
     runsc_present,
     sandbox_mode,
+    skill_secret,
     strip_forbidden_env,
     verify_run_token,
 )
+from app.sign_verify import verify_package_signature
 from app.telemetry import (
     get_tracer,
     init_metrics,
     init_tracing,
+    rate_limit_rejected_total,
     set_correlation_id,
     skill_execution_duration_seconds,
     skill_executions_total,
@@ -48,6 +54,10 @@ from app.telemetry import (
 # 都会指到这里。lifespan 启动,FastAPI 退出前收尾。
 _egress_proxy = EgressProxy()
 
+# 阶段 4 #6:进程内 token-bucket rate limiter,per (workspaceId, actorId) + IP。
+# lifespan 期间实例化一次,handler 直接 hit。
+_rate_limiter = build_rate_limit()
+
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -58,8 +68,19 @@ async def lifespan(_app: FastAPI):
     同时启动阶段 2 出口代理,绑定失败就抛错(端口冲突 / 权限不足)。
     阶段 3:初始化 OTel tracing + metrics,把 in_flight gauge 清零,
     便于 prometheus 第一次 scrape 就拿到基线。
+    阶段 4 #2:fail-closed — ``skill_secret()`` 启动时主动读一次,缺失
+    立即 ``RuntimeError`` 退出;沙箱不允许在没密钥的情况下"先起再说"。
+    阶段 4 #7:父进程也装 DnsGate,deny-all + 仅 127.0.0.1 白名单,
+    防止 lifespan / 任何内部模块解析 PG/Redis DNS 绕过审计。
     """
     strip_forbidden_env()
+    # 阶段 4 #2:启动时主动触发密钥解析,失败 fail-fast
+    try:
+        skill_secret()
+    except RuntimeError as exc:
+        # 不让容器"先起来等请求再挂" — 立刻退出,compose 会重启,
+        # 运维看到日志知道是 secret 配置问题
+        raise
     init_tracing()         # 幂等,OTLP exporter;OTEL_EXPORTER_OTLP_ENDPOINT 未配时 console
     init_metrics()         # 幂等
     skill_in_flight.set(0)  # reset on boot,保证 /metrics 有 baseline
@@ -67,7 +88,14 @@ async def lifespan(_app: FastAPI):
     # subprocess.run(subprocess.Popen.__init__)、proxy 进程会调 socket.connect。
     # 没有父进程 hook,/v1/execute 响应里的 syscalls 永远是空 dict。
     audit_hooks.install_audit_hooks()
-    _egress_proxy.start()
+    _egress_proxy.start()  # 阶段 4 #8:失败也不抛,supervisor 接管
+    # 阶段 4 #7:父进程 deny-all DnsGate,只允许 127.0.0.1(给 OTel/exporter 兜底)。
+    # 即便有人忘了 strip env,父进程解析 PG DNS 也会被这里扔 gaierror。
+    try:
+        DnsGate([], deny_all=True).install()
+    except Exception as exc:  # noqa: BLE001
+        # DnsGate 自身已幂等;这里只兜底未来重构时不重复 install
+        print(f"[qzda-parent-dns-gate] install failed: {exc!r}", flush=True)
     try:
         yield
     finally:
@@ -168,11 +196,15 @@ async def execute(request: Request) -> JSONResponse:
 
     处理流水线:
     1. 解析 JSON 并做类型兜底(避免崩溃)。
-    2. ``verify_run_token`` 校验 HMAC 签名与 ``exp``,失败 → 401。
-    3. 二次校验进程环境无控制面 DSN 残留,以及 ``denyControlPlane`` 未被显式置 False。
-    4. 主动探测 PG/Redis 可达性;``DE_SKILL_REQUIRE_ISOLATION=1`` 时不允许联通。
-    5. 若是 DOCX 请求 → 走内置 ``build_docx_artifact``(不启子进程)。
-    6. 否则走 ``run_package_script`` 同步执行,执行成功后再 ``harvest_office_artifact``
+    2. 阶段 4 #6:**rate limit** — per (ws,actor) + per-IP + per-ws 三层任一超
+    限 → 429。发生在 RunToken 鉴权之前,防伪 token + 真请求混合 flood。
+    3. ``verify_run_token`` 校验 HMAC 签名与 ``exp``,失败 → 401。
+    4. 阶段 4 #3:**skill 包签名** — 跑真正脚本前验 ``.signed`` marker
+    (含 SKILL.md sha256 比对),失败 → 403。
+    5. 二次校验进程环境无控制面 DSN 残留,以及 ``denyControlPlane`` 未被显式置 False。
+    6. 主动探测 PG/Redis 可达性;``DE_SKILL_REQUIRE_ISOLATION=1`` 时不允许联通。
+    7. 若是 DOCX 请求 → 走内置 ``build_docx_artifact``(不启子进程)。
+    8. 否则走 ``run_package_script`` 同步执行,执行成功后再 ``harvest_office_artifact``
        扫描包内新生成的 Office 制品,把 ``downloadPath`` 合并进响应。
     """
     try:
@@ -183,6 +215,21 @@ async def execute(request: Request) -> JSONResponse:
         data = {}
     if not isinstance(data, dict):
         data = {}
+    # 阶段 4 #6:rate limit 在 RunToken 鉴权前 — 防"用假 token 真 flood"
+    # 这里不需要 claims 即可做 (workspace_id, actor_id) = ip 让每层都先 hit 一次。
+    client_ip = (request.client.host if request.client else "") or "unknown"
+    placeholder_ws = "-"
+    placeholder_actor = "-"
+    for key, scope_label in rate_limit_keys(placeholder_ws, placeholder_actor, client_ip):
+        if not _rate_limiter.hit(key):
+            try:
+                rate_limit_rejected_total.labels(scope=scope_label).inc()
+            except Exception:  # noqa: BLE001
+                pass
+            return JSONResponse(
+                status_code=429,
+                content={"ok": False, "error": "rate limited", "scope": scope_label},
+            )
     # 阶段 3:correlation_id 注入 ContextVar,后续 OTel span / 日志共用同一 id
     correlation_id = str(data.get("correlationId") or "")
     set_correlation_id(correlation_id)
@@ -198,6 +245,22 @@ async def execute(request: Request) -> JSONResponse:
             ok, err, claims = verify_run_token(str(data.get("runToken") or ""))
             if not ok:
                 return JSONResponse(status_code=401, content={"ok": False, "error": err})
+            # 阶段 4 #6:鉴权通过后再按真实 (ws,actor) 重 hit 一次,占位符已扣
+            # 的额度退回 — 用 reset 占位 + 重 hit 真 key 的方式。
+            for key, scope_label in rate_limit_keys(placeholder_ws, placeholder_actor, client_ip):
+                _rate_limiter.reset(key)
+            real_ws = claims.get("workspaceId") or placeholder_ws
+            real_actor = claims.get("actorId") or placeholder_actor
+            for key, scope_label in rate_limit_keys(real_ws, real_actor, client_ip):
+                if not _rate_limiter.hit(key):
+                    try:
+                        rate_limit_rejected_total.labels(scope=scope_label).inc()
+                    except Exception:  # noqa: BLE001
+                        pass
+                    return JSONResponse(
+                        status_code=429,
+                        content={"ok": False, "error": "rate limited", "scope": scope_label},
+                    )
             # 第 2 步:进程环境隔离 — 即使 lifespan 已清理,这里再做一次兜底
             leaked = [k for k in os.environ if any(k.startswith(p) or k == p for p in FORBIDDEN_ENV)]
             if leaked or data.get("denyControlPlane") is False:
@@ -218,6 +281,19 @@ async def execute(request: Request) -> JSONResponse:
                 )
             # 优先用 claims 里的 skillId,确保调用方声明的 ID 与令牌内一致
             skill_id = data.get("skillId") or claims.get("skillId")
+            workspace_id = claims.get("workspaceId")  # 阶段 4 #5:透传给子进程
+            # 阶段 4 #3:skill 包签名验证(只在真跑脚本路径上做,DOCX 走内置
+            # 生成,不在包内脚本范畴;sign marker 缺失应 fail-closed)。
+            # DOCX 也走 builtin build_docx_artifact,不读 SKILL.md,但仍校验
+            # 包签名,防止 builtin 被人偷换 SKILL.md 注入 prompt injection。
+            package_path = str(data.get("packagePath") or "").strip()
+            if package_path:
+                sig_ok, sig_reason = verify_package_signature(package_path)
+                if not sig_ok:
+                    return JSONResponse(
+                        status_code=403,
+                        content={"ok": False, "error": "skill package signature check failed", "detail": sig_reason},
+                    )
             # 阶段 2:egress allowlist 由 RunToken 签名声明,优先用签名值而非 body 字段,
             # 防止中间人篡改 body.allowedEgress。
             egress_raw = claims.get("allowedEgress")
@@ -243,11 +319,12 @@ async def execute(request: Request) -> JSONResponse:
                     "used": _egress_proxy.cumulative_used_hosts(),
                     "denied": _egress_proxy.cumulative_denied_hosts(),
                 }
+                # 阶段 4 #8:出口代理健康度
+                payload["egressProxyUp"] = _egress_proxy.is_up()
                 return JSONResponse(status_code=200, content=payload)
 
             # 通用脚本执行路径
             command = str(data.get("command") or "").strip()
-            package_path = str(data.get("packagePath") or "").strip()
             scripts = data.get("scripts") or []
             if not isinstance(scripts, list):
                 scripts = []
@@ -268,6 +345,7 @@ async def execute(request: Request) -> JSONResponse:
                 exec_ok, pkg_out, duration_ms = run_package_script(
                     package_path, scripts, command, timeout_sec, allowed_egress,
                     correlation_id=correlation_id or None,
+                    workspace_id=workspace_id,  # 阶段 4 #5:透传 ws id
                 )
                 stdout_lines.append(pkg_out)
                 if "status=needs_instruction" in pkg_out:
@@ -317,6 +395,8 @@ async def execute(request: Request) -> JSONResponse:
                     "used": _egress_proxy.cumulative_used_hosts(),
                     "denied": _egress_proxy.cumulative_denied_hosts(),
                 },
+                # 阶段 4 #8:egress proxy 健康度,前端可据此提示"网络出口策略已停用"
+                "egressProxyUp": _egress_proxy.is_up(),
             }
             if exec_ok and package_path:
                 # 执行成功后扫描包内新生成的 Office 制品,合并下载链接

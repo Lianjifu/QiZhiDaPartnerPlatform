@@ -31,6 +31,7 @@ import http.server
 import socket
 import socketserver
 import threading
+import time
 from typing import Iterable
 
 from app.egress import host_allowed
@@ -215,6 +216,11 @@ class EgressProxy:
         self._lock = threading.Lock()
         self._server: _ThreadingHTTPServer | None = None
         self._thread: threading.Thread | None = None
+        self._supervisor: threading.Thread | None = None
+        self._supervisor_stop = threading.Event()
+        # 阶段 4 #8:supervisor 退避(指数封顶),防止 proxy 启动失败时 tight loop
+        self._restart_attempt = 0
+        self._last_restart_at: float | None = None
         self._started = False
 
     @property
@@ -267,26 +273,125 @@ class EgressProxy:
             pass
 
     def start(self) -> None:
+        """绑定 127.0.0.1:bind_port 起 HTTPServer。
+
+        阶段 4 #8 改造:
+        - 启动失败(端口占用 / OSError)**不再 raise**,改写 self._started=False
+          返回 False,让 supervisor 接管;lifespan 因此不会因为 8080 一时被
+          占住而整个进程退出。
+        - 启动成功会同时拉起 supervisor 线程(5s 一次 TCP 探测)。
+        """
         if self._started:
             return
-        # 先校验端口可用,失败抛错便于诊断
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
-            sock.bind((self.bind_host, self.bind_port))
-        finally:
-            sock.close()
-        srv = _ThreadingHTTPServer((self.bind_host, self.bind_port), _ProxyHandler)
-        srv._proxy = self
-        self._server = srv
-        self._thread = threading.Thread(
-            target=srv.serve_forever,
-            name="qzda-egress-proxy",
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            try:
+                sock.bind((self.bind_host, self.bind_port))
+            finally:
+                sock.close()
+            srv = _ThreadingHTTPServer((self.bind_host, self.bind_port), _ProxyHandler)
+            srv._proxy = self
+            self._server = srv
+            self._thread = threading.Thread(
+                target=srv.serve_forever,
+                name="qzda-egress-proxy",
+                daemon=True,
+            )
+            self._thread.start()
+            self._started = True
+            self._restart_attempt = 0
+            self._update_up_gauge(1)
+            self._maybe_start_supervisor()
+        except OSError:
+            # bind 失败(端口被占 / 权限)→ 留给下一轮 supervisor 重试
+            self._started = False
+            self._update_up_gauge(0)
+            self._maybe_start_supervisor()
+
+    def _update_up_gauge(self, value: int) -> None:
+        """更新 prometheus 出口代理 up gauge + 记一次重启次数。"""
+        try:
+            from app.telemetry import egress_proxy_up, egress_proxy_restart_total
+            if value == 0:
+                egress_proxy_up.set(0)
+            else:
+                # 1 表示恢复;递增重启计数器便于发现 flapping
+                if self._last_restart_at is not None:
+                    egress_proxy_restart_total.inc()
+                egress_proxy_up.set(1)
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _maybe_start_supervisor(self) -> None:
+        """确保 supervisor 线程在跑(首次 start 后 / 重启失败后都要在跑)。"""
+        if self._supervisor and self._supervisor.is_alive():
+            return
+        self._supervisor_stop.clear()
+        self._supervisor = threading.Thread(
+            target=self._supervisor_loop,
+            name="qzda-egress-proxy-supervisor",
             daemon=True,
         )
-        self._thread.start()
-        self._started = True
+        self._supervisor.start()
+
+    def _supervisor_loop(self) -> None:
+        """5s 一次 TCP 探测 ``127.0.0.1:bind_port``;fail → 重启 + 退避。"""
+        backoff = [1, 2, 4, 10, 30]  # 5 次后封顶 30s
+        while not self._supervisor_stop.is_set():
+            try:
+                self._supervisor_stop.wait(5.0)
+                if self._supervisor_stop.is_set():
+                    return
+                with socket.create_connection(
+                    (self.bind_host, self.bind_port), timeout=1.0
+                ):
+                    pass
+                # 连通 — 当前是 up;若之前 down 则记一次恢复
+                if not self._started:
+                    # 上一轮 start() 返回 False 后被 supervisor 接管;尝试重启
+                    self._last_restart_at = time.time()
+                    self._do_restart()
+                else:
+                    self._update_up_gauge(1)
+            except OSError:
+                # connect 失败 — 触发重启
+                self._started = False
+                self._update_up_gauge(0)
+                # 退避封顶
+                idx = min(self._restart_attempt, len(backoff) - 1)
+                wait = backoff[idx]
+                if self._supervisor_stop.wait(float(wait)):
+                    return
+                self._restart_attempt += 1
+                self._last_restart_at = time.time()
+                self._do_restart()
+            except Exception:  # noqa: BLE001
+                # supervisor 自己崩溃不要影响主线程
+                pass
+
+    def _do_restart(self) -> None:
+        """先 stop 再 start;调用方已加锁上下文外。"""
+        try:
+            self._server and self._server.shutdown()  # noqa: B015
+            self._server and self._server.server_close()  # noqa: B015
+        except Exception:  # noqa: BLE001
+            pass
+        self._server = None
+        self._thread = None
+        self.start()
+
+    def is_up(self) -> bool:
+        """当前代理是否在跑(同步判断)。"""
+        return self._started
+
+    def last_restart_at(self) -> float | None:
+        """最近一次 supervisor 驱动的重启 UNIX 时间戳。"""
+        return self._last_restart_at
 
     def stop(self) -> None:
+        if self._supervisor:
+            self._supervisor_stop.set()
+            self._supervisor = None
         if not self._started or not self._server:
             return
         self._server.shutdown()
@@ -294,3 +399,4 @@ class EgressProxy:
         self._started = False
         self._server = None
         self._thread = None
+        self._update_up_gauge(0)
