@@ -477,8 +477,8 @@ export default function Copilot() {
 
   const { data: employeesData } = useApiQuery<DigitalPartner[]>(['digital-employees'], '/api/partners');
   const employees = useMemo(() => employeesData ?? [], [employeesData]);
-  const { data: modelProvidersData } = useApiQuery<ModelProvider[]>(['model-providers', 'copilot'], '/api/model-providers');
-  const { data: routingPoliciesData } = useApiQuery<RoutingPolicyDraft[]>(['model-routing-policies', 'copilot'], '/api/model-routing/policies');
+  const { data: modelProvidersData } = useApiQuery<ModelProvider[]>(['model-providers', 'copilot'], '/api/model-providers', undefined, { enabled: isAdmin });
+  const { data: routingPoliciesData } = useApiQuery<RoutingPolicyDraft[]>(['model-routing-policies', 'copilot'], '/api/model-routing/policies', undefined, { enabled: isAdmin });
   const modelOptions = useMemo(
     () => buildCopilotModelOptions(modelProvidersData, routingPoliciesData),
     [modelProvidersData, routingPoliciesData],
