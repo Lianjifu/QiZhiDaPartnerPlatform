@@ -1,139 +1,60 @@
 # qzda-sandbox
 
-FastAPI skill sandbox on port **8093**. **Monolith 与 coarse 均必须独立部署**（不可并入 qzda-app）。RunToken HMAC verification and package script execution.
+> Python 技能 / MCP 执行沙箱。`port 8093`,**必须独立部署**(monolith 与 coarse 都行,
+> 但不能并入 `qzda-app`)。见 [`backend/deploy/topology-split.md:11`](../../deploy/topology-split.md) 的
+> 必须独立部署规则。
 
-## Endpoints
+## 端点
 
-- `GET /healthz` — sandbox status, runtime tier (runsc-kvm / runsc-ptrace / runc / process), isolation probe, cgroup limits
-- `POST /v1/execute` — execute skill with RunToken
-- `GET /v1/artifacts/{name}` — download generated Office/PDF artifact
+| Method | Path | 用途 | Source |
+|---|---|---|---|
+| `GET` | `/healthz` | 健康检查 + 隔离探测 + cgroup 配额 | [`app/main.py:108`](app/main.py) |
+| `GET` | `/` | 服务自描述 banner(同 `/healthz`) | [`app/main.py:109`](app/main.py) |
+| `GET` | `/metrics` | Prometheus exposition | [`app/main.py:138`](app/main.py) |
+| `POST` | `/v1/execute` | RunToken 鉴权后执行技能脚本 / 生成 DOCX | [`app/main.py:183`](app/main.py) |
+| `GET` | `/v1/artifacts/{name}` | 拉取执行产出的 Office / PDF 制品 | [`app/main.py:426`](app/main.py) |
 
-## Sandbox runtime tier
+## 文档导航
 
-镜像入口探测 `/proc/1/cmdline` + `DE_SANDBOX_RUNTIME_DETECTED`，实际声明四档：
+| 主题 | 路径 |
+|---|---|
+| 架构 / 组件 / RunToken / 3 层 egress / cgroup | [architecture.md](docs/architecture.md) |
+| API 字段 / 响应 schema / 错误码 | [api.md](docs/api.md) |
+| 安全模型 / Phase 2/3/4 hardening / 解释器白名单 / 签名 | [security.md](docs/security.md) |
+| 运维 runbook / gVisor / 常见 footgun | [operations.md](docs/operations.md) |
+| W1-D2 + W2-D1 签名 / 发布流水线(builtin + workspace publisher) | [signing/README.md](signing/README.md) |
+| Compose / 端口 / secrets | [`backend/deploy/README.md`](../../deploy/README.md) · [`backend/deploy/topology-split.md`](../../deploy/topology-split.md) |
 
-| `sandbox` / `runtime` | 含义 | 启动开销 | 隔离强度 |
-|----|----|----|----|
-| `runsc-kvm` | gVisor + KVM（Linux host + `/dev/kvm` 可用） | +200ms | syscall 层 |
-| `runsc-ptrace` | gVisor + ptrace（macOS dev / 无 KVM） | +500ms | syscall 层 |
-| `runsc-emulated` | 镜像内 runsc 二进制存在却未启用 runsc | 0 | 进程级 |
-| `runc` | 普通 runc 容器 | 0 | 进程级 |
-| `process` | 直接进程（兜底） | 0 | 仅 env 过滤 |
+## 环境变量(quick ref)
 
-`/healthz` 同步返回 `runscRequested` 与 `runscBinary` 供运维判定实际能力。
+完整说明见 [`backend/deploy/README.md:82`](../../deploy/README.md) 和
+[`app/sandbox.py:42-69, 130-145, 228-232, 360-394`](app/sandbox.py)。本表只列
+**最常被运维调整**的几个。
 
-## Environment
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DE_BIND_HOST` | `0.0.0.0` | Bind address |
-| `DE_BIND_PORT` | `8093` | Bind port |
-| `DE_SANDBOX_RUN_SECRET` | `qzda-skill-run-dev` | HMAC secret for RunToken |
-| `DE_SANDBOX_SANDBOX` | `runsc` | Requested capability (runsc / gvisor-local) |
-| `DE_SANDBOX_REQUIRE_ISOLATION` | `1` (Docker) | Reject if control-plane reachable |
-| `DE_SANDBOX_RUNTIME_DETECTED` | (set by entrypoint) | Actual runtime tier |
-| `DE_SANDBOX_RUNTIME` | `runc` | (compose) Docker runtime spec; set `runsc` to opt in |
-
-On startup, control-plane DSN env vars (`DE_DATABASE_URL`, etc.) are stripped.
-
-## Run locally
-
-```bash
-cd backend
-pip install -r services/qzda-sandbox/requirements.txt
-python3 dev/qzda_sandbox/main.py
-# or
-cd services/qzda-sandbox && uvicorn app.main:app --host 127.0.0.1 --port 8093
-```
-
-## Docker
-
-```bash
-docker build -t qzda-sandbox:local backend/services/qzda-sandbox
-docker run --rm -p 8093:8093 -e DE_SANDBOX_REQUIRE_ISOLATION=1 qzda-sandbox:local
-```
-
-### gVisor (runsc) 启用
-
-```bash
-# 1. 安装 runsc（Linux host）
-curl -fsSL https://gvisor.dev/archive/nightly/latest/runsc \
-  -o /usr/local/bin/runsc && chmod +x /usr/local/bin/runsc
-runsc install
-
-# 2. Compose 启用 runsc
-cd backend
-DE_SANDBOX_RUNTIME=runsc make compose-up-monolith
-
-# 3. 验证
-docker exec qzda-sandbox cat /proc/1/cmdline | tr '\0' ' '
-# 期望：…/runsc --root /var/run/docker/runsc --log runsc日志 --log-format json …
-curl -s http://127.0.0.1:8093/healthz | jq .sandbox
-# 期望："runsc-ptrace" 或 "runsc-kvm"
-
-# 4. KVM 加速（Linux host + /dev/kvm 可用）
-DE_SANDBOX_RUNTIME=runsc docker run -it --rm --runtime=runsc \
-  qzda-sandbox:local sh
-# 在容器内确认是 KVM：
-cat /proc/cpuinfo | grep vmx   # 或 svm（AMD）
-```
-
-`seccomp` / `apparmor` 必须 `unconfined`（gVisor 自己实现 syscall 拦截，重复套用会与 Sentry 冲突）。
-
-Compose (`deploy/compose.yml`) builds from `services/qzda-sandbox/Dockerfile`.
-
-## 资源配额（compose 已默认）
-
-- `cpus: 2.0` / `memory: 1024M` / `pids: 128`
-- `read_only: true` + `tmpfs: /tmp:64m, /var/run:8m`
-- `cap_drop: ALL` + `cap_add: CHOWN/SETUID/SETGID/DAC_OVERRIDE`
-- `no-new-privileges: true`
-
-## Egress allowlist（阶段 2）
-
-技能脚本执行允许访问的外联域名由 `RunToken` 的 `allowedEgress` 字段签名声明，
-**Python 沙箱消费该字段作为唯一可信源**（不读 body 字段，防篡改）。
-
-### 三层强制
-
-| 层 | 机制 | 拦截对象 |
+| Var | 默认 | 用途 |
 |---|---|---|
-| 签名层 | `RunToken` HMAC-SHA256，Go 控制面签发 | body 字段被篡改 |
-| DNS 层 | `sitecustomize.py` bootstrap，`DnsGate` monkey-patch `socket.getaddrinfo` | Python stdlib（`socket`/`urllib`） |
-| 代理层 | `127.0.0.1:8080` stdlib 出口代理，子进程 `HTTPS_PROXY` 注入 | `curl` / `requests` / `urllib3` / `node fetch` / `Go net/http` 等守规矩的 HTTP 客户端 |
+| `DE_BIND_HOST` / `DE_BIND_PORT` | `0.0.0.0` / `8093` | uvicorn bind |
+| `DE_SANDBOX_RUN_SECRET_FILE` | `/etc/qzda/skill-run-secret` | RunToken HMAC key 文件(fail-closed) |
+| `DE_SANDBOX_RUN_SECRET` | (无) | 兼容用 env 注入 HMAC;**生产拒收 `qzda-skill-run-dev` 占位值** |
+| `DE_SANDBOX_REQUIRE_ISOLATION` | `1` (Docker) | 控制面可达时 fail-closed |
+| `DE_SANDBOX_RUNTIME_DETECTED` | (entrypoint 设置) | 实际 runsc / runc / process,`/healthz` 反射 |
+| `DE_SANDBOX_SANDBOX` | `runsc` | 声明期望的隔离模式 |
+| `DE_SANDBOX_AUDIT` / `DE_SANDBOX_AUDIT_BLOCK_OPEN` | `0` | Python `audit_hooks` 开关 |
+| `DE_SANDBOX_DEFAULT_PIDS` / `CPU_SECS` / `MEM_MB` | `64` / `30` / `512` | `prlimit` per-exec 默认 |
+| `DE_SANDBOX_RATE_LIMIT_PER_MIN` | `60` | token-bucket 阈值(per `(ws, actor)` + per-IP) |
+| `DE_SANDBOX_TRUSTED_KEY_IDS` | (CSV) | 信任的 Ed25519 publisher KeyID 列表 |
 
-### 声明流程
+## 网络
 
-技能包在 `SKILL.md` front-matter 声明：
+- 拥有 `qzda_exec_net`(monolith 下 `qzda-app` 双挂;coarse 下 `qzda-collab` /
+  `qzda-cap` 双挂)。详见 [`backend/deploy/networks.md:6`](../../deploy/networks.md)。
+- 容器内 `seccomp=unconfined`(gVisor 自己实现 syscall 拦截,重复套用会与 Sentry 冲突)。
 
-```yaml
----
-name: weather
-egress:
-  - wttr.in
----
-```
+## 现状
 
-控制面读 front-matter（`internal/skills/manifest`）→ 与 admin policy 的
-`allowedEgress` 求**交集**（保守：admin 可收紧，不能放宽）→ 把交集签入
-`RunToken.allowedEgress` → Python 沙箱按此 allowlist 设置 `DnsGate` 与代理。
-
-### 默认策略
-
-`defaultSkillGovernance` 的 `allowedEgress` 在阶段 2 起为 `[]`（deny-all）。
-未声明 `egress:` 的技能包 → 拒绝全部外联；admin policy 为空 → 也拒绝。
-
-### 响应字段
-
-`POST /v1/execute` 响应 JSON 中：
-
-```json
-{
-  "egressAllowed": ["wttr.in"],
-  "egressUsed":    ["wttr.in"],
-  "egressDenied":  []
-}
-```
-
-`egressUsed` / `egressDenied` 是 Python 沙箱聚合后的实际访问清单；写进
-Go 侧 audit `detail`（`grep egress=wttr.in` 检索）。
+| 阶段 | commit | 内容 |
+|---|---|---|
+| Phase 2 egress | `16b22bc` | signed `allowedEgress` + DnsGate + 127.0.0.1:8080 代理 |
+| Phase 3 观测 | `9333776` | 父进程 audit_hooks + Prometheus / OTel + `AppendAudit` `;syscalls=…` |
+| Phase 4 收口 | `c4fdaac` | LD_PRELOAD、签名收紧、prlimit、proxy 自愈、rate limit、parent DnsGate、workspace env |
+| PR2 白名单 | `7ed63a9` | 解释器收缩到 `.py`/`.sh`;`pptx` / `spreadsheets` 临时剔除 builtin |
