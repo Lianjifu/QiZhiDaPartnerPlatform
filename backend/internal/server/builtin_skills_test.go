@@ -40,7 +40,7 @@ func TestNormalizeInstalledSkillsLocked_DedupesByBuiltinName(t *testing.T) {
 }
 
 func TestEnsureBuiltinSkillsReady_PruneDeprecatedSeed(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", "..", "builtin", "skills"))
+	root, err := filepath.Abs(filepath.Join("..", "..", "services", "qzda-sandbox", "builtin", "skills"))
 	if err != nil {
 		t.Skip(err)
 	}
@@ -89,7 +89,7 @@ func TestEnsureBuiltinSkillsReady_PruneDeprecatedSeed(t *testing.T) {
 }
 
 func TestEnsureBuiltinSkillsReady_GeneralPack(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", "..", "builtin", "skills"))
+	root, err := filepath.Abs(filepath.Join("..", "..", "services", "qzda-sandbox", "builtin", "skills"))
 	if err != nil {
 		t.Skip(err)
 	}

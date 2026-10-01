@@ -8,8 +8,7 @@ SKILL_DIR="${PPTX_SKILL_DIR:-}"
 if [[ -z "$SKILL_DIR" ]]; then
   for candidate in \
     "$SCRIPT_DIR/../builtin/skills/pptx" \
-    "$SCRIPT_DIR/../../builtin/skills/pptx" \
-    "/Users/LIANJIFU/ops/digital-employee-platform/backend/builtin/skills/pptx"
+    "$SCRIPT_DIR/../../services/qzda-sandbox/builtin/skills/pptx"
   do
     if [[ -f "$candidate/scripts/pptx.sh" ]]; then
       SKILL_DIR="$(cd "$candidate" && pwd)"

@@ -276,7 +276,7 @@ skill:
 
 sync-builtin-skills:
 	@bash ../scripts/sync-builtin-skills.sh
-	@chmod +x builtin/skills/runtime/bin/* 2>/dev/null || true
+	@chmod +x services/qzda-sandbox/builtin/skills/runtime/bin/* 2>/dev/null || true
 
 install-external-skill-bins:
 	@bash ../scripts/install-external-skill-bins.sh
@@ -300,15 +300,15 @@ smoke-coarse:
 
 test-python:
 	python3 runtimes/de_rag/test_vector.py
-	python3 runtimes/de_skill_runtime/test_runtoken.py
+	python3 services/qzda-sandbox/dev/qzda_sandbox/test_runtoken.py
 	python3 runtimes/de_agent_runtime/test_run.py
 
-# W1-D3 · Skill 签名校验 CI gate。校验 builtin/skills/manifest.json
+# W1-D3 · Skill 签名校验 CI gate。校验 services/qzda-sandbox/builtin/skills/manifest.json
 # 中所有 skill 的 Ed25519 签名 + 每个文件 SHA256。CI 必跑：失败即阻断
 # 发布。失败时输出第一个 bad skill 的 keyID + 文件路径，便于定位。
 verify-builtins:
-	@echo "==> verifying all builtins against $(PWD)/builtin/skills/manifest.json"
-	@$(GO) run ./cmd/verify-skill --manifest $(PWD)/builtin/skills/manifest.json $(PWD)/builtin/skills
+	@echo "==> verifying all builtins against $(PWD)/services/qzda-sandbox/builtin/skills/manifest.json"
+	@$(GO) run ./cmd/verify-skill --manifest $(PWD)/services/qzda-sandbox/builtin/skills/manifest.json $(PWD)/services/qzda-sandbox/builtin/skills
 
 # W1-D3 · Skill 内容静态扫描 CI gate。扫描 builtin + 用户上传 skill
 # 的 destructive / egress / credential / escalation / persistence 5 类
@@ -316,7 +316,7 @@ verify-builtins:
 # 第二条 skill 列举清单。
 vet-builtins:
 	@echo "==> vetting core builtins against dangerous-pattern scanner"
-	@$(GO) run ./cmd/verify-skill --vet=strict --manifest $(PWD)/builtin/skills/manifest.json $(PWD)/builtin/skills
+	@$(GO) run ./cmd/verify-skill --vet=strict --manifest $(PWD)/services/qzda-sandbox/builtin/skills/manifest.json $(PWD)/services/qzda-sandbox/builtin/skills
 
 # W1-D3 · Skill 安全全链路 CI gate。覆盖 vetter + signer 双闸门。
 # 任何 builtin 内容 / 签名变化必须通过本 target 才能合并。

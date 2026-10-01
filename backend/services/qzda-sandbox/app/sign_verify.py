@@ -18,7 +18,7 @@
 3. 现读 ``SKILL.md`` SHA256 与 ``.signed.sha256`` 一致 → 否则 403。
 
 **怎么生成 marker**:在 build pipeline 跑一次 ``tools/sign-skill`` Go 程序
-(用仓里已有的 ``internal/skills/signing`` Ed25519 + Signer.KeyID)。
+(用仓里已有的 ``services/qzda-sandbox/signing`` Ed25519 + Signer.KeyID)。
 
 **Notes**:
 - ``.signed`` 本身不进 SKILL.md sha256(否则签名时不存在,验证时存在,永远失败)。

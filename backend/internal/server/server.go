@@ -25,7 +25,7 @@ import (
 	"github.com/qizhida-partner-platform/backend/internal/modelprov/trace"
 	"github.com/qizhida-partner-platform/backend/internal/policy"
 	"github.com/qizhida-partner-platform/backend/internal/skills/registry"
-	"github.com/qizhida-partner-platform/backend/internal/skills/signing"
+	"github.com/qizhida-partner-platform/backend/services/qzda-sandbox/signing"
 	"github.com/qizhida-partner-platform/backend/internal/runtimeenv"
 	"github.com/qizhida-partner-platform/backend/internal/gateway"
 	"github.com/qizhida-partner-platform/backend/internal/metrics"

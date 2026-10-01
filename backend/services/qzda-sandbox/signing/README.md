@@ -17,11 +17,11 @@
 
 ```bash
 # 1. 编辑 skill（builtin 或新 skill）
-$EDITOR builtin/skills/docx/SKILL.md
+$EDITOR services/qzda-sandbox/builtin/skills/docx/SKILL.md
 
 # 2. 重新签名（默认 dev keypair 自动使用）
 go run ./cmd/sign-skill --key data/skill-keys/dev-keypair.json \
-    --manifest builtin/skills/manifest.json builtin/skills/docx
+    --manifest services/qzda-sandbox/builtin/skills/manifest.json services/qzda-sandbox/builtin/skills/docx
 
 # 3. CI gate — 校验所有 builtin
 make skill-gate
@@ -38,7 +38,7 @@ make skill-gate
 - `entrypoints[]`、`riskLevel`（声明）
 
 Canonical 编码规则：JSON object keys 按字典序排序、no whitespace。
-实现见 [`internal/skills/signing/canonical.go`](internal/skills/signing/canonical.go)。
+实现见 [`canonical.go`](canonical.go)。
 
 签名 64 字节 → base64（std encoding）→ 88 字符。KeyID 格式
 `ed25519:` + 公钥 SHA256[:8] 16 字符 hex，例如
@@ -95,10 +95,10 @@ Canonical 编码规则：JSON object keys 按字典序排序、no whitespace。
 
 ```bash
 # 改一个 builtin 文件
-echo "" >> builtin/skills/docx/scripts/extract.sh
+echo "" >> services/qzda-sandbox/builtin/skills/docx/scripts/extract.sh
 
 # 校验立刻报失败
-go run ./cmd/verify-skill --manifest builtin/skills/manifest.json builtin/skills/docx
+go run ./cmd/verify-skill --manifest services/qzda-sandbox/builtin/skills/manifest.json services/qzda-sandbox/builtin/skills/docx
 # FAIL docx: ed25519 verify: signing: signature mismatch
 # exit status 1
 ```
@@ -219,7 +219,7 @@ skip 一次（sidecar 只用于 verify，不复制到 workspace）。
 | | `sign-skill` | `sign-skill-pack` |
 |---|---|---|
 | 输入 | skill 目录 | `.skill` zip archive |
-| 输出 | 更新 `builtin/skills/manifest.json` | `<archive>.signed.skill`（含 sidecar） |
+| 输出 | 更新 `services/qzda-sandbox/builtin/skills/manifest.json` | `<archive>.signed.skill`（含 sidecar） |
 | 私钥来源 | `--key data/skill-keys/dev-keypair.json` | `DE_SIGNER_PRIVATE_KEY` env（base64） |
 | 用途 | builtin pack 作者 | workspace 用户 / 第三方 publisher |
 

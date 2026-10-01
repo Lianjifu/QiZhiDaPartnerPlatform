@@ -14,7 +14,7 @@ import sys
 import uuid
 from pathlib import Path
 
-# 允许直接 ``from generate_docx import ...`` 导入 backend/scripts/generate_docx.py。
+# 允许直接 ``from generate_docx import ...`` 导入 services/qzda-sandbox/scripts/generate_docx.py。
 # 沿父目录向上搜索 ``scripts/generate_docx.py``,兼容:
 # - 本地:backend/services/qzda-sandbox/app/docx_gen.py → parents[3] = backend
 # - 镜像:/app/app/docx_gen.py（Dockerfile 把 app/ 拷到 /app/app/ 下）

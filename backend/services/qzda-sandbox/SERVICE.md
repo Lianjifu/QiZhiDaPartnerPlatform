@@ -41,7 +41,7 @@ On startup, control-plane DSN env vars (`DE_DATABASE_URL`, etc.) are stripped.
 ```bash
 cd backend
 pip install -r services/qzda-sandbox/requirements.txt
-python3 runtimes/qzda_sandbox/main.py
+python3 dev/qzda_sandbox/main.py
 # or
 cd services/qzda-sandbox && uvicorn app.main:app --host 127.0.0.1 --port 8093
 ```

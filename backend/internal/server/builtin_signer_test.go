@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/qizhida-partner-platform/backend/internal/server"
-	"github.com/qizhida-partner-platform/backend/internal/skills/signing"
+	"github.com/qizhida-partner-platform/backend/services/qzda-sandbox/signing"
 	"github.com/qizhida-partner-platform/backend/internal/store"
 )
 
@@ -61,9 +61,14 @@ func seedTrustStoreFromManifest(t *testing.T, manifestPath string) {
 // builtinRoot locates builtin/skills next to the test binary. Mirrors the
 // logic in builtinSkillsRoot() — duplicated here because the test runs in
 // the internal/server package and we don't want to expose unexported helpers.
+// After path consolidation (PR1), builtins live at services/qzda-sandbox/builtin/skills.
 func builtinRoot(t *testing.T) string {
 	t.Helper()
 	candidates := []string{
+		filepath.Join("..", "..", "services", "qzda-sandbox", "builtin", "skills"),
+		filepath.Join("backend", "services", "qzda-sandbox", "builtin", "skills"),
+		filepath.Join("services", "qzda-sandbox", "builtin", "skills"),
+		// Legacy paths kept as fallbacks for branches that haven't migrated yet.
 		filepath.Join("..", "..", "builtin", "skills"),
 		filepath.Join("backend", "builtin", "skills"),
 		filepath.Join("builtin", "skills"),

@@ -33,7 +33,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/qizhida-partner-platform/backend/internal/skills/signing"
+	"github.com/qizhida-partner-platform/backend/services/qzda-sandbox/signing"
 )
 
 func main() {

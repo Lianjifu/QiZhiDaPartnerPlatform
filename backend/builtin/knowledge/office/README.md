@@ -15,4 +15,4 @@
 
 - 流程：`backend/builtin/workflows/wf.office.*`
 - 场景三联：`backend/builtin/scenarios/office/manifest.json`
-- 技能岗位包：`office`（见 `backend/builtin/skills/manifest.json`）
+- 技能岗位包：`office`（见 `backend/services/qzda-sandbox/builtin/skills/manifest.json`）

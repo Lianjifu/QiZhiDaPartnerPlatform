@@ -5,6 +5,6 @@
 - Manifest：`manifest.json`（流程 ID → 知识包 / 技能 ID）
 - 流程源：`backend/builtin/workflows/wf.office.*`
 - 知识源：`backend/builtin/knowledge/office/`
-- 技能岗位包：`office`（`backend/builtin/skills/manifest.json`）
+- 技能岗位包：`office`（`backend/services/qzda-sandbox/builtin/skills/manifest.json`）
 
 装载顺序（`apprun`）：技能目录与岗位包 → 知识包 published → 流程模板（个人 `wft-user-*` 保留）。
