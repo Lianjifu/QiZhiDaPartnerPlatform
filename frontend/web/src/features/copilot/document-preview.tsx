@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, Download, FileSpreadsheet, FileText, Loader2
 import { renderMarkdownDocument } from '@/features/knowledge/markdown-doc';
 import type { SkillArtifactLink } from '@/features/copilot/artifact-links';
 import { artifactKindLabel } from '@/features/copilot/artifact-links';
-import { authHeader } from '@/lib/api-headers';
+import { authHeader } from '@/auth';
 
 export type DocxPreviewBlock = {
   type: 'h1' | 'h2' | 'h3' | 'p' | 'li' | 'blank';

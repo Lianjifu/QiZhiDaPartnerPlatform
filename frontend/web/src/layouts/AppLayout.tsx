@@ -11,7 +11,7 @@ import {
   Home, MessageSquare, ListChecks, Building2, BriefcaseBusiness, Workflow,
   BookOpen, Wrench, Brain, BrainCircuit, Send,
   Menu, Settings2, Languages, Sun, Moon,
-  LogOut, ChevronDown, X, CheckCircle2,
+  ChevronDown, X, CheckCircle2,
   ShieldAlert, ScrollText, Sparkles,
 } from 'lucide-react';
 import { useT } from '@/i18n';
@@ -23,6 +23,7 @@ import { cn } from '@qzda/web-utils';
 import { useApiQuery } from '@/services/query';
 import { OnboardingGuide } from '@/features/onboarding/OnboardingGuide';
 import { getRoleNavGroups, navLabelKeyForPath } from '@/features/role-nav/role-nav';
+import { useReauthPrompt, useLogout, SignOutMenuItem } from '@/auth';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Workspace } from '@qzda/web-types';
 
@@ -43,7 +44,7 @@ export function AppLayout() {
   const location = useLocation();
   const { sidebarCollapsed, toggleSidebar, theme, toggleTheme, mobileDrawerOpen, openMobileDrawer, closeMobileDrawer } = useUiStore();
   const { locale, t, setLocale } = useT();
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   const { current, setCurrent, setList } = useWorkspaceStore();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
@@ -150,10 +151,11 @@ export function AppLayout() {
     };
   }, [userMenuOpen, workspaceMenuOpen]);
 
+  const logout = useLogout();
+  const { triggerReauth } = useReauthPrompt('workspaces-error');
   const onLogout = () => {
     setUserMenuOpen(false);
-    logout();
-    navigate('/login', { replace: true });
+    logout({ from: 'menu' });
   };
 
   const visibleNavGroups = useMemo(() => getRoleNavGroups(user?.role), [user?.role]);
@@ -222,8 +224,7 @@ export function AppLayout() {
                       className="w-full rounded-md border border-[var(--border)] px-2.5 py-2 text-xs font-semibold text-[var(--text)] hover:bg-[var(--bg-hover)]"
                       onClick={() => {
                         setWorkspaceMenuOpen(false);
-                        useAuthStore.getState().logout();
-                        navigate('/login');
+                        triggerReauth();
                       }}
                     >
                       重新登录
@@ -436,10 +437,7 @@ export function AppLayout() {
 
                 <div className="user-menu__divider" />
 
-                <button type="button" role="menuitem" onClick={onLogout} className="user-menu__item user-menu__item--danger">
-                  <span className="user-menu__icon-box"><LogOut className="h-3.5 w-3.5" /></span>
-                  <span className="user-menu__label">{t('account.signOut')}</span>
-                </button>
+                <SignOutMenuItem label={t('account.signOut')} onClick={onLogout} />
               </div>,
               document.body,
             )}

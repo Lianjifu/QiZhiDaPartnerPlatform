@@ -1,13 +1,13 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { lazy, Suspense, type ReactNode } from 'react';
 import { AppLayout } from './layouts/AppLayout';
-import { ProtectedRoute } from './router/ProtectedRoute';
+import { ProtectedRoute } from './auth';
 import { ToastHost, Spinner } from '@qzda/web-ui';
 import { ErrorBoundary, RouteErrorBoundary } from './components/ErrorBoundary';
 import { NotFound } from './pages/NotFound';
 import { useAuthStore } from './stores/authStore';
 
-const Login = lazy(() => import('./pages/Login'));
+const LoginPage = lazy(() => import('./auth/LoginPage'));
 const Home = lazy(() => import('./pages/Home'));
 const Copilot = lazy(() => import('./pages/Copilot'));
 const CopilotShare = lazy(() => import('./pages/CopilotShare'));
@@ -46,7 +46,7 @@ export default function App() {
       <a href="#main-content" className="skip-link">跳转到主内容</a>
       <Suspense fallback={<PageFallback />}>
         <Routes>
-          <Route path="/login" element={<ErrorBoundary><Login /></ErrorBoundary>} />
+          <Route path="/login" element={<ErrorBoundary><LoginPage /></ErrorBoundary>} />
           <Route path="/copilot/share/:token" element={<ErrorBoundary><CopilotShare /></ErrorBoundary>} />
           <Route
             element={

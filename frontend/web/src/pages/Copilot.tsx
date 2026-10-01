@@ -108,7 +108,7 @@ import { sortSessionsByRecency } from '@/features/copilot/session-sort';
 import { resolveHydratedMessages } from '@/features/copilot/conversation-merge';
 import { collapseDuplicateArtifactSegments } from '@/features/copilot/artifact-segment';
 import { readCopilotLastSession } from '@/lib/copilot-workspace';
-import { authHeader } from '@/lib/api-headers';
+import { authHeader } from '@/auth';
 import { getApiClient } from '@qzda/web-api';
 import { deriveExpertContextOverview, deriveTurnProgress } from '@/features/copilot/expert-context';
 import { ExpertContextPanel } from '@/features/copilot/expert-context-panel';

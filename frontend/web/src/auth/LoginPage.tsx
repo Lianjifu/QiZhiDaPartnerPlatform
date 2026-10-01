@@ -4,9 +4,12 @@ import { useAuthStore } from '@/stores/authStore';
 import { useApiMutation } from '@/services/query';
 import { Button, Input, Badge, toast } from '@qzda/web-ui';
 import { useUiStore } from '@/stores/uiStore';
-import { Bot, ShieldCheck, Sun, Moon, UserRound, Shield, ScrollText, Gauge } from 'lucide-react';
+import { Bot, ShieldCheck, Sun, Moon, Gauge } from 'lucide-react';
+import type { LoginRequest, LoginResponse } from '@qzda/web-types';
+import { MfaCodeField } from './components/MfaCodeField';
+import { ExperienceRoleButtons } from './components/ExperienceRoleButtons';
 
-export default function Login() {
+export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuthStore();
@@ -15,7 +18,7 @@ export default function Login() {
   const [password, setPassword] = useState('demo123456');
   const [mfa, setMfa] = useState('');
 
-  const mut = useApiMutation<{ token: string; user: any }, { email: string; password: string }>(
+  const mut = useApiMutation<LoginResponse, LoginRequest>(
     '/api/auth/login',
     {
       onSuccess: (data) => {
@@ -119,8 +122,7 @@ export default function Login() {
           <label className="mb-1.5 text-xs font-medium text-[var(--text-secondary)]">密码</label>
           <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="mb-4" />
 
-          <label className="mb-1.5 text-xs font-medium text-[var(--text-secondary)]">多因素验证码 <span className="text-[var(--text-muted)] font-normal">（演示环境可不填）</span></label>
-          <Input value={mfa} onChange={(e) => setMfa(e.target.value)} placeholder="请输入 6 位验证码" className="mb-4" />
+          <MfaCodeField value={mfa} onChange={setMfa} />
 
           <div className="mb-5 flex items-center justify-between text-xs">
             <label className="flex items-center gap-1.5 text-[var(--text-muted)] cursor-pointer">
@@ -133,14 +135,7 @@ export default function Login() {
             登录平台
           </Button>
 
-          <div className="mt-5 border-t border-[var(--border)] pt-4">
-            <p className="mb-2 text-[11px] font-medium text-[var(--text-muted)]">体验角色权限</p>
-            <div className="grid grid-cols-3 gap-2">
-              <button type="button" onClick={() => chooseRole('user@acme.com')} className="rounded-md border border-[var(--border)] px-2 py-2 text-left text-[10px] hover:border-[var(--brand)] hover:bg-[var(--brand-light)]"><UserRound className="mb-1 h-3.5 w-3.5 text-[var(--brand)]" />普通用户</button>
-              <button type="button" onClick={() => chooseRole('admin@acme.com')} className="rounded-md border border-[var(--border)] px-2 py-2 text-left text-[10px] hover:border-[var(--brand)] hover:bg-[var(--brand-light)]"><Shield className="mb-1 h-3.5 w-3.5 text-[var(--brand)]" />管理员</button>
-              <button type="button" onClick={() => chooseRole('audit@acme.com')} className="rounded-md border border-[var(--border)] px-2 py-2 text-left text-[10px] hover:border-[var(--brand)] hover:bg-[var(--brand-light)]"><ScrollText className="mb-1 h-3.5 w-3.5 text-[var(--brand)]" />审计用户</button>
-            </div>
-          </div>
+          <ExperienceRoleButtons onPick={chooseRole} />
 
           <div className="mt-5 text-center text-[11px] text-[var(--text-muted)]">
             登录即表示您已阅读并同意 <a className="text-[var(--brand)] hover:underline" href="#">《用户协议》</a> 与 <a className="text-[var(--brand)] hover:underline" href="#">《隐私政策》</a>
