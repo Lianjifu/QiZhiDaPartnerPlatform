@@ -18,7 +18,7 @@ import urllib.error
 import urllib.request
 
 # SKILL.md front-matter 中声明的域名,与 Python 沙箱注入的
-# DE_SKILL_ALLOWED_EGRESS 列表一致。子进程 bootstrap 还会把
+# DE_SANDBOX_ALLOWED_EGRESS 列表一致。子进程 bootstrap 还会把
 # socket.getaddrinfo monkey-patch 掉,IP literal 也走不了。
 ALLOWED_HOST = "wttr.in"
 DEFAULT_TIMEOUT = 10.0
@@ -33,7 +33,7 @@ def get_weather(city: str) -> str:
     url = f"https://{ALLOWED_HOST}/{urllib.request.quote(city)}?format=3"
     req = urllib.request.Request(
         url,
-        headers={"User-Agent": "qzda-skill-runtime/1.0 (+https://wttr.in)"},
+        headers={"User-Agent": "qzda-sandbox/1.0 (+https://wttr.in)"},
     )
     try:
         with urllib.request.urlopen(req, timeout=DEFAULT_TIMEOUT) as resp:
@@ -72,7 +72,7 @@ def main(argv: list[str]) -> int:
         json.dumps(
             {
                 "city": city,
-                "allowedEgress": os.environ.get("DE_SKILL_ALLOWED_EGRESS", ""),
+                "allowedEgress": os.environ.get("DE_SANDBOX_ALLOWED_EGRESS", ""),
                 "httpsProxy": os.environ.get("HTTPS_PROXY", ""),
             },
             ensure_ascii=False,

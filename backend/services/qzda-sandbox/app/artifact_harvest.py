@@ -1,4 +1,4 @@
-"""把刚生成的 Office 制品采集到 ``DE_SKILL_ARTIFACT_DIR``。
+"""把刚生成的 Office 制品采集到 ``DE_SANDBOX_ARTIFACT_DIR``。
 
 脚本执行成功后,沙箱会在包根目录下写入 .pptx/.docx/.pdf 等制品文件。
 本模块负责:
@@ -23,10 +23,10 @@ def artifact_dir() -> Path:
     """返回(必要时创建)制品下载目录。
 
     路径来源:
-    - ``DE_SKILL_ARTIFACT_DIR`` 环境变量(覆盖);
+    - ``DE_SANDBOX_ARTIFACT_DIR`` 环境变量(覆盖);
     - 默认 ``/tmp/qzda-stack/artifacts``(与 docx_gen.py 共用)。
     """
-    raw = os.environ.get("DE_SKILL_ARTIFACT_DIR") or "/tmp/qzda-stack/artifacts"
+    raw = os.environ.get("DE_SANDBOX_ARTIFACT_DIR") or "/tmp/qzda-stack/artifacts"
     path = Path(raw)
     path.mkdir(parents=True, exist_ok=True)
     return path

@@ -79,7 +79,7 @@ make compose-up-staging    # coarse + oidc + opa + search + obs
 | `DE_OPA_URL=http://127.0.0.1:8181` | 远程 OPA evaluate；失败回退内嵌 baseline |
 | `DE_OPENSEARCH_URL=http://127.0.0.1:9200` | 审计写入/查询 OpenSearch |
 | `DE_POLICY_URL=http://127.0.0.1:8100` | collab/cap 调 qzda-sys `/v1/evaluate`；sys 留空；切开后可改 `:8104` |
-| `DE_SKILL_RUN_SECRET` | 控制面与 qzda-skill-runtime 共享的 RunToken HMAC 密钥 |
+| `DE_SANDBOX_RUN_SECRET` | 控制面与 qzda-sandbox 共享的 RunToken HMAC 密钥 |
 | `DE_ENV` | `demo` \| `development`（默认）\| `staging` \| `production`；见 [环境与数据模式](../../docs/环境与数据模式.md) |
 | `DE_BAN_MOCK_TOKEN=1` | 仅禁用 `mock-*-token`，**不**触发双人审批 |
 | `DE_FORCE_OIDC=1` | 拒绝密码登录，仅 OIDC |
@@ -103,7 +103,7 @@ make compose-up-obs         # Prometheus :9090，Grafana :3000（抓取 :8100–
 ```bash
 make certs && make certs-rotate
 make compose-up-spiffe            # https://127.0.0.1:8444
-# qzda-skill-runtime：qzda_exec_net + seccomp；见 topology-split.md
+# qzda-sandbox：qzda_exec_net + seccomp；见 topology-split.md
 ```
 
 Proto / Connect：`make buf-generate` → `gen/`（`/de.*.Service/*`）。  

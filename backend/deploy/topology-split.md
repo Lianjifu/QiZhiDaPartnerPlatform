@@ -8,7 +8,7 @@
 |------|------|----------|
 | qzda-gateway | 8089 | Envoy `envoy.monolith.yaml` 或 dev `gateway-proxy-monolith.py` |
 | **qzda-app** | 8100 | **sys + collab + cap**（`ModeApp` / `DomainAll`） |
-| qzda-skill-runtime | 8093 | 技能沙箱执行（必须独立） |
+| qzda-sandbox | 8093 | 技能沙箱执行（必须独立） |
 | qzda-workflow（可选） | 8103 | 不用工作流时可不启 |
 
 不启：qzda-agent（`DE_RUNTIME_MODE=local` 默认进程内 Harness）、qzda-rag（按需）。
@@ -34,7 +34,7 @@ cd backend && make compose-up-monolith
 | qzda-workflow | 8103 | workflow HTTP + Temporal Worker |
 | qzda-policy（可选） | 8104 | access · zero-trust · `/v1/evaluate` · release-approvals |
 | qzda-audit（可选） | 8105 | audit-center；读 `audit.events` |
-| qzda-agent-runtime / qzda-rag / qzda-skill-runtime | 8091–8093 | FastAPI |
+| qzda-agent-runtime / qzda-rag / qzda-sandbox | 8091–8093 | FastAPI |
 
 已退役：`qzda-core:8080`、旧细端口 `qzda-policy:8094` / `qzda-audit:8095`、`envoy.split.yaml`。
 

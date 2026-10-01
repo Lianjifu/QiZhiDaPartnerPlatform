@@ -5,7 +5,7 @@
 - signed_by 不在 trusted → 失败
 - SHA256 不一致 → 失败(篡改 SKILL.md 后)
 - SKILL.md 缺失 → 失败
-- DE_SKILL_TRUSTED_KEY_IDS 未设 → fail-closed
+- DE_SANDBOX_TRUSTED_KEY_IDS 未设 → fail-closed
 - 完整 happy path → 通过
 """
 from __future__ import annotations
@@ -35,22 +35,22 @@ def _write_marker(pkg_path, *, signed_by: str, sha: str | None = None) -> None:
 
 
 def test_happy_path(pkg, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("DE_SKILL_TRUSTED_KEY_IDS", "ed25519:abc12345,ed25519:deadbeef")
+    monkeypatch.setenv("DE_SANDBOX_TRUSTED_KEY_IDS", "ed25519:abc12345,ed25519:deadbeef")
     _write_marker(pkg, signed_by="ed25519:abc12345")
     ok, reason = sign_verify.verify_package_signature(str(pkg))
     assert ok is True, reason
 
 
 def test_no_trusted_keys_fails_closed(pkg, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.delenv("DE_SKILL_TRUSTED_KEY_IDS", raising=False)
+    monkeypatch.delenv("DE_SANDBOX_TRUSTED_KEY_IDS", raising=False)
     _write_marker(pkg, signed_by="ed25519:abc12345")
     ok, reason = sign_verify.verify_package_signature(str(pkg))
     assert ok is False
-    assert "no trusted" in reason.lower() or "DE_SKILL_TRUSTED_KEY_IDS" in reason
+    assert "no trusted" in reason.lower() or "DE_SANDBOX_TRUSTED_KEY_IDS" in reason
 
 
 def test_missing_marker(pkg, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("DE_SKILL_TRUSTED_KEY_IDS", "ed25519:abc12345")
+    monkeypatch.setenv("DE_SANDBOX_TRUSTED_KEY_IDS", "ed25519:abc12345")
     # 不写 .signed
     ok, reason = sign_verify.verify_package_signature(str(pkg))
     assert ok is False
@@ -58,7 +58,7 @@ def test_missing_marker(pkg, monkeypatch: pytest.MonkeyPatch):
 
 
 def test_untrusted_signer(pkg, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("DE_SKILL_TRUSTED_KEY_IDS", "ed25519:abc12345")
+    monkeypatch.setenv("DE_SANDBOX_TRUSTED_KEY_IDS", "ed25519:abc12345")
     _write_marker(pkg, signed_by="ed25519:evilkey0")
     ok, reason = sign_verify.verify_package_signature(str(pkg))
     assert ok is False
@@ -66,7 +66,7 @@ def test_untrusted_signer(pkg, monkeypatch: pytest.MonkeyPatch):
 
 
 def test_tampered_skill_md(pkg, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("DE_SKILL_TRUSTED_KEY_IDS", "ed25519:abc12345")
+    monkeypatch.setenv("DE_SANDBOX_TRUSTED_KEY_IDS", "ed25519:abc12345")
     _write_marker(pkg, signed_by="ed25519:abc12345")
     # 签名后篡改 SKILL.md
     (pkg / "SKILL.md").write_text("# weather\n# injected\n", encoding="utf-8")
@@ -76,7 +76,7 @@ def test_tampered_skill_md(pkg, monkeypatch: pytest.MonkeyPatch):
 
 
 def test_missing_skill_md(pkg, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("DE_SKILL_TRUSTED_KEY_IDS", "ed25519:abc12345")
+    monkeypatch.setenv("DE_SANDBOX_TRUSTED_KEY_IDS", "ed25519:abc12345")
     _write_marker(pkg, signed_by="ed25519:abc12345")
     (pkg / "SKILL.md").unlink()
     ok, reason = sign_verify.verify_package_signature(str(pkg))
@@ -85,7 +85,7 @@ def test_missing_skill_md(pkg, monkeypatch: pytest.MonkeyPatch):
 
 
 def test_marker_without_sha(pkg, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("DE_SKILL_TRUSTED_KEY_IDS", "ed25519:abc12345")
+    monkeypatch.setenv("DE_SANDBOX_TRUSTED_KEY_IDS", "ed25519:abc12345")
     (pkg / ".signed").write_text(
         json.dumps({"signed_by": "ed25519:abc12345"}),  # 没 sha256
         encoding="utf-8",

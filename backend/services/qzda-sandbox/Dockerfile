@@ -1,10 +1,10 @@
 # syntax=docker/dockerfile:1.6
-# gVisor-aware image for qzda-skill-runtime.
+# gVisor-aware image for qzda-sandbox.
 #
-# 启动时由 entrypoint 检测实际运行时（runc / runsc-kvm / runsc-ptrace），
-# 设置 DE_SKILL_SANDBOX 与 DE_SKILL_RUNTIME_DETECTED，应用代码据此声明能力。
+# 启动时由 entrypoint 检测实际运行时(runc / runsc-kvm / runsc-ptrace),
+# 设置 DE_SANDBOX_SANDBOX 与 DE_SANDBOX_RUNTIME_DETECTED,应用代码据此声明能力。
 #
-# 构建后增加 runsc：make image-skill-runtime 会从
+# 构建后增加 runsc:`make image-sandbox` 会从
 # https://github.com/google/gvisor/releases 下载 runsc 二进制到 /usr/local/bin。
 
 # 阶段 4 #1:libqzda_egress.so 用 gcc builder stage 编译,然后 COPY 到 base。
@@ -18,7 +18,7 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
-COPY services/qzda-skill-runtime/libqzda_egress.c .
+COPY services/qzda-sandbox/libqzda_egress.c .
 RUN gcc -O2 -fPIC -shared \
         -o /build/libqzda_egress.so libqzda_egress.c \
  && ls -la /build/libqzda_egress.so
@@ -29,18 +29,18 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     DE_BIND_HOST=0.0.0.0 \
     DE_BIND_PORT=8093 \
-    DE_SKILL_REQUIRE_ISOLATION=1
+    DE_SANDBOX_REQUIRE_ISOLATION=1
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends curl ca-certificates tini \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY services/qzda-skill-runtime/requirements.txt .
+COPY services/qzda-sandbox/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY services/qzda-skill-runtime/app/ ./app/
-COPY services/qzda-skill-runtime/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY services/qzda-sandbox/app/ ./app/
+COPY services/qzda-sandbox/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # 阶段 4 #1:把编译好的 .so 落到 /app/lib/;子进程 env LD_PRELOAD=/app/lib/libqzda_egress.so 启用

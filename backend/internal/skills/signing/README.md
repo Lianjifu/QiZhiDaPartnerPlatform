@@ -75,7 +75,7 @@ Canonical 编码规则：JSON object keys 按字典序排序、no whitespace。
 | `DE_BAN_DEV_KEYPAIR` | `0` | 强制 prod 启动时禁止生成 dev keypair |
 | `DE_TRUSTED_PUBLISHERS_PATH` | `data/skill-keys/trusted-publishers.json` | trust store 路径 |
 | `DE_DEV_KEYPAIR_PATH` | `data/skill-keys/dev-keypair.json` | dev keypair 路径 |
-| `DE_SKILL_VETTER` | `enabled` | vetter 闸门（`enabled` / `warn_only` / `disabled`） |
+| `DE_SANDBOX_VETTER` | `enabled` | vetter 闸门（`enabled` / `warn_only` / `disabled`） |
 
 ## 错误码
 

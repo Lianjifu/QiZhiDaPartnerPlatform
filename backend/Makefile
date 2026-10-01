@@ -27,7 +27,7 @@ run-sys: infra-env
 run-app: infra-env
 	DE_ENV=$${DE_ENV:-development} \
 	DE_RUNTIME_MODE=local \
-	DE_SKILL_RUNTIME_URL=$${DE_SKILL_RUNTIME_URL:-http://127.0.0.1:8093} \
+	DE_SANDBOX_RUNTIME_URL=$${DE_SANDBOX_RUNTIME_URL:-http://127.0.0.1:8093} \
 	$(GO) run ./cmd/qzda-app
 
 db-reset-dev: docker-engine
@@ -271,8 +271,8 @@ rag:
 	cd services/qzda-rag && python3 -m uvicorn app.main:app --host $${DE_BIND_HOST:-127.0.0.1} --port $${DE_BIND_PORT:-8092}
 
 skill:
-	pip install -q -r services/qzda-skill-runtime/requirements.txt
-	cd services/qzda-skill-runtime && DE_SKILL_REQUIRE_ISOLATION=$${DE_SKILL_REQUIRE_ISOLATION:-0} python3 -m uvicorn app.main:app --host $${DE_BIND_HOST:-127.0.0.1} --port $${DE_BIND_PORT:-8093}
+	pip install -q -r services/qzda-sandbox/requirements.txt
+	cd services/qzda-sandbox && DE_SANDBOX_REQUIRE_ISOLATION=$${DE_SANDBOX_REQUIRE_ISOLATION:-0} python3 -m uvicorn app.main:app --host $${DE_BIND_HOST:-127.0.0.1} --port $${DE_BIND_PORT:-8093}
 
 sync-builtin-skills:
 	@bash ../scripts/sync-builtin-skills.sh

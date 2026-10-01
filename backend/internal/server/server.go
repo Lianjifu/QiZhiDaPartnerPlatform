@@ -379,14 +379,14 @@ func (s *Server) bootstrapSkillSigning() {
 
 // bootstrapVaultSkillSigning wires VaultKeyStore as the active
 // SignerResolver when DE_VAULT_ADDR + DE_VAULT_TOKEN are configured and
-// DE_SKILL_KEYSTORE=vault is set. The dev auto-provision path is skipped
+// DE_SANDBOX_KEYSTORE=vault is set. The dev auto-provision path is skipped
 // so no dev-keypair.json ever lands on disk in production. A bootstrap
 // lookup against the vault is done to fail fast on misconfiguration.
 func (s *Server) bootstrapVaultSkillSigning() {
 	if s.Vault == nil || !s.Vault.Enabled() {
 		return
 	}
-	if !envFlagTrue("DE_SKILL_KEYSTORE") {
+	if !envFlagTrue("DE_SANDBOX_KEYSTORE") {
 		return
 	}
 	ks, err := signing.NewVaultKeyStore(s.Vault)

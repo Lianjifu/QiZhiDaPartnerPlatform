@@ -8,7 +8,7 @@
  * 行为:
  * 1. connect() 拦截:
  *    - dest 是 127.0.0.1/0.0.0.0/::1 → 原样放行(stdlib 内部 / unix socket 等)。
- *    - dest 是 IP literal 且在 env DE_SKILL_ALLOWED_EGRESS(CSV)里 → 原样放行。
+ *    - dest 是 IP literal 且在 env DE_SANDBOX_ALLOWED_EGRESS(CSV)里 → 原样放行。
  *    - 其他情况 → 改写为 127.0.0.1:8080,由 Python egress_proxy 按 allowlist 决策。
  *    - AF_INET6 直接放行(DNS-gate 已挡域名解析;IPv6 直连留作未来 iptables 层处理)。
  *
@@ -36,13 +36,13 @@
 #include <pthread.h>
 
 /* ---- config snapshot (loaded once at .so init) -------------------------- */
-static char *g_allowed_csv = NULL;   /* owned copy of $DE_SKILL_ALLOWED_EGRESS */
-static int   g_deny_all = 0;         /* $DE_SKILL_DENY_ALL_EGRESS=1 → no allowed */
+static char *g_allowed_csv = NULL;   /* owned copy of $DE_SANDBOX_ALLOWED_EGRESS */
+static int   g_deny_all = 0;         /* $DE_SANDBOX_DENY_ALL_EGRESS=1 → no allowed */
 static pthread_once_t g_once = PTHREAD_ONCE_INIT;
 
 static void load_config(void) {
-    const char *csv = getenv("DE_SKILL_ALLOWED_EGRESS");
-    const char *da  = getenv("DE_SKILL_DENY_ALL_EGRESS");
+    const char *csv = getenv("DE_SANDBOX_ALLOWED_EGRESS");
+    const char *da  = getenv("DE_SANDBOX_DENY_ALL_EGRESS");
     if (csv) {
         size_t n = strlen(csv);
         g_allowed_csv = (char *)malloc(n + 1);

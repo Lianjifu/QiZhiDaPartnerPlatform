@@ -172,8 +172,8 @@ func TestReplayDoesNotInvokeRuntime(t *testing.T) {
 func TestSkillSimDisabledInProduction(t *testing.T) {
 	t.Setenv("DE_ENV", "production")
 	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
-	t.Setenv("DE_SKILL_TEST_SIM", "1")
-	t.Setenv("DE_SKILL_RUNTIME_URL", "http://127.0.0.1:1")
+	t.Setenv("DE_SANDBOX_TEST_SIM", "1")
+	t.Setenv("DE_SANDBOX_RUNTIME_URL", "http://127.0.0.1:1")
 	h := server.New(store.New()).Handler()
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/skills/sk-docx/test",
@@ -187,7 +187,7 @@ func TestSkillSimDisabledInProduction(t *testing.T) {
 		t.Fatalf("production must not use skill sim: %s", body)
 	}
 	if rr.Code == 200 && !strings.Contains(body, `"status":"blocked"`) {
-		t.Fatalf("production must fail closed when skill-runtime is down: %s", body)
+		t.Fatalf("production must fail closed when sandbox is down: %s", body)
 	}
 	if rr.Code != 200 && !strings.Contains(body, "E_RUNTIME_UNAVAILABLE") && !strings.Contains(body, "技能运行时不可用") {
 		t.Fatalf("want runtime unavailable: %s", body)

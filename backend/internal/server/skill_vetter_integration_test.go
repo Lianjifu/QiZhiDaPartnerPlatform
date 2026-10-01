@@ -84,8 +84,8 @@ func TestImportSkillVetterDeniedAuditWritten(t *testing.T) {
 	// Disable signature requirement explicitly via the policy-aware gate so
 	// the workspace-policy branch doesn't trip the import.
 	tmp := t.TempDir()
-	t.Setenv("DE_SKILL_PACKAGE_DIR", tmp)
-	t.Setenv("DE_SKILL_RUNTIME_URL", "http://127.0.0.1:1")
+	t.Setenv("DE_SANDBOX_PACKAGE_DIR", tmp)
+	t.Setenv("DE_SANDBOX_RUNTIME_URL", "http://127.0.0.1:1")
 
 	srv := server.New(store.New())
 	h := srv.Handler()
@@ -111,10 +111,10 @@ func TestImportSkillVetterDeniedAuditWritten(t *testing.T) {
 func TestImportSkillVetterOverrideAdmitsAndAudits(t *testing.T) {
 	isolatedDevKeypair(t)
 	t.Setenv("DE_REQUIRE_SKILL_SIGNATURE", "off")
-	t.Setenv("DE_SKILL_VETTER", "enabled")
+	t.Setenv("DE_SANDBOX_VETTER", "enabled")
 	tmp := t.TempDir()
-	t.Setenv("DE_SKILL_PACKAGE_DIR", tmp)
-	t.Setenv("DE_SKILL_RUNTIME_URL", "http://127.0.0.1:1")
+	t.Setenv("DE_SANDBOX_PACKAGE_DIR", tmp)
+	t.Setenv("DE_SANDBOX_RUNTIME_URL", "http://127.0.0.1:1")
 
 	srv := server.New(store.New())
 	h := srv.Handler()
@@ -132,15 +132,15 @@ func TestImportSkillVetterOverrideAdmitsAndAudits(t *testing.T) {
 }
 
 // TestImportSkillVetterWarnAuditWritten same payload, but with
-// DE_SKILL_VETTER=warn_only. The server must admit the package and emit a
+// DE_SANDBOX_VETTER=warn_only. The server must admit the package and emit a
 // result=warn audit row (vetter warn is observable, not silent).
 func TestImportSkillVetterWarnAuditWritten(t *testing.T) {
 	isolatedDevKeypair(t)
 	t.Setenv("DE_REQUIRE_SKILL_SIGNATURE", "off")
-	t.Setenv("DE_SKILL_VETTER", "warn_only")
+	t.Setenv("DE_SANDBOX_VETTER", "warn_only")
 	tmp := t.TempDir()
-	t.Setenv("DE_SKILL_PACKAGE_DIR", tmp)
-	t.Setenv("DE_SKILL_RUNTIME_URL", "http://127.0.0.1:1")
+	t.Setenv("DE_SANDBOX_PACKAGE_DIR", tmp)
+	t.Setenv("DE_SANDBOX_RUNTIME_URL", "http://127.0.0.1:1")
 
 	srv := server.New(store.New())
 	h := srv.Handler()
@@ -165,8 +165,8 @@ func TestImportSkillVetterAllowNoAuditRow(t *testing.T) {
 	isolatedDevKeypair(t)
 	t.Setenv("DE_REQUIRE_SKILL_SIGNATURE", "off")
 	tmp := t.TempDir()
-	t.Setenv("DE_SKILL_PACKAGE_DIR", tmp)
-	t.Setenv("DE_SKILL_RUNTIME_URL", "http://127.0.0.1:1")
+	t.Setenv("DE_SANDBOX_PACKAGE_DIR", tmp)
+	t.Setenv("DE_SANDBOX_RUNTIME_URL", "http://127.0.0.1:1")
 
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)

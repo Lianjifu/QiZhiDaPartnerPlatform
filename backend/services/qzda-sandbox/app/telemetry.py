@@ -57,7 +57,7 @@ _traced = False
 def init_tracing() -> None:
     """初始化全局 TracerProvider。幂等:模块级 ``_traced`` 守护。
 
-    - Resource 标记 ``service.name=qzda-skill-runtime`` /
+    - Resource 标记 ``service.name=qzda-sandbox`` /
       ``service.version=phase3``。
     - ``OTEL_EXPORTER_OTLP_ENDPOINT`` 环境变量设置 → ``OTLPSpanExporter``。
       否则 → ``ConsoleSpanExporter``(开发环境友好,容器内也方便调试)。
@@ -66,7 +66,7 @@ def init_tracing() -> None:
     if _traced:
         return
     resource = Resource.create(
-        {"service.name": "qzda-skill-runtime", "service.version": "phase3"},
+        {"service.name": "qzda-sandbox", "service.version": "phase3"},
     )
     provider = TracerProvider(resource=resource)
     if os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT"):
@@ -99,7 +99,7 @@ def get_tracer() -> trace.Tracer:
     """拿到本服务的 OTel Tracer;每次返回相同名字的 tracer 实例。"""
     # 即使 init_tracing 没显式调用,SDK 会安装一个默认 NoOp provider,
     # 因此 trace.get_tracer 永远可用。
-    return trace.get_tracer("qzda-skill-runtime")
+    return trace.get_tracer("qzda-sandbox")
 
 
 # ---- prometheus_client 句柄 --------------------------------------------------
@@ -175,7 +175,7 @@ def init_metrics() -> None:
             export_interval_millis=60_000,
         )
         metrics.set_meter_provider(MeterProvider(
-            resource=Resource.create({"service.name": "qzda-skill-runtime"}),
+            resource=Resource.create({"service.name": "qzda-sandbox"}),
             metric_readers=[reader],
         ))
     else:
@@ -190,7 +190,7 @@ def init_metrics() -> None:
                 export_interval_millis=60_000,
             )
             metrics.set_meter_provider(MeterProvider(
-                resource=Resource.create({"service.name": "qzda-skill-runtime"}),
+                resource=Resource.create({"service.name": "qzda-sandbox"}),
                 metric_readers=[reader],
             ))
         except Exception as exc:  # noqa: BLE001
@@ -201,4 +201,4 @@ def init_metrics() -> None:
 
 def get_meter() -> metrics.Meter:
     """拿到本服务的 OTel Meter;与 get_tracer 对称。"""
-    return metrics.get_meter("qzda-skill-runtime")
+    return metrics.get_meter("qzda-sandbox")

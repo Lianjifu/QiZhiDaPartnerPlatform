@@ -165,7 +165,7 @@ func docxPreviewSubstantiallyShorterThan(payload map[string]any, body string) bo
 }
 
 func skillArtifactDir() string {
-	if v := strings.TrimSpace(os.Getenv("DE_SKILL_ARTIFACT_DIR")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("DE_SANDBOX_ARTIFACT_DIR")); v != "" {
 		return v
 	}
 	return "/tmp/qzda-stack/artifacts"
@@ -288,7 +288,7 @@ func fetchSkillArtifactFromRuntime(storageName string) error {
 		return fmt.Errorf("empty artifact name")
 	}
 	client := &http.Client{Timeout: 8 * time.Second}
-	runtimeURL := strings.TrimRight(envOr("DE_SKILL_RUNTIME_URL", "http://127.0.0.1:8093"), "/")
+	runtimeURL := strings.TrimRight(envOr("DE_SANDBOX_RUNTIME_URL", "http://127.0.0.1:8093"), "/")
 	reqURL := runtimeURL + "/v1/artifacts/" + url.PathEscape(storageName)
 	resp, err := client.Get(reqURL)
 	if err != nil {

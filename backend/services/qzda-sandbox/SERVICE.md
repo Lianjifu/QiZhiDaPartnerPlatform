@@ -1,4 +1,4 @@
-# qzda-skill-runtime
+# qzda-sandbox
 
 FastAPI skill sandbox on port **8093**. **Monolith 与 coarse 均必须独立部署**（不可并入 qzda-app）。RunToken HMAC verification and package script execution.
 
@@ -10,7 +10,7 @@ FastAPI skill sandbox on port **8093**. **Monolith 与 coarse 均必须独立部
 
 ## Sandbox runtime tier
 
-镜像入口探测 `/proc/1/cmdline` + `DE_SKILL_RUNTIME_DETECTED`，实际声明四档：
+镜像入口探测 `/proc/1/cmdline` + `DE_SANDBOX_RUNTIME_DETECTED`，实际声明四档：
 
 | `sandbox` / `runtime` | 含义 | 启动开销 | 隔离强度 |
 |----|----|----|----|
@@ -28,11 +28,11 @@ FastAPI skill sandbox on port **8093**. **Monolith 与 coarse 均必须独立部
 |----------|---------|-------------|
 | `DE_BIND_HOST` | `0.0.0.0` | Bind address |
 | `DE_BIND_PORT` | `8093` | Bind port |
-| `DE_SKILL_RUN_SECRET` | `qzda-skill-run-dev` | HMAC secret for RunToken |
-| `DE_SKILL_SANDBOX` | `runsc` | Requested capability (runsc / gvisor-local) |
-| `DE_SKILL_REQUIRE_ISOLATION` | `1` (Docker) | Reject if control-plane reachable |
-| `DE_SKILL_RUNTIME_DETECTED` | (set by entrypoint) | Actual runtime tier |
-| `DE_SKILL_RUNTIME` | `runc` | (compose) Docker runtime spec; set `runsc` to opt in |
+| `DE_SANDBOX_RUN_SECRET` | `qzda-skill-run-dev` | HMAC secret for RunToken |
+| `DE_SANDBOX_SANDBOX` | `runsc` | Requested capability (runsc / gvisor-local) |
+| `DE_SANDBOX_REQUIRE_ISOLATION` | `1` (Docker) | Reject if control-plane reachable |
+| `DE_SANDBOX_RUNTIME_DETECTED` | (set by entrypoint) | Actual runtime tier |
+| `DE_SANDBOX_RUNTIME` | `runc` | (compose) Docker runtime spec; set `runsc` to opt in |
 
 On startup, control-plane DSN env vars (`DE_DATABASE_URL`, etc.) are stripped.
 
@@ -40,17 +40,17 @@ On startup, control-plane DSN env vars (`DE_DATABASE_URL`, etc.) are stripped.
 
 ```bash
 cd backend
-pip install -r services/qzda-skill-runtime/requirements.txt
-python3 runtimes/qzda_skill_runtime/main.py
+pip install -r services/qzda-sandbox/requirements.txt
+python3 runtimes/qzda_sandbox/main.py
 # or
-cd services/qzda-skill-runtime && uvicorn app.main:app --host 127.0.0.1 --port 8093
+cd services/qzda-sandbox && uvicorn app.main:app --host 127.0.0.1 --port 8093
 ```
 
 ## Docker
 
 ```bash
-docker build -t qzda-skill-runtime:local backend/services/qzda-skill-runtime
-docker run --rm -p 8093:8093 -e DE_SKILL_REQUIRE_ISOLATION=1 qzda-skill-runtime:local
+docker build -t qzda-sandbox:local backend/services/qzda-sandbox
+docker run --rm -p 8093:8093 -e DE_SANDBOX_REQUIRE_ISOLATION=1 qzda-sandbox:local
 ```
 
 ### gVisor (runsc) 启用
@@ -63,24 +63,24 @@ runsc install
 
 # 2. Compose 启用 runsc
 cd backend
-DE_SKILL_RUNTIME=runsc make compose-up-monolith
+DE_SANDBOX_RUNTIME=runsc make compose-up-monolith
 
 # 3. 验证
-docker exec qzda-skill-runtime cat /proc/1/cmdline | tr '\0' ' '
+docker exec qzda-sandbox cat /proc/1/cmdline | tr '\0' ' '
 # 期望：…/runsc --root /var/run/docker/runsc --log runsc日志 --log-format json …
 curl -s http://127.0.0.1:8093/healthz | jq .sandbox
 # 期望："runsc-ptrace" 或 "runsc-kvm"
 
 # 4. KVM 加速（Linux host + /dev/kvm 可用）
-DE_SKILL_RUNTIME=runsc docker run -it --rm --runtime=runsc \
-  qzda-skill-runtime:local sh
+DE_SANDBOX_RUNTIME=runsc docker run -it --rm --runtime=runsc \
+  qzda-sandbox:local sh
 # 在容器内确认是 KVM：
 cat /proc/cpuinfo | grep vmx   # 或 svm（AMD）
 ```
 
 `seccomp` / `apparmor` 必须 `unconfined`（gVisor 自己实现 syscall 拦截，重复套用会与 Sentry 冲突）。
 
-Compose (`deploy/compose.yml`) builds from `services/qzda-skill-runtime/Dockerfile`.
+Compose (`deploy/compose.yml`) builds from `services/qzda-sandbox/Dockerfile`.
 
 ## 资源配额（compose 已默认）
 

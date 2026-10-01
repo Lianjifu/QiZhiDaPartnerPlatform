@@ -16,7 +16,7 @@ from pathlib import Path
 
 # 允许直接 ``from generate_docx import ...`` 导入 backend/scripts/generate_docx.py。
 # 沿父目录向上搜索 ``scripts/generate_docx.py``,兼容:
-# - 本地:backend/services/qzda-skill-runtime/app/docx_gen.py → parents[3] = backend
+# - 本地:backend/services/qzda-sandbox/app/docx_gen.py → parents[3] = backend
 # - 镜像:/app/app/docx_gen.py（Dockerfile 把 app/ 拷到 /app/app/ 下）
 def _find_scripts_root(start: Path) -> Path | None:
     for parent in start.resolve().parents:
@@ -45,10 +45,10 @@ def artifact_dir() -> Path:
     """返回(必要时创建)制品下载目录。
 
     路径来源:
-    - ``DE_SKILL_ARTIFACT_DIR`` 环境变量(覆盖);
+    - ``DE_SANDBOX_ARTIFACT_DIR`` 环境变量(覆盖);
     - 默认 ``/tmp/qzda-stack/artifacts``(与 artifact_harvest.py 共用)。
     """
-    raw = os.environ.get("DE_SKILL_ARTIFACT_DIR") or "/tmp/qzda-stack/artifacts"
+    raw = os.environ.get("DE_SANDBOX_ARTIFACT_DIR") or "/tmp/qzda-stack/artifacts"
     path = Path(raw)
     path.mkdir(parents=True, exist_ok=True)
     return path

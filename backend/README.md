@@ -4,7 +4,7 @@
 
 | 项 | 默认 |
 |----|------|
-| **本地拓扑** | **monolith**：`qzda-gateway:8089` → `qzda-app:8100` + `qzda-skill-runtime:8093` |
+| **本地拓扑** | **monolith**：`qzda-gateway:8089` → `qzda-app:8100` + `qzda-sandbox:8093` |
 | **规模化对照** | coarse 四进程（sys / collab / cap / workflow） |
 | **数据** | Docker Postgres 16 + Redis；禁止 Homebrew 抢占 `5432` |
 | **环境** | `DE_ENV=development`（空库 hydrate，不灌 ACME seed） |
@@ -70,7 +70,7 @@ flowchart TB
     S4["qzda-workflow :8103"]
   end
 
-  SK["qzda-skill-runtime :8093<br/>技能沙箱 · 必须"]
+  SK["qzda-sandbox :8093<br/>技能沙箱 · 必须"]
   WF["qzda-workflow :8103<br/>可选"]
   AI["qzda-agent / qzda-rag<br/>:8091–8092 · 按需"]
   PG[(PostgreSQL 16)]
@@ -95,7 +95,7 @@ flowchart TB
 
 | 层 | 含义 | 后端现状 |
 |----|------|----------|
-| **L0** | 控制面联调 | monolith + skill-runtime 已通 |
+| **L0** | 控制面联调 | monolith + sandbox 已通 |
 | **L1** | 领域契约 | 工作区隔离、审核、零信任语义已落地 |
 | **L2** | 底座 | Temporal / Milvus / 真 gVisor 按阶段补齐 |
 
@@ -129,7 +129,7 @@ flowchart LR
     HARN[Harness<br/>local 默认]
     AGENT[qzda-agent-runtime]
     RAG[qzda-rag]
-    SKRT[qzda-skill-runtime]
+    SKRT[qzda-sandbox]
     TEMP[qzda-workflow<br/>+ Temporal]
   end
 
@@ -161,7 +161,7 @@ flowchart LR
 | **employee** | 岗位、装配、上岗 | qzda-app | qzda-collab |
 | **cap** | 模型 / 知识 / 记忆 / 技能 / 渠道 | qzda-app | qzda-cap |
 | **workflow** | 流程版本、试运行、Temporal | 可选 qzda-workflow | qzda-workflow |
-| **skill-runtime** | 沙箱执行 | 必须独立 :8093 | 同左 |
+| **sandbox** | 沙箱执行 | 必须独立 :8093 | 同左 |
 
 已退役：`qzda-core`、细端口 `qzda-policy:8094` / `qzda-audit:8095`。独立切开：`DE_CROSSCUTTING_SPLIT=1` + `make run-policy` / `make run-audit`。
 
@@ -179,7 +179,7 @@ sequenceDiagram
   participant APP as qzda-app
   participant PG as PostgreSQL / Redis
   participant LLM as 模型供应商
-  participant SK as qzda-skill-runtime
+  participant SK as qzda-sandbox
   participant WF as qzda-workflow
   participant AUD as 审计 / 用量
 
@@ -235,7 +235,7 @@ sequenceDiagram
 | qzda-workflow | 8103 | 流程 HTTP + Temporal Worker（可选） |
 | qzda-policy | 8104 | 可选独立策略 |
 | qzda-audit | 8105 | 可选独立审计读面 |
-| **qzda-skill-runtime** | 8093 | 技能沙箱（**必须**） |
+| **qzda-sandbox** | 8093 | 技能沙箱（**必须**） |
 | qzda-agent / qzda-rag | 8091–8092 | coarse 或按需；monolith 默认不启 agent |
 
 切流要点：
@@ -273,7 +273,7 @@ backend/
 ├── services/                  # 一部署单元一目录
 │   ├── qzda-app/ · qzda-sys/ · qzda-collab/ · qzda-cap/
 │   ├── qzda-gateway/ · qzda-workflow/
-│   ├── qzda-skill-runtime/ · qzda-agent-runtime/ · qzda-rag/
+│   ├── qzda-sandbox/ · qzda-agent-runtime/ · qzda-rag/
 │   └── qzda-policy/ · qzda-audit/
 ├── deploy/                    # compose · envoy · migrations · topology-split
 ├── infra/ · obs/              # 基础依赖与可观测
@@ -443,11 +443,11 @@ psql "$DE_DATABASE_URL" -f scripts/purge-demo-seed-ids.sql
 | `DE_POLICY_URL` | collab/cap → 策略 evaluate；sys 留空用本地 Engine |
 | `DE_CROSSCUTTING_SPLIT` | `1` 时 qzda-sys 不再吸收 policy/audit |
 | `DE_DATABASE_REPLICA_URL` | standby 从库；本机 `compose-up-replica` → `:5433` |
-| `DE_AGENT_RUNTIME_URL` / `DE_RAG_URL` / `DE_SKILL_RUNTIME_URL` | 侧车 |
+| `DE_AGENT_RUNTIME_URL` / `DE_RAG_URL` / `DE_SANDBOX_RUNTIME_URL` | 侧车 |
 | `DE_RUNTIME_MODE` | `local`（默认）或 `remote` |
 | `DE_RUNTIME_FAILOVER_LOCAL` | 非生产 remote 失败可回落 local |
-| `DE_SKILL_TEST_SIM` | 开发默认开；生产强制关 |
-| `DE_SKILL_RUN_SECRET` | RunToken HMAC |
+| `DE_SANDBOX_TEST_SIM` | 开发默认开；生产强制关 |
+| `DE_SANDBOX_RUN_SECRET` | RunToken HMAC |
 | `DE_TEMPORAL_HOST` | 非空则流程走 Temporal；生产/staging 默认 fail-closed |
 | `DE_MODEL_BUDGET_ENFORCE` | 用量硬门禁；生产默认开 |
 | `DE_REPLICA_MODE` | `active`（默认）或 `standby` |

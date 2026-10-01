@@ -354,12 +354,12 @@ func (s *Server) attachBuiltinPackageToSkill(item map[string]any, ws, skillID, b
 	return nil
 }
 
-// vetterMode reads DE_SKILL_VETTER. Default is "enabled". Values:
+// vetterMode reads DE_SANDBOX_VETTER. Default is "enabled". Values:
 //   - "enabled"   (default) — block SevBlock findings
 //   - "warn_only"           — log findings but allow the package through
 //   - "disabled"            — skip the vetter entirely
 func vetterMode() string {
-	switch strings.ToLower(strings.TrimSpace(os.Getenv("DE_SKILL_VETTER"))) {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("DE_SANDBOX_VETTER"))) {
 	case "disabled", "off", "false", "0":
 		return "disabled"
 	case "warn", "warn_only":

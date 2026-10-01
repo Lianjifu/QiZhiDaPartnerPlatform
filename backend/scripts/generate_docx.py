@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate a structured .docx from title + plain/markdown-ish text.
 
-Used by skill-runtime and Go fallback. Conventions:
+Used by sandbox and Go fallback. Conventions:
 - Title becomes document H1 (no book-title marks in heading)
 - Supports Markdown (# / ## / ###), CN section markers (一、/（一）), bullets and numbered lists
 - East-Asian friendly fonts and standard page margins

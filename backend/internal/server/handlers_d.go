@@ -152,7 +152,7 @@ func (s *Server) executeSkill(r *http.Request) (any, error) {
 			body[k] = v
 		}
 	}
-	result, runtimeErr := s.callSkillRuntime(body)
+	result, runtimeErr := s.callSandbox(body)
 	status := "success"
 	// 阶段 2:egressUsed 从 Python 沙箱响应里读,作为"声明 ↔ 实际"双向审计:
 	// 运维侧 `grep egress=wttr.in` 即可看到哪些技能真实访问了白名单域名。
@@ -200,14 +200,14 @@ func (s *Server) executeSkill(r *http.Request) (any, error) {
 	return result, nil
 }
 
-func (s *Server) callSkillRuntime(body map[string]any) (map[string]any, error) {
+func (s *Server) callSandbox(body map[string]any) (map[string]any, error) {
 	timeoutSec := 3
 	if t := intFrom(body["timeoutSec"]); t > 0 && t <= 120 {
 		timeoutSec = t
 	}
 	client := &http.Client{Timeout: time.Duration(timeoutSec) * time.Second}
 	payload, _ := json.Marshal(body)
-	resp, err := client.Post(envOr("DE_SKILL_RUNTIME_URL", "http://127.0.0.1:8093")+"/v1/execute", "application/json", strings.NewReader(string(payload)))
+	resp, err := client.Post(envOr("DE_SANDBOX_RUNTIME_URL", "http://127.0.0.1:8093")+"/v1/execute", "application/json", strings.NewReader(string(payload)))
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +215,7 @@ func (s *Server) callSkillRuntime(body map[string]any) (map[string]any, error) {
 	if resp.StatusCode >= 300 {
 		var errBody map[string]any
 		_ = json.NewDecoder(resp.Body).Decode(&errBody)
-		msg := coalesce(str(errBody["error"]), fmt.Sprintf("skill-runtime status %d", resp.StatusCode))
+		msg := coalesce(str(errBody["error"]), fmt.Sprintf("sandbox status %d", resp.StatusCode))
 		return nil, fmt.Errorf("%s", msg)
 	}
 	var out map[string]any
@@ -229,7 +229,7 @@ func skillTestSimEnabled() bool {
 	if productionLikeEnv() {
 		return false
 	}
-	v := strings.ToLower(strings.TrimSpace(envOr("DE_SKILL_TEST_SIM", "1")))
+	v := strings.ToLower(strings.TrimSpace(envOr("DE_SANDBOX_TEST_SIM", "1")))
 	return v == "1" || v == "true" || v == "yes"
 }
 

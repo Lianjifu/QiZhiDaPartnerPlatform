@@ -586,13 +586,13 @@ func (s *Server) skillRun(ctx toolRunContext, t *registeredTool, sk map[string]a
 			body[k] = v
 		}
 	}
-	result, runtimeErr := s.callSkillRuntime(body)
+	result, runtimeErr := s.callSandbox(body)
 	ms := int(time.Since(started).Milliseconds())
 	if runtimeErr != nil {
 		track(ms, false, "Copilot · 运行时失败")
 		return toolExecResult{
 			Status: "failed", DurationMs: ms, Error: runtimeErr.Error(),
-			Output: "技能运行时不可用：" + runtimeErr.Error(), SandboxID: "skill-runtime",
+			Output: "技能运行时不可用：" + runtimeErr.Error(), SandboxID: "sandbox",
 		}
 	}
 	out := coalesce(str(result["stdout"]), coalesce(str(result["preview"]), fmt.Sprintf("%v", result)))
@@ -623,7 +623,7 @@ func (s *Server) skillRun(ctx toolRunContext, t *registeredTool, sk map[string]a
 	}
 	return toolExecResult{
 		Status: status, DurationMs: ms, Output: truncateRunes(out, 4000),
-		Error: errMsg, SandboxID: "skill-runtime:" + skillID,
+		Error: errMsg, SandboxID: "sandbox:" + skillID,
 	}
 }
 

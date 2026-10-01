@@ -7,7 +7,7 @@
 | 逻辑层 | L04–L07 · L09 |
 | 部署 | **coarse 四进程**；monolith 下并入 **qzda-app:8100** |
 
-能力控制面（非执行）。执行面见 qzda-agent-runtime / qzda-rag / qzda-skill-runtime。
+能力控制面（非执行）。执行面见 qzda-agent-runtime / qzda-rag / qzda-sandbox。
 
 对外模型调用：`POST /api/model-invoke`、`POST /api/model-invoke/stream`（凭据 Vault / `model_secrets`）。
 

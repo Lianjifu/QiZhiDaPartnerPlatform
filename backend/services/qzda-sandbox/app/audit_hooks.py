@@ -7,7 +7,7 @@
 **始终不阻塞**(默认):DnsGate / 文件读取门槛由其他层把关,
 本模块只计数;真正拦截由 egress_proxy / runsc seccomp 完成。
 
-**可选强阻塞** (``DE_SKILL_AUDIT_BLOCK_OPEN=1``):在审计开启时,
+**可选强阻塞** (``DE_SANDBOX_AUDIT_BLOCK_OPEN=1``):在审计开启时,
 额外对 ``os.open`` 做「路径不在技能包根内 / 不在 stdlib 内」就抛 ``PermissionError``。
 这是开发期与 CI 期用来验证白名单覆盖率的开关,生产通常保持关闭。
 
@@ -46,10 +46,10 @@ def _bump(kind: str, allowed: bool) -> None:
 
 # ---- 路径判定辅助 ------------------------------------------------------------
 def _path_allowed(path: str | bytes) -> bool:
-    """``os.open`` 路径白名单:DE_SKILL_PACKAGE_ROOT / /app / sys.prefix 都算 OK。
+    """``os.open`` 路径白名单:DE_SANDBOX_PACKAGE_ROOT / /app / sys.prefix 都算 OK。
 
     用 ``os.path.realpath`` 解析符号链接与 ``..``,再前缀匹配。
-    若 ``DE_SKILL_PACKAGE_ROOT`` 未设置,只要路径在 stdlib 或 ``/app`` 下即放行
+    若 ``DE_SANDBOX_PACKAGE_ROOT`` 未设置,只要路径在 stdlib 或 ``/app`` 下即放行
     (避免开发期默认阻断一切本地 IO)。
     """
     raw = os.fspath(path)
@@ -60,7 +60,7 @@ def _path_allowed(path: str | bytes) -> bool:
     except OSError:
         return False
     candidates: list[str] = []
-    pkg_root = os.environ.get("DE_SKILL_PACKAGE_ROOT")
+    pkg_root = os.environ.get("DE_SANDBOX_PACKAGE_ROOT")
     if pkg_root:
         try:
             real_root = os.path.realpath(pkg_root)
@@ -110,7 +110,7 @@ def _patch_subprocess_popen() -> None:
 def _patch_os_open() -> None:
     """monkey-patch ``os.open``,按路径白名单判定 allowed,可选强阻塞。"""
     original = _ORIG_OS_OPEN
-    block_open = os.environ.get("DE_SKILL_AUDIT_BLOCK_OPEN") == "1"
+    block_open = os.environ.get("DE_SANDBOX_AUDIT_BLOCK_OPEN") == "1"
 
     def patched(path: Any, flags: Any, *args: Any, **kwargs: Any) -> int:
         allowed = _path_allowed(path)
@@ -169,11 +169,11 @@ def install_audit_hooks() -> bool:
     """安装所有审计 hook。返回 ``True`` 表示新装,``False`` 表示已存在/未启用。
 
     闸门:
-    - ``DE_SKILL_AUDIT=1`` 未设置 → 直接返回 False,不动 monkey-patch。
+    - ``DE_SANDBOX_AUDIT=1`` 未设置 → 直接返回 False,不动 monkey-patch。
     - 已安装过 → 直接返回 False(幂等)。
     """
     global _installed
-    if os.environ.get("DE_SKILL_AUDIT") != "1":
+    if os.environ.get("DE_SANDBOX_AUDIT") != "1":
         return False
     if _installed:
         return False

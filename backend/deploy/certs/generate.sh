@@ -38,7 +38,7 @@ issue_workload client qzda-core
 cp -f client.crt qzda-core.crt
 cp -f client.key qzda-core.key
 
-for svc in qzda-platform qzda-policy qzda-audit qzda-collab qzda-employee qzda-skill-runtime; do
+for svc in qzda-platform qzda-policy qzda-audit qzda-collab qzda-employee qzda-sandbox; do
   issue_workload "$svc" "$svc"
 done
 

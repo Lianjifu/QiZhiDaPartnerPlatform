@@ -120,7 +120,7 @@ class DnsGate:
 
 
 def parse_csv_host_list(raw: str) -> list[str]:
-    """解析 ``DE_SKILL_ALLOWED_EGRESS`` 这类环境变量里的逗号/空白分隔域名。
+    """解析 ``DE_SANDBOX_ALLOWED_EGRESS`` 这类环境变量里的逗号/空白分隔域名。
 
     空字符串 → 空列表。空段忽略。自动 lower-case + strip。
     """

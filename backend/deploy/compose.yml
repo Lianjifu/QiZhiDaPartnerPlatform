@@ -469,7 +469,7 @@ services:
       - qzda_net
 
   # —— Monolith control plane (方案 A) ——
-  # Profile: monolith — qzda-app:8100 + qzda-skill-runtime:8093 (+ gateway)
+  # Profile: monolith — qzda-app:8100 + qzda-sandbox:8093 (+ gateway)
   qzda-app:
     build:
       context: ..
@@ -484,7 +484,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      qzda-skill-runtime:
+      qzda-sandbox:
         condition: service_healthy
     environment:
       DE_APP_ADDR: ":8100"
@@ -492,8 +492,8 @@ services:
       DE_DATABASE_URL: postgres://de:de@postgres:5432/digital_employee?sslmode=disable
       DE_REDIS_URL: redis://redis:6379/0
       DE_RUNTIME_MODE: local
-      DE_SKILL_RUNTIME_URL: http://qzda-skill-runtime:8093
-      DE_SKILL_RUN_SECRET: ${DE_SKILL_RUN_SECRET:-qzda-skill-run-dev}
+      DE_SANDBOX_RUNTIME_URL: http://qzda-sandbox:8093
+      DE_SANDBOX_RUN_SECRET: ${DE_SANDBOX_RUN_SECRET:-qzda-skill-run-dev}
       DE_WORKFLOW_URL: ${DE_WORKFLOW_URL:-}
       DE_BAN_MOCK_TOKEN: ${DE_BAN_MOCK_TOKEN:-0}
       DE_BAN_DEMO_TOKEN: ${DE_BAN_DEMO_TOKEN:-${DE_BAN_MOCK_TOKEN:-0}}
@@ -600,14 +600,14 @@ services:
       DE_REDIS_URL: redis://redis:6379/0
       DE_AGENT_RUNTIME_URL: http://qzda-agent-runtime:8091
       DE_RAG_URL: http://qzda-rag:8092
-      DE_SKILL_RUNTIME_URL: http://qzda-skill-runtime:8093
+      DE_SANDBOX_RUNTIME_URL: http://qzda-sandbox:8093
       DE_CAP_URL: ${DE_CAP_URL:-http://qzda-cap:8102}
       DE_WORKFLOW_URL: ${DE_WORKFLOW_URL:-http://qzda-workflow:8103}
       DE_ENV: ${DE_ENV:-development}
       DE_BAN_MOCK_TOKEN: ${DE_BAN_MOCK_TOKEN:-0}
       DE_BAN_DEMO_TOKEN: ${DE_BAN_DEMO_TOKEN:-${DE_BAN_MOCK_TOKEN:-0}}
       DE_POLICY_URL: ${DE_COLLAB_POLICY_URL:-http://qzda-sys:8100}
-      DE_SKILL_RUN_SECRET: ${DE_SKILL_RUN_SECRET:-qzda-skill-run-dev}
+      DE_SANDBOX_RUN_SECRET: ${DE_SANDBOX_RUN_SECRET:-qzda-skill-run-dev}
       DE_JWT_SECRET: ${DE_JWT_SECRET:-}
       DE_LLM_BASE_URL: ${DE_LLM_BASE_URL:-}
       DE_LLM_API_KEY: ${DE_LLM_API_KEY:-}
@@ -645,13 +645,13 @@ services:
       DE_DATABASE_URL: postgres://de:de@postgres:5432/digital_employee?sslmode=disable
       DE_REDIS_URL: redis://redis:6379/0
       DE_RAG_URL: http://qzda-rag:8092
-      DE_SKILL_RUNTIME_URL: http://qzda-skill-runtime:8093
+      DE_SANDBOX_RUNTIME_URL: http://qzda-sandbox:8093
       DE_ENV: ${DE_ENV:-development}
       DE_BAN_MOCK_TOKEN: ${DE_BAN_MOCK_TOKEN:-0}
       DE_BAN_DEMO_TOKEN: ${DE_BAN_DEMO_TOKEN:-${DE_BAN_MOCK_TOKEN:-0}}
       DE_VAULT_ADDR: ${DE_VAULT_ADDR:-}
       DE_VAULT_TOKEN: ${DE_VAULT_TOKEN:-}
-      DE_SKILL_RUN_SECRET: ${DE_SKILL_RUN_SECRET:-qzda-skill-run-dev}
+      DE_SANDBOX_RUN_SECRET: ${DE_SANDBOX_RUN_SECRET:-qzda-skill-run-dev}
       DE_POLICY_URL: ${DE_CAP_POLICY_URL:-http://qzda-sys:8100}
       DE_JWT_SECRET: ${DE_JWT_SECRET:-}
       # Local Ollama / private LLM endpoints (set 1 only when intentional)
@@ -735,22 +735,22 @@ services:
     networks:
       - qzda_net
 
-  qzda-skill-runtime:
+  qzda-sandbox:
     build:
       context: ..
-      dockerfile: services/qzda-skill-runtime/Dockerfile
-    image: qzda-skill-runtime:local
-    container_name: qzda-skill-runtime
+      dockerfile: services/qzda-sandbox/Dockerfile
+    image: qzda-sandbox:local
+    container_name: qzda-sandbox
     restart: unless-stopped
     profiles: ["coarse", "monolith"]
     # gVisor 集成：
     # - 默认 runtime=runc（兼容性兜底）
-    # - 设 DE_SKILL_RUNTIME=runsc 启用 runsc：host 必须先安装 runsc
+    # - 设 DE_SANDBOX_RUNTIME=runsc 启用 runsc：host 必须先安装 runsc
     #   （install runsc: curl -fsSL https://gvisor.dev/archive/nightly/latest/runsc \
     #       -o /usr/local/bin/runsc && chmod +x /usr/local/bin/runsc）
     # - gVisor 自己实现 syscall 拦截，必须 seccomp=unconfined
-    # - 可选 DE_SKILL_RUNTIME=runsc-kvm 需 host 启用 KVM（Linux host only）
-    runtime: ${DE_SKILL_RUNTIME:-runc}
+    # - 可选 DE_SANDBOX_RUNTIME=runsc-kvm 需 host 启用 KVM（Linux host only）
+    runtime: ${DE_SANDBOX_RUNTIME:-runc}
     # Intentionally no DE_DATABASE_URL / DE_REDIS_URL
     environment:
       DE_BIND_HOST: "0.0.0.0"
@@ -758,26 +758,26 @@ services:
       # 阶段 4 #2:fail-closed — secret 来自 secrets mount(/etc/qzda/skill-run-secret),
       # 不再 fallback 到开发占位 qzda-skill-run-dev。生产必须 mount 文件,否则
       # skill_runtime 主进程 lifespan 主动 skill_secret() 抛 RuntimeError 退出。
-      DE_SKILL_RUN_SECRET_FILE: /etc/qzda/skill-run-secret
-      DE_SKILL_SANDBOX: ${DE_SKILL_SANDBOX:-runsc}
-      DE_SKILL_REQUIRE_ISOLATION: "1"
-      DE_SKILL_RUNTIME: ${DE_SKILL_RUNTIME:-runc}
+      DE_SANDBOX_RUN_SECRET_FILE: /etc/qzda/skill-run-secret
+      DE_SANDBOX_SANDBOX: ${DE_SANDBOX_SANDBOX:-runsc}
+      DE_SANDBOX_REQUIRE_ISOLATION: "1"
+      DE_SANDBOX_RUNTIME: ${DE_SANDBOX_RUNTIME:-runc}
       # 阶段 3:可观测性
       # - PROMETHEUS_MULTIPROC_DIR:prometheus_client 多进程模式必填(uvicorn workers > 1),
       #   tmpfs 8m 放 metric 文件;单 worker 也兼容。
       # - OTEL_EXPORTER_OTLP_ENDPOINT:配置后由 telemetry.py 自动切换 OTLP exporter,
       #   未配则走 Console(开发期友好)。
-      # - DE_SKILL_AUDIT:1 = 子进程内自动安装 audit_hooks,记录 Python 层 syscall 计数。
+      # - DE_SANDBOX_AUDIT:1 = 子进程内自动安装 audit_hooks,记录 Python 层 syscall 计数。
       PROMETHEUS_MULTIPROC_DIR: "/tmp/prom-multiproc"
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
-      DE_SKILL_AUDIT: ${DE_SKILL_AUDIT:-1}
+      DE_SANDBOX_AUDIT: ${DE_SANDBOX_AUDIT:-1}
       # 阶段 4 #6:rate limit 默认 60 req/min per (ws,actor) + IP。开发 / 测试
-      # 环境覆盖:export DE_SKILL_RATE_LIMIT_PER_MIN=10000 即可临时放开。
-      DE_SKILL_RATE_LIMIT_PER_MIN: ${DE_SKILL_RATE_LIMIT_PER_MIN:-60}
+      # 环境覆盖:export DE_SANDBOX_RATE_LIMIT_PER_MIN=10000 即可临时放开。
+      DE_SANDBOX_RATE_LIMIT_PER_MIN: ${DE_SANDBOX_RATE_LIMIT_PER_MIN:-60}
       # 阶段 4 #3:信任的 signer key IDs(CSV),Python 校验 .signed marker 时用。
       # 留空 = 所有包都被拒(fail-closed)。weather 包对应的 ID 在 tools/sign-skill
       # 跑一次后会落到 DEPLOY_TRUSTED_KEYS_DIR 注入。
-      DE_SKILL_TRUSTED_KEY_IDS: ${DE_SKILL_TRUSTED_KEY_IDS:-ed25519:dev-placeholder}
+      DE_SANDBOX_TRUSTED_KEY_IDS: ${DE_SANDBOX_TRUSTED_KEY_IDS:-ed25519:dev-placeholder}
     # 阶段 4 #2:secret 文件 mount。挂到 /etc/qzda/skill-run-secret,只读。
     secrets:
       - skill_run_secret
@@ -878,7 +878,7 @@ secrets:
 networks:
   qzda_net:
     driver: bridge
-  # Execution plane only: skill-runtime + collab/cap for invoke.
+  # Execution plane only: sandbox + collab/cap for invoke.
   qzda_exec_net:
     driver: bridge
     internal: false

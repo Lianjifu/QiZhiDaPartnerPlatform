@@ -50,9 +50,9 @@ Run scripts/echo.py to print a greeting.
 func TestParseAndImportSkillPackage(t *testing.T) {
 	raw := buildDemoSkillZip(t)
 	tmp := t.TempDir()
-	t.Setenv("DE_SKILL_PACKAGE_DIR", tmp)
-	t.Setenv("DE_SKILL_TEST_SIM", "1")
-	t.Setenv("DE_SKILL_RUNTIME_URL", "http://127.0.0.1:1")
+	t.Setenv("DE_SANDBOX_PACKAGE_DIR", tmp)
+	t.Setenv("DE_SANDBOX_TEST_SIM", "1")
+	t.Setenv("DE_SANDBOX_RUNTIME_URL", "http://127.0.0.1:1")
 	// W1-D2 · disable signature verification for this fixture-driven test;
 	// the dedicated signer tests cover the verify path with proper signed
 	// inputs.

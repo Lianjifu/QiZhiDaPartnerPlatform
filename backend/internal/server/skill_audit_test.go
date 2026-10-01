@@ -90,9 +90,9 @@ func TestAuditWrittenOnImportSignatureFailure(t *testing.T) {
 	isolatedDevKeypair(t)
 
 	tmp := t.TempDir()
-	t.Setenv("DE_SKILL_PACKAGE_DIR", tmp)
-	t.Setenv("DE_SKILL_TEST_SIM", "1")
-	t.Setenv("DE_SKILL_RUNTIME_URL", "http://127.0.0.1:1")
+	t.Setenv("DE_SANDBOX_PACKAGE_DIR", tmp)
+	t.Setenv("DE_SANDBOX_TEST_SIM", "1")
+	t.Setenv("DE_SANDBOX_RUNTIME_URL", "http://127.0.0.1:1")
 
 	h := server.New(store.New()).Handler()
 

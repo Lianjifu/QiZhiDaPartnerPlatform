@@ -22,16 +22,16 @@ scrape_configs:
         labels: { service: qzda-cap }
       - targets: ["host.docker.internal:8103"]
         labels: { service: qzda-workflow }
-  # 阶段 3:qzda-skill-runtime 在 docker 内部以 compose service name 直连,
+  # 阶段 3:qzda-sandbox 在 docker 内部以 compose service name 直连,
   # 与 host.docker.internal 类外部入口隔离。隔离网络 qzda_exec_net 上 Prometheus
   # 也可达(由 deploy 网络拓扑保证)。
-  - job_name: qzda-skill-runtime
+  - job_name: qzda-sandbox
     metrics_path: /metrics
     scrape_interval: 10s
     static_configs:
-      - targets: ['qzda-skill-runtime:8093']
+      - targets: ['qzda-sandbox:8093']
         labels:
-          service: skill-runtime
+          service: sandbox
           tier: execution-plane
   - job_name: prometheus
     static_configs:

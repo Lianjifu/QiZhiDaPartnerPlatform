@@ -23,9 +23,9 @@
 - [控制台一览](#控制台一览)
 - [能力地图](#能力地图)
 - [办公开箱](#办公开箱)
-- [能力供给（五中心）](#能力供给五中心)
-- [功能模块](#功能模块)（含 [交互图](#功能模块交互图)）
-- [技术架构](#技术架构)（含 [部署架构图](#部署架构图) · [逻辑拓扑](#逻辑拓扑) · [数据流时序图](#数据流时序图)）
+- [能力供给](#能力供给)
+- [功能模块](#功能模块)
+- [技术架构](#技术架构)
 - [本地部署](#本地部署)
 - [验证与常见问题](#验证与常见问题)
 - [文档索引](#文档索引)
@@ -281,7 +281,7 @@ flowchart TB
 ## 技术架构
 
 **控制面管可信与编排，执行面跑推理与工具，网关统一入口。**  
-本地 / SME 默认 **monolith**：`qzda-gateway:8089` → `qzda-app:8100` + `qzda-skill-runtime:8093`（可选 `qzda-workflow:8103`）。
+本地 / SME 默认 **monolith**：`qzda-gateway:8089` → `qzda-app:8100` + `qzda-sandbox:8093`（可选 `qzda-workflow:8103`）。
 
 | 文档 | 用途 |
 |------|------|
@@ -306,7 +306,7 @@ flowchart TB
 | **双栈分工** | Go：身份、策略、审计、资源编排；Python：Agent / RAG / Skill 沙箱 |
 | **网关统一入口** | 浏览器只认 `:8089`；Vite 开发态同源 `/api` 代理到网关 |
 | **工作区硬隔离** | 请求带 `x-workspace-id`；跨工作区引用拒绝 |
-| **执行面不混部** | skill-runtime 必须独立；agent / rag 按需或 coarse 才启 |
+| **执行面不混部** | sandbox 必须独立；agent / rag 按需或 coarse 才启 |
 | **能力只引用已发布** | 伙伴装配模型 / 知识 / 技能 / 渠道的已发布版本 |
 | **可观测默认开** | 各服务 `/metrics`（含 `service` label） |
 
@@ -333,7 +333,7 @@ flowchart TB
   end
 
   subgraph Exec["执行面"]
-    SK["qzda-skill-runtime :8093<br/>必须独立"]
+    SK["qzda-sandbox :8093<br/>必须独立"]
     AG["qzda-agent :8091<br/>按需"]
     RAG["qzda-rag :8092<br/>按需"]
   end
@@ -364,7 +364,7 @@ flowchart TB
 
 | 形态 | 组成 | 适用 |
 |------|------|------|
-| **monolith（默认）** | gateway + qzda-app + skill-runtime（± workflow） | 本地联调 / SME |
+| **monolith（默认）** | gateway + qzda-app + sandbox（± workflow） | 本地联调 / SME |
 | **coarse** | gateway + sys/collab/cap/workflow + skill（± agent/rag） | 规模化对照 |
 | **staging 拓扑** | coarse + Dex + OPA + OpenSearch + obs | 预发验收 |
 
@@ -395,7 +395,7 @@ flowchart TB
     WFc["qzda-workflow :8103<br/>可选"]
   end
 
-  SKILL["qzda-skill-runtime :8093<br/>技能沙箱 · 必须独立"]
+  SKILL["qzda-sandbox :8093<br/>技能沙箱 · 必须独立"]
   WFm["qzda-workflow :8103<br/>流程 HTTP + Temporal · 可选"]
   AI["qzda-agent / qzda-rag :8091–8092<br/>coarse 或按需<br/>monolith 默认进程内 Harness"]
 
@@ -424,7 +424,7 @@ sequenceDiagram
   participant APP as qzda-app
   participant PG as PostgreSQL / Redis
   participant LLM as 模型供应商
-  participant SK as qzda-skill-runtime
+  participant SK as qzda-sandbox
   participant WF as qzda-workflow
   participant AUD as 审计 / 用量
 
@@ -472,7 +472,7 @@ coarse 模式下，上图 `qzda-app` 内域调用拆到 `qzda-collab` / `qzda-sy
 | **qzda-app** | 8100 | **monolith 默认**：sys + collab + cap |
 | qzda-sys / qzda-collab / qzda-cap | 8100–8102 | coarse：地基 / 协作编排 / 能力五中心 |
 | qzda-workflow | 8103 | 工作流与流程技能发布（可选） |
-| **qzda-skill-runtime** | 8093 | 技能沙箱（必须独立） |
+| **qzda-sandbox** | 8093 | 技能沙箱（必须独立） |
 | agent / rag | 8091–8092 | coarse 或按需 |
 
 已退役：`qzda-core:8080`、细端口 `qzda-policy:8094` / `qzda-audit:8095`（能力由 qzda-app / qzda-sys 吸收）。
@@ -517,7 +517,7 @@ qizhida-partner-platform/
 │   ├── internal/                  # apprun · server(ServiceMode) · store · policy …
 │   ├── api/                       # routes.md · proto · 契约说明
 │   ├── services/                  # 部署单元：Dockerfile · SERVICE.md · FastAPI
-│   │                              # （qzda-app / qzda-skill-runtime / qzda-rag …）
+│   │                              # （qzda-app / qzda-sandbox / qzda-rag …）
 │   ├── deploy/                    # compose · envoy.monolith/coarse · topology-split
 │   ├── infra/ · obs/              # 基础依赖与可观测
 │   ├── libs/ · pkg/ · gen/        # 共享库与生成代码
@@ -585,7 +585,7 @@ bash scripts/dev-stack/ensure-docker-postgres.sh
 |------|------|
 | qzda-gateway | **8089** |
 | qzda-app（monolith） | 8100 |
-| qzda-skill-runtime | 8093 |
+| qzda-sandbox | 8093 |
 | Vite | 5173 |
 | qzda-workflow（可选） | 8103 |
 | coarse sys/collab/cap | 8100–8102 |

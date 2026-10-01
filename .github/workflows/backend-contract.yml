@@ -72,7 +72,7 @@ jobs:
           test -f deploy/envoy/envoy.spiffe.yaml
           test -f deploy/envoy/envoy.split.yaml
           test -f deploy/spiffe/README.md
-          test -f deploy/qzda-skill-runtime/seccomp.json
+          test -f deploy/qzda-sandbox/seccomp.json
           test -f Dockerfile
           test -f runtimes/Dockerfile
           test -f runtimes/de_rag/requirements.txt

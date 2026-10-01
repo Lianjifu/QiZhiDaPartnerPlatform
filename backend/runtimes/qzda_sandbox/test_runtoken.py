@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Unit checks for skill-runtime RunToken verification (no HTTP server)."""
+"""Unit checks for sandbox RunToken verification (no HTTP server)."""
 from __future__ import annotations
 
 import hashlib
@@ -12,7 +12,7 @@ from base64 import urlsafe_b64encode
 
 # Import from same directory
 sys.path.insert(0, os.path.dirname(__file__))
-os.environ["DE_SKILL_RUN_SECRET"] = "test-secret"
+os.environ["DE_SANDBOX_RUN_SECRET"] = "test-secret"
 import main  # noqa: E402
 
 

@@ -1,0 +1,19 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "qiZhiDa-dev-demo",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev:demo"],
+      "autoPort": true,
+      "cwd": "frontend/web"
+    },
+    {
+      "name": "qiZhiDa-dev-api",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev"],
+      "autoPort": true,
+      "cwd": "frontend/web"
+    }
+  ]
+}

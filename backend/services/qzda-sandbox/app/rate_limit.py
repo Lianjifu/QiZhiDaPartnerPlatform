@@ -61,10 +61,10 @@ class TokenBucket:
 def build_default() -> TokenBucket:
     """从 env 读默认值,生产 / 开发可分别覆盖。
 
-    - ``DE_SKILL_RATE_LIMIT_PER_MIN`` 默认 60(每分钟每 ws+actor 60 次)。
+    - ``DE_SANDBOX_RATE_LIMIT_PER_MIN`` 默认 60(每分钟每 ws+actor 60 次)。
     - 进程内单实例,FastAPI 启动期 init 一次。
     """
-    rate = int(os.environ.get("DE_SKILL_RATE_LIMIT_PER_MIN") or "60")
+    rate = int(os.environ.get("DE_SANDBOX_RATE_LIMIT_PER_MIN") or "60")
     return TokenBucket(rate)
 
 

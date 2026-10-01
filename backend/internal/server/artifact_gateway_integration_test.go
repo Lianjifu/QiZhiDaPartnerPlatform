@@ -40,12 +40,12 @@ func countAuditRows(t *testing.T, st *store.Store, actionContains, result string
 func withArtifactFixture(t *testing.T, name string, size int) (root, absPath string, cleanup func()) {
 	t.Helper()
 	dir := t.TempDir()
-	prev := os.Getenv("DE_SKILL_ARTIFACT_DIR")
-	_ = os.Setenv("DE_SKILL_ARTIFACT_DIR", dir)
+	prev := os.Getenv("DE_SANDBOX_ARTIFACT_DIR")
+	_ = os.Setenv("DE_SANDBOX_ARTIFACT_DIR", dir)
 	if err := os.WriteFile(filepath.Join(dir, name), make([]byte, size), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	return dir, filepath.Join(dir, name), func() { _ = os.Setenv("DE_SKILL_ARTIFACT_DIR", prev) }
+	return dir, filepath.Join(dir, name), func() { _ = os.Setenv("DE_SANDBOX_ARTIFACT_DIR", prev) }
 }
 
 // serverWithIdentity spins up the artifact handler stack with an

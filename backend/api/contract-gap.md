@@ -50,7 +50,7 @@
 | governance overview/health + 详情 permissions/governance/runtime/impact/audit | OK |
 | 供应链门禁（未签名 / 高危漏洞）+ 安装预检 checks | OK |
 | 沙箱策略：熔断 / 限流 / 高危命令 / egress / 输出脱敏 | OK（PATCH 立即生效） |
-| `POST .../test` → Mint RunToken → `qzda-skill-runtime`；不可达时 `DE_SKILL_TEST_SIM` 降级 | OK（生产建议 `DE_SKILL_TEST_SIM=0`） |
+| `POST .../test` → Mint RunToken → `qzda-sandbox`；不可达时 `DE_SANDBOX_TEST_SIM` 降级 | OK（生产建议 `DE_SANDBOX_TEST_SIM=0`） |
 | `POST /api/skills/import-package`（`.skill`/`.zip`/`.tgz`，Agent Skills `SKILL.md`）落盘 + 沙箱执行 scripts | OK |
 | `GET /api/skills/catalog` → `{ items, meta }`；`channel`/`syncedAt`/`visibilityScope`/`releaseChannel` | OK |
 | `POST /api/skills/catalog/publish` 工作区晋升上架（审批/可见性） | OK |
