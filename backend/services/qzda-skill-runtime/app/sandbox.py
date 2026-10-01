@@ -208,6 +208,7 @@ def run_package_script(
     command: str,
     timeout_sec: int,
     allowed_egress: list[str] | None = None,
+    correlation_id: str | None = None,
 ) -> tuple[bool, str, int]:
     """执行技能包内白名单脚本。
 
@@ -279,6 +280,14 @@ def run_package_script(
     env = {k: v for k, v in os.environ.items() if not any(k == p or k.startswith(p) for p in FORBIDDEN_ENV)}
     env["DE_SKILL_PACKAGE_ROOT"] = str(root)
     env["DE_SKILL_WORK_DIR"] = str(root)
+    # 阶段 3:把 correlation_id + 遥测/审计开关透传给子进程,这样 audit_hooks 安装
+    # 后记录的 syscall 计数可以携带同一 correlation_id,前端 trace 一致。
+    if correlation_id:
+        env["DE_SKILL_CORRELATION_ID"] = correlation_id
+    if os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT"):
+        env["OTEL_EXPORTER_OTLP_ENDPOINT"] = os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"]
+    if os.environ.get("DE_SKILL_AUDIT"):
+        env["DE_SKILL_AUDIT"] = os.environ["DE_SKILL_AUDIT"]
     # 阶段 2:出口 allowlist 与代理
     egress = [h for h in (allowed_egress or []) if h and h.strip()]
     env["DE_SKILL_ALLOWED_EGRESS"] = ",".join(egress)
@@ -328,12 +337,28 @@ def run_package_script(
     ]
     if out:
         lines.append("--- stdout ---")
-        lines.append(out[:8000])  # stdout 截断 8KB 防敏感数据外泄
+        lines.append(_truncate_lines(out, 100, 200))  # 按行截断保留首 100 + 尾 200
     if err:
         lines.append("--- stderr ---")
-        lines.append(err[:4000])  # stderr 截断 4KB
+        lines.append(_truncate_lines(err, 50, 100))  # 按行截断保留首 50 + 尾 100
     ok = proc.returncode == 0
     return ok, "\n".join(lines), int((time.time() - started) * 1000)
+
+
+def _truncate_lines(text: str, head: int = 100, tail: int = 200) -> str:
+    """保留首 ``head`` 行 + 尾 ``tail`` 行,中间加省略标记。
+
+    按字节切会随机截断 JSON / traceback 末尾;按行切可保留关键 stack tail,
+    排查 skill 报错时这一段最有用。按字节切的话经常一刀切在 ``File "..."``
+    中间,看不出调用栈。
+    """
+    if not text:
+        return ""
+    lines = text.splitlines()
+    if len(lines) <= head + tail:
+        return text
+    kept = lines[:head] + [f"... (omitted {len(lines) - head - tail} lines) ..."] + lines[-tail:]
+    return "\n".join(kept)
 
 
 def strip_forbidden_env() -> None:
@@ -373,6 +398,17 @@ except Exception as _exc:  # noqa: BLE001
     # bootstrap 失败时静默:允许 e2e 主流程看到问题,而不是悄悄放过 DNS
     import sys as _sys2
     print(f"[qzda-egress-bootstrap] failed: {_exc!r}", file=_sys2.stderr)
+
+# 阶段 3:DE_SKILL_AUDIT=1 时同时挂上 audit_hooks,记录 os.open / subprocess /
+# socket.connect / exec* 的 Python 层 syscall 计数。
+try:
+    if _os.environ.get("DE_SKILL_AUDIT", "") == "1":
+        _sys.path.insert(0, "/app")
+        from app import audit_hooks as _hooks
+        _hooks.install_audit_hooks()
+except Exception as _exc2:  # noqa: BLE001
+    import sys as _sys3
+    print(f"[qzda-audit-hooks-bootstrap] failed: {_exc2!r}", file=_sys3.stderr)
 """
 
 

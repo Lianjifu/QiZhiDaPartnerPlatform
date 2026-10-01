@@ -259,6 +259,12 @@ class EgressProxy:
     def _record_denied(self, host: str) -> None:
         with self._lock:
             self._denied.add(host.lower())
+        # 阶段 3:Prometheus 计数器;metric 故障不应该破坏代理路径
+        try:
+            from app.telemetry import egress_blocked_total
+            egress_blocked_total.labels(host=host.lower()).inc()
+        except Exception:  # noqa: BLE001
+            pass
 
     def start(self) -> None:
         if self._started:
