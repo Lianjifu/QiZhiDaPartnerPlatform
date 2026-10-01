@@ -9,8 +9,8 @@ import { useAuthStore } from './stores/authStore';
 
 const LoginPage = lazy(() => import('./auth/LoginPage'));
 const Home = lazy(() => import('./features/dashboard/HomePage'));
-const Copilot = lazy(() => import('./pages/Copilot'));
-const CopilotShare = lazy(() => import('./pages/CopilotShare'));
+const Copilot = lazy(() => import('./features/copilot/components/CopilotPage'));
+const CopilotShare = lazy(() => import('./features/copilot/components/CopilotShare'));
 const Tasks = lazy(() => import('./pages/Tasks'));
 const Workspaces = lazy(() => import('./pages/Workspaces'));
 const DigitalPartners = lazy(() => import('./pages/Partners'));

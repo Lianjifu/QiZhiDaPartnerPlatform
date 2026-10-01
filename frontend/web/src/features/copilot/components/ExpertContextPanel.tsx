@@ -2,90 +2,33 @@
  * 专家上下文概览面板（P0–P3）
  * 现代 SaaS 侧栏：轻量工具条 + 卡片分区 + 可折叠明细。
  */
-import { useMemo, useState, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { useMemo, useState } from 'react';
 import {
   AlertCircle, AlertTriangle, Brain, BriefcaseBusiness, CheckCircle2, ChevronDown, ChevronRight,
-  Clock, Database, Download, ExternalLink, Search, Shield, Wrench,
+  Clock, Database, Download, Search, Shield, Wrench,
 } from 'lucide-react';
-import { Badge, Button, toast } from '@qzda/web-ui';
+import { Badge, toast } from '@qzda/web-ui';
 import { cn } from '@qzda/web-utils';
 import type { Citation } from '@/hooks/types';
 import type { DigitalPartner } from '@qzda/web-types';
-import type { RunMode } from './composer-mode';
+import type { RunMode } from '../lib/composer-mode';
 import {
   buildExpertEvidencePack,
   deriveExpertJobContract,
   deriveTurnProgress,
   formatEvidencePackMarkdown,
   type ExpertContextOverview,
-} from './expert-context';
-import { TurnTaskList } from './turn-narrative/turn-task-list';
-
-const SOURCE_COLOR: Record<string, string> = {
-  知识库: 'text-[var(--brand)] bg-[var(--brand-light)]',
-  文档: 'text-[var(--info)] bg-[var(--info-bg)]',
-  记忆: 'text-[var(--success)] bg-[var(--success-bg)]',
-};
+} from '../lib/expert-context';
+import { TurnTaskList } from '../turn-narrative/turn-task-list';
+import {
+  CapChips,
+  Collapsible,
+  SOURCE_COLOR,
+  formatToken,
+} from './ExpertContextPanel.helpers';
+import { ContractSection } from './ExpertContextPanel.Contract';
 
 type WorkbenchTab = 'overview' | 'evidence' | 'tasks' | 'approvals' | 'audit' | 'admin';
-
-function Collapsible({
-  title,
-  icon: Icon,
-  badge,
-  defaultOpen = true,
-  children,
-}: {
-  title: string;
-  icon: typeof BriefcaseBusiness;
-  badge?: ReactNode;
-  defaultOpen?: boolean;
-  children: ReactNode;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <section className={cn('copilot-ecx-card', open && 'is-open')}>
-      <button type="button" className="copilot-ecx-card__head" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
-        <span className="copilot-ecx-card__icon">
-          <Icon className="h-3.5 w-3.5" />
-        </span>
-        <span className="copilot-ecx-card__title">{title}</span>
-        {badge}
-        <span className="copilot-ecx-card__chevron">
-          {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-        </span>
-      </button>
-      {open ? <div className="copilot-ecx-card__body">{children}</div> : null}
-    </section>
-  );
-}
-
-function CapChips({ items, empty }: { items: string[]; empty: string }) {
-  if (!items.length) return <p className="copilot-ecx-empty-inline">{empty}</p>;
-  const shown = items.slice(0, 6);
-  const rest = items.length - shown.length;
-  return (
-    <div className="copilot-ecx-chips">
-      {shown.map((item) => <span key={item}>{item}</span>)}
-      {rest > 0 ? <span className="is-more">+{rest}</span> : null}
-    </div>
-  );
-}
-
-function MetaRow({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div className="copilot-ecx-meta__row">
-      <dt>{label}</dt>
-      <dd>{value}</dd>
-    </div>
-  );
-}
-
-function formatToken(n: number | null): string {
-  if (n == null) return '—';
-  return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
-}
 
 export function ExpertContextPanel(props: {
   employee: DigitalPartner | null | undefined;
@@ -220,70 +163,7 @@ export function ExpertContextPanel(props: {
           icon={BriefcaseBusiness}
           badge={contract ? <Badge tone="success" className="text-[9px]">在岗</Badge> : <Badge tone="neutral" className="text-[9px]">未绑定</Badge>}
         >
-          {contract ? (
-            <div className="copilot-ecx-contract">
-              <div className="copilot-ecx-identity">
-                <div className="copilot-ecx-identity__role">{contract.role}</div>
-                <div className="copilot-ecx-identity__meta">
-                  <span>{contract.name}</span>
-                  <span>·</span>
-                  <span>{contract.department}</span>
-                  <span>·</span>
-                  <span className="font-mono">v{contract.version}</span>
-                </div>
-                {contract.description ? <p className="copilot-ecx-identity__desc">{contract.description}</p> : null}
-              </div>
-
-              <dl className="copilot-ecx-meta">
-                <MetaRow label="服务对象" value={contract.serviceObject} />
-                <MetaRow label="环境" value={<span className="font-mono">{contract.environment}</span>} />
-                <MetaRow label="模型" value={<span className="font-mono">{contract.model}</span>} />
-                {contract.evaluationScore != null ? (
-                  <MetaRow label="评测" value={<span className="font-mono">{contract.evaluationScore}</span>} />
-                ) : null}
-              </dl>
-
-              <div className="copilot-ecx-split">
-                <div>
-                  <div className="copilot-ecx-kicker">职责</div>
-                  {contract.responsibilities.length ? (
-                    <ul className="copilot-ecx-bullets">
-                      {contract.responsibilities.map((item) => <li key={item}>{item}</li>)}
-                    </ul>
-                  ) : <p className="copilot-ecx-empty-inline">未配置</p>}
-                </div>
-                <div>
-                  <div className="copilot-ecx-kicker">禁止项</div>
-                  {contract.prohibitedActions.length ? (
-                    <ul className="copilot-ecx-bullets is-warn">
-                      {contract.prohibitedActions.map((item) => <li key={item}>{item}</li>)}
-                    </ul>
-                  ) : <p className="copilot-ecx-empty-inline">未配置</p>}
-                </div>
-              </div>
-
-              <div>
-                <div className="copilot-ecx-kicker">知识包</div>
-                <CapChips items={contract.knowledge} empty="尚未装配知识包" />
-              </div>
-              <div>
-                <div className="copilot-ecx-kicker">技能 / 工具 / 流程</div>
-                <CapChips items={assembled} empty="尚未装配" />
-              </div>
-
-              <div className="copilot-ecx-contract__foot">
-                <span>负责人 {contract.owner} · 升级 {contract.escalationOwner}</span>
-                <Link to="/partners" className="copilot-ecx-link">
-                  岗位配置 <ExternalLink className="h-3 w-3" />
-                </Link>
-              </div>
-            </div>
-          ) : (
-            <div className="copilot-ecx-empty">
-              <p>当前会话尚未绑定在岗数字伙伴。</p>
-              {onPickExpert ? <Button size="sm" onClick={onPickExpert}>选择专家</Button> : null}
-            </div>
-          )}
+          <ContractSection contract={contract} assembled={assembled} onPickExpert={onPickExpert} />
         </Collapsible>
 
         <Collapsible

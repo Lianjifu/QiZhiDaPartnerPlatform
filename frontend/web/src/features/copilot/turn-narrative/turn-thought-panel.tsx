@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Brain, ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from '@qzda/web-utils';
 import type { ChatMessageEx } from '@/hooks/types';
-import { thoughtKindLabel } from '../human-thought';
+import { thoughtKindLabel } from '../lib/human-thought';
 import { buildTurnSummary } from './build-turn-summary';
 import { groupTurnPhases } from './group-turn-phases';
 import { phaseLabel } from './phase-labels';

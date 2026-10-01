@@ -5,7 +5,7 @@ import {
   parseCellAddress,
   xlsxCellToText,
   type XlsxPreviewCell,
-} from './document-preview';
+} from './DocumentPreview';
 
 describe('columnIndex / parseCellAddress', () => {
   it('maps A, Z, AA, AB to base-26 column numbers', () => {

@@ -1,5 +1,5 @@
-import { stripArtifactNoise } from '@/features/copilot/artifact-links';
-import { stripPageOutlineSection } from '@/features/copilot/page-outline';
+import { stripArtifactNoise } from '@/features/copilot/lib/artifact-links';
+import { stripPageOutlineSection } from '@/features/copilot/lib/page-outline';
 
 export const AUTHORIZED_EXECUTE_MARKER = '—— 授权后执行结果 ——';
 

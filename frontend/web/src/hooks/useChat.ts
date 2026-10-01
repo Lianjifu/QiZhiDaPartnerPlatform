@@ -23,24 +23,24 @@ import { useCallback, useEffect, useReducer, useRef } from 'react';
 import { getApiClient } from '@qzda/web-api';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useAuthStore } from '@/stores/authStore';
-import { isMockChatMode, streamCopilotTurn, type CopilotSSEEvent } from '@/features/copilot/copilot-stream';
-import { applySegmentSSEEvent, createSegmentRouter } from '@/features/copilot/copilot-segment-router';
-import { orderAssistantSegments } from '@/features/copilot/segment-message-order';
-import { DEFAULT_REPLY_MODE } from '@/features/copilot/composer-mode';
-import { fetchCopilotTurnStatus, TURN_RECOVERY_POLL_MS } from '@/features/copilot/pending-turn-recovery';
+import { isMockChatMode, streamCopilotTurn, type CopilotSSEEvent } from '@/features/copilot/lib/copilot-stream';
+import { applySegmentSSEEvent, createSegmentRouter } from '@/features/copilot/lib/copilot-segment-router';
+import { orderAssistantSegments } from '@/features/copilot/lib/segment-message-order';
+import { DEFAULT_REPLY_MODE } from '@/features/copilot/lib/composer-mode';
+import { fetchCopilotTurnStatus, TURN_RECOVERY_POLL_MS } from '@/features/copilot/lib/pending-turn-recovery';
 import {
   appendHumanThought,
   progressLabelFromEvent,
   toHumanThoughtStep,
-} from '@/features/copilot/human-thought';
+} from '@/features/copilot/lib/human-thought';
 import { parseTurnMeta } from '@/features/copilot/turn-narrative/build-turn-summary';
 import { dedupeTurnTasks, mergeTurnTasks } from '@/features/copilot/turn-narrative/turn-task-list';
 import {
   isArtifactSegmentEvent,
   mergeArtifactBlockIntoContent,
-} from '@/features/copilot/artifact-segment';
-import { capSessionMessages } from '@/features/copilot/context-limits';
-import { dedupeConversationMessages } from '@/features/copilot/conversation-merge';
+} from '@/features/copilot/lib/artifact-segment';
+import { capSessionMessages } from '@/features/copilot/lib/context-limits';
+import { dedupeConversationMessages } from '@/features/copilot/lib/conversation-merge';
 import { clearCopilotLastSession, rememberCopilotSession } from '@/lib/copilot-workspace';
 import type {
   ChatMessageEx,

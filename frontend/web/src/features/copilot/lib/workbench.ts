@@ -1,5 +1,5 @@
 import type { ChatSession } from '@/hooks/types';
-import { extractSkillArtifacts } from '@/features/copilot/artifact-links';
+import { extractSkillArtifacts } from '@/features/copilot/lib/artifact-links';
 
 export type WorkbenchContextTab = 'overview' | 'document' | 'evidence' | 'tasks' | 'approvals' | 'audit' | 'admin';
 
