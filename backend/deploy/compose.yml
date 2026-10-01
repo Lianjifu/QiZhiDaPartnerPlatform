@@ -759,6 +759,15 @@ services:
       DE_SKILL_SANDBOX: ${DE_SKILL_SANDBOX:-runsc}
       DE_SKILL_REQUIRE_ISOLATION: "1"
       DE_SKILL_RUNTIME: ${DE_SKILL_RUNTIME:-runc}
+      # 阶段 3:可观测性
+      # - PROMETHEUS_MULTIPROC_DIR:prometheus_client 多进程模式必填(uvicorn workers > 1),
+      #   tmpfs 8m 放 metric 文件;单 worker 也兼容。
+      # - OTEL_EXPORTER_OTLP_ENDPOINT:配置后由 telemetry.py 自动切换 OTLP exporter,
+      #   未配则走 Console(开发期友好)。
+      # - DE_SKILL_AUDIT:1 = 子进程内自动安装 audit_hooks,记录 Python 层 syscall 计数。
+      PROMETHEUS_MULTIPROC_DIR: "/tmp/prom-multiproc"
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      DE_SKILL_AUDIT: ${DE_SKILL_AUDIT:-1}
     ports:
       - "8093:8093"
     healthcheck:
@@ -769,6 +778,7 @@ services:
     read_only: true
     tmpfs:
       - /tmp:size=64m
+      - /tmp/prom-multiproc:size=8m
       - /var/run:size=8m
     cap_drop:
       - ALL
