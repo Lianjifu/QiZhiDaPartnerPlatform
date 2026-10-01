@@ -87,14 +87,15 @@ func pdfStorageName(downloadName string) string {
 
 func findGeneratePdfScript() (string, error) {
 	candidates := []string{
-		filepath.Join("scripts", "generate_pdf.py"),
+		filepath.Join("..", "..", "services", "qzda-sandbox", "scripts", "generate_pdf.py"),
 		filepath.Join("..", "scripts", "generate_pdf.py"),
-		"/Users/LIANJIFU/ops/digital-employee-platform/backend/scripts/generate_pdf.py",
+		filepath.Join("scripts", "generate_pdf.py"),
 	}
 	if wd, err := os.Getwd(); err == nil {
 		candidates = append([]string{
-			filepath.Join(wd, "scripts", "generate_pdf.py"),
+			filepath.Join(wd, "services", "qzda-sandbox", "scripts", "generate_pdf.py"),
 			filepath.Join(wd, "..", "scripts", "generate_pdf.py"),
+			filepath.Join(wd, "..", "..", "scripts", "generate_pdf.py"),
 		}, candidates...)
 	}
 	for _, c := range candidates {

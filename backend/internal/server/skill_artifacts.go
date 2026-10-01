@@ -538,9 +538,9 @@ func extractDocxBodyFromSkillOutput(output string) string {
 
 func findGenerateDocxScript() (string, error) {
 	candidates := []string{
-		filepath.Join("scripts", "generate_docx.py"),
+		filepath.Join("..", "..", "services", "qzda-sandbox", "scripts", "generate_docx.py"),
 		filepath.Join("..", "scripts", "generate_docx.py"),
-		"/Users/LIANJIFU/ops/digital-employee-platform/backend/scripts/generate_docx.py",
+		filepath.Join("scripts", "generate_docx.py"),
 	}
 	for _, c := range candidates {
 		if st, e := os.Stat(c); e == nil && !st.IsDir() {
@@ -552,9 +552,9 @@ func findGenerateDocxScript() (string, error) {
 
 func findGeneratePptxScript() (string, error) {
 	candidates := []string{
-		filepath.Join("scripts", "generate_pptx.py"),
+		filepath.Join("..", "..", "services", "qzda-sandbox", "scripts", "generate_pptx.py"),
 		filepath.Join("..", "scripts", "generate_pptx.py"),
-		"/Users/LIANJIFU/ops/digital-employee-platform/backend/scripts/generate_pptx.py",
+		filepath.Join("scripts", "generate_pptx.py"),
 	}
 	for _, c := range candidates {
 		if st, e := os.Stat(c); e == nil && !st.IsDir() {
@@ -671,11 +671,12 @@ func xlsxDisplayNameFromStorage(storage string) string {
 
 func findGenerateXlsxScript() (string, error) {
 	candidates := []string{
+		filepath.Join("..", "..", "..", "services", "qzda-sandbox", "builtin", "skills", "spreadsheets", "scripts", "spreadsheet.sh"),
 		filepath.Join("..", "..", "builtin", "skills", "spreadsheets", "scripts", "spreadsheet.sh"),
-		"/Users/LIANJIFU/ops/digital-employee-platform/backend/builtin/skills/spreadsheets/scripts/spreadsheet.sh",
 	}
 	if wd, err := os.Getwd(); err == nil {
 		candidates = append([]string{
+			filepath.Join(wd, "..", "..", "..", "services", "qzda-sandbox", "builtin", "skills", "spreadsheets", "scripts", "spreadsheet.sh"),
 			filepath.Join(wd, "..", "..", "builtin", "skills", "spreadsheets", "scripts", "spreadsheet.sh"),
 			filepath.Join(wd, "builtin", "skills", "spreadsheets", "scripts", "spreadsheet.sh"),
 		}, candidates...)
@@ -775,14 +776,15 @@ func previewXlsxArtifact(storageName string) (map[string]any, error) {
 
 func findGeneratePptxProdScript() (string, error) {
 	candidates := []string{
-		filepath.Join("scripts", "generate_pptx_prod.sh"),
+		filepath.Join("..", "..", "services", "qzda-sandbox", "scripts", "generate_pptx_prod.sh"),
 		filepath.Join("..", "scripts", "generate_pptx_prod.sh"),
-		"/Users/LIANJIFU/ops/digital-employee-platform/backend/scripts/generate_pptx_prod.sh",
+		filepath.Join("scripts", "generate_pptx_prod.sh"),
 	}
 	if wd, err := os.Getwd(); err == nil {
 		candidates = append([]string{
-			filepath.Join(wd, "scripts", "generate_pptx_prod.sh"),
+			filepath.Join(wd, "services", "qzda-sandbox", "scripts", "generate_pptx_prod.sh"),
 			filepath.Join(wd, "..", "scripts", "generate_pptx_prod.sh"),
+			filepath.Join(wd, "..", "..", "scripts", "generate_pptx_prod.sh"),
 		}, candidates...)
 	}
 	for _, c := range candidates {
