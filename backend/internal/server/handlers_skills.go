@@ -1293,11 +1293,12 @@ func (s *Server) skillTest(r *http.Request, id *auth.Identity, ws, skillID strin
 		retries = 3
 	}
 
-	token := auth.MintRunToken(skillID, ws, id.ID, 5*time.Minute)
+	mergedEgress := resolveSkillEgress(sk, govPolicy)
+	token := auth.MintRunToken(skillID, ws, id.ID, mergedEgress, 5*time.Minute)
 	payload := map[string]any{
 		"skillId": skillID, "command": command, "runToken": token,
-		"denyControlPlane": true, "allowedEgress": govPolicy["allowedEgress"],
-		"correlationId": dec.CorrelationID, "timeoutSec": timeoutSec,
+		"denyControlPlane": true,
+		"correlationId":    dec.CorrelationID, "timeoutSec": timeoutSec,
 	}
 	if pkgPayload != nil {
 		for k, v := range pkgPayload {
@@ -1350,13 +1351,15 @@ func (s *Server) skillTest(r *http.Request, id *auth.Identity, ws, skillID strin
 		}
 	}
 	output = maskSkillOutput(output, boolFrom(govPolicy["dataMaskingEnabled"]))
+	// 阶段 2:把实际访问过的 egress 域名写进 audit detail,便于检索与告警
+	egressAudit := egressUsedString(result, "egressUsed")
 
 	s.Store.Lock()
 	_, skRec := s.findSkillLocked(ws, skillID)
 	if skRec != nil {
 		s.recordSkillInvocationLocked(ws, skRec, duration, status == "success", id.Name, "沙箱测试 · "+mode)
 	} else {
-		s.Store.AppendAudit(ws, id.Name, ternary(status == "success", "执行沙箱测试", "沙箱测试失败"), skillName, ternary(status == "success", "success", "failed"), "mode="+mode+";corr="+dec.CorrelationID)
+		s.Store.AppendAudit(ws, id.Name, ternary(status == "success", "执行沙箱测试", "沙箱测试失败"), skillName, ternary(status == "success", "success", "failed"), "mode="+mode+";egress="+egressAudit+";corr="+dec.CorrelationID)
 	}
 	s.Store.Unlock()
 	s.persistSkillHealth()

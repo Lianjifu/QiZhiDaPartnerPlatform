@@ -142,10 +142,10 @@ func (s *Server) executeSkill(r *http.Request) (any, error) {
 	if err := s.evaluateWrite(r, "skill", "run", policy.Input{}); err != nil {
 		return nil, err
 	}
-	token := auth.MintRunToken(skillID, ws, id.ID, 5*time.Minute)
+	mergedEgress := resolveSkillEgress(sk, govPolicy)
+	token := auth.MintRunToken(skillID, ws, id.ID, mergedEgress, 5*time.Minute)
 	body["runToken"] = token
 	body["denyControlPlane"] = true
-	body["allowedEgress"] = govPolicy["allowedEgress"]
 	body["correlationId"] = dec.CorrelationID
 	if pkgPayload != nil {
 		for k, v := range pkgPayload {
@@ -154,7 +154,13 @@ func (s *Server) executeSkill(r *http.Request) (any, error) {
 	}
 	result, runtimeErr := s.callSkillRuntime(body)
 	status := "success"
-	detail := "runtime=skill;runToken=issued;corr=" + dec.CorrelationID
+	// 阶段 2:egressUsed 从 Python 沙箱响应里读,作为"声明 ↔ 实际"双向审计:
+	// 运维侧 `grep egress=wttr.in` 即可看到哪些技能真实访问了白名单域名。
+	egressAudit := "[]"
+	if result != nil {
+		egressAudit = egressUsedString(result, "egressUsed")
+	}
+	detail := "runtime=skill;runToken=issued;egress=" + egressAudit + ";corr=" + dec.CorrelationID
 	durationMs := 0
 	if runtimeErr != nil {
 		status = "failed"
@@ -171,7 +177,7 @@ func (s *Server) executeSkill(r *http.Request) (any, error) {
 	}
 	if b, ok := result["ok"].(bool); ok && !b {
 		status = "failed"
-		detail = coalesce(str(result["error"]), "skill runtime failed")
+		detail = coalesce(str(result["error"]), "skill runtime failed") + ";egress=" + egressAudit
 	}
 	if d := intFrom(result["durationMs"]); d > 0 {
 		durationMs = d

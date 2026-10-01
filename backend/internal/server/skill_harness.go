@@ -577,10 +577,10 @@ func (s *Server) skillRun(ctx toolRunContext, t *registeredTool, sk map[string]a
 	if trimmed := strings.TrimSpace(input); trimmed != "" && !looksLikeCodeAsDocxBody(trimmed) {
 		body["input"] = trimmed
 	}
-	token := auth.MintRunToken(skillID, ctx.WorkspaceID, id.ID, 5*time.Minute)
+	mergedEgress := resolveSkillEgress(sk2, govPolicy)
+	token := auth.MintRunToken(skillID, ctx.WorkspaceID, id.ID, mergedEgress, 5*time.Minute)
 	body["runToken"] = token
 	body["denyControlPlane"] = true
-	body["allowedEgress"] = govPolicy["allowedEgress"]
 	if pkgPayload != nil {
 		for k, v := range pkgPayload {
 			body[k] = v

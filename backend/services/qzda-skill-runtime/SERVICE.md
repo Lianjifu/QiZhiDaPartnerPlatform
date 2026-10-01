@@ -88,3 +88,52 @@ Compose (`deploy/compose.yml`) builds from `services/qzda-skill-runtime/Dockerfi
 - `read_only: true` + `tmpfs: /tmp:64m, /var/run:8m`
 - `cap_drop: ALL` + `cap_add: CHOWN/SETUID/SETGID/DAC_OVERRIDE`
 - `no-new-privileges: true`
+
+## Egress allowlist（阶段 2）
+
+技能脚本执行允许访问的外联域名由 `RunToken` 的 `allowedEgress` 字段签名声明，
+**Python 沙箱消费该字段作为唯一可信源**（不读 body 字段，防篡改）。
+
+### 三层强制
+
+| 层 | 机制 | 拦截对象 |
+|---|---|---|
+| 签名层 | `RunToken` HMAC-SHA256，Go 控制面签发 | body 字段被篡改 |
+| DNS 层 | `sitecustomize.py` bootstrap，`DnsGate` monkey-patch `socket.getaddrinfo` | Python stdlib（`socket`/`urllib`） |
+| 代理层 | `127.0.0.1:8080` stdlib 出口代理，子进程 `HTTPS_PROXY` 注入 | `curl` / `requests` / `urllib3` / `node fetch` / `Go net/http` 等守规矩的 HTTP 客户端 |
+
+### 声明流程
+
+技能包在 `SKILL.md` front-matter 声明：
+
+```yaml
+---
+name: weather
+egress:
+  - wttr.in
+---
+```
+
+控制面读 front-matter（`internal/skills/manifest`）→ 与 admin policy 的
+`allowedEgress` 求**交集**（保守：admin 可收紧，不能放宽）→ 把交集签入
+`RunToken.allowedEgress` → Python 沙箱按此 allowlist 设置 `DnsGate` 与代理。
+
+### 默认策略
+
+`defaultSkillGovernance` 的 `allowedEgress` 在阶段 2 起为 `[]`（deny-all）。
+未声明 `egress:` 的技能包 → 拒绝全部外联；admin policy 为空 → 也拒绝。
+
+### 响应字段
+
+`POST /v1/execute` 响应 JSON 中：
+
+```json
+{
+  "egressAllowed": ["wttr.in"],
+  "egressUsed":    ["wttr.in"],
+  "egressDenied":  []
+}
+```
+
+`egressUsed` / `egressDenied` 是 Python 沙箱聚合后的实际访问清单；写进
+Go 侧 audit `detail`（`grep egress=wttr.in` 检索）。

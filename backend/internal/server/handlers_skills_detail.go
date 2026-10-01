@@ -56,7 +56,7 @@ func defaultSkillGovernance(skillID string) map[string]any {
 	return map[string]any{
 		"skillId":               skillID,
 		"secretRef":             "vault://digital-employee/skills/" + skillID,
-		"allowedEgress":         []string{"api.internal.example.com"},
+		"allowedEgress":         []string{},
 		"writeApprovalRequired": true,
 		"rateLimitPerMinute":    60,
 		"circuitBreakerEnabled": true,

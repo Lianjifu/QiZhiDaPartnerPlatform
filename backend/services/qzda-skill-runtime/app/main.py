@@ -20,6 +20,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from app.docx_gen import artifact_dir, build_docx_artifact, is_docx_request
+from app.egress_proxy import EgressProxy
 from app.sandbox import (
     FORBIDDEN_ENV,
     control_plane_probe,
@@ -32,15 +33,25 @@ from app.sandbox import (
 from app.artifact_harvest import harvest_office_artifact
 
 
+# 阶段 2:常驻 127.0.0.1:8080 出口代理,所有执行子进程的 HTTPS_PROXY
+# 都会指到这里。lifespan 启动,FastAPI 退出前收尾。
+_egress_proxy = EgressProxy()
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     """FastAPI 生命周期钩子。
 
     启动时立即调用 ``strip_forbidden_env()`` 把控制面相关环境变量
     (PG / Redis DSN)从进程环境里清除,防止子进程继承并泄露凭据。
+    同时启动阶段 2 出口代理,绑定失败就抛错(端口冲突 / 权限不足)。
     """
     strip_forbidden_env()
-    yield
+    _egress_proxy.start()
+    try:
+        yield
+    finally:
+        _egress_proxy.stop()
 
 
 app = FastAPI(title="qzda-skill-runtime", version="1.0.0", lifespan=lifespan)
@@ -161,12 +172,24 @@ async def execute(request: Request) -> JSONResponse:
         )
     # 优先用 claims 里的 skillId,确保调用方声明的 ID 与令牌内一致
     skill_id = data.get("skillId") or claims.get("skillId")
+    # 阶段 2:egress allowlist 由 RunToken 签名声明,优先用签名值而非 body 字段,
+    # 防止中间人篡改 body.allowedEgress。
+    egress_raw = claims.get("allowedEgress")
+    if not isinstance(egress_raw, list):
+        egress_raw = []
+    allowed_egress = [str(h).strip().lower() for h in egress_raw if h]
+    # 每次请求重置代理状态(set_allowed 内部清零 used/denied),保证审计不串扰
+    _egress_proxy.set_allowed(allowed_egress)
     if is_docx_request(data, str(skill_id) if skill_id is not None else None):
-        # DOCX 走内置生成路径(不启子进程,纯 python-docx)
+        # DOCX 走内置生成路径(不启子进程,纯 python-docx);此处不涉及 egress,
+        # 但仍聚合代理状态以便审计
         payload = build_docx_artifact(data, str(skill_id) if skill_id is not None else None)
         payload["workspaceId"] = claims.get("workspaceId")
         payload["correlationId"] = data.get("correlationId")
         payload["isolation"] = probe
+        payload["egressAllowed"] = allowed_egress
+        payload["egressUsed"] = sorted(set(_egress_proxy.used_hosts()))
+        payload["egressDenied"] = sorted(set(_egress_proxy.denied_hosts()))
         return JSONResponse(status_code=200, content=payload)
 
     # 通用脚本执行路径
@@ -183,12 +206,15 @@ async def execute(request: Request) -> JSONResponse:
         f"sandbox={sandbox_mode()}",
         f"skillId={skill_id}",
         "denyControlPlane=true",
+        f"egressAllowed={','.join(allowed_egress) or '(none)'}",
     ]
     exec_ok = True
     exec_status = "noop"
     if package_path:
         # 真实执行包内脚本,所有 IO/超时/退出码由 run_package_script 处理
-        exec_ok, pkg_out, duration_ms = run_package_script(package_path, scripts, command, timeout_sec)
+        exec_ok, pkg_out, duration_ms = run_package_script(
+            package_path, scripts, command, timeout_sec, allowed_egress
+        )
         stdout_lines.append(pkg_out)
         if "status=needs_instruction" in pkg_out:
             # 命令格式不对,要求调用方先 open SKILL.md 再发 run
@@ -227,6 +253,9 @@ async def execute(request: Request) -> JSONResponse:
         "correlationId": data.get("correlationId"),
         "packagePath": package_path or None,
         "isolation": probe,
+        "egressAllowed": allowed_egress,
+        "egressUsed": sorted(set(_egress_proxy.used_hosts())),
+        "egressDenied": sorted(set(_egress_proxy.denied_hosts())),
     }
     if exec_ok and package_path:
         # 执行成功后扫描包内新生成的 Office 制品,合并下载链接

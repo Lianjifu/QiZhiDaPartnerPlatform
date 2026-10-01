@@ -203,7 +203,11 @@ def safe_under(root: Path, rel: str) -> Path | None:
 
 
 def run_package_script(
-    package_path: str, scripts: list[str], command: str, timeout_sec: int
+    package_path: str,
+    scripts: list[str],
+    command: str,
+    timeout_sec: int,
+    allowed_egress: list[str] | None = None,
 ) -> tuple[bool, str, int]:
     """执行技能包内白名单脚本。
 
@@ -215,6 +219,10 @@ def run_package_script(
     4. 按扩展名决定解释器(.py→python3 / .js,.mjs→node / .ts→npx tsx / 其他→bash)。
     5. 复制环境变量但过滤 ``FORBIDDEN_ENV``,再注入 ``DE_SKILL_PACKAGE_ROOT``
        / ``DE_SKILL_WORK_DIR`` 让脚本能定位自己。
+    5a. **阶段 2 网关**: 注入 ``DE_SKILL_ALLOWED_EGRESS`` /
+       ``HTTPS_PROXY=http://127.0.0.1:8080`` / ``HTTP_PROXY=http://127.0.0.1:8080``。
+       Python 子进程还会自动加载 :func:`_ensure_dns_bootstrap` 注入的
+       ``sitecustomize.py``,把 ``socket.getaddrinfo`` monkey-patch 掉。
     6. 同步 ``subprocess.run``,timeout 夹紧在 [1, 120]s,捕获 stdout/stderr。
     7. 返回 ``(ok, output_text, duration_ms)``;output_text 含 ``package=``/
        ``script=``/``exit=``/stdout/stderr(分别截断 8000/4000 字节防泄漏)。
@@ -271,6 +279,19 @@ def run_package_script(
     env = {k: v for k, v in os.environ.items() if not any(k == p or k.startswith(p) for p in FORBIDDEN_ENV)}
     env["DE_SKILL_PACKAGE_ROOT"] = str(root)
     env["DE_SKILL_WORK_DIR"] = str(root)
+    # 阶段 2:出口 allowlist 与代理
+    egress = [h for h in (allowed_egress or []) if h and h.strip()]
+    env["DE_SKILL_ALLOWED_EGRESS"] = ",".join(egress)
+    # 只有当有 allowlist 才注入 proxy(空 allowlist 下没意义,且避免误把
+    # 任意内网流量导向本地代理被 502)
+    if egress:
+        env["HTTPS_PROXY"] = "http://127.0.0.1:8080"
+        env["HTTP_PROXY"] = "http://127.0.0.1:8080"
+        # Python 子进程会自动加载 sitecustomize → DnsGate
+        bootstrap_dir = _ensure_dns_bootstrap()
+        if bootstrap_dir:
+            existing = env.get("PYTHONPATH", "")
+            env["PYTHONPATH"] = bootstrap_dir + (os.pathsep + existing if existing else "")
     started = time.time()
     try:
         proc = subprocess.run(
@@ -312,3 +333,46 @@ def strip_forbidden_env() -> None:
     for k in list(os.environ):
         if any(k == p or k.startswith(p) for p in FORBIDDEN_ENV):
             del os.environ[k]
+
+
+# ---- Python 子进程 DNS 网关 bootstrap ----------------------------------------
+# 用 sitecustomize.py 在 Python 启动时自动加载 DnsGate。
+# 每次请求 fork 出的 python3 子进程都会先跑这一段,再做用户的 scripts/...py。
+# 文件落 /tmp(qzda-skill-runtime 镜像 read_only 根,/tmp 是 tmpfs 8m)。
+_DNS_BOOTSTRAP_DIR = Path("/tmp/qzda-bootstrap")
+_DNS_BOOTSTRAP_FILE = _DNS_BOOTSTRAP_DIR / "sitecustomize.py"
+_DNS_BOOTSTRAP_CODE = """\
+# qzda-skill-runtime 自动加载:monkey-patch socket.getaddrinfo 阻断非 allowlist DNS。
+# 由 sandbox.py 在写完 PYTHONPATH 后由子进程自动 import。
+import os as _os, sys as _sys
+
+_csv = _os.environ.get("DE_SKILL_ALLOWED_EGRESS", "") or ""
+_allowed = [h.strip() for h in _csv.replace("\\\\n", ",").split(",") if h.strip()]
+if _allowed:
+    try:
+        _sys.path.insert(0, "/app")
+        from app.egress import DnsGate
+        DnsGate(_allowed).install()
+    except Exception as _exc:  # noqa: BLE001
+        # bootstrap 失败时静默:允许 e2e 主流程看到问题,而不是悄悄放过 DNS
+        import sys as _sys2
+        print(f"[qzda-egress-bootstrap] failed: {_exc!r}", file=_sys2.stderr)
+"""
+
+
+def _ensure_dns_bootstrap() -> str:
+    """确保 /tmp/qzda-bootstrap/sitecustomize.py 存在,返回该目录(用作 PYTHONPATH)。
+
+    幂等:已存在就不重写。该目录每次容器重启会随 tmpfs 清掉,
+    但 :func:`run_package_script` 每次会重新确保一次。
+    """
+    try:
+        _DNS_BOOTSTRAP_DIR.mkdir(parents=True, exist_ok=True)
+        if not _DNS_BOOTSTRAP_FILE.exists() or _DNS_BOOTSTRAP_FILE.read_text(
+            encoding="utf-8"
+        ) != _DNS_BOOTSTRAP_CODE:
+            _DNS_BOOTSTRAP_FILE.write_text(_DNS_BOOTSTRAP_CODE, encoding="utf-8")
+        return str(_DNS_BOOTSTRAP_DIR)
+    except OSError:
+        # 只读 fs 或权限不足时退化为空 bootstrap;不影响 DNS-gate 缺席的兜底语义
+        return ""

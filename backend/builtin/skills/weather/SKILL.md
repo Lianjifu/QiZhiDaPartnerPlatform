@@ -1,52 +1,45 @@
 ---
 name: weather
-description: "Current weather and forecasts with wttr.in via curl for locations, rain, temperature, travel planning."
-homepage: https://wttr.in/:help
+description: Query the wttr.in weather service for the current weather at a city. Use this skill whenever PilotDeck must report real-time temperature, precipitation, wind, or sky conditions for a named location. Connects only to wttr.in; declared in front-matter for the egress allowlist.
+egress:
+  - wttr.in
 ---
 
-# Weather
+# Weather (wttr.in)
 
-Use for current weather, rain/temperature checks, forecasts, and travel planning. Need a city, region, airport code, or coordinates.
+Single-purpose weather lookup skill. Uses Python stdlib `urllib` (no third-party deps), routed through the platform's `127.0.0.1:8080` egress proxy — which only allows hosts declared in this `SKILL.md` front-matter.
 
-## Commands
+## Usage from Copilot / Digital Employee
 
-```bash
-curl "wttr.in/London?format=3"
-curl "wttr.in/London?0"
-curl "wttr.in/London"
-curl "wttr.in/London?format=v2"
-curl "wttr.in/London?1"
-curl "wttr.in/New+York?format=3"
+From Copilot, **always run via `action=run`** — never inline a `curl` or `requests.get` (those bypass the egress allowlist enforcement).
+
+```text
+action=open   # read this SKILL.md
+action=run    # python3 scripts/weather.py <city>
 ```
 
-Useful formats:
-
-- `%l`: location
-- `%c`: condition icon
-- `%t`: temperature
-- `%f`: feels like
-- `%w`: wind
-- `%h`: humidity
-- `%p`: precipitation
+Examples:
 
 ```bash
-curl "wttr.in/London?format=%l:+%c+%t,+feels+%f,+rain+%p,+wind+%w"
+python3 scripts/weather.py "London"
+python3 scripts/weather.py "Beijing"
+python3 scripts/weather.py "San Francisco"
 ```
 
-JSON:
+Output format (one-line):
 
-```bash
-curl "wttr.in/London?format=j1"
+```
+London: 🌧 +12°C
 ```
 
-## Notes
+Exit code `0` on a successful response, `1` on network failure, `2` on egress denied (the proxy rejected the host — should be impossible since `wttr.in` is allowlisted, but surfaced clearly so logs aren't ambiguous).
 
-- For severe alerts, aviation, marine, or official decisions, use official local weather services.
-- For historical climate/weather, use an archive/API, not wttr.in.
-- For hyper-local microclimates, prefer local sensors.
+## What this skill will NOT do
 
-## PilotDeck Migration Note
+- Will **not** call any host other than `wttr.in`. The egress proxy returns `502 egress denied: <host>` for anything else, which the script surfaces as exit code `2`.
+- Will **not** persist or upload anything. wttr.in responses are read, printed to stdout, and discarded.
+- Will **not** install pip packages. `urllib.request` is the only network primitive — keeps the skill reproducible inside the gVisor sandbox.
 
-- Source: /var/folders/27/xyyzc_n172l3jjmnxgqmhhzh0000gn/T/tmp.AyWDWGKoS4/openclaw/skills/weather
-- Review status: candidate for PilotDeck native skills pack.
-- Platform-specific OpenClaw/Hermes metadata was removed or should be ignored during review.
+## Why the `egress:` front-matter matters
+
+The skill declares its egress needs in this file's front-matter. The platform's control plane intersects this declaration with the admin policy and signs the result into the RunToken. Without an entry here, the skill defaults to **deny-all** and the proxy will block every connection.
