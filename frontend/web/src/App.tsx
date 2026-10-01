@@ -8,7 +8,7 @@ import { NotFound } from './pages/NotFound';
 import { useAuthStore } from './stores/authStore';
 
 const LoginPage = lazy(() => import('./auth/LoginPage'));
-const Home = lazy(() => import('./features/operations-overview/HomePage'));
+const Home = lazy(() => import('./features/dashboard/HomePage'));
 const Copilot = lazy(() => import('./pages/Copilot'));
 const CopilotShare = lazy(() => import('./pages/CopilotShare'));
 const Tasks = lazy(() => import('./pages/Tasks'));

@@ -2,7 +2,7 @@
  * M01 · KPI 6 tile 网格 — 在岗专家 / 进行中 / 需关注 / 已完成 / 成功率 / 健康度
  *
  * 数据由 HomePage 通过 props 注入；本组件只负责呈现与点击跳转，
- * 计算口径（employeeHealthScore / taskSuccessRate）保留在 features/operations-overview/lib/home-metrics.ts。
+ * 计算口径（employeeHealthScore / taskSuccessRate）保留在 features/dashboard/lib/home-metrics.ts。
  */
 import { Activity, CheckCircle2, HeartPulse, Target, TrendingUp, Users } from 'lucide-react';
 import { cn } from '@qzda/web-utils';

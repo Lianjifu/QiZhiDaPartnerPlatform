@@ -7,7 +7,7 @@
  * `./m01-builders.ts` —— 它们是 mock 层与 FE 共享的实现细节，必须留在 `packages/api`
  * 以便 mockHandler 调用并避免 web ↔ api 的循环依赖。
  *
- * 不要把本文件当作 FE mirror；FE 端通过 `@/features/operations-overview/types`
+ * 不要把本文件当作 FE mirror；FE 端通过 `@/features/dashboard/types`
  * 或 `@qzda/web-api` 间接引用。
  */
 

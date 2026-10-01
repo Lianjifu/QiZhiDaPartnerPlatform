@@ -3,7 +3,7 @@
  * 支持中英双语，localStorage 持久化
  */
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { homeI18n } from '@/features/operations-overview/i18n';
+import { homeI18n } from '@/features/dashboard/i18n';
 
 export type Locale = 'zh-CN' | 'en-US';
 
