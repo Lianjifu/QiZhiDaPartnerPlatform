@@ -63,6 +63,10 @@ async def lifespan(_app: FastAPI):
     init_tracing()         # 幂等,OTLP exporter;OTEL_EXPORTER_OTLP_ENDPOINT 未配时 console
     init_metrics()         # 幂等
     skill_in_flight.set(0)  # reset on boot,保证 /metrics 有 baseline
+    # 阶段 3:父进程也要装 syscall 计数 — 父进程每次 /v1/execute 都会调
+    # subprocess.run(subprocess.Popen.__init__)、proxy 进程会调 socket.connect。
+    # 没有父进程 hook,/v1/execute 响应里的 syscalls 永远是空 dict。
+    audit_hooks.install_audit_hooks()
     _egress_proxy.start()
     try:
         yield

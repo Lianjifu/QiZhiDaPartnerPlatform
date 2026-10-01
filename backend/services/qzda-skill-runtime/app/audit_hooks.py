@@ -219,12 +219,11 @@ def summary() -> dict[str, int]:
             "blocked_open": <os.open 中 allowed=false 的次数>,
         }
     """
-    out: dict[str, int] = {}
+    out: dict[str, int] = {"open": 0, "execve": 0, "connect": 0, "blocked_open": 0}
     blocked_open = 0
     for (kind, allowed_label), count in _summary.items():
         out[kind] = out.get(kind, 0) + count
         if kind == "open" and allowed_label == "false":
             blocked_open += count
-    if blocked_open:
-        out["blocked_open"] = blocked_open
+    out["blocked_open"] = max(out.get("blocked_open", 0), blocked_open)
     return out

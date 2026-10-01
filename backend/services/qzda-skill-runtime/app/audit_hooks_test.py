@@ -58,8 +58,8 @@ def test_audit_disabled_when_env_unset():
     assert installed is False, "DE_SKILL_AUDIT 未设置时不应安装"
     # 身份必须未变 — 即 monkey-patch 没生效。
     assert id(subprocess.Popen.__init__) == original_id
-    # summary 应返回空字典(从未计数)。
-    assert summary() == {}
+    # summary 应保持 4 键 0 值(从未计数,允许前端拿到稳定的字段集)。
+    assert summary() == {"open": 0, "execve": 0, "connect": 0, "blocked_open": 0}
 
 
 def test_audit_installs_when_env_set():
