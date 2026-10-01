@@ -56,19 +56,57 @@ def runsc_present() -> bool:
     return shutil.which("runsc") is not None or os.path.isfile("/usr/local/bin/runsc")
 
 
-def sandbox_mode() -> str:
-    """当前沙箱模式自描述。
+def _detect_runsc_runtime() -> str:
+    """读 /proc/1/cmdline 判断当前进程是否处于 runsc 容器内。
 
-    - ``DE_SKILL_SANDBOX=runsc`` + 装了 runsc → ``runsc``(真 gVisor)
-    - ``DE_SKILL_SANDBOX=runsc`` 但没装 runsc → ``runsc-emulated``(降级)
-    - 其他 → ``gvisor-local``(进程级隔离,Docker 网络兜底)
+    返回值:
+    - ``runsc-kvm``   : runsc + KVM 加速（Linux host + /dev/kvm 可用）
+    - ``runsc-ptrace``: runsc + ptrace 后端（macOS / 无 KVM host）
+    - ``runc``        : 普通 runc 容器
+    - ``process``     : 兜底，直接进程（docker run 但未指定 runtime）
 
-    返回值会出现在 ``/healthz`` 响应里,供运维判定是否真正具备隔离能力。
+    检测到的结果会出现在 ``/healthz`` 的 ``runtime`` 字段。
     """
-    mode = (os.environ.get("DE_SKILL_SANDBOX") or "gvisor-local").strip()
-    if mode == "runsc":
-        return "runsc" if runsc_present() else "runsc-emulated"
-    return "gvisor-local"
+    cmdline = ""
+    try:
+        with open("/proc/1/cmdline", "rb") as f:
+            cmdline = f.read().replace(b"\x00", b" ").decode("utf-8", errors="replace")
+    except OSError:
+        return "process"
+    if "runsc-kvm" in cmdline:
+        return "runsc-kvm"
+    if "runsc" in cmdline:
+        return "runsc-ptrace"
+    if "runc" in cmdline:
+        return "runc"
+    return "process"
+
+
+def sandbox_mode() -> str:
+    """当前沙箱模式自描述(4 档)。
+
+    **返回:**
+    - ``runsc-kvm``    : gVisor + KVM 加速（Linux host + KVM）
+    - ``runsc-ptrace`` : gVisor + ptrace 后端（macOS / 无 KVM）
+    - ``runsc-emulated``: 镜像内 runsc 二进制存在但 host 实际未启用 runsc
+    - ``process``      : 进程级隔离（兜底）
+    - ``gvisor-local`` : 向后兼容别名，映射到 process
+
+    优先级:
+    1. ``DE_SKILL_RUNTIME_DETECTED``（由 docker-entrypoint.sh 设置，最准确）
+    2. 否则探测 ``/proc/1/cmdline``
+    3. 否则按声明的 ``DE_SKILL_SANDBOX`` 推断
+    """
+    detected = os.environ.get("DE_SKILL_RUNTIME_DETECTED", "").strip()
+    if detected:
+        return detected
+    runtime = _detect_runsc_runtime()
+    if runtime in ("runsc-kvm", "runsc-ptrace", "runc", "process"):
+        return runtime
+    declared = (os.environ.get("DE_SKILL_SANDBOX") or "gvisor-local").strip()
+    if declared == "runsc":
+        return "runsc-emulated" if runsc_present() else "process"
+    return "process"
 
 
 def control_plane_probe() -> dict:

@@ -743,6 +743,14 @@ services:
     container_name: qzda-skill-runtime
     restart: unless-stopped
     profiles: ["coarse", "monolith"]
+    # gVisor 集成：
+    # - 默认 runtime=runc（兼容性兜底）
+    # - 设 DE_SKILL_RUNTIME=runsc 启用 runsc：host 必须先安装 runsc
+    #   （install runsc: curl -fsSL https://gvisor.dev/archive/nightly/latest/runsc \
+    #       -o /usr/local/bin/runsc && chmod +x /usr/local/bin/runsc）
+    # - gVisor 自己实现 syscall 拦截，必须 seccomp=unconfined
+    # - 可选 DE_SKILL_RUNTIME=runsc-kvm 需 host 启用 KVM（Linux host only）
+    runtime: ${DE_SKILL_RUNTIME:-runc}
     # Intentionally no DE_DATABASE_URL / DE_REDIS_URL
     environment:
       DE_BIND_HOST: "0.0.0.0"
@@ -750,6 +758,7 @@ services:
       DE_SKILL_RUN_SECRET: ${DE_SKILL_RUN_SECRET:-qzda-skill-run-dev}
       DE_SKILL_SANDBOX: ${DE_SKILL_SANDBOX:-runsc}
       DE_SKILL_REQUIRE_ISOLATION: "1"
+      DE_SKILL_RUNTIME: ${DE_SKILL_RUNTIME:-runc}
     ports:
       - "8093:8093"
     healthcheck:
@@ -759,12 +768,30 @@ services:
       retries: 12
     read_only: true
     tmpfs:
-      - /tmp
+      - /tmp:size=64m
+      - /var/run:size=8m
     cap_drop:
       - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
     security_opt:
       - no-new-privileges:true
-      - seccomp=./qzda-skill-runtime/seccomp.json
+      # GVisor 自行实现 syscall 拦截（seccomp 必须 unconfined，否则 runsc 启动失败）
+      - seccomp=unconfined
+      - apparmor=unconfined
+    # 资源配额（gVisor 启动开销略高，留 1GiB / 2 CPU 兜底）
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1024M
+          pids: 128
+        reservations:
+          cpus: '0.25'
+          memory: 128M
     networks:
       - qzda_exec_net
 

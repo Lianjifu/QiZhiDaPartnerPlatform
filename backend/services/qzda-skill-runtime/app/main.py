@@ -51,23 +51,59 @@ app = FastAPI(title="qzda-skill-runtime", version="1.0.0", lifespan=lifespan)
 def healthz() -> dict[str, Any]:
     """健康检查与沙箱自描述端点。
 
-    返回值同时承担三类用途:
+    返回值同时承担四类用途:
     1. 存活探针:``status`` 字段供上游(LB / Compose / k8s)判定进程是否在线。
-    2. 沙箱能力自描述:``sandbox`` / ``runscBinary`` 字段说明当前是否真正具备
-       gVisor 隔离能力;``runsc-emulated`` 意味着只是进程级隔离。
-    3. 隔离断言:主动探测 PG/Redis 是否可达,违反隔离契约时返回
+    2. 沙箱能力自描述:``sandbox`` / ``runtime`` / ``runscBinary`` 字段说明当前
+       实际运行的 OCI 运行时(runc / runsc-kvm / runsc-ptrace / process)。
+    3. 隔离契约断言:主动探测 PG/Redis 是否可达,违反隔离契约时返回
        ``controlPlaneReachable=true`` 供运维侧告警。
+    4. **资源配额**: ``/proc/self/cgroup`` 推断 cgroup v1/v2 限额,辅助监控。
     """
     probe = control_plane_probe()
+    runtime = sandbox_mode()
     return {
         "status": "ok",
         "service": "skill-runtime",
-        "sandbox": sandbox_mode(),
+        "sandbox": runtime,
+        "runtime": runtime,                   # 向后兼容
         "runscBinary": runsc_present(),
+        "runscRequested": (os.environ.get("DE_SKILL_SANDBOX") or "").strip() == "runsc",
         "controlPlaneReachable": not probe["isolated"],
         "isolation": probe,
         "runTokenRequired": True,
+        "pidsLimit": _pids_limit(),
+        "memoryLimitBytes": _memory_limit_bytes(),
     }
+
+
+def _pids_limit() -> int | None:
+    """读取当前 cgroup 的 pids.max。失败返回 None。"""
+    for path in ("/sys/fs/cgroup/pids.max", "/sys/fs/cgroup/pids/pids.max"):
+        try:
+            with open(path) as f:
+                line = f.read().strip()
+            if line.isdigit():
+                return int(line)
+            if line == "max":
+                return None
+        except OSError:
+            continue
+    return None
+
+
+def _memory_limit_bytes() -> int | None:
+    """读取当前 cgroup 的 memory.max。失败返回 None。"""
+    for path in ("/sys/fs/cgroup/memory.max", "/sys/fs/cgroup/memory/memory.limit_in_bytes"):
+        try:
+            with open(path) as f:
+                line = f.read().strip()
+            if line.isdigit():
+                return int(line)
+            if line == "max":
+                return None
+        except OSError:
+            continue
+    return None
 
 
 @app.post("/v1/execute")
