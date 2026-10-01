@@ -17,7 +17,7 @@ const zh: Dict = {
   'nav.tasks': '任务中心',
   'nav.tasks.user': '我的待办',
   'nav.tasks.auditor': '任务核查',
-  'nav.agents': '工作伙伴',
+  'nav.agents': '数字伙伴',
   'nav.agents.auditor': '伙伴档案',
   'nav.workflows': '工作流程',
   'nav.workflows.auditor': '流程版本',

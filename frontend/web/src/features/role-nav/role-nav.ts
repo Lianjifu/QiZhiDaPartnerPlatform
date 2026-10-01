@@ -153,8 +153,8 @@ export function rolePageCopy(
       auditor: { title: '运营总览', subtitle: '合规风险摘要、策略命中与待审事项（只读）。' },
     },
     agents: {
-      user: { title: '工作伙伴', subtitle: '按岗位边界发现与协作数字伙伴，查看职责与能力装配。' },
-      admin: { title: '工作伙伴', subtitle: '专家团队协同的数字伙伴：岗位边界清晰，双重审批与人工接管可追溯。' },
+      user: { title: '数字伙伴', subtitle: '按岗位边界发现与协作数字伙伴，查看职责与能力装配。' },
+      admin: { title: '数字伙伴', subtitle: '专家团队协同的数字伙伴：岗位边界清晰，双重审批与人工接管可追溯。' },
       auditor: { title: '伙伴档案', subtitle: '只读核查岗位契约、能力装配与上岗证据，不创建或变更配置。' },
     },
     workflows: {

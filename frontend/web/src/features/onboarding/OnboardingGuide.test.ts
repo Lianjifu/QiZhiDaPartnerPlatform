@@ -8,7 +8,7 @@ describe('OnboardingGuide copy', () => {
       '运营总览',
       '专家协作',
       '任务中心',
-      '工作伙伴',
+      '数字伙伴',
       '工作流程',
       '模型服务',
       '知识中心',
@@ -21,7 +21,7 @@ describe('OnboardingGuide copy', () => {
 
   it('exposes role-specific four-character nav previews', () => {
     expect(PREVIEW_NAV_BY_ROLE.user.flatMap((g) => [...g.items])).toEqual([
-      '运营总览', '专家协作', '我的待办', '工作伙伴', '工作流程', '知识检索', '技能清单',
+      '运营总览', '专家协作', '我的待办', '数字伙伴', '工作流程', '知识检索', '技能清单',
     ]);
     expect(PREVIEW_NAV_BY_ROLE.auditor.flatMap((g) => [...g.items])).toContain('审计中心');
     expect(PREVIEW_NAV_BY_ROLE.auditor.flatMap((g) => [...g.items])).toContain('任务核查');

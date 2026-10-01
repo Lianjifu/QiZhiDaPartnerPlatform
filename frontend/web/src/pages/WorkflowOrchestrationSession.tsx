@@ -176,7 +176,7 @@ type OrchestrationSession = {
 type StreamPayload = { messageId: string; chunks: string[]; finalContent: string };
 type KnowledgeDocLite = { id: string; title: string; source: string; status: string; updatedAt: string };
 
-const DEFAULT_GOAL = '当生产 Redis 触发 OOM 告警时，由工作伙伴研判处置路径，经双重审批后执行受控恢复，写入审计并通知值班负责人';
+const DEFAULT_GOAL = '当生产 Redis 触发 OOM 告警时，由数字伙伴研判处置路径，经双重审批后执行受控恢复，写入审计并通知值班负责人';
 
 function dependencyTypeLabel(type: SessionCandidate['dependencies'][number]['type']) {
   if (type === 'agent') return '数字伙伴';

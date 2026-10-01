@@ -85,7 +85,7 @@ export default function AuditCenter({ embedded = false }: { embedded?: boolean }
 
   const domainChips: Array<[DomainFilter, string, typeof FileSearch]> = [
     ['all', '全部', FileSearch],
-    ['employee', '工作伙伴', Bot],
+    ['employee', '数字伙伴', Bot],
     ['task', '任务协作', ListChecks],
     ['workflow', '工作流程', Workflow],
   ];

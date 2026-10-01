@@ -1594,7 +1594,7 @@ export function useChat(agentMeta?: { name: string }) {
         }
       };
 
-      const completeStream = (data: CopilotSSEEvent = {}) => {
+      const completeStream = (data: Partial<CopilotSSEEvent> = {}) => {
         if (streamCompleted) return;
         streamCompleted = true;
         applySegmentSSEEvent(segmentRouter, data);

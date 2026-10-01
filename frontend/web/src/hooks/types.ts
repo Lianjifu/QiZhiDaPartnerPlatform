@@ -251,16 +251,16 @@ export interface ChatMessageEx {
     narrative?: string;
     summary?: string;
     phases?: Array<{
-      phase: string;
+      phase: 'understand' | 'plan' | 'execute' | 'reflect';
       label: string;
-      status: string;
+      status: 'pending' | 'running' | 'done' | 'skipped';
       stepCount?: number;
       steps?: ReasoningStep[];
     }>;
     tasks?: Array<{
       id: string;
       title: string;
-      status: string;
+      status: 'pending' | 'running' | 'done' | 'failed' | 'cancelled';
       detail?: string;
     }>;
   };

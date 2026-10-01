@@ -393,7 +393,7 @@ make skill         # :8093 沙箱
 | `DE_ENV=demo` | 内存 store，不 Persist |
 | `development`+ | PG hydrate；Upsert 写回；**硬删必须 `PersistDelete(Sync)`** |
 
-多数集合是 Upsert：只改内存再 `Persist` **不会**删掉 PG 旧行。会话删除须 Sync 覆盖 sessions + conversations + messages + context_snapshots。知识 / 模型供应商 / 渠道 / 技能卸载 / 个人流程模板（`workflow_templates`）等同理。记忆为软删（`revoked`）。覆盖表：[审计-硬删PersistDelete覆盖.md](../docs/审计-硬删PersistDelete覆盖.md)。
+多数集合是 Upsert：只改内存再 `Persist` **不会**删掉 PG 旧行。会话删除须 Sync 覆盖 sessions + conversations + messages + context_snapshots。知识 / 模型供应商 / 渠道 / 技能卸载 / 个人流程模板（`workflow_templates`）等同理。记忆为软删（`revoked`）。
 
 清理历史 ACME seed：
 
@@ -467,4 +467,4 @@ make test && make test-python && make smoke-monolith
 
 `make smoke-monolith` 经 `:8089` 探测 workspaces / skills / sessions / evaluate 等主路径。
 
-CI（[`.github/workflows/backend-contract.yml`](../.github/workflows/backend-contract.yml)）：PR/`main` 跑 `go test ./...` + IDL/路由契约探针 + Python smoke；完整 monolith smoke 仅 `workflow_dispatch`。近端写路径计划见 [实施方案-对齐生产写路径.md](../docs/实施方案-对齐生产写路径.md)。
+CI（[`.github/workflows/backend-contract.yml`](../.github/workflows/backend-contract.yml)）：PR/`main` 跑 `go test ./...` + IDL/路由契约探针 + Python smoke；完整 monolith smoke 仅 `workflow_dispatch`。

@@ -19,7 +19,7 @@ type OnboardingGuideProps = {
 export const PREVIEW_NAV_GROUPS = [
   { label: null, items: ['运营总览'] },
   { label: '协作', items: ['专家协作', '任务中心'] },
-  { label: '编排', items: ['工作伙伴', '工作流程'] },
+  { label: '编排', items: ['数字伙伴', '工作流程'] },
   { label: '能力', items: ['模型服务', '知识中心', '技能中心', '记忆中心', '消息渠道'] },
 ] as const;
 
@@ -28,7 +28,7 @@ export const PREVIEW_NAV_BY_ROLE: Record<AppRole, ReadonlyArray<{ label: string 
   user: [
     { label: null, items: ['运营总览'] },
     { label: '协作', items: ['专家协作', '我的待办'] },
-    { label: '编排', items: ['工作伙伴', '工作流程'] },
+    { label: '编排', items: ['数字伙伴', '工作流程'] },
     { label: '能力', items: ['知识检索', '技能清单'] },
   ],
   auditor: [
@@ -231,7 +231,7 @@ function PlatformPreview({
   navGroups: ReadonlyArray<{ label: string | null; items: readonly string[] }>;
 }) {
   const flat = navGroups.flatMap((g) => [...g.items]);
-  const active = page === 1 ? (flat.find((i) => /知识|技能|模型|审计/.test(i)) ?? flat[0]) : (flat.find((i) => /工作伙伴|任务|伙伴/.test(i)) ?? flat[1] ?? flat[0]);
+  const active = page === 1 ? (flat.find((i) => /知识|技能|模型|审计/.test(i)) ?? flat[0]) : (flat.find((i) => /数字伙伴|任务|伙伴/.test(i)) ?? flat[1] ?? flat[0]);
   return (
     <div className="relative hidden self-stretch overflow-hidden bg-[color-mix(in_srgb,var(--brand)_8%,#f8fafc)] p-3 sm:block sm:p-5 lg:p-7">
       <div className="flex h-full min-h-0 overflow-hidden rounded-2xl border border-white/90 bg-white/85 shadow-[0_16px_36px_rgba(79,70,229,0.10)]">

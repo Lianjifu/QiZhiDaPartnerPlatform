@@ -42,7 +42,7 @@ import {
 import { cn } from '@qzda/web-utils';
 import { AuthorizationModal } from '@/components/AuthorizationModal';
 import { DigitalPartnerAvatar } from '@/components/DigitalPartnerAvatar';
-import { compareDigitalPartners, employeePrimaryLabel, employeeSecondaryLabel, isDepartmentHead } from '@/lib/digital-employees';
+import { compareDigitalPartners, employeePrimaryLabel, employeeSecondaryLabel, isDepartmentHead } from '@/lib/partners';
 import { Modal } from '@/components/shared';
 import type { DigitalPartner, ModelProvider, RoutingPolicyDraft } from '@qzda/web-types';
 import { buildCopilotModelOptions, defaultCopilotModelKey, matchCopilotModelKey, resolveCopilotModelId, resolveSendModelId, isDemoCopilotModelKey } from '@/features/copilot/copilot-models';

@@ -44,7 +44,7 @@
 | 我们是 | 我们不是 |
 |--------|----------|
 | 以「谁在岗、能否托付、如何协同」为中心的运营控制面 | 模型广场、Prompt 玩具或裸跑 Agent 控制台 |
-| 岗位级工作伙伴：有职责、有边界、有版本、有证据 | 一次性对话机器人 |
+| 岗位级数字伙伴：有职责、有边界、有版本、有证据 | 一次性对话机器人 |
 | 能力分控制面治理，伙伴只引用已发布版本 | 把模型 / 知识 / 技能堆在同一页里任选即用 |
 
 价值流转：
@@ -90,7 +90,7 @@ cd ../frontend && pnpm install && pnpm --filter web dev
 
 建议验收：
 
-1. **工作伙伴** → 可见 `de-office` 办公助手  
+1. **数字伙伴** → 可见 `de-office` 办公助手  
 2. **工作流程 → 流程模板** → 默认「办公通用」；可切「个人创建」  
 3. **知识 / 技能中心** → 办公知识包 published；岗位包 `office` 已安装  
 4. **专家协作** → 选用办公助手做一次制度问答或纪要类对话  
@@ -106,11 +106,11 @@ cd ../frontend && pnpm install && pnpm --filter web dev
 | 运营总览 | 专家协作 |
 |:-------:|:-------:|
 | <img src="./docs/images/product/ops-home.png" alt="运营总览" width="100%" /> | <img src="./docs/images/product/copilot.png" alt="专家协作" width="100%" /> |
-| 在岗 KPI、工作伙伴与工作记录直播聚合 | 与在岗伙伴流式协同；问答 / 方案 / 执行 |
+| 在岗 KPI、数字伙伴与工作记录直播聚合 | 与在岗伙伴流式协同；问答 / 方案 / 执行 |
 
-| 工作伙伴 | 工作流程 |
+| 数字伙伴 | 工作流程 |
 |:-------:|:-------:|
-| <img src="./docs/images/product/partners.png" alt="工作伙伴" width="100%" /> | <img src="./docs/images/product/workflows.png" alt="工作流程" width="100%" /> |
+| <img src="./docs/images/product/partners.png" alt="数字伙伴" width="100%" /> | <img src="./docs/images/product/workflows.png" alt="工作流程" width="100%" /> |
 | 专家目录、上岗状态与进入对话 | 办公开箱流程编排（如 `wf.office.expense_precheck`） |
 
 | 技能中心 |
@@ -148,7 +148,7 @@ cd ../frontend && pnpm install && pnpm --filter web dev
 | 入口 | 体验 |
 |------|------|
 | **工作流程 → 流程模板** | 「平台内置 / 个人创建」；默认筛 **办公通用**；「全部」平铺分页；卡片展示配套知识/技能 |
-| **工作伙伴** | 出厂 **办公助手** `de-office` |
+| **数字伙伴** | 出厂 **办公助手** `de-office` |
 | **知识中心** | `kp.office.*` 六包冷启动 published |
 | **技能中心** | 岗位包 `office` 对各工作区 `autoInstall` |
 
@@ -532,8 +532,6 @@ qizhida-partner-platform/
 │   │   ├── brand/                 # 产品主轴 / 三支柱 / 能力地图 / 五中心
 │   │   └── product/               # 控制台截图 2.0
 │   ├── adr/                       # ADR-013 内核 · ADR-014 作用域三层 …
-│   ├── 实施方案-对齐生产写路径.md  # 近端五项工作流
-│   ├── 审计-硬删PersistDelete覆盖.md
 │   ├── 环境与数据模式.md
 │   ├── 数字伙伴平台-架构文档.md
 │   ├── 数字伙伴平台-功能模块文档.md
@@ -548,7 +546,6 @@ qizhida-partner-platform/
 | `backend/bin/` | 本机常驻栈二进制；改 Go 后须 `make build` |
 | `scripts/dev-stack/` | LaunchAgent 联调（默认 `DE_STACK=monolith`） |
 | `docs/images/` | README 内联概念图与产品截图 |
-| `docs/实施方案-对齐生产写路径.md` | 近端：作用域 / 写路径 / IdP / 计量 / CI |
 
 出厂包入口：[`backend/builtin/workflows/README.md`](backend/builtin/workflows/README.md) · [`backend/builtin/knowledge/office/README.md`](backend/builtin/knowledge/office/README.md) · [`backend/builtin/scenarios/office/README.md`](backend/builtin/scenarios/office/README.md) · [`backend/README.md`](backend/README.md)。
 
@@ -696,7 +693,7 @@ flowchart LR
 
 ### 近端（对齐生产写路径）
 
-详细拆解、依赖顺序与验收见 **[docs/实施方案-对齐生产写路径.md](docs/实施方案-对齐生产写路径.md)**（含 [ADR-014 作用域三层](docs/adr/ADR-014-scope-layers.md)、[硬删审计表](docs/审计-硬删PersistDelete覆盖.md)）。
+详细拆解、依赖顺序与验收见 [ADR-014 作用域三层](docs/adr/ADR-014-scope-layers.md)。
 
 | 方向 | 目标 | 对应支柱 |
 |------|------|----------|

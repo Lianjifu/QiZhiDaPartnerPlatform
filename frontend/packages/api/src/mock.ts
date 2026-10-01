@@ -1181,7 +1181,7 @@ export const mockWorkflowRuns: WorkflowRunRecord[] = [
     revisionId: 'v4', correlationId: 'corr_run_r1', environment: 'sandbox', evidenceMode: 'recorded',
     nodeSteps: buildRunNodeSteps([
       { id: 'n1', kind: 'trigger', label: 'Webhook 触发' }, { id: 'n2', kind: 'retrieve', label: '知识检索' },
-      { id: 'n3', kind: 'decision', label: '工作伙伴研判' }, { id: 'n4', kind: 'approval', label: '双重审批' },
+      { id: 'n3', kind: 'decision', label: '数字伙伴研判' }, { id: 'n4', kind: 'approval', label: '双重审批' },
       { id: 'n5', kind: 'branch', label: '分支：成功路径' }, { id: 'n6', kind: 'branch', label: '分支：回滚路径' },
       { id: 'n7', kind: 'execute', label: '执行受控恢复' }, { id: 'n8', kind: 'execute', label: '回滚 + 告警' },
       { id: 'n9', kind: 'audit', label: '审计留痕' }, { id: 'n10', kind: 'notify', label: '飞书 / 企微通知' },
@@ -1192,7 +1192,7 @@ export const mockWorkflowRuns: WorkflowRunRecord[] = [
     revisionId: 'v4', correlationId: 'corr_run_r2', environment: 'sandbox', evidenceMode: 'recorded',
     nodeSteps: buildRunNodeSteps([
       { id: 'n1', kind: 'trigger', label: 'Webhook 触发' }, { id: 'n2', kind: 'retrieve', label: '知识检索' },
-      { id: 'n3', kind: 'decision', label: '工作伙伴研判' }, { id: 'n4', kind: 'approval', label: '双重审批' },
+      { id: 'n3', kind: 'decision', label: '数字伙伴研判' }, { id: 'n4', kind: 'approval', label: '双重审批' },
       { id: 'n5', kind: 'branch', label: '分支：成功路径' }, { id: 'n6', kind: 'branch', label: '分支：回滚路径' },
       { id: 'n7', kind: 'execute', label: '执行受控恢复' }, { id: 'n8', kind: 'execute', label: '回滚 + 告警' },
       { id: 'n9', kind: 'audit', label: '审计留痕' }, { id: 'n10', kind: 'notify', label: '飞书 / 企微通知' },
@@ -1203,7 +1203,7 @@ export const mockWorkflowRuns: WorkflowRunRecord[] = [
     error: '双重审批超时（300s）', revisionId: 'v3', correlationId: 'corr_run_r3', environment: 'sandbox', evidenceMode: 'recorded',
     nodeSteps: buildRunNodeSteps([
       { id: 'n1', kind: 'trigger', label: '入职申请触发' }, { id: 'n2', kind: 'retrieve', label: '知识检索' },
-      { id: 'n3', kind: 'decision', label: '工作伙伴研判' }, { id: 'n4', kind: 'approval', label: '双重审批' },
+      { id: 'n3', kind: 'decision', label: '数字伙伴研判' }, { id: 'n4', kind: 'approval', label: '双重审批' },
       { id: 'n5', kind: 'branch', label: '条件分支' }, { id: 'n6', kind: 'execute', label: '开通账号权限' },
     ], { status: 'failed', failedAt: 3 }),
   },
@@ -1235,7 +1235,7 @@ export const mockWorkflow: Workflow = {
   nodes: [
     { id: 'n1', kind: 'trigger', label: '入职申请触发', position: { x: 60, y: 80 }, status: 'success', durationMs: 12 },
     { id: 'n2', kind: 'retrieve', label: '知识检索', position: { x: 280, y: 80 }, status: 'success', durationMs: 320 },
-    { id: 'n3', kind: 'decision', label: '工作伙伴研判', position: { x: 500, y: 80 }, status: 'success', durationMs: 880 },
+    { id: 'n3', kind: 'decision', label: '数字伙伴研判', position: { x: 500, y: 80 }, status: 'success', durationMs: 880 },
     { id: 'n4', kind: 'approval', label: '双重审批', position: { x: 720, y: 80 }, status: 'success', durationMs: 4500 },
     { id: 'n5', kind: 'branch', label: '分支：开通路径', position: { x: 940, y: 40 }, status: 'success', durationMs: 4 },
     { id: 'n6', kind: 'branch', label: '分支：驳回路径', position: { x: 940, y: 160 }, status: 'success', durationMs: 4 },
@@ -1428,7 +1428,7 @@ function buildGeneratedWorkflow(prompt: string) {
   const nodes = [
     { id: 'g1', kind: isScheduled ? 'schedule' : 'event', label: isScheduled ? '定时巡检触发' : '告警事件触发', position: { x: 80, y: 120 }, description: isScheduled ? '按计划发起数字伙伴巡检' : '接收告警或业务事件' },
     { id: 'g2', kind: 'retrieve', label: '检索运行手册', position: { x: 300, y: 120 }, description: '查询知识库与历史处置证据' },
-    { id: 'g3', kind: 'decision', label: '工作伙伴研判', position: { x: 520, y: 120 }, description: '结合上下文判断处置路径' },
+    { id: 'g3', kind: 'decision', label: '数字伙伴研判', position: { x: 520, y: 120 }, description: '结合上下文判断处置路径' },
     { id: 'g4', kind: 'policy', label: '风险策略校验', position: { x: 740, y: 120 }, description: '校验权限、风险等级与变更策略' },
     ...(hasExternalWrite ? [{ id: 'g5', kind: 'approval', label: '双重审批', position: { x: 960, y: 120 }, description: '高风险动作需专家双重审批' }] : []),
     { id: 'g6', kind: createsTask ? 'task' : hasExternalWrite ? 'execute' : 'notify', label: createsTask ? '创建处置工单' : hasExternalWrite ? '执行受控动作' : '通知负责人', position: { x: hasExternalWrite ? 1180 : 960, y: 120 }, description: createsTask ? '派发专家处置任务并回传结果' : hasExternalWrite ? '调用已授权的 Skill 或 MCP 工具' : '发送处置结论通知' },
@@ -1441,11 +1441,11 @@ function buildGeneratedWorkflow(prompt: string) {
 
 export const mockWorkflowGenerations: WorkflowGenerationRecord[] = [
   {
-    id: 'gen_demo_001', prompt: '当生产 Redis 触发 OOM 告警时，由工作伙伴研判处置路径，经双重审批后执行受控恢复，写入审计并通知值班负责人', promptDigest: 'sha256:demo', status: 'review_required', model: '企业默认模型', workspaceId: 'prod-ops', tenantId: 'tenant-prod-ops', ownerId: 'current-user', policyVersion: 'workflow-policy-v3', expiresAt: '2026-07-25T09:20:00Z', createdAt: '2026-07-18T09:20:00Z',
+    id: 'gen_demo_001', prompt: '当生产 Redis 触发 OOM 告警时，由数字伙伴研判处置路径，经双重审批后执行受控恢复，写入审计并通知值班负责人', promptDigest: 'sha256:demo', status: 'review_required', model: '企业默认模型', workspaceId: 'prod-ops', tenantId: 'tenant-prod-ops', ownerId: 'current-user', policyVersion: 'workflow-policy-v3', expiresAt: '2026-07-25T09:20:00Z', createdAt: '2026-07-18T09:20:00Z',
     workflow: { nodes: [
       { id: 'g1', kind: 'trigger', label: 'Redis OOM 告警', position: { x: 80, y: 120 }, description: '接收告警事件' },
       { id: 'g2', kind: 'retrieve', label: '检索处置 Runbook', position: { x: 300, y: 120 }, description: '查询处置规范' },
-      { id: 'g3', kind: 'decision', label: '工作伙伴研判', position: { x: 520, y: 120 }, description: '判断是否需要扩容' },
+      { id: 'g3', kind: 'decision', label: '数字伙伴研判', position: { x: 520, y: 120 }, description: '判断是否需要扩容' },
       { id: 'g4', kind: 'approval', label: '双重审批', position: { x: 740, y: 120 }, description: '生产写操作需专家双重审批' },
       { id: 'g5', kind: 'execute', label: '执行受控恢复', position: { x: 960, y: 120 }, description: '调用已授权的 kubectl / redis-cli' },
       { id: 'g6', kind: 'audit', label: '写入审计记录', position: { x: 1180, y: 120 }, description: '记录完整证据链' },
@@ -1457,7 +1457,7 @@ export const mockWorkflowGenerations: WorkflowGenerationRecord[] = [
     checks: { structure: 'passed', dependencies: 'review', risk: 'review' },
     dependencies: [
       { type: 'tool', name: 'redis-cli', status: 'available' }, { type: 'mcp', name: 'kubernetes-mcp', status: 'missing', reason: '当前工作区未授权 kubectl 写权限' },
-      { type: 'agent', name: '受控恢复工作伙伴', status: 'available' },
+      { type: 'agent', name: '受控恢复数字伙伴', status: 'available' },
     ],
     risks: [{ level: 'L2', node: '执行受控恢复', text: '将对生产 Redis 执行写操作，需双重审批与回滚策略', requiresApproval: true }],
     warnings: ['执行受控恢复节点需要 kubernetes-mcp 写权限', '请专家在保存前补充回滚分支'], qualityScore: 86, requiresReview: true,
@@ -1627,7 +1627,7 @@ function buildOrchestrationCandidate(session: OrchestrationSession, sourceMessag
   const docContext = session.documents.map((doc) => `${doc.title}\n${doc.summary}\n${doc.sections.map((section) => section.heading).join(' ')}`).join('\n');
   const retrieveContext = session.lastRetrieve?.hits.map((hit) => hit.excerpt).join('\n') ?? '';
   const prompt = [session.goal, docContext, retrieveContext, ...session.messages.filter((item) => item.role === 'user').map((item) => item.content)].filter(Boolean).join('\n');
-  const generated = buildGeneratedWorkflow(prompt || '告警触发后由工作伙伴研判并通知值班');
+  const generated = buildGeneratedWorkflow(prompt || '告警触发后由数字伙伴研判并通知值班');
   let nodes: OrchestrationWorkflowNode[] = generated.nodes.map((node) => ({ ...node }));
   const hasExternalWrite = nodes.some((node) => ['execute', 'http', 'mcp'].includes(node.kind));
   if (session.constraints.requireApproval && hasExternalWrite && !nodes.some((node) => node.kind === 'approval')) {
@@ -1640,8 +1640,8 @@ function buildOrchestrationCandidate(session: OrchestrationSession, sourceMessag
   nodes = attachSourceRefs(nodes, session.documents);
   const edges = rebuildCandidateEdges(nodes);
   const dependencies = hasExternalWrite
-    ? [{ type: 'tool' as const, name: '受控执行 Skill', status: 'available' as const }, { type: 'mcp' as const, name: 'kubernetes-mcp', status: 'missing' as const, reason: '当前工作区未授权写权限' }, { type: 'agent' as const, name: '受控恢复工作伙伴', status: 'available' as const }]
-    : [{ type: 'agent' as const, name: '工作伙伴编排器', status: 'available' as const }];
+    ? [{ type: 'tool' as const, name: '受控执行 Skill', status: 'available' as const }, { type: 'mcp' as const, name: 'kubernetes-mcp', status: 'missing' as const, reason: '当前工作区未授权写权限' }, { type: 'agent' as const, name: '受控恢复数字伙伴', status: 'available' as const }]
+    : [{ type: 'agent' as const, name: '数字伙伴编排器', status: 'available' as const }];
   const previous = session.candidates[0];
   const version = (previous?.version ?? 0) + 1;
   const changeSummary = previous
@@ -2054,7 +2054,7 @@ export const mockSkills: Skill[] = [
   { id: 's9', name: 'itsm-change-tool', kind: 'tool', description: '创建、查询与更新 ITSM 变更单；生产变更需要审批门禁', version: '2.3.1', status: 'installed', rating: 4.7, installCount: 920, riskLevel: 'high', cacheable: false },
   { id: 's10', name: 'notification-tool', kind: 'tool', description: '向飞书、企业微信、钉钉等受控渠道投递处置通知', version: '1.6.0', status: 'installed', rating: 4.8, installCount: 1680, riskLevel: 'low', cacheable: true },
   { id: 's11', name: 'release-control-tool', kind: 'tool', description: '执行灰度发布、回滚与发布窗口校验，所有写操作要求双人审批', version: '1.4.0', status: 'installed', rating: 4.6, installCount: 540, riskLevel: 'high', cacheable: false },
-  { id: 's12', name: 'customer-ticket-tool', kind: 'tool', description: '同步客户工单、服务等级与处理进展，适用于服务运营工作伙伴', version: '1.1.2', status: 'installed', rating: 4.4, installCount: 430, riskLevel: 'mid', cacheable: true },
+  { id: 's12', name: 'customer-ticket-tool', kind: 'tool', description: '同步客户工单、服务等级与处理进展，适用于服务运营数字伙伴', version: '1.1.2', status: 'installed', rating: 4.4, installCount: 430, riskLevel: 'mid', cacheable: true },
 ];
 
 mockSkills.forEach((skill, index) => Object.assign(skill, {
@@ -3418,7 +3418,7 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
       return true;
     });
     const knowledgeOptions = mockKnowledgePackages.filter(inCurrentWorkspace).filter((item) => item.status === 'published').map((item) => ({ id: item.id, name: item.name, meta: `${item.domain} · ${item.currentVersion.version}` }));
-    const capabilityAssets = mockSkills.filter(inCurrentWorkspace).map(skillAsset).filter((item) => item.lifecycleStatus === 'enabled' || item.lifecycleStatus === 'installed' || item.status === 'installed');
+    const capabilityAssets = mockSkills.filter(inCurrentWorkspace).map(skillAsset).filter((item) => item.lifecycleStatus === 'enabled' || item.status === 'installed');
     const skillOptions = capabilityAssets.filter((item) => item.kind === 'skill').map((item) => ({ id: item.id, name: item.name, meta: `技能 · ${item.version}` }));
     const toolOptions = capabilityAssets.filter((item) => item.kind === 'tool' || item.kind === 'mcp').map((item) => ({ id: item.id, name: item.name, meta: item.kind === 'mcp' ? `MCP · ${item.version}` : `工具 · ${item.version}` }));
     const workflowSkillOptions = mockWorkflowSkills.filter((item) => item.status === 'published').map((item) => ({ id: item.id, name: item.name, meta: `流程技能 · ${item.sourceVersionId}` }));
@@ -3622,7 +3622,6 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
           employee.lifecycle = 'pending_approval';
           employee.release = {
             status: 'pending_approval',
-            requestedAt: now,
             requestedBy: identity.name,
             requestedById: identity.id,
           };
@@ -3645,7 +3644,7 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
         if (employee.release.status === 'released' && (employee.lifecycle === 'paused' || employee.lifecycle === 'quarantined')) {
           if (!body.confirmed) throw new Error('E_DIGITAL_EMPLOYEE_RESUME_CONFIRM_REQUIRED: 恢复运行前请确认异常已处置并保留证据');
           employee.opsControl = { lastAction: 'resumed', reason: reason || '确认异常已处置并保留证据', actor: identity.name, at: new Date().toISOString() };
-        } else if (employee.release.status === 'pending_approval' || employee.release.status === 'pending_countersign') {
+        } else if (employee.release.status === 'pending_approval') {
           if (identity.role !== 'admin') {
             if (employee.release.requestedById && employee.release.requestedById === identity.id) {
               throw new Error('E_SOD_SELF_APPROVAL: 生产上岗须管理员确认，申请人不能自批');
@@ -4351,7 +4350,7 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
     if (!ALLOWED_GENERATION_MODELS.has(String(body.model))) throw new Error('当前工作区不允许使用该生成模型');
     const workflow = buildGeneratedWorkflow(prompt);
     const hasExternalWrite = workflow.nodes.some((node) => ['execute', 'http', 'mcp'].includes(node.kind));
-    const dependencies = hasExternalWrite ? [{ type: 'tool' as const, name: '受控执行 Skill', status: 'available' as const }, { type: 'mcp' as const, name: 'kubernetes-mcp', status: 'missing' as const, reason: '当前工作区未授权写权限' }] : [{ type: 'agent' as const, name: '工作伙伴编排器', status: 'available' as const }];
+    const dependencies = hasExternalWrite ? [{ type: 'tool' as const, name: '受控执行 Skill', status: 'available' as const }, { type: 'mcp' as const, name: 'kubernetes-mcp', status: 'missing' as const, reason: '当前工作区未授权写权限' }] : [{ type: 'agent' as const, name: '数字伙伴编排器', status: 'available' as const }];
     const generated: WorkflowGenerationRecord = {
       id: mockId('gen'),
       prompt,
@@ -5725,7 +5724,7 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
       }
       const kind = deployment.kind;
       const mode = deployment.connectionMode;
-      if (kind === 'feishu' || kind === 'lark') {
+      if (kind === 'feishu') {
         if (typeof body.appId === 'string' && body.appId.trim()) deployment.appIdMasked = `••••${body.appId.trim().slice(-4)}`;
         if (typeof body.appSecret === 'string' && body.appSecret.trim()) deployment.credentialMasked = deployment.appIdMasked ?? deployment.credentialMasked;
         if (mode === 'webhook') {
@@ -5761,7 +5760,7 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
           if (typeof body.agentId === 'string') deployment.agentId = body.agentId.trim() || undefined;
           deployment.webhookPath = `/api/channel/wecom/events/${id}`;
         }
-      } else if (kind === 'weixin' || kind === 'wechat') {
+      } else if (kind === 'weixin') {
         if (typeof body.token === 'string' && body.token.trim()) {
           deployment.tokenMasked = `••••${body.token.trim().slice(-4)}`;
           deployment.credentialMasked = deployment.tokenMasked;
@@ -5950,7 +5949,7 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
     const index = mockSessions.findIndex((item) => item.id === sessionId && item.workspaceId === currentWorkspaceId);
     if (index < 0) throw new Error('E_NOT_FOUND: 会话不存在');
     const body = (opts.body ?? {}) as Record<string, unknown>;
-    const current = mockSessions[index] as Record<string, unknown>;
+    const current = mockSessions[index] as unknown as Record<string, unknown>;
     const next = { ...current, ...body, updatedAt: new Date().toISOString() };
     mockSessions[index] = next as (typeof mockSessions)[number];
     return next;

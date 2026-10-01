@@ -6,7 +6,7 @@
 |------|------|----------|
 | `ops-home.png` | 运营总览 `/home` | KPI、在岗伙伴、工作记录 |
 | `copilot.png` | 专家协作 `/copilot` | 与在岗伙伴会话（技能/知识能力说明） |
-| `partners.png` | 工作伙伴 `/partners` | 专家目录与上岗卡片 |
+| `partners.png` | 数字伙伴 `/partners` | 专家目录与上岗卡片 |
 | `workflows.png` | 工作流程 `/workflows` | 办公开箱编排（如 `wf.office.expense_precheck`） |
 | `skills.png` | 技能中心 `/skills` | 启用清单 / 商店 / 平台工具 |
 

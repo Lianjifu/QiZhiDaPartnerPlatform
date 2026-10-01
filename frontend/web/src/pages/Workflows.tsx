@@ -128,7 +128,7 @@ const NODE_ICONS: Record<WorkflowNodeKind, any> = {
 const NODE_LABELS: Record<WorkflowNodeKind, string> = {
   trigger: 'Webhook 触发', schedule: '定时调度', event: '告警事件',
   retrieve: '知识检索', transform: '数据转换',
-  decision: '工作伙伴研判', condition: '条件判断', approval: '人工审批', policy: '风险策略',
+  decision: '数字伙伴研判', condition: '条件判断', approval: '人工审批', policy: '风险策略',
   branch: '条件分支', parallel: '并行编排',
   execute: '执行受控动作', http: 'HTTP / API', mcp: 'MCP 工具', task: '创建任务',
   retry: '重试策略', compensate: '补偿回滚', audit: '审计留痕', notify: '结果通知',
@@ -156,7 +156,7 @@ type NodeRisk = 'standard' | 'review' | 'sensitive';
 const NODE_LIBRARY_GROUPS: Array<{ id: NodeLibraryCategory; label: string; desc: string; kinds: WorkflowNodeKind[] }> = [
   { id: 'trigger', label: '触发与输入', desc: '定义数字伙伴何时开始工作', kinds: ['trigger', 'schedule', 'event'] },
   { id: 'context', label: '上下文与数据', desc: '补齐处置所需的证据与变量', kinds: ['retrieve', 'transform'] },
-  { id: 'decision', label: '智能决策', desc: '由规则或工作伙伴研判决定处置路径', kinds: ['decision', 'condition', 'branch', 'parallel'] },
+  { id: 'decision', label: '智能决策', desc: '由规则或数字伙伴研判决定处置路径', kinds: ['decision', 'condition', 'branch', 'parallel'] },
   { id: 'action', label: '执行与协同', desc: '调用受控能力或派发人工工作', kinds: ['execute', 'http', 'mcp', 'task'] },
   { id: 'governance', label: '人工与治理', desc: '在关键动作前实施权限和审批控制', kinds: ['policy', 'approval', 'audit'] },
   { id: 'reliability', label: '可靠性与收尾', desc: '处理失败、补偿并通知相关人员', kinds: ['retry', 'compensate', 'notify'] },
@@ -191,7 +191,7 @@ const EMPTY_EDGES: Edge[] = [];
 const SAMPLE_NODES: Node[] = [
   { id: 'n1', type: 'custom', position: { x: 60, y: 80 }, data: { kind: 'trigger', label: 'Webhook 触发' } },
   { id: 'n2', type: 'custom', position: { x: 280, y: 80 }, data: { kind: 'retrieve', label: '知识检索' } },
-  { id: 'n3', type: 'custom', position: { x: 500, y: 80 }, data: { kind: 'decision', label: '工作伙伴研判' } },
+  { id: 'n3', type: 'custom', position: { x: 500, y: 80 }, data: { kind: 'decision', label: '数字伙伴研判' } },
   { id: 'n4', type: 'custom', position: { x: 720, y: 80 }, data: { kind: 'approval', label: '双重审批' } },
   { id: 'n5', type: 'custom', position: { x: 940, y: 40 }, data: { kind: 'branch', label: '分支：成功路径' } },
   { id: 'n6', type: 'custom', position: { x: 940, y: 160 }, data: { kind: 'branch', label: '分支：回滚路径' } },
@@ -294,7 +294,7 @@ const NODE_DEBUG: Record<string, { input: string; output: string; log: string[] 
   n3: {
     input: '{ "context": [...], "tools": ["skill_redis_tune", "mcp_k8s"] }',
     output: '{ "decision": "WRITE", "action": "CONFIG SET", "confidence": 0.92 }',
-    log: ['[14:28:00] 进入工作伙伴研判节点', '[14:28:01] 工具调用：skill_redis_tune.predict()', '[14:28:01] 决策：WRITE（置信度 0.92）'],
+    log: ['[14:28:00] 进入数字伙伴研判节点', '[14:28:01] 工具调用：skill_redis_tune.predict()', '[14:28:01] 决策：WRITE（置信度 0.92）'],
   },
   n4: {
     input: '{ "action": "CONFIG SET", "target": "prod-redis-01", "params": { "maxmemory": "16GB", "policy": "volatile-lru" } }',
@@ -658,7 +658,7 @@ export default function Workflows() {
   const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
   const [generationStep, setGenerationStep] = useState<'input' | 'preview'>('input');
   const [generationResult, setGenerationResult] = useState<GenerationResult | null>(null);
-  const [generationPrompt, setGenerationPrompt] = useState('当生产 Redis 触发 OOM 告警时，由工作伙伴研判处置路径，经双重审批后执行受控恢复，写入审计并通知值班负责人');
+  const [generationPrompt, setGenerationPrompt] = useState('当生产 Redis 触发 OOM 告警时，由数字伙伴研判处置路径，经双重审批后执行受控恢复，写入审计并通知值班负责人');
   const [generationConstraints, setGenerationConstraints] = useState<GenerationVars['constraints']>({ riskLevel: 'L2', requireApproval: true, requireAudit: true, requireRollback: true });
   const [generationModel, setGenerationModel] = useState('企业默认模型');
   const { data: generationHistoryData } = useApiQuery<GenerationResult[]>(['workflow-generations'], '/api/workflows/generations');
@@ -2433,9 +2433,9 @@ export default function Workflows() {
 }
 
 const AI_PROMPT_EXAMPLES = [
-  { label: 'Redis OOM 受控恢复', prompt: '当生产 Redis 触发 OOM 告警时，由工作伙伴研判处置路径，经双重审批后执行受控恢复，写入审计并通知值班负责人' },
-  { label: '证书到期巡检', prompt: '每周巡检即将过期的 TLS 证书，工作伙伴研判优先级后创建处置工单，经双重审批后通知值班并写入审计' },
-  { label: '高危变更复核', prompt: '当变更窗口外出现高危配置变更时，工作伙伴研判影响面，阻断自动执行，通知专家复核并保留审计留痕' },
+  { label: 'Redis OOM 受控恢复', prompt: '当生产 Redis 触发 OOM 告警时，由数字伙伴研判处置路径，经双重审批后执行受控恢复，写入审计并通知值班负责人' },
+  { label: '证书到期巡检', prompt: '每周巡检即将过期的 TLS 证书，数字伙伴研判优先级后创建处置工单，经双重审批后通知值班并写入审计' },
+  { label: '高危变更复核', prompt: '当变更窗口外出现高危配置变更时，数字伙伴研判影响面，阻断自动执行，通知专家复核并保留审计留痕' },
 ] as const;
 
 function dependencyTypeLabel(type: GenerationResult['dependencies'][number]['type']) {
@@ -2490,7 +2490,7 @@ function WorkflowAIGeneratorDrawer({
         <div className="space-y-5">
           <div>
             <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]">业务目标</label>
-            <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={5} placeholder="例如：当生产 Redis 触发 OOM 告警时，由工作伙伴研判处置路径，经双重审批后执行受控恢复，写入审计并通知值班" className="w-full resize-y rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2.5 text-sm leading-6 text-[var(--text)] outline-none transition-[border-color,box-shadow] duration-200 focus:border-[var(--brand)] focus:shadow-[0_0_0_3px_var(--brand-light)]" />
+            <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={5} placeholder="例如：当生产 Redis 触发 OOM 告警时，由数字伙伴研判处置路径，经双重审批后执行受控恢复，写入审计并通知值班" className="w-full resize-y rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2.5 text-sm leading-6 text-[var(--text)] outline-none transition-[border-color,box-shadow] duration-200 focus:border-[var(--brand)] focus:shadow-[0_0_0_3px_var(--brand-light)]" />
             <div className="mt-1 flex justify-between text-[10px] text-[var(--text-muted)]"><span>描述触发、研判、双重审批、受控动作、审计与通知</span><span>{prompt.length}/1000</span></div>
             <div className="mt-2.5 flex flex-wrap gap-1.5">
               {AI_PROMPT_EXAMPLES.map((example) => (

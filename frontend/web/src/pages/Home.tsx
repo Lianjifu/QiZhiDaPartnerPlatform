@@ -20,7 +20,7 @@ import { cn } from '@qzda/web-utils';
 import type { DigitalPartner, Task } from '@qzda/web-types';
 import { EmptyState, RoleReadonlyBanner } from '@/components/shared';
 import { useAuthStore } from '@/stores/authStore';
-import { employeePrimaryLabel, employeeSecondaryLabel } from '@/lib/digital-employees';
+import { employeePrimaryLabel, employeeSecondaryLabel } from '@/lib/partners';
 import { roleCanMutate, rolePageCopy } from '@/features/role-nav/role-nav';
 import { employeeHealthScore, taskSuccessRate, toDateKey } from '@/features/home/home-metrics';
 import { WorkRecordCalendar, type DayScheduleEvent, type SelectDateOptions, type WorkRecordPeriod } from '@/features/home/WorkRecordCalendar';
@@ -185,7 +185,7 @@ export default function Home() {
         { title: '协作记录', desc: '研判与人工审核', to: '/copilot', icon: MessageSquare, tone: 'success' as const },
       ]
     : [
-        { title: '工作伙伴', desc: '岗位与能力装配', to: '/partners', icon: Bot, tone: 'brand' as const },
+        { title: '数字伙伴', desc: '岗位与能力装配', to: '/partners', icon: Bot, tone: 'brand' as const },
         { title: '专家协作', desc: '研判与受控执行', to: '/copilot', icon: MessageSquare, tone: 'info' as const },
         { title: '知识记忆', desc: '检索与跨会话', to: '/knowledge', icon: BookOpen, tone: 'success' as const },
         { title: '任务 SLA', desc: '派工与处置闭环', to: '/tasks', icon: ListChecks, tone: 'warn' as const },

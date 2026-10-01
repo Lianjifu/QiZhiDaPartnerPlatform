@@ -38,7 +38,7 @@ describe('role-nav IA', () => {
       'nav.tasks': '任务中心',
       'nav.tasks.user': '我的待办',
       'nav.tasks.auditor': '任务核查',
-      'nav.agents': '工作伙伴',
+      'nav.agents': '数字伙伴',
       'nav.agents.auditor': '伙伴档案',
       'nav.workflows': '工作流程',
       'nav.workflows.auditor': '流程版本',
@@ -70,7 +70,7 @@ describe('role-nav IA', () => {
     expect(rolePageCopy('tasks', 'user').title).toBe('我的待办');
     expect(rolePageCopy('tasks', 'auditor').title).toBe('任务核查');
     expect(rolePageCopy('agents', 'auditor').title).toBe('伙伴档案');
-    expect(rolePageCopy('agents', 'admin').title).toBe('工作伙伴');
+    expect(rolePageCopy('agents', 'admin').title).toBe('数字伙伴');
     expect(rolePageCopy('workflows', 'auditor').title).toBe('流程版本');
     expect(rolePageCopy('copilot', 'auditor').title).toBe('协作记录');
     expect(rolePageCopy('models', 'auditor').title).toBe('模型审计');

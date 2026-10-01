@@ -42,7 +42,7 @@ export type SegmentEventResult =
 
 export function applySegmentSSEEvent(
   state: SegmentRouterState,
-  data: CopilotSSEEvent,
+  data: Partial<CopilotSSEEvent>,
 ): SegmentEventResult {
   const typ = data.type ?? '';
   if (typ === 'message_start' && data.messageId) {

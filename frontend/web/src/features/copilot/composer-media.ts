@@ -222,7 +222,7 @@ export async function captureAudio(options: AudioCaptureOptions = {}): Promise<A
   const chunks: Blob[] = [];
 
   const recorder = new Recorder(stream as unknown as MediaStream, { mimeType: mime });
-  recorder.ondataavailable = (ev) => {
+  recorder.ondataavailable = (ev: { data: Blob; size?: number }) => {
     if (ev.data && ev.data.size > 0) chunks.push(ev.data);
   };
 

@@ -579,7 +579,7 @@ func reasoningEffortGuidance(effort string) string {
 func buildCopilotSystemPromptWithEffort(emp map[string]any, ragHits any, memoryHits []memoryHit, reasoningEffort string) string {
 	var b strings.Builder
 	if emp != nil && emp["skipped"] != true && emp["active"] != false {
-		name := coalesce(str(emp["name"]), "工作伙伴")
+		name := coalesce(str(emp["name"]), "数字伙伴")
 		role := coalesce(str(emp["role"]), str(emp["title"]))
 		dept := str(emp["department"])
 		b.WriteString("你是「")

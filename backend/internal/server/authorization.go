@@ -34,12 +34,12 @@ func (s *Server) createPendingAuthorizationLocked(
 	if deID != "" {
 		requesterKind = "agent"
 		requesterID = deID
-		requesterName = "工作伙伴"
+		requesterName = "数字伙伴"
 		for _, emp := range s.Store.Employees {
 			if str(emp["id"]) != deID {
 				continue
 			}
-			requesterName = coalesce(str(emp["name"]), coalesce(str(emp["role"]), "工作伙伴"))
+			requesterName = coalesce(str(emp["name"]), coalesce(str(emp["role"]), "数字伙伴"))
 			if eo := strings.TrimSpace(str(emp["escalationOwner"])); eo != "" {
 				approverHint = eo
 			}

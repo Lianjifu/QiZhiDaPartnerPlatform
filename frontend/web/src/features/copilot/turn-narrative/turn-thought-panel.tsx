@@ -6,7 +6,7 @@ import { thoughtKindLabel } from '../human-thought';
 import { buildTurnSummary } from './build-turn-summary';
 import { groupTurnPhases } from './group-turn-phases';
 import { phaseLabel } from './phase-labels';
-import type { TurnPhaseBlock } from './types';
+import type { TurnMeta, TurnPhaseBlock } from './types';
 import { TurnTaskList, dedupeTurnTasks } from './turn-task-list';
 
 type Props = {
@@ -68,7 +68,7 @@ export function TurnThoughtPanel({ message, streaming, showNarrative = true }: P
   const steps = message.reasoningSteps ?? [];
   const tasks = dedupeTurnTasks(message.turnTasks ?? message.turnMeta?.tasks ?? []);
   const phases = useMemo(
-    () => groupTurnPhases(steps, tasks, message.cognitive, streaming, message.turnMeta),
+    () => groupTurnPhases(steps, tasks, message.cognitive, streaming, message.turnMeta as TurnMeta | undefined),
     [steps, tasks, message.cognitive, streaming, message.turnMeta],
   );
   const hasContent = thinking.length > 0 || steps.length > 0 || phases.length > 0 || tasks.length > 0;

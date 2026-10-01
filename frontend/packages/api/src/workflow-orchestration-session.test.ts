@@ -7,7 +7,7 @@ describe('workflow orchestration session', () => {
       method: 'POST',
       body: {
         title: 'Redis 受控恢复编排',
-        goal: '当生产 Redis 触发 OOM 告警时，由工作伙伴研判处置路径',
+        goal: '当生产 Redis 触发 OOM 告警时，由数字伙伴研判处置路径',
         workspaceId: 'w1',
         model: '企业默认模型',
         constraints: { riskLevel: 'L2', requireApproval: true, requireAudit: true, requireRollback: true },

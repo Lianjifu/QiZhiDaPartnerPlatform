@@ -235,7 +235,7 @@ describe('captureAudio', () => {
     const getUserMedia: GetUserMedia = () => Promise.resolve(makeStream());
     // Drive the recorder from outside via an injected controller.
     const recRef: { current: MediaRecorderLike | null } = { current: null };
-    const recorderFactory: MediaRecorderCtor = class extends (recorder as unknown as new (...args: never[]) => MediaRecorderLike) {
+    const recorderFactory: MediaRecorderCtor = class extends (recorder as unknown as new (...args: any[]) => MediaRecorderLike) {
       constructor(stream: MediaStreamLike, options?: { mimeType?: string }) {
         super(stream, options);
         recRef.current = this;
@@ -282,7 +282,7 @@ describe('captureAudio', () => {
       pause() {}
       resume() {}
     } as unknown as MediaRecorderCtor;
-    const captureFactory: MediaRecorderCtor = class extends (bigRecorder as unknown as new (...args: never[]) => MediaRecorderLike) {
+    const captureFactory: MediaRecorderCtor = class extends (bigRecorder as unknown as new (...args: any[]) => MediaRecorderLike) {
       constructor(stream: MediaStreamLike, options?: { mimeType?: string }) {
         super(stream, options);
         recRef.current = this;

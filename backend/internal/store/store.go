@@ -249,7 +249,7 @@ func controlledTask(id, ws, code, title, priority, status, stage, ownerID, deID,
 	return map[string]any{
 		"id": id, "workspaceId": ws, "code": code, "title": title, "priority": priority,
 		"status": status, "lifecycleStage": stage, "ownerId": ownerID, "ownerName": ownerID,
-		"digitalPartnerId": deID, "digitalPartnerName": "工作伙伴", "assignee": ownerID, "source": source,
+		"digitalPartnerId": deID, "digitalPartnerName": "数字伙伴", "assignee": ownerID, "source": source,
 		"progress": map[string]any{"done": 1, "total": 3}, "tags": []string{},
 		"sla":        map[string]any{"remainingMin": 45, "risk": "none", "escalated": false},
 		"execution":  map[string]any{"retryCount": 0, "paused": false, "currentStep": "执行中"},
@@ -397,7 +397,7 @@ func (s *Store) seed() {
 		"channels":  []map[string]any{{"id": "ch-1", "name": "企业微信通知", "meta": "渠道 · wecom"}},
 	}
 	s.EmployeeTemplates = []map[string]any{
-		{"id": "tpl-sre", "name": "SRE 值班工作伙伴", "role": "SRE", "department": "信息技术部", "scope": "organization", "status": "certified", "source": "platform", "sourceName": "平台模板", "description": "故障响应与变更护栏", "serviceObject": "运维团队", "version": "1.0.0", "risk": "medium", "responsibilities": []string{"故障响应", "变更护栏"}, "prohibitedActions": []string{"生产直接写库"}, "capabilities": map[string]any{"model": "gpt-4o", "knowledge": []string{"运维知识库"}, "skills": []string{"docx", "summarize"}, "tools": []string{}, "workflows": []string{"故障自愈技能"}, "channels": []string{"Web"}}, "memoryPolicy": map[string]any{"shortTermHours": 24, "workingDays": 7, "longTermCadence": "daily", "knowledgePromotion": "approval_required"}, "applicableEnvironments": []string{"sandbox", "staging", "production"}, "adoptionCount": 1, "tags": []string{"sre"}, "publishedAt": "2026-07-01T00:00:00Z", "updatedAt": "2026-07-01T00:00:00Z"},
+		{"id": "tpl-sre", "name": "SRE 值班数字伙伴", "role": "SRE", "department": "信息技术部", "scope": "organization", "status": "certified", "source": "platform", "sourceName": "平台模板", "description": "故障响应与变更护栏", "serviceObject": "运维团队", "version": "1.0.0", "risk": "medium", "responsibilities": []string{"故障响应", "变更护栏"}, "prohibitedActions": []string{"生产直接写库"}, "capabilities": map[string]any{"model": "gpt-4o", "knowledge": []string{"运维知识库"}, "skills": []string{"docx", "summarize"}, "tools": []string{}, "workflows": []string{"故障自愈技能"}, "channels": []string{"Web"}}, "memoryPolicy": map[string]any{"shortTermHours": 24, "workingDays": 7, "longTermCadence": "daily", "knowledgePromotion": "approval_required"}, "applicableEnvironments": []string{"sandbox", "staging", "production"}, "adoptionCount": 1, "tags": []string{"sre"}, "publishedAt": "2026-07-01T00:00:00Z", "updatedAt": "2026-07-01T00:00:00Z"},
 	}
 	s.TemplateAdoptions = []map[string]any{
 		{"id": "adopt-1", "templateId": "tpl-sre", "templateVersion": "1.0.0", "partnerId": "de-1", "workspaceId": "w1", "adoptedBy": "平台管理员", "status": "active", "createdAt": "2026-07-01T00:00:00Z"},
@@ -816,7 +816,7 @@ func (s *Store) seed() {
 		},
 		"costMonth": map[string]any{"used": 0, "budget": 0, "daily": []int{}, "source": "none"},
 		"quickLinks": []map[string]any{
-			{"label": "工作伙伴", "to": "/partners", "icon": "bot"},
+			{"label": "数字伙伴", "to": "/partners", "icon": "bot"},
 			{"label": "协作", "to": "/copilot", "icon": "message"},
 		},
 	}

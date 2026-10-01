@@ -13,7 +13,7 @@ const Copilot = lazy(() => import('./pages/Copilot'));
 const CopilotShare = lazy(() => import('./pages/CopilotShare'));
 const Tasks = lazy(() => import('./pages/Tasks'));
 const Workspaces = lazy(() => import('./pages/Workspaces'));
-const DigitalPartners = lazy(() => import('./pages/DigitalPartners'));
+const DigitalPartners = lazy(() => import('./pages/Partners'));
 const Workflows = lazy(() => import('./pages/Workflows'));
 const WorkflowOrchestrationSession = lazy(() => import('./pages/WorkflowOrchestrationSession'));
 const Knowledge = lazy(() => import('./pages/Knowledge'));

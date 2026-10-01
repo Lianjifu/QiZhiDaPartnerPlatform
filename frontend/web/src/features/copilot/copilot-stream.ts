@@ -97,6 +97,12 @@ export type CopilotSSEEvent = {
     confidence?: number;
     reasons?: string[];
   };
+  /** 任务事件 id — useChat pushThought 路径使用 */
+  taskId?: string;
+  /** 任务详情描述 */
+  detail?: string;
+  /** 回合叙事元数据 — 由 parseTurnMeta 解析 */
+  turnMeta?: unknown;
 };
 
 export function isMockChatMode(): boolean {

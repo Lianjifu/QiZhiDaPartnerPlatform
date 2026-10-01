@@ -36,7 +36,7 @@ export type SkillRow = {
   cacheable: boolean;
   perf: { calls24h: number; errorRate: number; p95Ms: number };
 } & Pick<Skill, 'lifecycleStatus' | 'source' | 'owner' | 'team' | 'lastVerifiedAt' | 'hasUpdate' | 'upgradeVersion' | 'tags'>
-  & Partial<Pick<Skill, 'hasScripts' | 'scripts' | 'packageFileName' | 'packagePath'>>;
+  & Partial<Pick<Skill, 'hasScripts' | 'scripts' | 'packageFileName'>>;
 
 export type SkillCenterTab = 'workspace' | 'store' | 'platformTools' | 'workflowSkills' | 'integration' | 'governance';
 

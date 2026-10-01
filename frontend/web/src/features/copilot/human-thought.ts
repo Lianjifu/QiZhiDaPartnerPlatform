@@ -39,6 +39,7 @@ export type ThoughtEventLike = {
   frameworkLabel?: string;
   phase?: string;
   phases?: string[];
+  phaseStep?: string;
   role?: string;
   confidence?: number;
 };

@@ -295,7 +295,7 @@ export function buildHomeExtraLive(input: {
       id: 'sg-onboard',
       tone: 'info',
       text: '当前工作区尚未装配数字伙伴。',
-      action: '打开工作伙伴',
+      action: '打开数字伙伴',
       to: '/partners',
     });
   }
@@ -339,7 +339,7 @@ export function buildHomeExtraLive(input: {
     roleDistribution: [...roleCounts.entries()].map(([role, count]) => ({ role, count })),
     suggestion,
     quickLinks: [
-      { label: '工作伙伴', to: '/partners', icon: 'Bot', desc: '岗位装配与上岗' },
+      { label: '数字伙伴', to: '/partners', icon: 'Bot', desc: '岗位装配与上岗' },
       { label: '专家协作', to: '/copilot', icon: 'MessageSquare', desc: '研判与受控执行' },
       { label: '任务中心', to: '/tasks', icon: 'ListChecks', desc: '派工与处置闭环' },
     ],

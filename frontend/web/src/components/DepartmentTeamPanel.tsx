@@ -5,7 +5,7 @@ import { Badge, Button } from '@qzda/web-ui';
 import { Modal } from '@/components/shared';
 import { DigitalPartnerAvatar } from '@/components/DigitalPartnerAvatar';
 import { useApiMutation, useApiQuery } from '@/services/query';
-import { compareDigitalPartners, employeePrimaryLabel, employeeSecondaryLabel, isDepartmentHead } from '@/lib/digital-employees';
+import { compareDigitalPartners, employeePrimaryLabel, employeeSecondaryLabel, isDepartmentHead } from '@/lib/partners';
 import type { DigitalPartner, Task } from '@qzda/web-types';
 import { MessageSquare, Network, SendHorizontal, UsersRound } from 'lucide-react';
 import { cn } from '@qzda/web-utils';
