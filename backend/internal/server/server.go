@@ -131,6 +131,16 @@ type Server struct {
 	// apprun/runDurable.
 	KafkaBus *infra.KafkaAuditBus
 
+	// authH holds the HTTP handlers for /api/auth/*. Built in New() with
+	// dependencies injected from Server state so the handlers in internal/auth
+	// do not need to import this package. The route switch consults
+	// s.authH for the three login endpoints.
+	authH *auth.Handler
+	// authMW is the auth middleware (Bearer parse + mock rejection +
+	// role gates). server.requireAuth composes around it for workspace
+	// merge / resolution.
+	authMW *auth.Middleware
+
 	// closeMu guards closeFuncs + closed; RegisterCloseFunc and Shutdown
 	// race in tests where Shutdown runs on a different goroutine than
 	// the apprun boot path.
@@ -197,6 +207,12 @@ func New(st *store.Store) *Server {
 	s.initSQLiteDurability()
 	// W2-D3 · SubAgent dispatch engine.
 	s.SubAgent = buildSubAgentEngine()
+	// W*-D* · Auth HTTP handlers + middleware (Phase 2 login module split).
+	// The auth package owns Login / OIDCLogin / OIDCCallback / RequireAuth;
+	// server/ wires deps (Sign, Parse, OIDC, store-backed audit writer,
+	// role gates) here so the package boundary stays one-way.
+	s.authH = s.buildAuthHandler()
+	s.authMW = s.buildAuthMiddleware()
 	return s
 }
 
@@ -516,11 +532,11 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) {
 	)
 	switch {
 	case path == "/api/auth/login" && method == http.MethodPost:
-		data, err = s.login(r)
+		data, err = s.authH.Login(r)
 	case path == "/api/auth/oidc/login" && method == http.MethodGet:
-		data, err = s.oidcLogin(r)
+		data, err = s.authH.OIDCLogin(r)
 	case path == "/api/auth/oidc/callback" && method == http.MethodGet:
-		data, err = s.oidcCallback(r)
+		data, err = s.authH.OIDCCallback(r)
 	case path == "/api/workspaces" && method == http.MethodGet:
 		data, err = s.listWorkspaces(r)
 	case path == "/api/workspaces" && method == http.MethodPost:
@@ -1152,66 +1168,75 @@ func (s *Server) alias(path, method string, r *http.Request) (any, error, bool) 
 	return nil, nil, false
 }
 
-func (s *Server) login(r *http.Request) (any, error) {
-	if forceOIDCLogin() {
-		return nil, apperr.Forbidden(apperr.RoleForbidden, "生产环境已禁用密码登录，请使用 OIDC（/api/auth/oidc/login）")
+// buildAuthHandler wires the auth package's HTTP handlers with this server's
+// store-backed audit writer. AuditWriter takes the Store's RWMutex around the
+// AppendAudit call so the auth package stays free of store imports.
+func (s *Server) buildAuthHandler() *auth.Handler {
+	var auditWriter auth.AuditWriter
+	if s.Store != nil {
+		auditWriter = &lockedAuditWriter{store: s.Store}
 	}
-	var body struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+	return &auth.Handler{
+		Sign:        auth.Sign,
+		Parse:       auth.Parse,
+		OIDC:        &s.OIDC,
+		AuditWriter: auditWriter,
 	}
-	if err := response.Decode(r, &body); err != nil || body.Email == "" || body.Password == "" {
-		return nil, apperr.BadReq(apperr.CredentialsRequired, "缺少凭据")
-	}
-	role, name, userID := auth.RoleFromEmail(body.Email)
-	ws := []string{"w1", "w2"}
-	scopes := []string{"sandbox", "staging"}
-	if role == "admin" {
-		ws = []string{"w1", "w2", "w3", "w4"}
-		scopes = []string{"sandbox", "staging", "production"}
-	}
-	if role == "auditor" {
-		ws = []string{"w1", "w2", "w3"}
-		scopes = []string{"sandbox", "staging", "production"}
-	}
-	id := auth.Identity{
-		ID: userID, Name: name, Email: body.Email, Role: role,
-		TenantID: "tenant-acme", WorkspaceID: ws[0], WorkspaceIDs: ws,
-		EnvironmentScopes: scopes, Permissions: auth.RolePermissions(role), MFAEnabled: true,
-	}
-	// Prefer stable mock tokens for FE smoke; production (DE_BAN_MOCK_TOKEN) issues JWT only.
-	token := "mock-user-token"
-	switch role {
-	case "admin":
-		token = "mock-admin-token"
-	case "auditor":
-		token = "mock-auditor-token"
-	}
-	preferJWT := strings.EqualFold(r.Header.Get("x-prefer-jwt"), "1") || banMockTokenEnv()
-	if jwt, err := auth.Sign(id, 24*time.Hour); err == nil && preferJWT {
-		token = jwt
-	}
-	s.Store.Lock()
-	s.Store.AppendAudit(id.WorkspaceID, id.Name, "登录", "auth", "success", "")
-	s.Store.Unlock()
-	return map[string]any{"token": token, "user": id}, nil
 }
 
-func banMockTokenEnv() bool {
-	return runtimeenv.BanDemoToken()
+// lockedAuditWriter adapts *store.Store to auth.AuditWriter by wrapping the
+// AppendAudit call in Lock/Unlock — preserves the original server.login /
+// server.oidcCallback synchronization.
+type lockedAuditWriter struct {
+	store *store.Store
 }
 
-// forceOIDCLogin disables password login when DE_FORCE_OIDC=1, or when
-// DE_BAN_MOCK_TOKEN=1 unless DE_ALLOW_PASSWORD_LOGIN=1 (local escape hatch).
-func forceOIDCLogin() bool {
-	if v := strings.TrimSpace(os.Getenv("DE_FORCE_OIDC")); v == "1" || strings.EqualFold(v, "true") {
-		return true
+func (l *lockedAuditWriter) AppendAudit(workspaceID, actor, action, target, result, reason string) {
+	l.store.Lock()
+	defer l.store.Unlock()
+	l.store.AppendAudit(workspaceID, actor, action, target, result, reason)
+}
+
+// buildAuthMiddleware wires the auth middleware. The role gates and mock-header
+// checks live here as closures so the middleware itself stays free of server/
+// imports.
+func (s *Server) buildAuthMiddleware() *auth.Middleware {
+	return &auth.Middleware{
+		Parse:                auth.Parse,
+		AllowMockIdentity:    auth.AllowMockIdentity,
+		HasMockIdentityHeaders: auth.HasMockIdentityHeaders,
+		AuditorWriteGate:     s.auditorWriteGate,
+		UserWriteGate:        s.userWriteGate,
 	}
-	if !banMockTokenEnv() {
-		return false
+}
+
+// auditorWriteGate mirrors the auditor write check originally inline in
+// server.requireAuth. Self-Evolution approve|reject routes are the only
+// exception — auditor may co-sign there.
+func (s *Server) auditorWriteGate(r *http.Request, id *auth.Identity) error {
+	if id == nil || id.Role != "auditor" {
+		return nil
 	}
-	allow := strings.TrimSpace(os.Getenv("DE_ALLOW_PASSWORD_LOGIN"))
-	return !(allow == "1" || strings.EqualFold(allow, "true"))
+	p := r.URL.Path
+	evolveOK := strings.HasPrefix(p, "/api/evolve/candidates/") &&
+		(strings.HasSuffix(p, "/approve") || strings.HasSuffix(p, "/reject"))
+	if evolveOK {
+		return nil
+	}
+	return apperr.Forbidden(apperr.AuditorReadOnly, "审计用户仅可读取证据，不能修改平台资源")
+}
+
+// userWriteGate mirrors the user-role write gate: blocks platform capability
+// and access governance routes.
+func (s *Server) userWriteGate(r *http.Request, id *auth.Identity) error {
+	if id == nil || id.Role != "user" {
+		return nil
+	}
+	p := r.URL.Path
+	if r.Method != http.MethodGet && (strings.HasPrefix(p, "/api/model") || strings.HasPrefix(p, "/api/channel") || strings.HasPrefix(p, "/api/access")) {
+		return apperr.Forbidden(apperr.RoleForbidden, "普通用户无权管理平台能力或访问治理")
+	}
+	return nil
 }
 
 func decodeMap(r *http.Request) (map[string]any, error) {

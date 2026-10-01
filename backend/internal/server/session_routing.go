@@ -110,7 +110,7 @@ func (s *Server) dispatchInboundCopilot(ctx context.Context, ws, sessID, convID,
 		req.Header.Set("x-correlation-id", corr)
 		if actor != nil {
 			wsCtx := &WorkspaceCtx{TenantID: actor.TenantID, WorkspaceID: ws, ActorID: actor.ID, Role: actor.Role}
-			req = req.WithContext(withWorkspace(withIdentity(ctx, actor), wsCtx))
+			req = req.WithContext(withWorkspace(auth.WithIdentity(ctx, actor), wsCtx))
 		} else {
 			req = req.WithContext(ctx)
 		}

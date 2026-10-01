@@ -14,7 +14,6 @@ import (
 type ctxKey string
 
 const (
-	identityKey  ctxKey = "identity"
 	workspaceKey ctxKey = "workspaceCtx"
 )
 
@@ -28,13 +27,10 @@ type WorkspaceCtx struct {
 	Role        string
 }
 
-func withIdentity(ctx context.Context, id *auth.Identity) context.Context {
-	return context.WithValue(ctx, identityKey, id)
-}
-
+// identityFrom is a thin re-export of auth.IdentityFrom for callers in
+// server/. The identity itself is set on the context by auth.Middleware.
 func identityFrom(ctx context.Context) *auth.Identity {
-	v, _ := ctx.Value(identityKey).(*auth.Identity)
-	return v
+	return auth.IdentityFrom(ctx)
 }
 
 func withWorkspace(ctx context.Context, ws *WorkspaceCtx) context.Context {
@@ -46,74 +42,24 @@ func workspaceFrom(ctx context.Context) *WorkspaceCtx {
 	return v
 }
 
+// requireAuth composes auth.Middleware.RequireAuth (Bearer parse + mock
+// rejection + role gates) with this server's workspace merge + resolution.
+// server/ owns the workspace logic because it depends on s.Store and the
+// in-memory workspace model.
 func (s *Server) requireAuth(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/healthz" || r.URL.Path == "/readyz" || r.URL.Path == "/metrics" {
+	authGate := s.authMW.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := identityFrom(r.Context())
+		if id == nil {
+			// authMW already short-circuited bypass paths; if we get here
+			// with no identity, the route was bypass-eligible and we still
+			// need to attach an empty workspace so downstream handlers
+			// don't NPE on workspaceFrom().
+			r = r.WithContext(withWorkspace(r.Context(), &WorkspaceCtx{WorkspaceID: "w1"}))
 			next.ServeHTTP(w, r)
-			return
-		}
-		if s.isStandby() && !replicaWriteAllowedMethod(r.Method) {
-			writeErr(w, apperr.Unavailable(apperr.ReplicaStandby, "当前实例为 standby，拒绝写入"))
-			return
-		}
-		if r.URL.Path == "/v1/evaluate" ||
-			r.URL.Path == "/api/auth/login" ||
-			r.URL.Path == "/api/auth/oidc/login" || r.URL.Path == "/api/auth/oidc/callback" ||
-			strings.HasPrefix(r.URL.Path, "/api/share/") ||
-			strings.HasPrefix(r.URL.Path, "/api/channel/feishu/events/") ||
-			strings.HasPrefix(r.URL.Path, "/api/channel/wecom/events/") ||
-			strings.HasPrefix(r.URL.Path, "/api/channel/dingtalk/events/") {
-			next.ServeHTTP(w, r)
-			return
-		}
-		// /api/skill-artifacts/*: try to parse Authorization so the gateway
-		// gate sees an identity and can audit who downloaded what. Absence
-		// of the header is NOT a 401 here — the gateway's RequireAuth
-		// policy (DE_ARTIFACT_REQUIRE_AUTH) decides.
-		if (r.Method == http.MethodGet || r.Method == http.MethodHead) && strings.HasPrefix(r.URL.Path, "/api/skill-artifacts/") {
-			if h := r.Header.Get("Authorization"); h != "" {
-				token := strings.TrimSpace(strings.TrimPrefix(h, "Bearer"))
-				token = strings.TrimSpace(strings.TrimPrefix(token, "bearer"))
-				if hasMockIdentityHeaders(r) && !allowMockIdentity() {
-					writeErr(w, apperr.New(apperr.IdentityMockForbidden, 401, "生产环境禁止使用 mock 身份头"))
-					return
-				}
-				if strings.HasPrefix(token, "mock-") && !allowMockIdentity() {
-					writeErr(w, apperr.New(apperr.IdentityMockForbidden, 401, "生产环境禁止使用 mock token"))
-					return
-				}
-				if id, err := auth.Parse(token); err == nil && id != nil {
-					ctx := withIdentity(r.Context(), id)
-					r = r.WithContext(ctx)
-				}
-			}
-			next.ServeHTTP(w, r)
-			return
-		}
-		h := r.Header.Get("Authorization")
-		if h == "" {
-			writeErr(w, apperr.UnauthorizedErr("缺少认证凭证"))
-			return
-		}
-		token := strings.TrimSpace(strings.TrimPrefix(h, "Bearer"))
-		token = strings.TrimSpace(strings.TrimPrefix(token, "bearer"))
-
-		if hasMockIdentityHeaders(r) && !allowMockIdentity() {
-			writeErr(w, apperr.New(apperr.IdentityMockForbidden, 401, "生产环境禁止使用 mock 身份头"))
-			return
-		}
-		if strings.HasPrefix(token, "mock-") && !allowMockIdentity() {
-			writeErr(w, apperr.New(apperr.IdentityMockForbidden, 401, "生产环境禁止使用 mock token"))
-			return
-		}
-
-		id, err := auth.Parse(token)
-		if err != nil {
-			writeErr(w, apperr.UnauthorizedErr("无效令牌"))
 			return
 		}
 		// Merge workspaces created after login (mock tokens have fixed membership).
-		if s.Store != nil && id != nil {
+		if s.Store != nil {
 			s.Store.RLock()
 			extra := append([]string{}, s.Store.ActorExtraWorkspaces[id.ID]...)
 			if id.Role == "admin" {
@@ -148,23 +94,6 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 				}
 			}
 		}
-		if id.Role == "auditor" && r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodOptions {
-			p := r.URL.Path
-			// Self-Evolution 会签：审计员可对 skill/routing 候选 approve|reject
-			evolveOK := strings.HasPrefix(p, "/api/evolve/candidates/") &&
-				(strings.HasSuffix(p, "/approve") || strings.HasSuffix(p, "/reject"))
-			if !evolveOK {
-				writeErr(w, apperr.Forbidden(apperr.AuditorReadOnly, "审计用户仅可读取证据，不能修改平台资源"))
-				return
-			}
-		}
-		if id.Role == "user" {
-			p := r.URL.Path
-			if r.Method != http.MethodGet && (strings.HasPrefix(p, "/api/model") || strings.HasPrefix(p, "/api/channel") || strings.HasPrefix(p, "/api/access")) {
-				writeErr(w, apperr.Forbidden(apperr.RoleForbidden, "普通用户无权管理平台能力或访问治理"))
-				return
-			}
-		}
 
 		wsCtx, err := resolveWorkspaceCtx(id, r.Header.Get("x-workspace-id"), r.URL.Path, r.Method)
 		if err != nil {
@@ -172,14 +101,16 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := withIdentity(r.Context(), id)
-		ctx = withWorkspace(ctx, wsCtx)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
-}
+		next.ServeHTTP(w, r.WithContext(withWorkspace(r.Context(), wsCtx)))
+	}))
 
-func banMockToken() bool {
-	return runtimeenv.BanDemoToken()
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if s.isStandby() && !replicaWriteAllowedMethod(r.Method) {
+			writeErr(w, apperr.Unavailable(apperr.ReplicaStandby, "当前实例为 standby，拒绝写入"))
+			return
+		}
+		authGate.ServeHTTP(w, r)
+	})
 }
 
 func envFlagTrue(key string) bool {
@@ -196,23 +127,6 @@ func productionLikeEnv() bool {
 	// Dual-approval / production governance: DE_ENV=staging|production only.
 	// DE_BAN_MOCK_TOKEN no longer implies production-like behavior.
 	return runtimeenv.FromEnv().DualApproval()
-}
-
-// allowMockIdentity 仅演示/本机可伪造身份。生产/预发默认关闭。
-func allowMockIdentity() bool {
-	return runtimeenv.FromEnv().AllowsDemoIdentityHeaders()
-}
-
-func hasMockIdentityHeaders(r *http.Request) bool {
-	if r == nil {
-		return false
-	}
-	for _, h := range []string{"x-mock-role", "x-mock-user-id", "x-mock-actor", "x-mock-permissions"} {
-		if strings.TrimSpace(r.Header.Get(h)) != "" {
-			return true
-		}
-	}
-	return false
 }
 
 // resolveWorkspaceCtx picks an allowed workspace from membership.

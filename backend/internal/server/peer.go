@@ -112,7 +112,7 @@ func (s *Server) requestWithActor(parent *http.Request, actor *auth.Identity, ws
 		if tok, err := auth.Sign(*actor, 15*time.Minute); err == nil {
 			req.Header.Set("Authorization", "Bearer "+tok)
 		}
-		req = req.WithContext(withIdentity(req.Context(), actor))
+		req = req.WithContext(auth.WithIdentity(req.Context(), actor))
 	}
 	if ws != "" {
 		req.Header.Set("x-workspace-id", ws)

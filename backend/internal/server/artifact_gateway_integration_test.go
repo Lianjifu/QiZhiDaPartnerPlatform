@@ -56,7 +56,7 @@ func serverWithIdentity(t *testing.T, h http.HandlerFunc, path string, id *auth.
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, path, nil)
 	if id != nil {
-		ctx := withIdentity(r.Context(), id)
+		ctx := auth.WithIdentity(r.Context(), id)
 		r = r.WithContext(ctx)
 	}
 	h.ServeHTTP(w, r)
@@ -103,7 +103,7 @@ func TestArtifactGatewayRejectsTraversal(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/api/skill-artifacts/..%2Fetc%2Fpasswd", nil)
-	ctx := withIdentity(r.Context(), &auth.Identity{ID: "u1", Name: "alice", WorkspaceID: "w1"})
+	ctx := auth.WithIdentity(r.Context(), &auth.Identity{ID: "u1", Name: "alice", WorkspaceID: "w1"})
 	srv.serveSkillArtifact(rec, r.WithContext(ctx))
 
 	if rec.Code != http.StatusBadRequest {
@@ -147,7 +147,7 @@ func TestArtifactGatewayPreviewRespectsBadExtension(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/api/skill-artifacts/evil.exe/preview", nil)
-	ctx := withIdentity(r.Context(), &auth.Identity{ID: "u1", Name: "alice", WorkspaceID: "w1"})
+	ctx := auth.WithIdentity(r.Context(), &auth.Identity{ID: "u1", Name: "alice", WorkspaceID: "w1"})
 	srv.serveSkillArtifactPreview(rec, r.WithContext(ctx))
 
 	if rec.Code != http.StatusUnsupportedMediaType {
@@ -166,7 +166,7 @@ func TestArtifactGatewaySlidePNGRespectsBadExtension(t *testing.T) {
 	// parts parsing matters.
 	rec := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/api/skill-artifacts/evil.exe/slides/1.png", nil)
-	ctx := withIdentity(r.Context(), &auth.Identity{ID: "u1", Name: "alice", WorkspaceID: "w1"})
+	ctx := auth.WithIdentity(r.Context(), &auth.Identity{ID: "u1", Name: "alice", WorkspaceID: "w1"})
 	srv.serveSkillArtifactSlidePNG(rec, r.WithContext(ctx))
 
 	if rec.Code != http.StatusUnsupportedMediaType {

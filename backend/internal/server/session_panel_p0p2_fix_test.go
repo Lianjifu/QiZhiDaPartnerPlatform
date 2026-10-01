@@ -169,7 +169,7 @@ func TestP0_RetrievePublishedACLFilter(t *testing.T) {
 	// A plain user viewer must see doc-open but NOT doc-audit-only.
 	viewer := &auth.Identity{ID: "u-1", Role: "user", Permissions: auth.RolePermissions("user"), WorkspaceID: "ws-1"}
 	r := httptest.NewRequest("POST", "/connect/qzda.rag.v1.RagService/Retrieve", nil)
-	r = r.WithContext(withIdentity(r.Context(), viewer))
+	r = r.WithContext(auth.WithIdentity(r.Context(), viewer))
 	r.Header.Set("x-workspace-id", "ws-1")
 
 	out, err := s.retrievePublished(r, map[string]any{"query": ""}, "corr-acl")
@@ -195,7 +195,7 @@ func TestP0_RetrievePublishedACLFilter(t *testing.T) {
 	// An admin viewer (RolePermissions("admin") includes audit.export) must
 	// see BOTH.
 	r2 := httptest.NewRequest("POST", "/connect/qzda.rag.v1.RagService/Retrieve", nil)
-	r2 = r2.WithContext(withIdentity(r2.Context(), &auth.Identity{ID: "u-2", Role: "admin", Permissions: auth.RolePermissions("admin"), WorkspaceID: "ws-1"}))
+	r2 = r2.WithContext(auth.WithIdentity(r2.Context(), &auth.Identity{ID: "u-2", Role: "admin", Permissions: auth.RolePermissions("admin"), WorkspaceID: "ws-1"}))
 	r2.Header.Set("x-workspace-id", "ws-1")
 	out2, _ := s.retrievePublished(r2, map[string]any{"query": ""}, "corr-acl2")
 	m2, _ := out2.(map[string]any)

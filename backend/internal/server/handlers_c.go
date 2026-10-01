@@ -1204,7 +1204,7 @@ func allowRuntimeStub() bool {
 	if productionLikeEnv() {
 		return false
 	}
-	if !allowMockIdentity() {
+	if !auth.AllowMockIdentity() {
 		return false
 	}
 	return envFlagTrue("DE_ALLOW_RUNTIME_STUB")
