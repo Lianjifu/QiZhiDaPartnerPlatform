@@ -4,12 +4,14 @@
 - ``host_allowed`` 精确匹配 / 后缀匹配 / 空 allowlist
 - ``DnsGate`` 不安装时走原生;安装后拒绝非 allowlist
 - ``parse_csv_host_list`` 边界
+- ``EgressProxy`` 跨请求聚合(Phase 3)
 """
 from __future__ import annotations
 
 import socket
 
 from app.egress import DnsGate, host_allowed, parse_csv_host_list
+from app.egress_proxy import EgressProxy
 
 
 def test_host_allowed_exact() -> None:
@@ -175,3 +177,31 @@ def test_parse_csv() -> None:
         "wttr.in",
         "api.weather.gov",
     ]
+
+
+def test_egress_proxy_cumulative_aggregation() -> None:
+    """cumulative_*_hosts 应该跨 set_allowed 周期聚合,但 per-request 仍只含当前请求。
+
+    Phase 3 行为:进程自启动以来出现过的主机被永久累计到 _cross_used / _cross_denied,
+    set_allowed 切换时把当前请求的 _used / _denied union 进 _cross_*,然后再清零
+    per-request 集合(避免跨 skill 串扰审计)。
+    """
+    proxy = EgressProxy()
+    # 第一次 set_allowed:host a.com 被 record
+    proxy.set_allowed(["a.com"])
+    proxy._record_used("a.com")
+    # 第二次 set_allowed:host b.com 被 record;同时 a.com 应被并入 cross
+    proxy.set_allowed(["b.com"])
+    proxy._record_used("b.com")
+    proxy._record_denied("evil.com")
+    # 第三次 set_allowed 触发 flush:b.com / evil.com 并入 cross
+    # (设计上 _used / _denied 在下一次 set_allowed 时清零前 union 进 _cross_*)
+    proxy.set_allowed(["c.com"])
+    used_cum = proxy.cumulative_used_hosts()
+    denied_cum = proxy.cumulative_denied_hosts()
+    assert "a.com" in used_cum, f"a.com 跨请求丢失: {used_cum}"
+    assert "b.com" in used_cum, f"b.com 跨请求丢失: {used_cum}"
+    assert "evil.com" in denied_cum, f"evil.com 跨请求丢失: {denied_cum}"
+    # 当前请求的 _used 仍只含 c.com(向后兼容)
+    assert proxy.used_hosts() == [], f"per-request 已 flush,应为空: {proxy.used_hosts()}"
+    assert proxy.denied_hosts() == []

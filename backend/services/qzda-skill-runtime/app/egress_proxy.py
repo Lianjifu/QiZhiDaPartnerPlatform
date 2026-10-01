@@ -206,6 +206,12 @@ class EgressProxy:
         self._allowed: set[str] = set()
         self._used: set[str] = set()
         self._denied: set[str] = set()
+        # Phase 3 跨请求聚合:进程级 append-only,供 /metrics + 审计响应使用。
+        # _used / _denied 仍保留每请求 scope(set_allowed 时清零,避免跨 skill 串扰);
+        # _cross_used / _cross_denied 在 set_allowed 切换时把上一分快照 union 进来,
+        # 形成"自进程启动以来"的全量视图。
+        self._cross_used: set[str] = set()
+        self._cross_denied: set[str] = set()
         self._lock = threading.Lock()
         self._server: _ThreadingHTTPServer | None = None
         self._thread: threading.Thread | None = None
@@ -221,7 +227,10 @@ class EgressProxy:
             self._allowed = {
                 (h or "").strip().lower() for h in hosts if h and h.strip()
             }
-            # 切换 allowlist 时清零 used,避免跨 skill 串扰审计
+            # 切换 allowlist 时,把当前请求的 used/denied 快照 union 进跨请求聚合,
+            # 然后再清零 per-request 集合(避免跨 skill 串扰审计)。
+            self._cross_used.update(self._used)
+            self._cross_denied.update(self._denied)
             self._used.clear()
             self._denied.clear()
 
@@ -232,6 +241,16 @@ class EgressProxy:
     def denied_hosts(self) -> list[str]:
         with self._lock:
             return sorted(self._denied)
+
+    def cumulative_used_hosts(self) -> list[str]:
+        """自进程启动以来所有出现过的 used 主机(跨 set_allowed 周期聚合)。"""
+        with self._lock:
+            return sorted(self._cross_used)
+
+    def cumulative_denied_hosts(self) -> list[str]:
+        """自进程启动以来所有出现过的 denied 主机(跨 set_allowed 周期聚合)。"""
+        with self._lock:
+            return sorted(self._cross_denied)
 
     def _record_used(self, host: str) -> None:
         with self._lock:
