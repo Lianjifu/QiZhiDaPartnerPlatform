@@ -282,16 +282,28 @@ def run_package_script(
     # 阶段 2:出口 allowlist 与代理
     egress = [h for h in (allowed_egress or []) if h and h.strip()]
     env["DE_SKILL_ALLOWED_EGRESS"] = ",".join(egress)
-    # 只有当有 allowlist 才注入 proxy(空 allowlist 下没意义,且避免误把
-    # 任意内网流量导向本地代理被 502)
+    # 空 allowlist 等价于 deny-all — DnsGate 仍然安装,但要把所有解析请求
+    # (含 IP literal)全部拒绝。否则脚本会绕过域名检查走 IP 直连。
+    env["DE_SKILL_DENY_ALL_EGRESS"] = "1" if not egress else "0"
+    # 始终注入 DnsGate bootstrap(空 allowlist 也装,见 _DNS_BOOTSTRAP_CODE)。
+    # 这样 deny-all 是真正的"禁止任何 DNS 解析",而不是"允许 DNS 但不挂代理"。
+    bootstrap_dir = _ensure_dns_bootstrap()
+    if bootstrap_dir:
+        existing = env.get("PYTHONPATH", "")
+        env["PYTHONPATH"] = bootstrap_dir + (os.pathsep + existing if existing else "")
+    # 只有当 allowlist 非空时才注入 stdlib 代理(空 allowlist 下没意义,
+    # 且避免误把任意内网流量导向本地代理被 502)。
+    # deny-all 时也强制设置 no_proxy=* 兜底,防止子进程通过其他环境
+    # 变量绕过 DnsGate。
     if egress:
         env["HTTPS_PROXY"] = "http://127.0.0.1:8080"
         env["HTTP_PROXY"] = "http://127.0.0.1:8080"
-        # Python 子进程会自动加载 sitecustomize → DnsGate
-        bootstrap_dir = _ensure_dns_bootstrap()
-        if bootstrap_dir:
-            existing = env.get("PYTHONPATH", "")
-            env["PYTHONPATH"] = bootstrap_dir + (os.pathsep + existing if existing else "")
+    else:
+        env["NO_PROXY"] = "*"
+        env["no_proxy"] = "*"
+        # 清掉上一调用可能残留的代理变量,防止 child 继承
+        for k in ("HTTPS_PROXY", "HTTP_PROXY", "https_proxy", "http_proxy"):
+            env.pop(k, None)
     started = time.time()
     try:
         proc = subprocess.run(
@@ -344,19 +356,23 @@ _DNS_BOOTSTRAP_FILE = _DNS_BOOTSTRAP_DIR / "sitecustomize.py"
 _DNS_BOOTSTRAP_CODE = """\
 # qzda-skill-runtime 自动加载:monkey-patch socket.getaddrinfo 阻断非 allowlist DNS。
 # 由 sandbox.py 在写完 PYTHONPATH 后由子进程自动 import。
+#
+# 注意:**始终安装**,即便 allowlist 为空 — 空 allowlist 等价于 deny-all,
+# DnsGate 会把所有域名(含 IP literal)都拒绝。否则空 allowlist 下脚本
+# 可以绕过 DNS gate 直连外网。
 import os as _os, sys as _sys
 
 _csv = _os.environ.get("DE_SKILL_ALLOWED_EGRESS", "") or ""
 _allowed = [h.strip() for h in _csv.replace("\\\\n", ",").split(",") if h.strip()]
-if _allowed:
-    try:
-        _sys.path.insert(0, "/app")
-        from app.egress import DnsGate
-        DnsGate(_allowed).install()
-    except Exception as _exc:  # noqa: BLE001
-        # bootstrap 失败时静默:允许 e2e 主流程看到问题,而不是悄悄放过 DNS
-        import sys as _sys2
-        print(f"[qzda-egress-bootstrap] failed: {_exc!r}", file=_sys2.stderr)
+_deny_all = _os.environ.get("DE_SKILL_DENY_ALL_EGRESS", "0") == "1"
+try:
+    _sys.path.insert(0, "/app")
+    from app.egress import DnsGate
+    DnsGate(_allowed, deny_all=_deny_all).install()
+except Exception as _exc:  # noqa: BLE001
+    # bootstrap 失败时静默:允许 e2e 主流程看到问题,而不是悄悄放过 DNS
+    import sys as _sys2
+    print(f"[qzda-egress-bootstrap] failed: {_exc!r}", file=_sys2.stderr)
 """
 
 

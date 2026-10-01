@@ -77,21 +77,87 @@ def test_dns_gate_install_then_getaddrinfo_blocks() -> None:
         socket.getaddrinfo = original
 
 
-def test_dns_gate_ip_literal_skips_allowlist() -> None:
-    """IP literal 不应该被 DNS gate 拦截(它根本不查 allowlist)。"""
-    gate = DnsGate([])
+def test_dns_gate_ip_literal_skips_allowlist_when_non_empty() -> None:
+    """allowlist 非空时,IP literal 仍走原生(由 runsc / iptables 兜底)。
+
+    注:空 allowlist 会自动开启 deny_all 模式,见下条测试。
+    """
+    gate = DnsGate(["wttr.in"])
     original = socket.getaddrinfo
     gate.install()
     try:
         # 127.0.0.1 应该走原生路径,不会抛 gaierror(-2) "not in allowlist"
-        # 注意:运行测试时 127.0.0.1 通常是真实存在的 IP,可能解析为 localhost,
-        # 也可能由于 sandbox 而失败。关键是**不是**我们抛的 -2 "not in allowlist"。
         try:
             socket.getaddrinfo("127.0.0.1", None)
         except socket.gaierror as exc:
             assert "not in allowlist" not in str(exc), (
-                f"IP literal 不应被 DnsGate 阻断: {exc}"
+                f"IP literal 在非 deny-all 模式下不应被 DnsGate 阻断: {exc}"
             )
+            assert "ip literal" not in str(exc), (
+                f"IP literal 在非 deny-all 模式下不应被 DnsGate 阻断: {exc}"
+            )
+    finally:
+        socket.getaddrinfo = original
+
+
+def test_dns_gate_deny_all_blocks_domain_and_ip() -> None:
+    """空 allowlist 自动进入 deny-all 模式:域名 + IP literal 都被阻断。
+
+    这是 Phase 2 修复 deny-all 旁路的核心断言:即便 allowlist 为空,
+    脚本也不能通过 ``socket.getaddrinfo`` 直连任何 host(包括 IP 字面)。
+    """
+    gate = DnsGate([])  # 空 allowlist → 自动 deny_all
+    assert gate._deny_all is True, "空 allowlist 必须开启 deny_all"
+    original = socket.getaddrinfo
+    gate.install()
+    try:
+        # 域名必须抛 gaierror("not in allowlist")
+        raised = False
+        try:
+            socket.getaddrinfo("wttr.in", None)
+        except socket.gaierror as exc:
+            raised = True
+            assert "not in allowlist" in str(exc), f"unexpected msg: {exc}"
+        assert raised, "deny-all 下 wttr.in 应被阻断"
+
+        # IP literal 必须抛 gaierror("ip literal")
+        raised = False
+        try:
+            socket.getaddrinfo("1.1.1.1", None)
+        except socket.gaierror as exc:
+            raised = True
+            assert "ip literal" in str(exc), f"unexpected msg: {exc}"
+        assert raised, "deny-all 下 1.1.1.1(IP literal)应被阻断"
+
+        # used 应该记录两个尝试
+        used = gate.used_hosts()
+        assert "wttr.in" in used and "1.1.1.1" in used, f"used 缺记录: {used}"
+    finally:
+        socket.getaddrinfo = original
+
+
+def test_dns_gate_explicit_deny_all_with_allowlist() -> None:
+    """显式 deny_all=True 即便配了 allowlist,IP literal 仍然被阻断。"""
+    gate = DnsGate(["wttr.in"], deny_all=True)
+    original = socket.getaddrinfo
+    gate.install()
+    try:
+        # 域名:正常 resolve(在 allowlist 内)
+        try:
+            socket.getaddrinfo("wttr.in", None)
+        except socket.gaierror as exc:
+            assert "not in allowlist" not in str(exc), (
+                f"wttr.in 应被放行: {exc}"
+            )
+
+        # IP literal:即便有 allowlist,deny_all=True 也要阻断
+        raised = False
+        try:
+            socket.getaddrinfo("8.8.8.8", None)
+        except socket.gaierror as exc:
+            raised = True
+            assert "ip literal" in str(exc), f"unexpected msg: {exc}"
+        assert raised, "deny_all=True 下 8.8.8.8(IP literal)应被阻断"
     finally:
         socket.getaddrinfo = original
 

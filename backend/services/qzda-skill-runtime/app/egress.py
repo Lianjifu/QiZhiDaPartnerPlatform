@@ -52,12 +52,17 @@ class DnsGate:
 
     线程安全:``install`` 在子进程 fork 后立即调用一次即可,
     之后 ``socket.getaddrinfo`` 是 OS 调用,本身线程安全。
+
+    ``deny_all=True`` 时(空 allowlist 模式),除了域名,IP literal
+    解析也直接拒绝 — 否则脚本可以拿 ``1.1.1.1`` 之类的字符串绕过
+    域名 allowlist。
     """
 
-    def __init__(self, allowed: Iterable[str]) -> None:
+    def __init__(self, allowed: Iterable[str], deny_all: bool = False) -> None:
         self._allowed: set[str] = {
             (a or "").strip().lower() for a in allowed if a and a.strip()
         }
+        self._deny_all = bool(deny_all) or not self._allowed
         self._used: set[str] = set()
         self._lock = threading.Lock()
         self._installed = False
@@ -85,20 +90,29 @@ class DnsGate:
             if isinstance(host, str):
                 # 先取主机名(去掉端口)
                 bare = host.split(":", 1)[0]
-                # IP literal 不走 allowlist(用 socket.inet_aton 防 DNS rebind)
+                # IP literal:deny-all 模式下也拒绝(防 IP 直连绕过)
+                # 非 deny-all 模式下放行 IP(交给 runsc / iptables 兜底)
                 try:
                     socket.inet_aton(bare)
                     is_ip = True
                 except OSError:
                     is_ip = False
-                if not is_ip:
-                    with self._lock:
-                        self._used.add(bare.lower())
-                    if not host_allowed(bare, self._allowed):
+                if is_ip:
+                    if self._deny_all:
+                        with self._lock:
+                            self._used.add(bare.lower())
                         raise socket.gaierror(
                             -2,
-                            f"egress denied: {bare} not in allowlist",
+                            f"egress denied: {bare} (ip literal) — deny-all mode",
                         )
+                    return original(host, *args, **kwargs)
+                with self._lock:
+                    self._used.add(bare.lower())
+                if not host_allowed(bare, self._allowed):
+                    raise socket.gaierror(
+                        -2,
+                        f"egress denied: {bare} not in allowlist",
+                    )
             return original(host, *args, **kwargs)
 
         socket.getaddrinfo = gated_getaddrinfo  # type: ignore[assignment]
