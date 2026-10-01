@@ -157,6 +157,9 @@ func (s *Server) executeSkill(r *http.Request) (any, error) {
 	// 阶段 2:egressUsed 从 Python 沙箱响应里读,作为"声明 ↔ 实际"双向审计:
 	// 运维侧 `grep egress=wttr.in` 即可看到哪些技能真实访问了白名单域名。
 	egressAudit := "[]"
+	// 阶段 3:从 audit_hooks monkey-patch 收集到的 syscalls 计数一并写进 audit detail,
+	// 便于运维按 syscall 类型检索(`grep syscalls=open:`)。
+	syscallsMap, _ := result["syscalls"].(map[string]any)
 	if result != nil {
 		egressAudit = egressUsedString(result, "egressUsed")
 	}
@@ -169,7 +172,7 @@ func (s *Server) executeSkill(r *http.Request) (any, error) {
 		if _, sk2 := s.findSkillLocked(ws, skillID); sk2 != nil {
 			s.recordSkillInvocationLocked(ws, sk2, 0, false, id.Name, "HTTP 执行")
 		} else {
-			s.Store.AppendAudit(ws, id.Name, "沙箱执行技能", skillID, status, detail)
+			s.Store.AppendAudit(ws, id.Name, "沙箱执行技能", skillID, status, appendSyscallSegment(detail, syscallsMap))
 		}
 		s.Store.Unlock()
 		s.persistSkillHealth()
@@ -190,7 +193,7 @@ func (s *Server) executeSkill(r *http.Request) (any, error) {
 	if _, sk2 := s.findSkillLocked(ws, skillID); sk2 != nil {
 		s.recordSkillInvocationLocked(ws, sk2, durationMs, status == "success", id.Name, "HTTP 执行")
 	} else {
-		s.Store.AppendAudit(ws, id.Name, "沙箱执行技能", skillID, status, detail)
+		s.Store.AppendAudit(ws, id.Name, "沙箱执行技能", skillID, status, appendSyscallSegment(detail, syscallsMap))
 	}
 	s.Store.Unlock()
 	s.persistSkillHealth()

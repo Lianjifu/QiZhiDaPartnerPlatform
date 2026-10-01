@@ -1353,13 +1353,15 @@ func (s *Server) skillTest(r *http.Request, id *auth.Identity, ws, skillID strin
 	output = maskSkillOutput(output, boolFrom(govPolicy["dataMaskingEnabled"]))
 	// 阶段 2:把实际访问过的 egress 域名写进 audit detail,便于检索与告警
 	egressAudit := egressUsedString(result, "egressUsed")
+	// 阶段 3:Python 沙箱返回的 syscall 计数(写入摘要),便于按 syscall 类型检索
+	syscallsMap, _ := result["syscalls"].(map[string]any)
 
 	s.Store.Lock()
 	_, skRec := s.findSkillLocked(ws, skillID)
 	if skRec != nil {
 		s.recordSkillInvocationLocked(ws, skRec, duration, status == "success", id.Name, "沙箱测试 · "+mode)
 	} else {
-		s.Store.AppendAudit(ws, id.Name, ternary(status == "success", "执行沙箱测试", "沙箱测试失败"), skillName, ternary(status == "success", "success", "failed"), "mode="+mode+";egress="+egressAudit+";corr="+dec.CorrelationID)
+		s.Store.AppendAudit(ws, id.Name, ternary(status == "success", "执行沙箱测试", "沙箱测试失败"), skillName, ternary(status == "success", "success", "failed"), appendSyscallSegment("mode="+mode+";egress="+egressAudit+";corr="+dec.CorrelationID, syscallsMap))
 	}
 	s.Store.Unlock()
 	s.persistSkillHealth()
