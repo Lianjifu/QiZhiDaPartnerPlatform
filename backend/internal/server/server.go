@@ -15,6 +15,7 @@ import (
 	"github.com/qizhida-partner-platform/backend/internal/agentos"
 	"github.com/qizhida-partner-platform/backend/internal/auth"
 	"github.com/qizhida-partner-platform/backend/internal/channel"
+	"github.com/qizhida-partner-platform/backend/internal/copilot"
 	"github.com/qizhida-partner-platform/backend/internal/qzdaworkflow"
 	"github.com/qizhida-partner-platform/backend/internal/heartbeat"
 	"github.com/qizhida-partner-platform/backend/internal/infra"
@@ -149,6 +150,14 @@ type Server struct {
 	// switch consults s.opsH for the 7 M01 endpoints.
 	opsH *operations.Handler
 
+	// copH holds the M02 专家协作 (Expert Collaboration) handlers. Built
+	// in New() by binding method values on this Server. Each field of
+	// copH.Handler is a function value (JSON route → (any, error); SSE
+	// route → (w, r)) so the package boundary stays one-way (copilot
+	// never imports server/). The route switch delegates the 8 M02
+	// paths to s.copH.<Field>(r); see /api/copilot/* dispatch below.
+	copH *copilot.Handler
+
 	// closeMu guards closeFuncs + closed; RegisterCloseFunc and Shutdown
 	// race in tests where Shutdown runs on a different goroutine than
 	// the apprun boot path.
@@ -227,6 +236,22 @@ func New(st *store.Store) *Server {
 	// aggregate math; server/ wires Store / AuditSink / workspace resolver
 	// so the package boundary stays one-way (operations never imports server/).
 	s.opsH = s.buildOpsHandler()
+	// M02 专家协作 (Expert Collaboration) handlers. The copilot package
+	// owns the route façade only — every field on copH points back at a
+	// method on this Server (bound as a function value at construction
+	// time). The route switch delegates the 8 M02 paths to s.copH.<Field>;
+	// copilot never imports server/, so future qzda-collab extraction
+	// has a single seam to replace the function values with RPC calls.
+	s.copH = &copilot.Handler{
+		ListConversations:      s.listConversations,
+		CreateConversation:     s.createConversation,
+		GetCopilotTurnStatus:   s.getCopilotTurnStatus,
+		ReplayCopilotTurn:      s.replayCopilotTurn,
+		CancelCopilotTurn:      s.cancelCopilotTurn,
+		CopilotMessageFeedback: s.copilotMessageFeedback,
+		CopilotPostTurnAPI:     s.copilotPostTurnAPI,
+		CopilotStream:          s.copilotStream,
+	}
 	return s
 }
 
@@ -750,7 +775,11 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) {
 	case path == "/api/internal/skill-catalog" && method == http.MethodPost:
 		data, err = s.upsertSkillCatalogAPI(r)
 	case path == "/api/internal/copilot/post-turn" && method == http.MethodPost:
-		data, err = s.copilotPostTurnAPI(r)
+		if s.copH != nil && s.copH.CopilotPostTurnAPI != nil {
+			data, err = s.copH.CopilotPostTurnAPI(r)
+		} else {
+			data, err = s.copilotPostTurnAPI(r)
+		}
 	case path == "/api/internal/memory/purge-conversation" && method == http.MethodPost:
 		data, err = s.purgeConversationMemoryAPI(r)
 	case path == "/api/internal/skill/invocation" && method == http.MethodPost:
@@ -786,21 +815,54 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) {
 		data, err = s.listMessages(r)
 	case strings.HasPrefix(path, "/api/conversations/") && method == http.MethodGet:
 		data, err = s.getConversation(r)
+	// M02 专家协作 — delegating to internal/copilot.Handler (Phase 2).
+	// Each s.copH.<Field> is a method value bound at New() time so the
+	// dispatch is a single indirect call — same call shape as before.
+	// The fallback to s.<method> keeps things resilient if copH was nil
+	// (e.g. future test harnesses that don't wire copH explicitly).
 	case path == "/api/copilot/conversations" && method == http.MethodGet:
-		data, err = s.listConversations(r)
+		if s.copH != nil && s.copH.ListConversations != nil {
+			data, err = s.copH.ListConversations(r)
+		} else {
+			data, err = s.listConversations(r)
+		}
 	case path == "/api/copilot/conversations" && method == http.MethodPost:
-		data, err = s.createConversation(r)
+		if s.copH != nil && s.copH.CreateConversation != nil {
+			data, err = s.copH.CreateConversation(r)
+		} else {
+			data, err = s.createConversation(r)
+		}
 	case strings.HasPrefix(path, "/api/copilot/conversations/") && strings.Contains(path, "/turns/") && strings.HasSuffix(path, "/status") && method == http.MethodGet:
-		data, err = s.getCopilotTurnStatus(r)
+		if s.copH != nil && s.copH.GetCopilotTurnStatus != nil {
+			data, err = s.copH.GetCopilotTurnStatus(r)
+		} else {
+			data, err = s.getCopilotTurnStatus(r)
+		}
 	case strings.HasPrefix(path, "/api/copilot/conversations/") && strings.Contains(path, "/turns/") && strings.HasSuffix(path, "/replay") && method == http.MethodGet:
-		data, err = s.replayCopilotTurn(r)
+		if s.copH != nil && s.copH.ReplayCopilotTurn != nil {
+			data, err = s.copH.ReplayCopilotTurn(r)
+		} else {
+			data, err = s.replayCopilotTurn(r)
+		}
 	case strings.HasPrefix(path, "/api/copilot/conversations/") && strings.HasSuffix(path, "/cancel") && method == http.MethodPost:
-		data, err = s.cancelCopilotTurn(r)
+		if s.copH != nil && s.copH.CancelCopilotTurn != nil {
+			data, err = s.copH.CancelCopilotTurn(r)
+		} else {
+			data, err = s.cancelCopilotTurn(r)
+		}
 	case strings.HasPrefix(path, "/api/copilot/conversations/") && strings.HasSuffix(path, "/stream") && method == http.MethodPost:
-		s.copilotStream(w, r)
+		if s.copH != nil && s.copH.CopilotStream != nil {
+			s.copH.CopilotStream(w, r)
+		} else {
+			s.copilotStream(w, r)
+		}
 		return
 	case strings.HasPrefix(path, "/api/copilot/conversations/") && strings.Contains(path, "/messages/") && strings.HasSuffix(path, "/feedback") && method == http.MethodPost:
-		data, err = s.copilotMessageFeedback(r)
+		if s.copH != nil && s.copH.CopilotMessageFeedback != nil {
+			data, err = s.copH.CopilotMessageFeedback(r)
+		} else {
+			data, err = s.copilotMessageFeedback(r)
+		}
 	case strings.HasPrefix(path, "/api/actions/") && strings.HasSuffix(path, "/approve") && method == http.MethodPost:
 		data, err = s.approveAction(r)
 	case strings.HasPrefix(path, "/api/actions/") && strings.HasSuffix(path, "/reject") && method == http.MethodPost:
