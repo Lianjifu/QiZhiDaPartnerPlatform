@@ -11,7 +11,7 @@ import {
   cellActivityTotal,
   toDateKey,
   type CalendarSource,
-} from './home-metrics';
+} from '../lib/home-metrics';
 
 export type WorkRecordPeriod = 'day' | 'week' | 'month';
 
