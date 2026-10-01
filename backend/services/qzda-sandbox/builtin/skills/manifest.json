@@ -21,6 +21,8 @@
     "browser-use",
     "1password"
   ],
+  "disabledSkills": ["pptx", "spreadsheets"],
+  "disabledReason": "PR2 — sandbox 解释器白名单收缩到 .py/.sh;Node.js 脚本 (.mjs/.js) 暂不支持。python-pptx / openpyxl 实现到位后从本列表移除并重新签发。",
   "packs": {
     "collab-ext": {
       "packName": "协作扩展",

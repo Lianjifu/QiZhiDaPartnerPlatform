@@ -26,14 +26,17 @@ from pathlib import Path
 FORBIDDEN_ENV = ("DE_DATABASE_URL", "DE_REDIS_URL", "DATABASE_URL", "POSTGRES_", "REDIS_URL")
 
 # 允许执行的脚本命令白名单正则:
-# - 必须指向 ``scripts/`` 或 ``.copilot-ws/`` 下的脚本(.py/.sh/.js/.mjs/.ts)
-# - 可选前置解释器(python3/node/bash/sh)
+# - 必须指向 ``scripts/`` 或 ``.copilot-ws/`` 下的脚本(任意扩展名先过
+#   ``safe_under`` + 文件存在检查;真正可解释的扩展名由下面 SUPPORTED_SUFFIXES
+#   决定 — fail-closed:不在列表里的返回明确 ``unsupported_interpreter``)。
+# - 可选前置解释器(python3/bash/sh;任何其它前缀会让 ``scripts/...`` 路径不被
+#   捕获,落回 SKILL.md hint)
 # - 可选 ``./`` 前缀
 # - 后可跟参数(由 shlex 安全分词)
 # 拒绝:管道、``;``、``$()``、绝对路径、包外脚本。
 _SCRIPT_RE = re.compile(
-    r"^(?:(?:python3?|node|bash|sh)\s+)?(?:\./)?"
-    r"((?:scripts|\.copilot-ws)/[A-Za-z0-9._/-]+\.(?:py|sh|js|mjs|ts))"
+    r"^(?:(?:python3?|bash|sh)\s+)?(?:\./)?"
+    r"((?:scripts|\.copilot-ws)/[A-Za-z0-9._/-]+\.[A-Za-z0-9]+)"
     r"(?:\s+(.*))?$",
     re.I,
 )
@@ -281,7 +284,7 @@ def run_package_script(
     2. 用 ``_SCRIPT_RE`` 匹配 ``command``;不匹配时回退到 ``needs_instruction``
        提示并附 SKILL.md 前 800 字节(让调用方读说明书再发)。
     3. ``safe_under`` 防路径穿越,确认目标文件存在。
-    4. 按扩展名决定解释器(.py→python3 / .js,.mjs→node / .ts→npx tsx / 其他→bash)。
+    4. 按扩展名决定解释器(.py→python3 / .sh→bash / 其它→拒)。
     5. 复制环境变量但过滤 ``FORBIDDEN_ENV``,再注入 ``DE_SANDBOX_PACKAGE_ROOT``
        / ``DE_SANDBOX_WORK_DIR`` 让脚本能定位自己。
     5a. **阶段 2 网关**: 注入 ``DE_SANDBOX_ALLOWED_EGRESS`` /
@@ -328,15 +331,21 @@ def run_package_script(
     if target is None or not target.is_file():
         return False, f"script not found or outside package: {rel}", 0
     lower = rel.lower()
-    # 按扩展名选解释器;任何失败由 subprocess.run 的 FileNotFoundError 兜住
+    # 解释器白名单 — PR2 收缩到 .py + .sh,其它扩展名(包含历史残留的
+    # .js/.mjs/.ts)直接拒绝。fail-closed 比 silent fallback 安全:
+    # 误传的 Node 脚本在容器里跑不起来(node 没装)只会得到 127 + 假成功信号,
+    # 给上层审计造成"跑通"的错觉。
+    SUPPORTED_SUFFIXES = (".py", ".sh")
     if lower.endswith(".py"):
         cmd = ["python3", str(target)]
-    elif lower.endswith(".js") or lower.endswith(".mjs"):
-        cmd = ["node", str(target)]
-    elif lower.endswith(".ts"):
-        cmd = ["npx", "--yes", "tsx", str(target)]
-    else:
+    elif lower.endswith(".sh"):
         cmd = ["bash", str(target)]
+    else:
+        supported = ", ".join(SUPPORTED_SUFFIXES)
+        return False, (
+            f"unsupported interpreter for {rel}; sandbox only executes "
+            f"{supported}. Node.js scripts (.js/.mjs/.ts) are not supported."
+        ), 0
     if args_tail:
         # shlex 安全分词,避免命令注入(不再走 shell=True)
         cmd.extend(shlex.split(args_tail))

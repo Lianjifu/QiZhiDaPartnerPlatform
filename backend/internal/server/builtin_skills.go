@@ -44,6 +44,12 @@ type builtinManifest struct {
 	Version           string                    `json:"version"`
 	GeneralPackSkills []string                  `json:"generalPackSkills"`
 	TierDOptIn        []string                  `json:"tierDOptIn"`
+	// PR2:临时剔除某个 builtin skill(例如 Node.js 脚本的 pptx/spreadsheets
+	// 在 sandbox 解释器白名单收缩到 .py/.sh 后无法执行)。DisabledSkills
+	// 里的名字会从 GeneralPackSkills / packs.*.skills 中过滤掉,且 EnsureBuiltinSkillsReady
+	// 不会 seed 这些 skill。等替代实现到位后,从 manifest 移除并重新签发。
+	DisabledSkills []string                  `json:"disabledSkills,omitempty"`
+	DisabledReason string                    `json:"disabledReason,omitempty"`
 	Packs             map[string]skillPackDef   `json:"packs"`
 	SkillMeta         map[string]map[string]any `json:"skillMeta"`
 	PlatformTools     []map[string]any          `json:"platformTools"`
@@ -106,7 +112,51 @@ func loadBuiltinManifest() builtinManifest {
 	if len(m.RuntimeTools) == 0 {
 		m.RuntimeTools = runtimeToolsRegistryFallback()
 	}
+	// PR2:应用 manifest.disabledSkills 过滤 — 临时剔除的 skill
+	// (例如 Node.js 脚本的 pptx/spreadsheets)不在 catalog 出现,也不进
+	// 任何 workspace 的 installed skills。等替代实现到位后,从 manifest 移除。
+	if len(m.DisabledSkills) > 0 {
+		m.GeneralPackSkills = filterOut(m.GeneralPackSkills, m.DisabledSkills)
+		m.TierDOptIn = filterOut(m.TierDOptIn, m.DisabledSkills)
+		for packID, def := range m.Packs {
+			def.Skills = filterOut(def.Skills, m.DisabledSkills)
+			m.Packs[packID] = def
+		}
+	}
 	return m
+}
+
+// filterOut 返回 haystack 中不在 needles 里的元素(顺序保留)。
+func filterOut(haystack, needles []string) []string {
+	if len(needles) == 0 {
+		return haystack
+	}
+	skip := make(map[string]struct{}, len(needles))
+	for _, n := range needles {
+		skip[n] = struct{}{}
+	}
+	out := make([]string, 0, len(haystack))
+	for _, h := range haystack {
+		if _, drop := skip[h]; drop {
+			continue
+		}
+		out = append(out, h)
+	}
+	return out
+}
+
+// removeCatalogItem 按 builtinSkillName 字段移除 catalog 条目(PR2 disabled rollback)。
+// 不做深度比较:同一 builtinSkillName 至多 1 个 catalog 条目;用 builtinSkillName
+// 单值过滤就够。
+func removeCatalogItem(slice []map[string]any, builtinName string) []map[string]any {
+	out := make([]map[string]any, 0, len(slice))
+	for _, item := range slice {
+		if str(item["builtinSkillName"]) == builtinName {
+			continue
+		}
+		out = append(out, item)
+	}
+	return out
 }
 
 func runtimeToolsRegistryFallback() []map[string]any {
@@ -675,7 +725,18 @@ func (s *Server) ensureBuiltinCatalogLocked(manifest builtinManifest) {
 		}
 		existing[key] = c
 	}
+	// PR2:disabled skills 不出现在 catalog(已禁用,不向 workspace
+	// 暴露,即使它们仍在 builtin/skills/ 目录里)。
+	disabled := make(map[string]struct{}, len(manifest.DisabledSkills))
+	for _, d := range manifest.DisabledSkills {
+		disabled[d] = struct{}{}
+	}
 	for _, dirName := range listBuiltinSkillDirNames() {
+		if _, drop := disabled[dirName]; drop {
+			// 把之前 seed 的 catalog 项移除(防止 reload 后残留旧条目)
+			s.Store.SkillCatalog = removeCatalogItem(s.Store.SkillCatalog, dirName)
+			continue
+		}
 		meta, _, err := loadBuiltinSkillPackage(dirName)
 		if err != nil {
 			continue
