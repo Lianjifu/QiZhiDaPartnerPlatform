@@ -19,6 +19,7 @@ import (
 	"github.com/qizhida-partner-platform/backend/internal/heartbeat"
 	"github.com/qizhida-partner-platform/backend/internal/infra"
 	"github.com/qizhida-partner-platform/backend/internal/multimodal"
+	"github.com/qizhida-partner-platform/backend/internal/operations"
 	"github.com/qizhida-partner-platform/backend/internal/pmsop"
 	memid "github.com/qizhida-partner-platform/backend/internal/memory/identity"
 	"github.com/qizhida-partner-platform/backend/internal/modelprov"
@@ -141,6 +142,13 @@ type Server struct {
 	// merge / resolution.
 	authMW *auth.Middleware
 
+	// opsH holds the HTTP handlers for /api/home/* and
+	// /api/operations/overview (M01 Operations Overview). Built in New()
+	// with dependencies injected from Server state so the handlers in
+	// internal/operations do not need to import this package. The route
+	// switch consults s.opsH for the 7 M01 endpoints.
+	opsH *operations.Handler
+
 	// closeMu guards closeFuncs + closed; RegisterCloseFunc and Shutdown
 	// race in tests where Shutdown runs on a different goroutine than
 	// the apprun boot path.
@@ -213,6 +221,12 @@ func New(st *store.Store) *Server {
 	// role gates) here so the package boundary stays one-way.
 	s.authH = s.buildAuthHandler()
 	s.authMW = s.buildAuthMiddleware()
+	// M01 Operations Overview handlers + aggregate (Phase 2 ops module split).
+	// The operations package owns HomeKPIs / HomeExtra / HomeEvents /
+	// HomeTeam / HomeAlerts / AckAlert / OpsOverview + the underlying live
+	// aggregate math; server/ wires Store / AuditSink / workspace resolver
+	// so the package boundary stays one-way (operations never imports server/).
+	s.opsH = s.buildOpsHandler()
 	return s
 }
 
@@ -1033,19 +1047,19 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) {
 
 	// Home / ops / settings
 	case path == "/api/home/kpis" && method == http.MethodGet:
-		data, err = s.homeKPIs(r)
+		data, err = s.opsH.HomeKPIs(r)
 	case path == "/api/home/extra" && method == http.MethodGet:
-		data, err = s.homeExtra(r)
+		data, err = s.opsH.HomeExtra(r)
 	case path == "/api/home/events" && method == http.MethodGet:
-		data, err = s.homeEvents(r)
+		data, err = s.opsH.HomeEvents(r)
 	case path == "/api/home/team" && method == http.MethodGet:
-		data, err = s.homeTeam(r)
+		data, err = s.opsH.HomeTeam(r)
 	case path == "/api/home/alerts" && method == http.MethodGet:
-		data, err = s.homeAlerts(r)
+		data, err = s.opsH.HomeAlerts(r)
 	case strings.HasPrefix(path, "/api/home/alerts/") && (strings.HasSuffix(path, "/acknowledge") || strings.HasSuffix(path, "/ack")) && method == http.MethodPost:
 		data, err = s.ackAlertPath(r)
 	case path == "/api/operations/overview" && method == http.MethodGet:
-		data, err = s.opsOverview(r)
+		data, err = s.opsH.OpsOverview(r)
 	case path == "/api/billing" && method == http.MethodGet:
 		data, err = s.getBilling(r)
 	case path == "/api/billing/quota" && method == http.MethodGet:
@@ -1195,6 +1209,46 @@ func (l *lockedAuditWriter) AppendAudit(workspaceID, actor, action, target, resu
 	l.store.Lock()
 	defer l.store.Unlock()
 	l.store.AppendAudit(workspaceID, actor, action, target, result, reason)
+}
+
+// buildOpsHandler wires the operations package's HTTP handlers with this
+// server's store, audit sink, workspace resolver, replica role, and
+// instance id. The operations package stays free of server/ imports.
+//
+// NOTE: the audit sink MUST NOT take Store.Lock — AckAlert holds the
+// write lock around the alert mutation AND the sink call (mirroring
+// the legacy server.ackAlert semantics where AppendAudit ran inside
+// the same Store.Lock that protected the alert row). If the sink
+// re-locked here we'd deadlock (Store.Mutex is non-reentrant).
+func (s *Server) buildOpsHandler() *operations.Handler {
+	var sink operations.AuditSink
+	if s.Store != nil {
+		sink = func(ws, actor, action, target, status, detail string) {
+			s.Store.AppendAudit(ws, actor, action, target, status, detail)
+		}
+	}
+	return &operations.Handler{
+		Store:       s.Store,
+		AuditSink:   sink,
+		Health:      s, // *Server satisfies operations.HealthProbe (HasPostgres / HasRedis)
+		WorkspaceID: s.workspaceID,
+		ReplicaRole: s.replicaRole,
+		InstanceID:  instanceID,
+	}
+}
+
+// HasPostgres reports whether the backing Postgres pool is wired into the
+// server. Implements operations.HealthProbe. Returns false when s is nil
+// or the pool was never opened (default in-memory mode).
+func (s *Server) HasPostgres() bool {
+	return s != nil && s.PG != nil
+}
+
+// HasRedis reports whether the Redis cache is wired into the server AND
+// reachable (Available() handles lazy connect failures). Implements
+// operations.HealthProbe.
+func (s *Server) HasRedis() bool {
+	return s != nil && s.Cache != nil && s.Cache.Available()
 }
 
 // buildAuthMiddleware wires the auth middleware. The role gates and mock-header

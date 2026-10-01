@@ -17,8 +17,10 @@ import (
 // --- Home ---
 
 func (s *Server) ackAlertPath(r *http.Request) (any, error) {
-	// Accept both /acknowledge (Mock) and /ack (legacy).
-	return s.ackAlert(r)
+	// Accept both /acknowledge (Mock) and /ack (legacy). Delegated to the
+	// M01 operations package — the legacy server.ackAlert moved into
+	// internal/operations/handlers.go during Phase 2 consolidation.
+	return s.opsH.AckAlert(r)
 }
 
 // --- Tasks (ControlledTask) ---
