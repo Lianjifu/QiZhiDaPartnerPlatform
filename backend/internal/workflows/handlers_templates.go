@@ -1,4 +1,4 @@
-package server
+package workflows
 
 import (
 	"encoding/json"
@@ -13,26 +13,33 @@ import (
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
+// builtinWorkflowManifest mirrors the JSON layout at
+// backend/builtin/workflows/manifest.json. Packs reference directories
+// next to manifest.json that hold template.json files; the loader
+// flattens them into the WorkflowTpls slice.
 type builtinWorkflowManifest struct {
-	Version         string `json:"version"`
+	Version         string   `json:"version"`
 	FactoryDefaults []string `json:"factoryDefaults"`
 	Advanced        []string `json:"advanced"`
 	Packs           []struct {
-		ID             string `json:"id"`
-		Name           string `json:"name"`
-		Version        string `json:"version"`
-		Certification  string `json:"certification"`
-		Library        string `json:"library"`
-		Department     string `json:"department"`
+		ID            string `json:"id"`
+		Name          string `json:"name"`
+		Version       string `json:"version"`
+		Certification string `json:"certification"`
+		Library       string `json:"library"`
+		Department    string `json:"department"`
 	} `json:"packs"`
 }
 
 var (
-	builtinWFOnce sync.Once
-	builtinWFPacks []map[string]any
-	builtinWFErr   error
+	builtinWFOnce   sync.Once
+	builtinWFPacks  []map[string]any
+	builtinWFErr    error
 )
 
+// builtinWorkflowsRoot resolves the on-disk location of the platform
+// builtin workflow packs. Walks up from cwd so the same code works in
+// `backend/...` test runs and in the production container.
 func builtinWorkflowsRoot() string {
 	if v := strings.TrimSpace(os.Getenv("DE_BUILTIN_WORKFLOWS_DIR")); v != "" {
 		return v
@@ -65,6 +72,9 @@ func builtinWorkflowsRoot() string {
 	return filepath.Join("backend", "builtin", "workflows")
 }
 
+// loadBuiltinWorkflowPacks loads manifest.json + every pack's
+// template.json once (sync.Once). The result is cached so the
+// /api/workflow-templates handler stays fast.
 func loadBuiltinWorkflowPacks() ([]map[string]any, error) {
 	builtinWFOnce.Do(func() {
 		root := builtinWorkflowsRoot()
@@ -104,6 +114,28 @@ func loadBuiltinWorkflowPacks() ([]map[string]any, error) {
 		builtinWFPacks = out
 	})
 	return builtinWFPacks, builtinWFErr
+}
+
+// LoadBuiltinWorkflowPacksForTest exposes loadBuiltinWorkflowPacks to
+// the legacy builtin_workflows_test.go that still lives in
+// internal/server/ after the M06 P2 deep move. The pre-move test
+// reaches into the package-private loader; the post-move test must
+// call through this wrapper because the unexported symbol is no
+// longer accessible from the server/ test binary.
+func LoadBuiltinWorkflowPacksForTest() ([]map[string]any, error) {
+	return loadBuiltinWorkflowPacks()
+}
+
+// WorkflowTemplateOriginForTest exposes workflowTemplateOrigin to
+// the legacy builtin_workflows_test.go.
+func WorkflowTemplateOriginForTest(item map[string]any) string {
+	return workflowTemplateOrigin(item)
+}
+
+// EvaluateBuiltinTemplateHealthForTest exposes evaluateBuiltinTemplateHealth
+// to the legacy builtin_workflows_test.go.
+func EvaluateBuiltinTemplateHealthForTest(pack map[string]any) string {
+	return evaluateBuiltinTemplateHealth(pack)
 }
 
 // evaluateBuiltinTemplateHealth：缺必填槽位 → 需授权；可降级槽位缺失则仍健康并带 degrade 提示。
@@ -164,15 +196,11 @@ func evaluateBuiltinTemplateHealth(pack map[string]any) string {
 	return "健康"
 }
 
-func strOr(v any, fallback string) string {
-	if s, ok := v.(string); ok && strings.TrimSpace(s) != "" {
-		return s
-	}
-	return fallback
-}
-
 // EnsureBuiltinWorkflowsReady 用平台内置包覆盖/补齐 WorkflowTpls（出厂默认）。
-func (s *Server) EnsureBuiltinWorkflowsReady() {
+// Boot path: called by apprun/run.go (DomainWorkflow) and by
+// builtin_workflows_test.go + builtin_office_test.go on the workflowSvc
+// field of the freshly-built Server.
+func (s *Service) EnsureBuiltinWorkflowsReady() {
 	packs, err := loadBuiltinWorkflowPacks()
 	if err != nil || len(packs) == 0 {
 		return
@@ -203,10 +231,11 @@ func (s *Server) EnsureBuiltinWorkflowsReady() {
 	s.Store.WorkflowTpls = merged
 }
 
-func (s *Server) listWorkflowTemplates(r *http.Request) (any, error) {
+// listWorkflowTemplates → GET /api/workflow-templates
+func (s *Service) listWorkflowTemplates(r *http.Request) (any, error) {
 	s.EnsureBuiltinWorkflowsReady()
-	id := identityFrom(r.Context())
-	ws := s.workspaceID(r)
+	id := s.identityFrom(r.Context())
+	ws := s.Deps.WorkspaceID(r)
 	originFilter := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("origin")))
 	s.Store.RLock()
 	defer s.Store.RUnlock()
@@ -240,6 +269,8 @@ func (s *Server) listWorkflowTemplates(r *http.Request) (any, error) {
 	return out, nil
 }
 
+// workflowTemplateOrigin classifies a template as "platform" or
+// "personal" so the list + delete endpoints can apply the right gate.
 func workflowTemplateOrigin(item map[string]any) string {
 	if b, ok := item["builtin"].(bool); ok && !b {
 		return "personal"
@@ -264,12 +295,15 @@ func workflowTemplateOrigin(item map[string]any) string {
 	return "platform"
 }
 
-func (s *Server) createWorkflowTemplate(r *http.Request) (any, error) {
-	id := identityFrom(r.Context())
+// createWorkflowTemplate → POST /api/workflow-templates
+// Requires workflow.write. Persists a personal template derived from the
+// current canvas; refuses empty canvas + the platform id prefix.
+func (s *Service) createWorkflowTemplate(r *http.Request) (any, error) {
+	id := s.identityFrom(r.Context())
 	if !auth.Has(id, "workflow.write") {
 		return nil, apperr.Forbidden(apperr.RoleForbidden, "无权创建流程模板")
 	}
-	body, err := decodeMap(r)
+	body, err := s.Deps.DecodeMap(r)
 	if err != nil {
 		return nil, apperr.BadReq(apperr.BadRequest, "请求体无效")
 	}
@@ -277,7 +311,7 @@ func (s *Server) createWorkflowTemplate(r *http.Request) (any, error) {
 	if name == "" {
 		return nil, apperr.BadReq(apperr.BadRequest, "模板名称不能为空")
 	}
-	ws := s.workspaceID(r)
+	ws := s.Deps.WorkspaceID(r)
 	now := time.Now().UTC().Format(time.RFC3339)
 	tplID := str(body["id"])
 	if tplID == "" {
@@ -316,35 +350,35 @@ func (s *Server) createWorkflowTemplate(r *http.Request) (any, error) {
 	}
 
 	tpl := map[string]any{
-		"id":            tplID,
-		"name":          name,
-		"description":   coalesce(str(body["description"]), "由当前画布另存的个人模板"),
-		"version":       coalesce(str(body["version"]), "1.0.0"),
-		"category":      coalesce(str(body["category"]), "business"),
-		"department":    dept,
-		"audience":      coalesce(str(body["audience"]), "本人 / 协作同事"),
-		"owner":         coalesce(str(body["owner"]), id.Name),
-		"ownerId":       id.ID,
-		"workspaceId":   ws,
-		"library":       "default",
-		"certification": "preview",
-		"builtin":       false,
-		"source":        "personal",
-		"risk":          coalesce(str(body["risk"]), "L2"),
-		"health":        "健康",
-		"successRate":   "Personal",
-		"installs":      0,
-		"rating":        0,
-		"nodes":         nodeCount,
-		"sequence":      seq,
-		"graph":         graph,
-		"connectors":    body["connectors"],
-		"variables":     body["variables"],
-		"permissions":   body["permissions"],
-		"dependencies":  body["dependencies"],
+		"id":               tplID,
+		"name":             name,
+		"description":      coalesce(str(body["description"]), "由当前画布另存的个人模板"),
+		"version":          coalesce(str(body["version"]), "1.0.0"),
+		"category":         coalesce(str(body["category"]), "business"),
+		"department":       dept,
+		"audience":         coalesce(str(body["audience"]), "本人 / 协作同事"),
+		"owner":            coalesce(str(body["owner"]), id.Name),
+		"ownerId":          id.ID,
+		"workspaceId":      ws,
+		"library":          "default",
+		"certification":    "preview",
+		"builtin":          false,
+		"source":           "personal",
+		"risk":             coalesce(str(body["risk"]), "L2"),
+		"health":           "健康",
+		"successRate":      "Personal",
+		"installs":         0,
+		"rating":           0,
+		"nodes":            nodeCount,
+		"sequence":         seq,
+		"graph":            graph,
+		"connectors":       body["connectors"],
+		"variables":        body["variables"],
+		"permissions":      body["permissions"],
+		"dependencies":     body["dependencies"],
 		"dependencyStatus": body["dependencyStatus"],
-		"blockers":      []any{},
-		"industryTags":  body["industryTags"],
+		"blockers":         []any{},
+		"industryTags":     body["industryTags"],
 		"changelog": []any{
 			map[string]any{"version": coalesce(str(body["version"]), "1.0.0"), "date": now[:10], "note": "个人创建"},
 		},
@@ -381,12 +415,15 @@ func (s *Server) createWorkflowTemplate(r *http.Request) (any, error) {
 	}
 	s.Store.WorkflowTpls = append(s.Store.WorkflowTpls, tpl)
 	s.Store.AppendAudit(ws, id.Name, "创建个人流程模板", tplID, "success", "")
-	s.afterWriteLocked("workflow_templates")
+	s.Deps.AfterWriteLocked("workflow_templates")
 	return tpl, nil
 }
 
-func (s *Server) deleteWorkflowTemplate(r *http.Request) (any, error) {
-	id := identityFrom(r.Context())
+// deleteWorkflowTemplate → DELETE /api/workflow-templates/{id}
+// Requires workflow.write. Refuses to delete platform templates or
+// templates owned by another user; durable delete + audit are wired.
+func (s *Service) deleteWorkflowTemplate(r *http.Request) (any, error) {
+	id := s.identityFrom(r.Context())
 	if !auth.Has(id, "workflow.write") {
 		return nil, apperr.Forbidden(apperr.RoleForbidden, "无权删除流程模板")
 	}
@@ -395,7 +432,7 @@ func (s *Server) deleteWorkflowTemplate(r *http.Request) (any, error) {
 	if tplID == "" {
 		return nil, apperr.BadReq(apperr.BadRequest, "缺少模板 ID")
 	}
-	ws := s.workspaceID(r)
+	ws := s.Deps.WorkspaceID(r)
 	s.Store.Lock()
 	idx := -1
 	var item map[string]any
@@ -427,7 +464,7 @@ func (s *Server) deleteWorkflowTemplate(r *http.Request) (any, error) {
 	s.Store.WorkflowTpls = append(s.Store.WorkflowTpls[:idx], s.Store.WorkflowTpls[idx+1:]...)
 	s.Store.AppendAudit(ws, id.Name, "删除个人流程模板", tplID, "success", "")
 	s.Store.Unlock()
-	s.durableDeleteSync("workflow_templates", tplID)
-	s.afterWrite("workflow_templates")
+	s.Deps.DurableDeleteSync("workflow_templates", tplID)
+	s.Deps.AfterWrite("workflow_templates")
 	return map[string]any{"ok": true, "id": tplID}, nil
 }

@@ -35,6 +35,7 @@ import (
 	"github.com/qizhida-partner-platform/backend/internal/store"
 	"github.com/qizhida-partner-platform/backend/internal/tasks"
 	"github.com/qizhida-partner-platform/backend/internal/vault"
+	"github.com/qizhida-partner-platform/backend/internal/workflows"
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 	"github.com/qizhida-partner-platform/backend/pkg/response"
 	"github.com/qizhida-partner-platform/backend/services/qzda-sandbox/signing"
@@ -197,6 +198,16 @@ type Server struct {
 	// tests that don't wire the package).
 	partnerSvc *partners.Service
 
+	// workflowSvc holds the M06 工作流程 (Workflow) HTTP-route façade.
+	// Built in New() with method values bound to *Server methods so the
+	// workflows package stays free of any internal/server/ import. The
+	// route switch consults s.workflowSvc for the 13 M06 endpoints
+	// (workflows CRUD + trial-run + templates + workflow-skills +
+	// capability bind). The qzdaworkflow execution engine itself stays
+	// in internal/qzdaworkflow/ — s.Workflows (the *Engine) is bound
+	// into the service via Deps.StartTrial in buildWorkflowSvc().
+	workflowSvc *workflows.Service
+
 	// closeMu guards closeFuncs + closed; RegisterCloseFunc and Shutdown
 	// race in tests where Shutdown runs on a different goroutine than
 	// the apprun boot path.
@@ -298,6 +309,14 @@ func New(st *store.Store) *Server {
 	// at boot so the package boundary stays one-way: partners never
 	// imports server/.
 	s.partnerSvc = s.buildPartnerSvc()
+	// M06 工作流程 (Workflow) façade. The workflows package owns the
+	// M06 surface: 13 REST routes (workflows CRUD + trial-run +
+	// templates + workflow-skills publish + capability bind). Server
+	// wires Deps (workspace/identity helpers, governance gates,
+	// skill-catalog sync, persistence helpers) and binds the
+	// qzdaworkflow.Engine.StartTrial closure so workflows never imports
+	// server/ — package boundary is one-way.
+	s.workflowSvc = s.buildWorkflowSvc()
 	return s
 }
 
@@ -887,31 +906,31 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) {
 
 	// Workflows
 	case path == "/api/workflows" && method == http.MethodGet:
-		data, err = s.listWorkflows(r)
+		data, err = s.workflowSvc.ListWorkflows(r)
 	case path == "/api/workflows" && method == http.MethodPost:
-		data, err = s.createWorkflow(r)
+		data, err = s.workflowSvc.CreateWorkflow(r)
 	case path == "/api/workflow-templates" && method == http.MethodGet:
-		data, err = s.listWorkflowTemplates(r)
+		data, err = s.workflowSvc.ListWorkflowTemplates(r)
 	case path == "/api/workflow-templates" && method == http.MethodPost:
-		data, err = s.createWorkflowTemplate(r)
+		data, err = s.workflowSvc.CreateWorkflowTemplate(r)
 	case strings.HasPrefix(path, "/api/workflow-templates/") && method == http.MethodDelete:
-		data, err = s.deleteWorkflowTemplate(r)
+		data, err = s.workflowSvc.DeleteWorkflowTemplate(r)
 	case path == "/api/workflows/generations" && method == http.MethodGet:
-		data, err = s.listWorkflowGenerations(r)
+		data, err = s.workflowSvc.ListWorkflowGenerations(r)
 	case path == "/api/workflows/generate" && method == http.MethodPost:
-		data, err = s.generateWorkflow(r)
+		data, err = s.workflowSvc.GenerateWorkflow(r)
 	case path == "/api/workflow-skills" && method == http.MethodGet:
-		data, err = s.listWorkflowSkillsAligned(r)
+		data, err = s.workflowSvc.ListWorkflowSkillsAligned(r)
 	case strings.HasPrefix(path, "/api/workflow-skills/") && strings.HasSuffix(path, "/publish") && method == http.MethodPost:
-		data, err = s.publishWorkflowSkill(r)
+		data, err = s.workflowSvc.PublishWorkflowSkill(r)
 	case path == "/api/workflow-runs" && method == http.MethodGet:
-		data, err = s.listWorkflowRuns(r)
+		data, err = s.workflowSvc.ListWorkflowRuns(r)
 	case path == "/api/workflows/run" && method == http.MethodPost:
-		data, err = s.runWorkflow(r)
+		data, err = s.workflowSvc.RunWorkflow(r)
 	case strings.HasPrefix(path, "/api/workflows/") && strings.HasSuffix(path, "/capabilities") && method == http.MethodPost:
-		data, err = s.bindWorkflowCapability(r)
+		data, err = s.workflowSvc.BindWorkflowCapability(r)
 	case strings.HasPrefix(path, "/api/workflows/") && (method == http.MethodGet || method == http.MethodPost || method == http.MethodPatch):
-		data, err = s.workflowByID(r)
+		data, err = s.workflowSvc.WorkflowByID(r)
 
 	// Skills
 	case path == "/api/internal/skill-catalog" && method == http.MethodPost:
@@ -1478,6 +1497,71 @@ func (s *Server) buildPartnerSvc() *partners.Service {
 		KnowledgeSliceMaps:                knowledgeSliceMaps,
 		HasCapability:                     hasCapability,
 	})
+}
+
+// buildWorkflowSvc wires the M06 工作流程 (Workflow) HTTP-route façade.
+// The workflows package owns the full M06 surface: 13 REST handlers
+// (list / create / workflowByID catch-all / listWorkflowTemplates /
+// createWorkflowTemplate / deleteWorkflowTemplate / listWorkflowGenerations
+// / generateWorkflow / listWorkflowSkillsAligned / publishWorkflowSkill /
+// listWorkflowRuns / runWorkflow / bindWorkflowCapability) + the
+// publish-as-skill + catalog sync helpers + the builtin templates
+// loader (EnsureBuiltinWorkflowsReady + workflowTemplateOrigin).
+// Server wires Deps (workspace/identity helpers, governance gates,
+// skill-catalog sync, persistence helpers, the cross-module
+// applyWorkflowSkillCatalog adapter) and binds the
+// qzdaworkflow.Engine.StartTrial closure at boot so the package
+// boundary stays one-way: workflows never imports internal/server/.
+//
+// Why Deps as function fields (not an interface)?
+//   - Keeps workflows free of any internal/server/ import — Deps is the
+//     boundary, not a coupled interface
+//   - Lets tests inject stubs selectively — most fields are nil-safe
+//   - Avoids the breadth of an interface with ~15 methods when callers
+//     want one field each
+func (s *Server) buildWorkflowSvc() *workflows.Service {
+	// StartTrial adapter: qzdaworkflow.Engine.StartTrial has the
+	// signature (ctx, runID, workflowID) (*Run, error). The workflows
+	// package Deps wants the same shape; binding the closure lets the
+	// workflows handlers call s.Deps.StartTrial without importing
+	// qzdaworkflow directly to declare the type — except for the return
+	// type, which IS the qzdaworkflow.Run struct (workflows/ does import
+	// qzdaworkflow for that type only). The closure wires the live
+	// qzdaworkflow.Engine stored on Server.
+	startTrial := s.Workflows.StartTrial
+	return workflows.NewService(s.Store, workflows.Deps{
+		WorkspaceID:                  s.workspaceID,
+		DecodeMap:                    decodeMap,
+		EvaluateWriteLocked:          s.evaluateWriteLocked,
+		RequireSkillRead:             requireSkillRead,
+		RequireSkillWrite:            requireSkillWrite,
+		RequiresPeerApprovalGate:     requiresPeerApprovalGate,
+		RequireProductionDualApproval: requireProductionDualApproval,
+		MaybeHoldForCountersign:      maybeHoldForCountersign,
+		ProductionLikeEnv:            productionLikeEnv,
+		AfterWriteLocked:             s.afterWriteLocked,
+		AfterWrite:                   s.afterWrite,
+		DurableDeleteSync:            s.durableDeleteSync,
+		PersistSkills:                s.persistSkills,
+		PersistSkillExtra:            s.persistSkillExtra,
+		PersistSkillHealth:           s.persistSkillHealth,
+		ApplyWorkflowSkillCatalog:    s.applyWorkflowSkillCatalog,
+		StartTrial:                   startTrial,
+	})
+}
+
+// EnsureBuiltinWorkflowsReady is a thin delegator over the M06 workflow
+// service's builtin pack loader. The M06 builtin_workflows.go + the
+// builtin loader moved to internal/workflows/ during the M06 P2 deep
+// move; the domain-aware apprun boot path still calls this method on
+// the freshly-built *Server (DomainWorkflow / DomainCap / DomainAll),
+// so we keep a public *Server entry point that closes over the
+// workflowSvc built in New().
+func (s *Server) EnsureBuiltinWorkflowsReady() {
+	if s.workflowSvc == nil {
+		return
+	}
+	s.workflowSvc.EnsureBuiltinWorkflowsReady()
 }
 
 // HasPostgres reports whether the backing Postgres pool is wired into the

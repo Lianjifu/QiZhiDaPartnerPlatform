@@ -4,10 +4,11 @@ import (
 	"testing"
 
 	"github.com/qizhida-partner-platform/backend/internal/store"
+	"github.com/qizhida-partner-platform/backend/internal/workflows"
 )
 
 func TestLoadBuiltinWorkflowPacks(t *testing.T) {
-	packs, err := loadBuiltinWorkflowPacks()
+	packs, err := workflows.LoadBuiltinWorkflowPacksForTest()
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
@@ -40,7 +41,7 @@ func TestLoadBuiltinWorkflowPacks(t *testing.T) {
 func TestEnsureBuiltinWorkflowsReady_FactoryDefaults(t *testing.T) {
 	st := store.NewDemo()
 	srv := New(st)
-	srv.EnsureBuiltinWorkflowsReady()
+	srv.workflowSvc.EnsureBuiltinWorkflowsReady()
 	st.RLock()
 	defer st.RUnlock()
 	certified := 0
@@ -77,14 +78,14 @@ func TestEnsureBuiltinWorkflowsReady_PreservesPersonal(t *testing.T) {
 		},
 	}
 	srv := New(st)
-	srv.EnsureBuiltinWorkflowsReady()
+	srv.workflowSvc.EnsureBuiltinWorkflowsReady()
 	st.RLock()
 	defer st.RUnlock()
 	foundPersonal := false
 	for _, item := range st.WorkflowTpls {
 		if id, _ := item["id"].(string); id == "wft-user-keep" {
 			foundPersonal = true
-			if workflowTemplateOrigin(item) != "personal" {
+			if workflows.WorkflowTemplateOriginForTest(item) != "personal" {
 				t.Fatalf("expected personal origin")
 			}
 		}
@@ -105,7 +106,7 @@ func TestEvaluateBuiltinTemplateHealth_Degrade(t *testing.T) {
 			"hint":             "降级提示",
 		},
 	}
-	if got := evaluateBuiltinTemplateHealth(pack); got != "健康" {
+	if got := workflows.EvaluateBuiltinTemplateHealthForTest(pack); got != "健康" {
 		t.Fatalf("got %s", got)
 	}
 	if pack["healthHint"] != "降级提示" {
@@ -117,7 +118,7 @@ func TestEvaluateBuiltinTemplateHealth_Degrade(t *testing.T) {
 			map[string]any{"slot": "identity.provision", "required": true},
 		},
 	}
-	if got := evaluateBuiltinTemplateHealth(pack2); got != "需授权" {
+	if got := workflows.EvaluateBuiltinTemplateHealthForTest(pack2); got != "需授权" {
 		t.Fatalf("expected 需授权, got %s", got)
 	}
 }

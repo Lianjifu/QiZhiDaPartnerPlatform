@@ -43,7 +43,7 @@ func TestEnsureBuiltinKnowledgeReady_OfficePacks(t *testing.T) {
 func TestEnsureBuiltinWorkflowsReady_IncludesOffice(t *testing.T) {
 	st := store.NewDemo()
 	srv := New(st)
-	srv.EnsureBuiltinWorkflowsReady()
+	srv.workflowSvc.EnsureBuiltinWorkflowsReady()
 	st.RLock()
 	defer st.RUnlock()
 	found := false

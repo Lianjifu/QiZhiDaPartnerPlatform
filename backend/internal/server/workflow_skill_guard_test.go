@@ -25,20 +25,30 @@ func TestPublishWorkflowAsSkillSkipsCapSliceWhenGuarded(t *testing.T) {
 		"id": "run-guard-1", "workflowId": wf["id"], "status": "succeeded",
 	})
 	actor := &auth.Identity{ID: "u1", Name: "平台管理员", Role: "admin"}
-	skill, err := srv.publishWorkflowAsSkillLocked(actor, "w1", wf, "守卫技能")
+	// M06 P2: publishWorkflowAsSkillLocked lives on the workflowSvc
+	// (internal/workflows/). The service was wired in New() with the
+	// default governance gates — requiresPeerApprovalGate is bound
+	// there so the gate still flips the row to pending_approval when
+	// Mode != production. We assert the guard semantics by checking
+	// that the WorkflowSkills slice still records the row but the
+	// Store.Skills catalog slice stays untouched (write-domain guard).
+	skill, err := srv.workflowSvc.PublishWorkflowAsSkillLockedForTest(actor, "w1", wf, "守卫技能")
 	st.Unlock()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if skill == nil || str(skill["id"]) == "" {
+	if skill == nil {
 		t.Fatal("expected workflow skill row")
+	}
+	if id, _ := skill["id"].(string); id == "" {
+		t.Fatal("expected workflow skill id")
 	}
 	if len(st.Skills) != before {
 		t.Fatalf("workflow process must not append Skills: before=%d after=%d", before, len(st.Skills))
 	}
 	found := false
 	for _, item := range st.WorkflowSkills {
-		if str(item["id"]) == str(skill["id"]) {
+		if id, _ := item["id"].(string); id != "" && id == skill["id"] {
 			found = true
 			break
 		}
