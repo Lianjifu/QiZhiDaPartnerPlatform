@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/qizhida-partner-platform/backend/internal/copilot"
 	"github.com/qizhida-partner-platform/backend/internal/metrics"
 )
 
@@ -97,11 +98,11 @@ func IncCopilotCognitive(d cognitiveDecision) {
 	}
 	copilotCognitiveApplied.Add(1)
 	switch d.Primary {
-	case cognitiveLogic:
+	case copilot.CognitiveLogic:
 		copilotCognitiveLogic.Add(1)
-	case cognitiveProblem:
+	case copilot.CognitiveProblem:
 		copilotCognitiveProblem.Add(1)
-	case cognitiveCreative:
+	case copilot.CognitiveCreative:
 		copilotCognitiveCreative.Add(1)
 	}
 }
@@ -109,13 +110,13 @@ func IncCopilotCognitive(d cognitiveDecision) {
 // IncTurnPhaseStep records a narrative phase thought step.
 func IncTurnPhaseStep(phase string) {
 	switch phase {
-	case turnPhaseUnderstand:
+	case copilot.TurnPhaseUnderstand:
 		copilotTurnUnderstand.Add(1)
-	case turnPhasePlan:
+	case copilot.TurnPhasePlan:
 		copilotTurnPlan.Add(1)
-	case turnPhaseExecute:
+	case copilot.TurnPhaseExecute:
 		copilotTurnExecute.Add(1)
-	case turnPhaseReflect:
+	case copilot.TurnPhaseReflect:
 		copilotTurnReflect.Add(1)
 	}
 }

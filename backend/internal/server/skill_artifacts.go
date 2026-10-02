@@ -15,6 +15,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/qizhida-partner-platform/backend/internal/copilot"
 	"github.com/qizhida-partner-platform/backend/internal/gateway"
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 	"github.com/qizhida-partner-platform/backend/pkg/response"
@@ -424,7 +425,7 @@ func docxBodyFromToolCalls(toolCalls []map[string]any) string {
 }
 
 func extractDocxBodyFromAssistantText(full string) string {
-	lines := strings.Split(stripArtifactNoise(full), "\n")
+	lines := strings.Split(copilot.StripArtifactNoise(full), "\n")
 	out := make([]string, 0, len(lines))
 	for _, line := range lines {
 		trim := strings.TrimSpace(line)
@@ -433,7 +434,7 @@ func extractDocxBodyFromAssistantText(full string) string {
 			strings.Contains(trim, "/api/skill-artifacts/") {
 			continue
 		}
-		if isPendingAssistantReply(trim) && len(out) == 0 {
+		if copilot.IsPendingAssistantReply(trim) && len(out) == 0 {
 			continue
 		}
 		out = append(out, line)

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/qizhida-partner-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/copilot"
 	"github.com/qizhida-partner-platform/backend/internal/store"
 )
 
@@ -31,7 +32,7 @@ func TestNormalizeSkillActionAndScriptCommand(t *testing.T) {
 }
 
 func TestSkillInvocationNeedsApproval(t *testing.T) {
-	tool := &registeredTool{Name: "pptx", Kind: "skill", Key: "skill:pptx", Mode: toolModeRecommend}
+	tool := &registeredTool{Name: "pptx", Kind: "skill", Key: "skill:pptx", Mode: copilot.ToolModeRecommend}
 	sk := map[string]any{"name": "pptx", "hasScripts": true, "producesArtifacts": true, "readOnly": false}
 	callRun := toolCallRequest{Name: "pptx", Args: map[string]any{"action": "run", "command": "scripts/thumbnail.py"}}
 	if !skillInvocationNeedsApproval(sessionModeExecute, tool, sk, callRun) {
@@ -259,7 +260,7 @@ func TestOfficeSkillRejectsTitleContentShortcut(t *testing.T) {
 }
 
 func TestOfficeSkillNotFoundWhenUnbound(t *testing.T) {
-	s := &Server{Store: store.New()}
+	s := New(store.New())
 	tool := &registeredTool{Name: "pptx", Kind: "skill", Key: "skill:pptx"}
 	res := s.runSkillTool(toolRunContext{WorkspaceID: "w-none"}, tool, toolCallRequest{
 		Name: "pptx", Args: map[string]any{"action": "open"},
@@ -281,12 +282,12 @@ func TestInvestigateDeniesSkillRunWithoutScript(t *testing.T) {
 }
 
 func TestInvestigateRejectsOfficeBuiltinShortcut(t *testing.T) {
-	s := &Server{Store: store.New()}
+	s := New(store.New())
 	sk := map[string]any{
 		"id": "sk-docx", "name": "docx", "packagePath": t.TempDir(),
 		"hasScripts": true, "scripts": []string{"scripts/docx.sh"},
 	}
-	tool := &registeredTool{Name: "docx", Kind: "skill", Key: "skill:docx", Mode: toolModeExecute, Enabled: true}
+	tool := &registeredTool{Name: "docx", Kind: "skill", Key: "skill:docx", Mode: copilot.ToolModeExecute, Enabled: true}
 	res := s.skillRun(toolRunContext{
 		WorkspaceID: "w1", SessionMode: sessionModeInvestigate,
 		Viewer: &auth.Identity{ID: "u1", Name: "测试"},

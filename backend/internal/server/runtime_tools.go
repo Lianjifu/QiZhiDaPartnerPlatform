@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/qizhida-partner-platform/backend/internal/copilot"
 )
 
 var runtimeToolNames = map[string]bool{
@@ -43,7 +45,7 @@ func (s *Server) runSkillReadTool(ctx toolRunContext, call toolCallRequest, star
 			Error: "缺少 skill 参数", Output: "skill.read 需要 args.skill（技能名）",
 		}
 	}
-	sk := s.findWorkspaceSkill(ctx.WorkspaceID, "", skillName)
+	sk := s.CopSvc.FindWorkspaceSkill(ctx.WorkspaceID, "", skillName)
 	if sk == nil {
 		return toolExecResult{
 			Status: "failed", DurationMs: int(time.Since(started).Milliseconds()),
@@ -95,7 +97,7 @@ func (s *Server) runRuntimeTool(ctx toolRunContext, t *registeredTool, call tool
 func (s *Server) resolveRuntimeSkill(ctx toolRunContext, call toolCallRequest) map[string]any {
 	skillName := coalesce(str(call.Args["skill"]), str(call.Args["skillName"]))
 	if skillName != "" {
-		if sk := s.findWorkspaceSkill(ctx.WorkspaceID, "", skillName); sk != nil {
+		if sk := s.CopSvc.FindWorkspaceSkill(ctx.WorkspaceID, "", skillName); sk != nil {
 			return sk
 		}
 	}
@@ -112,7 +114,7 @@ func (s *Server) resolveRuntimeSkill(ctx toolRunContext, call toolCallRequest) m
 		prefer = "docx"
 	}
 	if prefer != "" {
-		if sk := s.findWorkspaceSkill(ctx.WorkspaceID, "", prefer); sk != nil && str(sk["packagePath"]) != "" {
+		if sk := s.CopSvc.FindWorkspaceSkill(ctx.WorkspaceID, "", prefer); sk != nil && str(sk["packagePath"]) != "" {
 			return sk
 		}
 	}
@@ -253,7 +255,7 @@ func (s *Server) runtimeBash(ctx toolRunContext, t *registeredTool, call toolCal
 		Name: t.Name,
 		Args: map[string]any{"action": "run", "command": cmd, "skillId": str(sk["id"])},
 	}
-	return s.runSkillTool(ctx, &registeredTool{Name: str(sk["name"]), Kind: "skill", Key: "skill:" + slugToolName(str(sk["name"]))}, runCall, started)
+	return s.runSkillTool(ctx, &registeredTool{Name: str(sk["name"]), Kind: "skill", Key: "skill:" + copilot.SlugToolName(str(sk["name"]))}, runCall, started)
 }
 
 // ensureWSDepsWritten checks every .copilot-ws/<file> referenced by cmd. If the file doesn't
@@ -277,7 +279,7 @@ func ensureWSDepsWritten(sk map[string]any, cmd string, call toolCallRequest) (t
 		str(call.Args["_userMessage"]),
 		coalesce(str(call.Args["input"]), coalesce(str(call.Args["content"]), str(call.Args["outline"]))),
 	))
-	regTool := &registeredTool{Name: toolName, Kind: "skill", Key: "skill:" + slugToolName(toolName)}
+	regTool := &registeredTool{Name: toolName, Kind: "skill", Key: "skill:" + copilot.SlugToolName(toolName)}
 
 	started := time.Now()
 	for _, dep := range deps {

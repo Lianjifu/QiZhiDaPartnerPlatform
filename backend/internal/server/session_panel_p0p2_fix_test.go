@@ -40,6 +40,7 @@ import (
 
 	"github.com/qizhida-partner-platform/backend/internal/auth"
 	"github.com/qizhida-partner-platform/backend/internal/channel"
+	"github.com/qizhida-partner-platform/backend/internal/copilot"
 	"github.com/qizhida-partner-platform/backend/internal/knowledge/citation"
 	"github.com/qizhida-partner-platform/backend/internal/knowledge/citationlog"
 	memid "github.com/qizhida-partner-platform/backend/internal/memory/identity"
@@ -63,16 +64,14 @@ func TestP0_PanicRecoveredToFailedResult(t *testing.T) {
 		map[string]any{"id": "de-b", "name": "B", "lifecycle": "active"},
 	)
 	panicID := "de-b"
-	s := &Server{
-		Store:            st,
-		IdentityProfiles: memid.NewStore(),
-		testHooks: &serverTestHooks{
-			participantTurnOverride: func(_ context.Context, pc participantContext) participantTurnResult {
-				if pc.DigitalPartner == panicID {
-					panic("kaboom")
-				}
-				return participantTurnResult{ParticipantID: pc.DigitalPartner, Status: "success", Text: "ok"}
-			},
+	s := New(st)
+	s.IdentityProfiles = memid.NewStore()
+	s.testHooks = &serverTestHooks{
+		participantTurnOverride: func(_ context.Context, pc participantContext) participantTurnResult {
+			if pc.DigitalPartner == panicID {
+				panic("kaboom")
+			}
+			return participantTurnResult{ParticipantID: pc.DigitalPartner, Status: "success", Text: "ok"}
 		},
 	}
 
@@ -91,7 +90,7 @@ func TestP0_PanicRecoveredToFailedResult(t *testing.T) {
 		},
 	}
 
-	results := s.dispatchParticipants(context.Background(), pcs)
+	results := s.CopSvc.DispatchParticipants(context.Background(), pcs)
 
 	if len(results) != 2 {
 		t.Fatalf("expected 2 results, got %d", len(results))
@@ -120,7 +119,7 @@ func TestP0_RAGHitsReachPrompt(t *testing.T) {
 	}
 	// The wrap that runParticipantTurn applies.
 	ragForPrompt := map[string]any{"results": hits}
-	system := buildCopilotSystemPromptWithEffort(map[string]any{
+	system := copilot.BuildCopilotSystemPromptWithEffort(map[string]any{
 		"name": "HR 助手", "role": "人事", "description": "回答 HR 政策。",
 	}, ragForPrompt, nil, "")
 	// ragSnippetsForPrompt prefers snippet over title, so assert on snippet
@@ -132,7 +131,7 @@ func TestP0_RAGHitsReachPrompt(t *testing.T) {
 	}
 	// Negative control: a bare slice (no envelope) must yield NO snippets.
 	bare := hits // []map[string]any, not wrapped
-	noSnippetSystem := buildCopilotSystemPromptWithEffort(map[string]any{
+	noSnippetSystem := copilot.BuildCopilotSystemPromptWithEffort(map[string]any{
 		"name": "HR 助手",
 	}, bare, nil, "")
 	if strings.Contains(noSnippetSystem, "已检索已发布知识") {
@@ -164,7 +163,8 @@ func TestP0_RetrievePublishedACLFilter(t *testing.T) {
 			"scopes": []any{"role:audit.export"},
 		},
 	)
-	s := &Server{Store: st, IdentityProfiles: memid.NewStore()}
+	s := New(st)
+	s.IdentityProfiles = memid.NewStore()
 
 	// A plain user viewer must see doc-open but NOT doc-audit-only.
 	viewer := &auth.Identity{ID: "u-1", Role: "user", Permissions: auth.RolePermissions("user"), WorkspaceID: "ws-1"}
@@ -219,7 +219,8 @@ func TestP0_RetrievePublishedACLFilter(t *testing.T) {
 // runCopilotTool bypass would simply crash or skip).
 func TestP0_ParticipantSkillRoutesThroughApprovalGate(t *testing.T) {
 	st := store.NewEmpty()
-	s := &Server{Store: st, IdentityProfiles: memid.NewStore()}
+	s := New(st)
+	s.IdentityProfiles = memid.NewStore()
 
 	// Register a require-approval skill in the registry. The skill itself
 	// isn't seeded in the workspace (skill harness will report "skill not
@@ -228,7 +229,7 @@ func TestP0_ParticipantSkillRoutesThroughApprovalGate(t *testing.T) {
 	tools := []registeredTool{
 		{
 			Kind: "skill", Name: "demo.skill", Key: "skill:demo.skill",
-			Enabled: true, RequiresApproval: true, Mode: toolModeApproval,
+			Enabled: true, RequiresApproval: true, Mode: copilot.ToolModeApproval,
 		},
 	}
 	pc := participantContext{
@@ -295,7 +296,7 @@ func TestP0_GovernanceHonorsOperatorIntent(t *testing.T) {
 	t.Run("operator_enabled_allowlisted_skill_kept", func(t *testing.T) {
 		tools := []registeredTool{
 			{Kind: "skill", Name: "read_docx", Key: "skill:read_docx",
-				Enabled: true, RequiresApproval: true, Mode: toolModeApproval},
+				Enabled: true, RequiresApproval: true, Mode: copilot.ToolModeApproval},
 		}
 		out := filterRegistryBySessionMode(tools, contract.SessionModeInvestigate)
 		if len(out) != 1 || !out[0].Enabled {
@@ -305,7 +306,7 @@ func TestP0_GovernanceHonorsOperatorIntent(t *testing.T) {
 	t.Run("operator_disabled_allowlisted_skill_dropped", func(t *testing.T) {
 		tools := []registeredTool{
 			{Kind: "skill", Name: "read_docx", Key: "skill:read_docx",
-				Enabled: false, RequiresApproval: true, Mode: toolModeApproval},
+				Enabled: false, RequiresApproval: true, Mode: copilot.ToolModeApproval},
 		}
 		out := filterRegistryBySessionMode(tools, contract.SessionModeInvestigate)
 		if len(out) != 0 {
@@ -315,7 +316,7 @@ func TestP0_GovernanceHonorsOperatorIntent(t *testing.T) {
 	t.Run("non_allowlisted_approval_skill_dropped_in_investigate", func(t *testing.T) {
 		tools := []registeredTool{
 			{Kind: "skill", Name: "obscure.tool", Key: "skill:obscure.tool",
-				Enabled: true, RequiresApproval: true, Mode: toolModeApproval},
+				Enabled: true, RequiresApproval: true, Mode: copilot.ToolModeApproval},
 		}
 		out := filterRegistryBySessionMode(tools, contract.SessionModeInvestigate)
 		if len(out) != 0 {
@@ -325,9 +326,9 @@ func TestP0_GovernanceHonorsOperatorIntent(t *testing.T) {
 	t.Run("execute_mode_passes_everything_through", func(t *testing.T) {
 		tools := []registeredTool{
 			{Kind: "skill", Name: "any.skill", Key: "skill:any.skill",
-				Enabled: true, RequiresApproval: true, Mode: toolModeApproval},
+				Enabled: true, RequiresApproval: true, Mode: copilot.ToolModeApproval},
 			{Kind: "skill", Name: "obscure.tool", Key: "skill:obscure.tool",
-				Enabled: true, RequiresApproval: true, Mode: toolModeApproval},
+				Enabled: true, RequiresApproval: true, Mode: copilot.ToolModeApproval},
 		}
 		out := filterRegistryBySessionMode(tools, contract.SessionModeExecute)
 		if len(out) != 2 {
@@ -344,7 +345,8 @@ func TestP0_GovernanceHonorsOperatorIntent(t *testing.T) {
 // this fallback every audit row stores Tier="" and loses the
 // published/review/workspace distinction.
 func TestP1_CitationTierDerivedFromDocStatus(t *testing.T) {
-	s := &Server{Store: store.NewEmpty(), IdentityProfiles: memid.NewStore()}
+	s := New(store.NewEmpty())
+	s.IdentityProfiles = memid.NewStore()
 	cl := s.citationLog()
 	s.logCitationsForRAG("ws-1", "turn-published", []map[string]any{
 		{"docId": "d-pub", "title": "公开", "status": "published", "snippet": "x"},
@@ -380,7 +382,8 @@ func TestP1_CitationTierDerivedFromDocStatus(t *testing.T) {
 // the same inputs as citation.Build uses internally — so the audit trail
 // can be cross-checked against the citation list.
 func TestP1_CitationQuoteHashMatchesCitationBuild(t *testing.T) {
-	s := &Server{Store: store.NewEmpty(), IdentityProfiles: memid.NewStore()}
+	s := New(store.NewEmpty())
+	s.IdentityProfiles = memid.NewStore()
 	cl := s.citationLog()
 	const snippet = "员工入职需在 HR 系统登记。后续详见《员工手册》。"
 	hits := []map[string]any{
@@ -413,7 +416,8 @@ func TestP1_ParticipantRiskFlooredByInbound(t *testing.T) {
 		"id": "de-low", "name": "L", "lifecycle": "active",
 		"spec": map[string]any{"defaultSessionMode": "execute", "defaultRiskLevel": "low"},
 	})
-	s := &Server{Store: st, IdentityProfiles: memid.NewStore()}
+	s := New(st)
+	s.IdentityProfiles = memid.NewStore()
 	pc := s.buildParticipantContext(participantCtxInput{
 		WorkspaceID: "ws-1", OwnerID: "u-1", UserMessage: "x",
 		Viewer: &auth.Identity{ID: "u-1"},
@@ -425,7 +429,7 @@ func TestP1_ParticipantRiskFlooredByInbound(t *testing.T) {
 	}
 
 	// Simulate the floor applied in copilot_multi.go (H-7 fix).
-	if levelRank(riskLevelFloor(contract.RiskLevelHigh)) < levelRank(riskLevelFloor(pc.RiskLevel)) {
+	if copilot.LevelRank(copilot.RiskLevelFloor(contract.RiskLevelHigh)) < copilot.LevelRank(copilot.RiskLevelFloor(pc.RiskLevel)) {
 		pc.RiskLevel = contract.RiskLevelHigh
 	}
 	if pc.RiskLevel != contract.RiskLevelHigh {
@@ -441,7 +445,8 @@ func TestP1_ParticipantRiskFlooredByInbound(t *testing.T) {
 // short-circuit before any real work and the timeout-classification
 // branch must observe ctx.Err() == Canceled.
 func TestP1_TimeoutBoundsToolPhase(t *testing.T) {
-	s := &Server{Store: store.NewEmpty(), IdentityProfiles: memid.NewStore()}
+	s := New(store.NewEmpty())
+	s.IdentityProfiles = memid.NewStore()
 	pc := participantContext{
 		WorkspaceID: "ws-1", DigitalPartner: "de-t",
 		SessionMode: contract.SessionModeInvestigate,
@@ -464,7 +469,8 @@ func TestP1_TimeoutBoundsToolPhase(t *testing.T) {
 // stored the deployment id, making the DLQ unfilterable for replay.
 func TestP1_DLQChannelIdIsRealTarget(t *testing.T) {
 	st := store.NewEmpty()
-	s := &Server{Store: st, IdentityProfiles: memid.NewStore()}
+	s := New(st)
+	s.IdentityProfiles = memid.NewStore()
 	const target = "oc_chat_real_target_xyz"
 	s.pushChannelDLQ("ws-1", "dep-1", contract.ChannelFeishu, target, "summary", "corr-dlq", "boom")
 
@@ -520,7 +526,10 @@ func TestP1_VaultCredentialsMissingAuditsAndDLQs(t *testing.T) {
 	mock := channel.NewMock(channel.KindFeishu)
 	reg := channel.NewDefaultRegistry()
 	reg.Register(mock)
-	s := &Server{Store: st, IdentityProfiles: memid.NewStore(), Vault: v, ChannelRegistry: reg}
+	s := New(st)
+	s.IdentityProfiles = memid.NewStore()
+	s.Vault = v
+	s.ChannelRegistry = reg
 
 	var got capturedEvent
 	pc := participantContext{
@@ -580,11 +589,12 @@ func TestP2_MemDEStrictScoping(t *testing.T) {
 			"digitalPartnerId": "de-A", "createdAt": now, "ownerId": "u-1",
 		},
 	)
-	s := &Server{Store: st, IdentityProfiles: memid.NewStore()}
+	s := New(st)
+	s.IdentityProfiles = memid.NewStore()
 
 	// Query against de-A: bound memory wins, DE-less must NOT leak.
 	st.RLock()
-	hits := s.retrieveMemoryForTurnLocked("ws-1", "u-1", "de-A", "", "context", &auth.Identity{ID: "u-1"})
+	hits := s.CopSvc.RetrieveMemoryForTurnLocked("ws-1", "u-1", "de-A", "", "context", &auth.Identity{ID: "u-1"})
 	st.RUnlock()
 	if len(hits) != 1 {
 		t.Fatalf("expected exactly 1 hit for de-A, got %d (%v)", len(hits), hits)
@@ -599,7 +609,7 @@ func TestP2_MemDEStrictScoping(t *testing.T) {
 	// workspace-wide memory. The strict guard only narrows when a DE-id
 	// IS supplied.
 	st.RLock()
-	hits2 := s.retrieveMemoryForTurnLocked("ws-1", "u-1", "", "", "context", &auth.Identity{ID: "u-1"})
+	hits2 := s.CopSvc.RetrieveMemoryForTurnLocked("ws-1", "u-1", "", "", "context", &auth.Identity{ID: "u-1"})
 	st.RUnlock()
 	if len(hits2) != 2 {
 		t.Fatalf("expected 2 hits when deID is empty (no scoping key), got %d (%v)", len(hits2), hits2)
@@ -623,19 +633,20 @@ func TestP2_MemoryBudgetReportCaptured(t *testing.T) {
 			"createdAt": now, "ownerId": "u-1",
 		})
 	}
-	s := &Server{Store: st, IdentityProfiles: memid.NewStore()}
+	s := New(st)
+	s.IdentityProfiles = memid.NewStore()
 	st.RLock()
-	hits := s.retrieveMemoryForTurnLocked("ws-1", "u-1", "", "", "context", &auth.Identity{ID: "u-1"})
+	hits := s.CopSvc.RetrieveMemoryForTurnLocked("ws-1", "u-1", "", "", "context", &auth.Identity{ID: "u-1"})
 	st.RUnlock()
 	if len(hits) == 0 {
 		t.Fatalf("expected some hits, got 0")
 	}
-	if s.lastMemoryBudgetReport == nil {
+	if s.CopSvc.LastMemoryBudgetReport() == nil {
 		t.Fatalf("expected lastMemoryBudgetReport to be populated")
 	}
-	r := s.lastMemoryBudgetReport
-	if r.BudgetTokens != copilotMemoryBudgetTokens {
-		t.Fatalf("BudgetTokens=%d want=%d", r.BudgetTokens, copilotMemoryBudgetTokens)
+	r := s.CopSvc.LastMemoryBudgetReport()
+	if r.BudgetTokens != copilot.CopilotMemoryBudgetTokens() {
+		t.Fatalf("BudgetTokens=%d want=%d", r.BudgetTokens, copilot.CopilotMemoryBudgetTokens())
 	}
 	if r.UsedTokens <= 0 {
 		t.Fatalf("UsedTokens should be > 0, got %d", r.UsedTokens)
@@ -655,7 +666,8 @@ func TestP2_MemoryBudgetReportCaptured(t *testing.T) {
 // a fake `toolExecResult` injection via runCopilotToolOverride.
 func TestP2_MultiToolRAGHitsAppend(t *testing.T) {
 	st := store.NewEmpty()
-	s := &Server{Store: st, IdentityProfiles: memid.NewStore()}
+	s := New(st)
+	s.IdentityProfiles = memid.NewStore()
 	// Force runCopilotTool to return hits so ragHits accumulation is exercised.
 	s.testHooks = &serverTestHooks{
 		runCopilotToolOverride: func(_ toolRunContext, t *registeredTool, _ toolCallRequest) toolExecResult {
@@ -705,7 +717,8 @@ func TestP2_MultiToolRAGHitsAppend(t *testing.T) {
 // (pre-fix the row stored int(time.Since(started).Milliseconds()) of the
 // whole loop).
 func TestP2_ToolRowDurationMsPerTool(t *testing.T) {
-	s := &Server{Store: store.NewEmpty(), IdentityProfiles: memid.NewStore()}
+	s := New(store.NewEmpty())
+	s.IdentityProfiles = memid.NewStore()
 	s.testHooks = &serverTestHooks{
 		runCopilotToolOverride: func(_ toolRunContext, t *registeredTool, _ toolCallRequest) toolExecResult {
 			// First tool: 100ms. Second: 200ms. If the implementation regressed
@@ -750,7 +763,8 @@ func TestP2_ToolRowDurationMsPerTool(t *testing.T) {
 func TestP2_ChannelPropagatesToParticipant(t *testing.T) {
 	st := store.NewEmpty()
 	st.Employees = append(st.Employees, map[string]any{"id": "de-c", "name": "C", "lifecycle": "active"})
-	s := &Server{Store: st, IdentityProfiles: memid.NewStore()}
+	s := New(st)
+	s.IdentityProfiles = memid.NewStore()
 	for _, ch := range []string{contract.ChannelFeishu, contract.ChannelWecom, contract.ChannelDingtalk} {
 		pc := s.buildParticipantContext(participantCtxInput{
 			WorkspaceID: "ws-1", Channel: ch,
@@ -790,7 +804,8 @@ func TestP2_AttributedChannelSkippedBranchesAudit(t *testing.T) {
 					"channelDeploymentId": "dep-1", "channel": "feishu",
 				})
 			}
-			s := &Server{Store: st, IdentityProfiles: memid.NewStore()}
+			s := New(st)
+	s.IdentityProfiles = memid.NewStore()
 			pc := participantContext{
 				DigitalPartner: "de-x", WorkspaceID: "ws-1",
 				ConversationID: c.sessID, Channel: c.channel,
@@ -819,16 +834,14 @@ func TestP2_AttributedChannelSkippedBranchesAudit(t *testing.T) {
 func TestP2_FallbackReasonDistinguishesEmptyVsNoScore(t *testing.T) {
 	// Case A: no specialists in the workspace at all.
 	t.Run("empty_workspace", func(t *testing.T) {
-		s := &Server{
-			Store:            store.NewEmpty(),
-			IdentityProfiles: memid.NewStore(),
-			testHooks: &serverTestHooks{
-				runPlanExecuteOverride: func(in reactTurnInput) reactTurnResult { return reactTurnResult{} },
-			},
+		s := New(store.NewEmpty())
+		s.IdentityProfiles = memid.NewStore()
+		s.testHooks = &serverTestHooks{
+			runPlanExecuteOverride: func(in reactTurnInput) reactTurnResult { return reactTurnResult{} },
 		}
 		var emitted []map[string]any
 		emit := func(_, _ string, m map[string]any) { emitted = append(emitted, m) }
-		_ = s.runMultiAgentTurn(context.Background(), reactTurnInput{
+		_ = s.CopSvc.RunMultiAgentTurn(context.Background(), reactTurnInput{
 			WorkspaceID: "ws-empty", DigitalPartner: "de-sup",
 			UserMessage: "完全无关的内容", Emit: emit,
 		})
@@ -851,15 +864,14 @@ func TestP2_FallbackReasonDistinguishesEmptyVsNoScore(t *testing.T) {
 			"workspaceId": "ws-1",
 			"role": "人事", "department": "HR",
 		})
-		s := &Server{
-			Store: st, IdentityProfiles: memid.NewStore(),
-			testHooks: &serverTestHooks{
+		s := New(st)
+	s.IdentityProfiles = memid.NewStore()
+	s.testHooks = &serverTestHooks{
 				runPlanExecuteOverride: func(in reactTurnInput) reactTurnResult { return reactTurnResult{} },
-			},
 		}
 		var emitted []map[string]any
 		emit := func(_, _ string, m map[string]any) { emitted = append(emitted, m) }
-		_ = s.runMultiAgentTurn(context.Background(), reactTurnInput{
+		_ = s.CopSvc.RunMultiAgentTurn(context.Background(), reactTurnInput{
 			WorkspaceID: "ws-1", DigitalPartner: "de-sup",
 			UserMessage: "完全无关的内容", Emit: emit,
 		})
@@ -919,18 +931,16 @@ func TestP2_ParticipantMemoryBudgetReported(t *testing.T) {
 		map[string]any{"id": "de-hr", "name": "HR", "lifecycle": "active", "workspaceId": "ws-1",
 			"role": "人事", "department": "HR"},
 	)
-	s := &Server{
-		Store:            st,
-		IdentityProfiles: memid.NewStore(),
-		testHooks: &serverTestHooks{
-			runPlanExecuteOverride: func(in reactTurnInput) reactTurnResult { return reactTurnResult{} },
-			runCopilotToolOverride: func(_ toolRunContext, t *registeredTool, _ toolCallRequest) toolExecResult {
-				// Block the supervisor's own knowledge.retrieve from
-				// emitting anything — the test focuses on the per-
-				// participant memory.budget events. We still need it to
-				// not error out, so return an empty-but-ok result.
-				return toolExecResult{Status: "ok", Hits: map[string]any{"results": []any{}}}
-			},
+	s := New(st)
+	s.IdentityProfiles = memid.NewStore()
+	s.testHooks = &serverTestHooks{
+		runPlanExecuteOverride: func(in reactTurnInput) reactTurnResult { return reactTurnResult{} },
+		runCopilotToolOverride: func(_ toolRunContext, t *registeredTool, _ toolCallRequest) toolExecResult {
+			// Block the supervisor's own knowledge.retrieve from
+			// emitting anything — the test focuses on the per-
+			// participant memory.budget events. We still need it to
+			// not error out, so return an empty-but-ok result.
+			return toolExecResult{Status: "ok", Hits: map[string]any{"results": []any{}}}
 		},
 	}
 	var emitted []map[string]any
@@ -939,7 +949,7 @@ func TestP2_ParticipantMemoryBudgetReported(t *testing.T) {
 			emitted = append(emitted, m)
 		}
 	}
-	_ = s.runMultiAgentTurn(context.Background(), reactTurnInput{
+	_ = s.CopSvc.RunMultiAgentTurn(context.Background(), reactTurnInput{
 		WorkspaceID:    "ws-1",
 		DigitalPartner: "de-sup",
 		UserMessage:     "redis 延迟飙升，请协助运维和人事一同排查",

@@ -42,7 +42,8 @@ func TestBuildParticipantContextWiresAll5Modules(t *testing.T) {
 			{"id": "mdl-test", "providerId": "mp-test", "name": "t", "status": "available", "capabilities": []string{"chat"}},
 		}},
 	}
-	s := &Server{Store: st, IdentityProfiles: memid.NewStore()}
+	s := New(st)
+	s.IdentityProfiles = memid.NewStore()
 
 	emit := func(string, string, map[string]any) {}
 
@@ -119,7 +120,8 @@ func TestRunParticipantTurnRefused(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("identity Set: %v", err)
 	}
-	s := &Server{Store: st, IdentityProfiles: prof}
+	s := New(store.New())
+	s.IdentityProfiles = prof
 
 	var events []map[string]any
 	emit := func(_ string, _ string, m map[string]any) {
@@ -205,7 +207,8 @@ func TestRunParticipantTurnHonorsParentContextCancellation(t *testing.T) {
 		"id": "de-x", "name": "X", "lifecycle": "active",
 	})
 	prof := memid.NewStore()
-	s := &Server{Store: st, IdentityProfiles: prof}
+	s := New(store.New())
+	s.IdentityProfiles = prof
 
 	pc := participantContext{
 		WorkspaceID:     "ws-1",
@@ -336,7 +339,8 @@ func TestAttributedChannelSend(t *testing.T) {
 // tools, runParticipantTools must return empty slices, not panic, and must
 // not write anything to the citation log.
 func TestRunParticipantToolsEmptyTools(t *testing.T) {
-	s := &Server{Store: store.NewEmpty(), IdentityProfiles: memid.NewStore()}
+	s := New(store.New())
+	s.IdentityProfiles = memid.NewStore()
 	pc := participantContext{
 		WorkspaceID:     "ws-1",
 		DigitalPartner: "de-empty",
@@ -361,7 +365,8 @@ func TestRunParticipantToolsEmptyTools(t *testing.T) {
 // calling citationLog().Append with the same shape that
 // runParticipantTools would produce.
 func TestRunParticipantToolsCitationInvariant(t *testing.T) {
-	s := &Server{Store: store.NewEmpty(), IdentityProfiles: memid.NewStore()}
+	s := New(store.New())
+	s.IdentityProfiles = memid.NewStore()
 	cl := s.citationLog()
 	const corr = "corr-inv"
 	const participant = "de-hr"

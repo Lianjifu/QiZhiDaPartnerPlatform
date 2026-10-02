@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/qizhida-partner-platform/backend/internal/copilot"
 	"github.com/qizhida-partner-platform/backend/internal/runtimeenv"
 	"github.com/qizhida-partner-platform/backend/services/qzda-sandbox/signing"
 	"github.com/qizhida-partner-platform/backend/internal/skills/vetter"
@@ -161,23 +162,23 @@ func removeCatalogItem(slice []map[string]any, builtinName string) []map[string]
 
 func runtimeToolsRegistryFallback() []map[string]any {
 	return []map[string]any{
-		{"name": "read_file", "kind": "runtime", "mode": toolModeExecute, "description": "读取技能包内文件", "executor": "skill.open", "removable": false},
-		{"name": "glob", "kind": "runtime", "mode": toolModeExecute, "description": "列出技能包文件", "executor": "skill.open", "removable": false},
-		{"name": "grep", "kind": "runtime", "mode": toolModeExecute, "description": "搜索技能包内容", "executor": "skill.open", "removable": false},
-		{"name": "bash", "kind": "runtime", "mode": toolModeApproval, "description": "沙箱命令执行", "executor": "skill.run", "removable": false},
-		{"name": "write_file", "kind": "runtime", "phase": "P1", "mode": toolModeApproval, "description": "写入 .copilot-ws", "executor": "skill.write", "removable": false},
-		{"name": "edit_file", "kind": "runtime", "phase": "P1", "mode": toolModeApproval, "description": "Patch 编辑", "executor": "patch", "removable": false},
-		{"name": "web_search", "kind": "runtime", "phase": "P1", "mode": toolModeExecute, "description": "Web 搜索", "executor": "http", "availability": "opt_in", "removable": false},
-		{"name": "web_fetch", "kind": "runtime", "phase": "P2", "mode": toolModeExecute, "description": "HTTP GET", "executor": "http", "availability": "opt_in", "removable": false},
+		{"name": "read_file", "kind": "runtime", "mode": copilot.ToolModeExecute, "description": "读取技能包内文件", "executor": "skill.open", "removable": false},
+		{"name": "glob", "kind": "runtime", "mode": copilot.ToolModeExecute, "description": "列出技能包文件", "executor": "skill.open", "removable": false},
+		{"name": "grep", "kind": "runtime", "mode": copilot.ToolModeExecute, "description": "搜索技能包内容", "executor": "skill.open", "removable": false},
+		{"name": "bash", "kind": "runtime", "mode": copilot.ToolModeApproval, "description": "沙箱命令执行", "executor": "skill.run", "removable": false},
+		{"name": "write_file", "kind": "runtime", "phase": "P1", "mode": copilot.ToolModeApproval, "description": "写入 .copilot-ws", "executor": "skill.write", "removable": false},
+		{"name": "edit_file", "kind": "runtime", "phase": "P1", "mode": copilot.ToolModeApproval, "description": "Patch 编辑", "executor": "patch", "removable": false},
+		{"name": "web_search", "kind": "runtime", "phase": "P1", "mode": copilot.ToolModeExecute, "description": "Web 搜索", "executor": "http", "availability": "opt_in", "removable": false},
+		{"name": "web_fetch", "kind": "runtime", "phase": "P2", "mode": copilot.ToolModeExecute, "description": "HTTP GET", "executor": "http", "availability": "opt_in", "removable": false},
 	}
 }
 
 func platformToolsRegistryFallback() []map[string]any {
 	return []map[string]any{
-		{"name": "knowledge.retrieve", "kind": "platform", "mode": toolModeExecute, "description": "检索已发布知识库", "harness": "go", "removable": false},
-		{"name": "memory.recall", "kind": "platform", "mode": toolModeExecute, "description": "跨会话记忆检索", "harness": "go", "removable": false},
-		{"name": "skill.read", "kind": "platform", "mode": toolModeExecute, "description": "加载 SKILL.md 全文", "harness": "go", "removable": false},
-		{"name": "time.now", "kind": "platform", "mode": toolModeExecute, "description": "当前时间（ISO8601）", "harness": "go", "removable": false},
+		{"name": "knowledge.retrieve", "kind": "platform", "mode": copilot.ToolModeExecute, "description": "检索已发布知识库", "harness": "go", "removable": false},
+		{"name": "memory.recall", "kind": "platform", "mode": copilot.ToolModeExecute, "description": "跨会话记忆检索", "harness": "go", "removable": false},
+		{"name": "skill.read", "kind": "platform", "mode": copilot.ToolModeExecute, "description": "加载 SKILL.md 全文", "harness": "go", "removable": false},
+		{"name": "time.now", "kind": "platform", "mode": copilot.ToolModeExecute, "description": "当前时间（ISO8601）", "harness": "go", "removable": false},
 	}
 }
 
@@ -702,7 +703,7 @@ func (s *Server) ensureAllEmployeesCognitiveSkills() {
 		if caps, _ := emp["capabilities"].(map[string]any); caps != nil {
 			before = fmt.Sprintf("%v", caps["skills"])
 		}
-		ensureEmployeeCognitiveSkills(emp)
+		copilot.EnsureEmployeeCognitiveSkills(emp)
 		after := ""
 		if caps, _ := emp["capabilities"].(map[string]any); caps != nil {
 			after = fmt.Sprintf("%v", caps["skills"])
@@ -768,7 +769,7 @@ func (s *Server) ensureBuiltinCatalogLocked(manifest builtinManifest) {
 			"builtinSkillName": dirName, "tier": tier,
 			"defaultPack": inGeneral, "defaultPackId": manifest.PackID,
 			"packIds": packIds, "hasScripts": meta.HasScripts,
-			"cognitive": isCognitiveSkillName(dirName),
+			"cognitive": copilot.IsCognitiveSkillName(dirName),
 			"producesArtifacts": meta.HasScripts,
 			"availability": dep["availability"], "externalBins": dep["externalBins"],
 		}

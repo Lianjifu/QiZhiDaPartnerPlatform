@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/qizhida-partner-platform/backend/internal/copilot"
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
@@ -13,8 +14,8 @@ func TestNormalizeSessionModeAndFilter(t *testing.T) {
 		t.Fatalf("exec -> execute")
 	}
 	reg := []registeredTool{
-		{Key: "builtin:knowledge.retrieve", Name: "knowledge.retrieve", Kind: "builtin", Mode: toolModeExecute, Enabled: true},
-		{Key: "skill:docx", Name: "docx", Kind: "skill", Mode: toolModeApproval, Enabled: true, RequiresApproval: true},
+		{Key: "builtin:knowledge.retrieve", Name: "knowledge.retrieve", Kind: "builtin", Mode: copilot.ToolModeExecute, Enabled: true},
+		{Key: "skill:docx", Name: "docx", Kind: "skill", Mode: copilot.ToolModeApproval, Enabled: true, RequiresApproval: true},
 	}
 	out := filterRegistryBySessionMode(reg, sessionModeInvestigate)
 	if len(out) != 2 {
@@ -54,20 +55,20 @@ func TestApplySessionGovernanceRunMode(t *testing.T) {
 }
 
 func TestReasoningEffortGuidance(t *testing.T) {
-	if reasoningEffortGuidance("off") == "" {
+	if copilot.ReasoningEffortGuidance("off") == "" {
 		t.Fatal("off should inject guidance")
 	}
-	if reasoningEffortGuidance("deep") == "" {
+	if copilot.ReasoningEffortGuidance("deep") == "" {
 		t.Fatal("deep should inject guidance")
 	}
-	if reasoningEffortGuidance("standard") != "" {
+	if copilot.ReasoningEffortGuidance("standard") != "" {
 		t.Fatal("standard keeps default prompt")
 	}
 }
 
 func TestContentSafetyRedact(t *testing.T) {
 	t.Setenv("DE_CONTENT_SAFETY", "redact")
-	r := applyContentSafety("联系我 13800138000")
+	r := copilot.ApplyContentSafety("联系我 13800138000")
 	if !r.Redacted || r.Blocked {
 		t.Fatalf("expected redact: %+v", r)
 	}

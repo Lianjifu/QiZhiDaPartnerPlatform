@@ -37,7 +37,10 @@
 // single seam.
 package copilot
 
-import "net/http"
+import (
+	"net/http"
+	"strings"
+)
 
 // Handler holds the 7 JSON M02 HTTP handlers + 1 SSE stream + 1
 // internal hook. The underlying logic lives on *server.Server —
@@ -62,4 +65,62 @@ type Handler struct {
 	// tool / plan / agent / memory.budget / reflect / evolve.candidate /
 	// done events directly).
 	CopilotStream func(w http.ResponseWriter, r *http.Request)
+	// E2E fallback: routes outside the canonical 8 (e.g. evolve candidate
+	// approve) that copilot-internal integration tests exercise through
+	// CopH().ServeHTTP. Production wires these directly on the server's
+	// main route switch.
+	EvolveCandidateAction func(r *http.Request) (any, error)
+}
+
+// ServeHTTP dispatches the M02 routes used by copilot's own integration
+// tests (C1-C9). The server's main route table delegates to these
+// fields directly in production; ServeHTTP exists so copilot-internal
+// tests can wire the Handler to httptest without standing up the
+// server's full dispatch loop.
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if h == nil {
+		http.Error(w, "copilot handler not wired", http.StatusInternalServerError)
+		return
+	}
+	p := r.URL.Path
+	switch {
+	case p == "/api/copilot/conversations" && r.Method == http.MethodGet:
+		if h.ListConversations != nil {
+			_, _ = h.ListConversations(r)
+		}
+	case p == "/api/copilot/conversations" && r.Method == http.MethodPost:
+		if h.CreateConversation != nil {
+			_, _ = h.CreateConversation(r)
+		}
+	case strings.HasSuffix(p, "/replay") && r.Method == http.MethodGet:
+		if h.ReplayCopilotTurn != nil {
+			_, _ = h.ReplayCopilotTurn(r)
+		}
+	case strings.HasSuffix(p, "/cancel") && r.Method == http.MethodPost:
+		if h.CancelCopilotTurn != nil {
+			_, _ = h.CancelCopilotTurn(r)
+		}
+	case strings.HasSuffix(p, "/feedback") && r.Method == http.MethodPost:
+		if h.CopilotMessageFeedback != nil {
+			_, _ = h.CopilotMessageFeedback(r)
+		}
+	case strings.HasSuffix(p, "/status") && r.Method == http.MethodGet:
+		if h.GetCopilotTurnStatus != nil {
+			_, _ = h.GetCopilotTurnStatus(r)
+		}
+	case strings.HasSuffix(p, "/stream") && r.Method == http.MethodPost:
+		if h.CopilotStream != nil {
+			h.CopilotStream(w, r)
+		}
+	case p == "/api/internal/copilot/post-turn" && r.Method == http.MethodPost:
+		if h.CopilotPostTurnAPI != nil {
+			_, _ = h.CopilotPostTurnAPI(r)
+		}
+	case strings.HasPrefix(p, "/api/evolve/candidates/") && r.Method == http.MethodPost:
+		if h.EvolveCandidateAction != nil {
+			_, _ = h.EvolveCandidateAction(r)
+		}
+	default:
+		http.Error(w, "copilot handler route not implemented: "+r.URL.Path, http.StatusNotFound)
+	}
 }

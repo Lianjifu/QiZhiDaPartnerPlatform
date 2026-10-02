@@ -9,9 +9,9 @@ import (
 
 	"github.com/qizhida-partner-platform/backend/internal/auth"
 	"github.com/qizhida-partner-platform/backend/internal/channel"
+	"github.com/qizhida-partner-platform/backend/internal/copilot"
 	"github.com/qizhida-partner-platform/backend/internal/knowledge/citation"
 	"github.com/qizhida-partner-platform/backend/internal/knowledge/citationlog"
-	memid "github.com/qizhida-partner-platform/backend/internal/memory/identity"
 	"github.com/qizhida-partner-platform/backend/internal/modelprov"
 )
 
@@ -38,7 +38,7 @@ func (s *Server) logCitationsForRAG(ws, turnID string, hits []map[string]any) {
 		quoted, _, _ := citation.ExtractQuote(snippet)
 		tier := str(h["tier"])
 		if tier == "" {
-			tier = string(citationTierFromDocStatus(str(h["status"])))
+			tier = string(copilot.CitationTierFromDocStatus(str(h["status"])))
 		}
 		cl.Append(citationlog.Record{
 			WorkspaceID: ws,
@@ -79,38 +79,11 @@ type participantCtxInput struct {
 //   - model selection (modelprov risk-floor policy routing)
 //   - skill registry filtered by the participant's session mode
 //   - delivery channel for outbound (Feishu/WeCom/DingTalk)
-type participantContext struct {
-	WorkspaceID     string
-	ConversationID  string
-	CorrelationID   string
-	DigitalPartner string
-	SessionMode     string
-	RiskLevel       string
-	ModelID         string
-	Identity        memid.Profile
-	IdentityPresent bool
-	MemoryHits      []memoryHit
-	Tools           []registeredTool
-	Channel         string
-	Viewer          *auth.Identity
-	OwnerID         string
-	UserMessage     string
-	Request         *http.Request
-	Emit            reactEmitFunc
-}
-
-// participantTurnResult is what runParticipantTurn returns. Status is one of
-// success | refused | failed | timed_out.
-type participantTurnResult struct {
-	ParticipantID string
-	Text          string
-	ModelID       string
-	Status        string
-	Reason        string
-	DurationMs    int
-	HardNoRefusal string // populated when Status=="refused" with the matched hard-no term
-	ToolCalls     []map[string]any
-}
+//
+// Type moved to internal/copilot/ during the M02 P2 deep move; the
+// exported alias `copilot.ParticipantContext` is what external callers
+// (server.go, this file's mergeParticipantOpinions stub) reference.
+// The original definition lives in internal/copilot/service.go.
 
 // buildParticipantContext assembles the per-participant execution view from
 // the 5 modules. The supervisor passes the employee record (looked up by
@@ -133,7 +106,7 @@ func (s *Server) buildParticipantContext(in participantCtxInput, emp map[string]
 	}
 	// Model selection (modelprov). Multi-agent sub-calls default to P1 so
 	// routine expert opinions don't all hit the strongest model.
-	pc.ModelID, _, _ = s.resolveModelByPolicyLevel(in.WorkspaceID, "", "P1", pc.RiskLevel)
+	pc.ModelID, _, _ = s.CopSvc.ResolveModelByPolicyLevel(in.WorkspaceID, "", "P1", pc.RiskLevel)
 
 	// Identity profile (Mem5).
 	if prof, err := s.identityStore().Get(in.WorkspaceID, deID); err == nil {
@@ -144,11 +117,11 @@ func (s *Server) buildParticipantContext(in participantCtxInput, emp map[string]
 	// Memory slice (Mem2/6). Lock held by caller if in a hot path; here we
 	// take our own RLock for the retrieval.
 	s.Store.RLock()
-	pc.MemoryHits = s.retrieveMemoryForTurnLocked(in.WorkspaceID, in.OwnerID, deID, in.ConversationID, in.UserMessage, in.Viewer)
+	pc.MemoryHits = s.CopSvc.RetrieveMemoryForTurnLocked(in.WorkspaceID, in.OwnerID, deID, in.ConversationID, in.UserMessage, in.Viewer)
 	s.Store.RUnlock()
 
 	// Skill registry filtered by participant session mode.
-	pc.Tools = buildToolRegistry(emp, in.EnabledTools)
+	pc.Tools = copilot.BuildToolRegistry(emp, in.EnabledTools)
 	pc.Tools = filterRegistryBySessionMode(pc.Tools, pc.SessionMode)
 
 	return pc
@@ -238,9 +211,16 @@ func (s *Server) runParticipantTools(ctx context.Context, pc participantContext)
 			// the supervisor ReAct path.
 			_, r = s.dispatchAuthorizedTool(toolCtx, pc.Tools, call, pc.SessionMode, pc.RiskLevel, pc.Emit)
 		} else {
-			r = s.runCopilotTool(toolCtx, &t, call)
+			// Honor the server-side test hook so copilot-internal code
+			// paths see the same overrides when *_test.go files set
+			// s.testHooks.runCopilotToolOverride after construction.
+			if s.testHooks != nil && s.testHooks.runCopilotToolOverride != nil {
+				r = s.testHooks.runCopilotToolOverride(toolCtx, &t, call)
+			} else {
+				r = s.CopSvc.RunCopilotTool(toolCtx, &t, call)
+			}
 		}
-		hits := ragHitResults(r.Hits)
+		hits := copilot.RagHitResults(r.Hits)
 		// Cite every retrieval hit into the global log so downstream deletes
 		// can fail with 409 even if the participant itself didn't survive.
 		// Append across tools so a later tool's hits don't silently replace
@@ -342,7 +322,7 @@ func (s *Server) runParticipantTurn(ctx context.Context, pc participantContext) 
 	if len(ragHits) > 0 {
 		ragForPrompt = map[string]any{"results": ragHits}
 	}
-	system := buildCopilotSystemPromptWithEffort(empMap, ragForPrompt, pc.MemoryHits, "")
+	system := copilot.BuildCopilotSystemPromptWithEffort(empMap, ragForPrompt, pc.MemoryHits, "")
 
 	msgs := []modelprov.ChatMessage{
 		{Role: "user", Content: "用户问题：\n" + pc.UserMessage},
@@ -387,7 +367,7 @@ func (s *Server) runParticipantTurn(ctx context.Context, pc participantContext) 
 	if res.Status == "success" && err == nil {
 		res.ModelID = coalesce(rt.ModelID, res.ModelID)
 	}
-	res.Text = strings.TrimSpace(stripToolCallMarkers(coalesce(text, buf.String())))
+	res.Text = strings.TrimSpace(copilot.StripToolCallMarkers(coalesce(text, buf.String())))
 	res.DurationMs = int(time.Since(started).Milliseconds())
 	res.ToolCalls = toolSummaries
 

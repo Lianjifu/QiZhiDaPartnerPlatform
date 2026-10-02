@@ -109,7 +109,7 @@ func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 	case "qzda.collab.v1.CollabService/ReplayTurn":
 		cid := coalesce(str(body["conversationId"]), str(body["conversation_id"]))
 		corr := coalesce(str(body["correlationId"]), str(body["correlation_id"]))
-		rec := s.lookupContextSnapshotCtx(r.Context(), s.workspaceID(r), cid, corr)
+		rec := s.CopSvc.LookupContextSnapshotCtx(r.Context(), s.workspaceID(r), cid, corr)
 		if rec == nil {
 			writeErr(w, apperr.NotFoundErr(apperr.ReplayNotFound, "回合快照不存在"))
 			return

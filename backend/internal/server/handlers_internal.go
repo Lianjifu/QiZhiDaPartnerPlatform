@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/qizhida-partner-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/copilot"
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
@@ -164,7 +165,7 @@ func (s *Server) copilotPostTurnAPI(r *http.Request) (any, error) {
 			s.appendMemoryAuditLocked(ws, coalesce(ownerName, "系统"), "写入记忆", truncateRunes(str(raw["title"]), 40), "failed", str(raw["correlationId"]))
 		}
 	}
-	created := s.runPostTurnEvolutionLocked(evolveTurnInput{
+	created := s.CopSvc.RunPostTurnEvolutionLocked(copilot.EvolveTurnInput{
 		WorkspaceID:       ws,
 		OwnerID:           ownerID,
 		OwnerName:         ownerName,
@@ -179,7 +180,7 @@ func (s *Server) copilotPostTurnAPI(r *http.Request) (any, error) {
 		ToolCalls:         asMapSlice(body["toolCalls"]),
 	})
 	s.Store.Unlock()
-	go s.persistEvolve()
+	go s.CopSvc.PersistEvolve()
 	return map[string]any{
 		"evolveCandidates": created,
 		"memoryError":      memoryErr,

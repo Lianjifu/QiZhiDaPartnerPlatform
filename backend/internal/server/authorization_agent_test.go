@@ -12,7 +12,7 @@ func TestCreatePendingAuthorization_AgentRequester(t *testing.T) {
 	st.Employees = []map[string]any{{
 		"id": "de-hr", "name": "人事专员", "role": "人事", "escalationOwner": "admin",
 	}}
-	s := &Server{Store: st}
+	s := New(st)
 	viewer := &auth.Identity{ID: "admin", Name: "平台管理员", Role: "admin"}
 	tool := &registeredTool{Name: "pptx", Key: "skill:pptx", Kind: "skill"}
 	s.Store.Lock()
@@ -58,7 +58,7 @@ func TestCanApproveAction_UserSelfDenied(t *testing.T) {
 
 func TestResolveApproverCandidates_EscalationOwnerTitle(t *testing.T) {
 	st := store.New()
-	s := &Server{Store: st}
+	s := New(st)
 	ids, names := s.resolveApproverCandidatesLocked("w1", "运营负责人")
 	if len(ids) == 0 || ids[0] != "u2" {
 		t.Fatalf("ids=%v names=%v", ids, names)

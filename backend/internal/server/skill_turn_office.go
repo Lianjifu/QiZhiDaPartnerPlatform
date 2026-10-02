@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/qizhida-partner-platform/backend/internal/copilot"
 )
 
 var reOfficeDepFlag = regexp.MustCompile(`(?i)(?:--(?:outline-file|outline|input|spec|patch-file|spec-file))\s+("([^"]+)"|'([^']+)'|(\S+))`)
@@ -110,7 +112,7 @@ func rescueMissingOfficeDep(sk map[string]any, pkgPath, dep, name, userMessage s
 	if !strings.HasPrefix(dep, ".copilot-ws/") {
 		return false
 	}
-	tool := &registeredTool{Name: name, Kind: "skill", Key: "skill:" + slugToolName(name)}
+	tool := &registeredTool{Name: name, Kind: "skill", Key: "skill:" + copilot.SlugToolName(name)}
 	content := inferOfficeOutline(tool, userMessage)
 	if content == "" {
 		return false

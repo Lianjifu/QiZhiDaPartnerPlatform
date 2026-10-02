@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/qizhida-partner-platform/backend/internal/copilot"
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
@@ -112,7 +113,7 @@ func (s *Server) getSharedSession(r *http.Request) (any, error) {
 				continue
 			}
 			content := str(m["content"])
-			content = safetyKeyRe.ReplaceAllString(content, "[已脱敏]")
+			content = copilot.SafetyKeyRe.ReplaceAllString(content, "[已脱敏]")
 			safe = append(safe, map[string]any{
 				"id": m["id"], "role": role, "content": content, "createdAt": m["createdAt"],
 			})

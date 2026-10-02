@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/qizhida-partner-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/copilot"
 	"github.com/qizhida-partner-platform/backend/pkg/contract"
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
@@ -206,7 +207,7 @@ func filterRegistryBySessionMode(reg []registeredTool, mode string) []registered
 		// allowlist branch below may only re-enable the former, never the
 		// latter — the old code unconditionally flipped Enabled=true.
 		operatorEnabled := t.Enabled
-		if t.RequiresApproval || t.Mode == toolModeApproval {
+		if t.RequiresApproval || t.Mode == copilot.ToolModeApproval {
 			t.Enabled = false
 		}
 		// investigate: keep builtins + recommend/execute non-approval skills

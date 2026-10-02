@@ -14,6 +14,7 @@ import (
 	commonv1 "github.com/qizhida-partner-platform/backend/gen/qzda/common/v1"
 	runtimev1 "github.com/qizhida-partner-platform/backend/gen/qzda/runtime/v1"
 	"github.com/qizhida-partner-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/copilot"
 	"github.com/qizhida-partner-platform/backend/internal/modelprov"
 	"github.com/qizhida-partner-platform/backend/pkg/contract"
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
@@ -69,7 +70,7 @@ func (s *Server) runRuntimeTurn(ctx context.Context, in reactTurnInput) reactTur
 }
 
 func (s *Server) runLocalRuntime(ctx context.Context, in reactTurnInput) reactTurnResult {
-	return s.runHarnessTurn(ctx, in)
+	return s.CopSvc.RunHarnessTurn(ctx, in)
 }
 
 func (s *Server) runRemoteRuntime(ctx context.Context, in reactTurnInput) reactTurnResult {
@@ -103,8 +104,8 @@ func (s *Server) runRemoteRuntime(ctx context.Context, in reactTurnInput) reactT
 
 	var full strings.Builder
 	var lastMode, lastModel string
-	replyMode := normalizeReplyMode(in.ReplyMode)
-	segmentedRemote := replyMode != replyModeSingle
+	replyMode := copilot.NormalizeReplyMode(in.ReplyMode)
+	segmentedRemote := replyMode != copilot.ReplyModeSingle
 	var sawMessageStart bool
 	onEvent := func(typ string, payload map[string]any) {
 		if typ == "" {
@@ -172,8 +173,8 @@ func (s *Server) runRemoteRuntime(ctx context.Context, in reactTurnInput) reactT
 		ReplyMode: replyMode,
 	}
 	if segmentedRemote && !sawMessageStart && in.Emit != nil {
-		idGen := defaultSegmentIDGen(s)
-		out.Segments = streamHarnessAnswer(in.Emit, text, coalesce(lastModel, in.ModelID), out.Resolved, out.Mode, 0, &streamAnswerOpts{
+		idGen := copilot.DefaultSegmentIDGen(s.CopSvc)
+		out.Segments = copilot.StreamHarnessAnswer(in.Emit, text, coalesce(lastModel, in.ModelID), out.Resolved, out.Mode, 0, &copilot.StreamAnswerOpts{
 			ReplyMode: replyMode, SegmentPolicy: in.SegmentPolicy, CorrelationID: in.CorrelationID,
 			FirstMessageID: in.FirstMessageID, IDGen: idGen,
 		})
@@ -186,7 +187,7 @@ func runtimeLoopPayload(in reactTurnInput) map[string]any {
 	if in.Viewer != nil {
 		tenant, actor = in.Viewer.TenantID, in.Viewer.ID
 	}
-	tools := enabledToolKeys(in.Registry)
+	tools := copilot.EnabledToolKeys(in.Registry)
 	return map[string]any{
 		"input":         in.UserMessage,
 		"modelId":       in.ModelID,

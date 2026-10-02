@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/qizhida-partner-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/copilot"
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
@@ -306,7 +307,7 @@ func (s *Server) executeAction(r *http.Request) (any, error) {
 	deID := str(action["digitalPartnerId"])
 	corr := str(authReq["correlationId"])
 	risk := str(authReq["riskLevel"])
-	toolKey := coalesce(str(authReq["toolKey"]), toolKind+":"+slugToolName(toolName))
+	toolKey := coalesce(str(authReq["toolKey"]), toolKind+":"+copilot.SlugToolName(toolName))
 	userMsg := lastUserMessageLocked(s.Store.Messages[cid])
 	s.Store.Unlock()
 
@@ -317,7 +318,7 @@ func (s *Server) executeAction(r *http.Request) (any, error) {
 		SessionMode: sessionModeExecute, RiskLevel: risk,
 	}
 	tool := &registeredTool{
-		Key: toolKey, Name: toolName, Kind: toolKind, Mode: toolModeExecute, Enabled: true,
+		Key: toolKey, Name: toolName, Kind: toolKind, Mode: copilot.ToolModeExecute, Enabled: true,
 	}
 
 	var combined strings.Builder
@@ -337,7 +338,7 @@ func (s *Server) executeAction(r *http.Request) (any, error) {
 				return pf
 			}
 		}
-		res := s.runCopilotTool(runCtx, tool, toolCallRequest{Name: toolName, Args: stepArgs})
+		res := s.CopSvc.RunCopilotTool(runCtx, tool, toolCallRequest{Name: toolName, Args: stepArgs})
 		if plan != nil {
 			stStatus := "success"
 			if res.Status != "success" {
@@ -401,7 +402,7 @@ func (s *Server) executeAction(r *http.Request) (any, error) {
 			nextRun = preferredNextRunCommand(plan, action, combined.String())
 		}
 	} else {
-		lastRes = s.runCopilotTool(runCtx, tool, toolCallRequest{Name: toolName, Args: args})
+		lastRes = s.CopSvc.RunCopilotTool(runCtx, tool, toolCallRequest{Name: toolName, Args: args})
 		executedSteps = 1
 		combined.WriteString(lastRes.Output)
 		if lastRes.Status == "success" {
@@ -409,7 +410,7 @@ func (s *Server) executeAction(r *http.Request) (any, error) {
 				nextRun = cmd
 				// P0 auto-continue single-step write → run
 				runArgs := map[string]any{"action": skillActionRun, "command": cmd}
-				runRes := s.runCopilotTool(runCtx, tool, toolCallRequest{Name: toolName, Args: runArgs})
+				runRes := s.CopSvc.RunCopilotTool(runCtx, tool, toolCallRequest{Name: toolName, Args: runArgs})
 				executedSteps++
 				combined.WriteString("\n\n—— 自动续跑 run ——\n")
 				combined.WriteString(runRes.Output)

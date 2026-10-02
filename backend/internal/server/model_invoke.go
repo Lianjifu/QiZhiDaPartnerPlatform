@@ -13,22 +13,17 @@ import (
 	"strings"
 	"time"
 
+	"github.com/qizhida-partner-platform/backend/internal/copilot"
 	"github.com/qizhida-partner-platform/backend/internal/modelprov"
 	"github.com/qizhida-partner-platform/backend/internal/modelprov/trace"
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
-// resolvedTurn is the concrete provider + model used for one Copilot turn.
-type resolvedTurn struct {
-	ModelID      string
-	ModelName    string
-	ProviderID   string
-	ProviderName string
-	Protocol     string
-	Level        string
-	Source       string // provider | routing | env
-	Request      modelprov.ChatRequest
-}
+// ResolvedTurn is re-exported from internal/copilot/ (see service.go).
+// Local alias kept for callers that still want to reference it as
+// `resolvedTurn` (lowercase) — they transparently hit the copilot
+// definition.
+type resolvedTurn = copilot.ResolvedTurn
 
 func (s *Server) resolveModelForTurn(ctx context.Context, ws, requested string) (resolvedTurn, error) {
 	turns := s.listResolvedTurns(ctx, ws, requested)
@@ -507,7 +502,7 @@ func (s *Server) streamLLMForCopilot(ctx context.Context, r *http.Request, ws, m
 }
 
 func (s *Server) streamEnvFallback(ctx context.Context, messages []modelprov.ChatMessage, system string, onDelta func(text, resolvedModelID string) error, prior error) (string, resolvedTurn, error) {
-	userMsg := lastUserContent(messages)
+	userMsg := copilot.LastUserContent(messages)
 	if envReq, ok := modelprov.EnvFallbackRequest(userMsg); ok {
 		if system != "" {
 			envReq.System = system
@@ -565,7 +560,7 @@ func capBaseURL() string {
 }
 
 func (s *Server) streamLLMViaCap(ctx context.Context, r *http.Request, ws, modelID string, messages []modelprov.ChatMessage, system string, onDelta func(text, resolvedModelID string) error) (string, resolvedTurn, error) {
-	userMsg := lastUserContent(messages)
+	userMsg := copilot.LastUserContent(messages)
 	payload, _ := json.Marshal(map[string]any{
 		"workspaceId": ws, "modelId": modelID, "content": userMsg, "messages": messages, "stream": true, "system": system,
 	})

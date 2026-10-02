@@ -16,7 +16,7 @@ func TestRunRuntimeToolDoesNotRecurse(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(pkg, "SKILL.md"), []byte("# docx skill"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	s := &Server{Store: store.NewEmpty()}
+	s := New(store.NewEmpty())
 	s.Store.Skills = []map[string]any{{
 		"id": "sk-docx", "workspaceId": "w1", "name": "docx", "kind": "skill",
 		"packagePath": pkg, "status": "installed",
@@ -39,7 +39,7 @@ func TestRunRuntimeToolWriteFileRoutesToPilotdeck(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(pkg, ".copilot-ws"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	s := &Server{Store: store.NewEmpty()}
+	s := New(store.NewEmpty())
 	s.Store.Skills = []map[string]any{{
 		"id": "sk-pptx", "workspaceId": "w1", "name": "pptx", "kind": "skill",
 		"packagePath": pkg, "status": "installed", "producesArtifacts": true,
@@ -101,7 +101,7 @@ func TestRunPilotdeckToolReadFileDoesNotRecurse(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(pkg, "SKILL.md"), []byte("# docx skill"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	s := &Server{Store: store.NewEmpty()}
+	s := New(store.NewEmpty())
 	s.Store.Skills = []map[string]any{{
 		"id": "sk-docx", "workspaceId": "w1", "name": "docx", "kind": "skill",
 		"packagePath": pkg, "status": "installed",

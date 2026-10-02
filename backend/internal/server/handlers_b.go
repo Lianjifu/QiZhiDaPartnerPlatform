@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/qizhida-partner-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/copilot"
 	"github.com/qizhida-partner-platform/backend/internal/store"
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
@@ -93,7 +94,7 @@ func (s *Server) createEmployee(r *http.Request) (any, error) {
 	if item["capabilities"] == nil {
 		item["capabilities"] = map[string]any{"model": "企业通用路由 v2", "knowledge": []string{}, "skills": []string{}, "tools": []string{}, "workflows": []string{}, "channels": []string{"Web"}}
 	}
-	ensureEmployeeCognitiveSkills(item)
+	copilot.EnsureEmployeeCognitiveSkills(item)
 	store.ApplyDefaultReplyModeRuntime(item)
 	s.Store.Lock()
 	defer s.Store.Unlock()

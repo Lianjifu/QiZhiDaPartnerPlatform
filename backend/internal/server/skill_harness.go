@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/qizhida-partner-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/copilot"
 )
 
 const (
@@ -219,7 +220,7 @@ func skillInvocationNeedsApproval(sessionMode string, tool *registeredTool, sk m
 	if normalizeSessionMode(sessionMode) != sessionModeExecute {
 		return false
 	}
-	if tool.RequiresApproval || tool.Mode == toolModeApproval {
+	if tool.RequiresApproval || tool.Mode == copilot.ToolModeApproval {
 		return action == skillActionRun || action == skillActionWrite
 	}
 	if sk != nil {
@@ -255,7 +256,7 @@ func denySkillWriteInInvestigate() toolExecResult {
 }
 
 func (s *Server) resolveSkillForTool(ws string, t *registeredTool, skillID string) map[string]any {
-	return s.findWorkspaceSkill(ws, skillID, t.Name)
+	return s.CopSvc.FindWorkspaceSkill(ws, skillID, t.Name)
 }
 
 // runSkillTool implements the Skill Harness: open / write / run / artifacts.
@@ -307,7 +308,7 @@ func (s *Server) runSkillTool(ctx toolRunContext, t *registeredTool, call toolCa
 	enrichSkillMetadata(sk)
 	skillID = str(sk["id"])
 
-	if isCognitiveSkillName(str(sk["name"])) || isCognitiveSkillName(str(sk["builtinSkillName"])) || boolFrom(sk["cognitive"]) {
+	if copilot.IsCognitiveSkillName(str(sk["name"])) || copilot.IsCognitiveSkillName(str(sk["builtinSkillName"])) || boolFrom(sk["cognitive"]) {
 		sk["cognitive"] = true
 		sk["readOnly"] = true
 		sk["producesArtifacts"] = false
@@ -635,7 +636,7 @@ func (s *Server) dispatchAuthorizedTool(
 	sessionMode, risk string,
 	emit reactEmitFunc,
 ) (tool *registeredTool, res toolExecResult) {
-	tool, deny := authorizeToolCall(reg, call)
+	tool, deny := copilot.AuthorizeToolCall(reg, call)
 	// .copilot-ws 沙箱写脚本：与 skill.write 对齐，免非 skill 的 RequiresApproval 拦截。
 	if deny != nil && deny.Permission == "approval_required" && tool != nil &&
 		(strings.EqualFold(tool.Name, "write_file") || strings.EqualFold(tool.Name, "edit_file")) &&
@@ -667,5 +668,5 @@ func (s *Server) dispatchAuthorizedTool(
 		res = *deny
 		return tool, res
 	}
-	return tool, s.runCopilotTool(runCtx, tool, call)
+	return tool, s.CopSvc.RunCopilotTool(runCtx, tool, call)
 }

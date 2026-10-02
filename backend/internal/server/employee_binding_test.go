@@ -3,6 +3,7 @@ package server
 import (
 	"testing"
 
+	"github.com/qizhida-partner-platform/backend/internal/copilot"
 	"github.com/qizhida-partner-platform/backend/internal/store"
 )
 
@@ -45,14 +46,14 @@ func TestEmployeeBindingFrozenOnSnapshotLookup(t *testing.T) {
 		"id":           "de-freeze",
 		"capabilities": map[string]any{"model": "frozen-route-v1"},
 	}
-	rec := buildContextSnapshotRecord(map[string]any{
+	rec := copilot.BuildContextSnapshotRecord(map[string]any{
 		"id": "snap-bind", "workspaceId": "w1", "conversationId": "conv-bind",
 		"correlationId": "corr-bind-1", "partnerId": "de-freeze",
 		"employeeBinding": captureEmployeeBinding(emp, "w1"),
 	})
-	srv.persistContextSnapshot(rec)
+	srv.CopSvc.PersistContextSnapshot(rec)
 	emp["capabilities"].(map[string]any)["model"] = "mutated-later"
-	got := srv.lookupContextSnapshot("w1", "conv-bind", "corr-bind-1")
+	got := srv.CopSvc.LookupContextSnapshot("w1", "conv-bind", "corr-bind-1")
 	if got == nil {
 		t.Fatal("missing snapshot")
 	}

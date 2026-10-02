@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/qizhida-partner-platform/backend/internal/auth"
-	"github.com/qizhida-partner-platform/backend/internal/modelprov"
+	"github.com/qizhida-partner-platform/backend/internal/copilot"
 	"github.com/qizhida-partner-platform/backend/internal/policy"
 	"github.com/qizhida-partner-platform/backend/pkg/contract"
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
@@ -383,7 +383,7 @@ func (s *Server) getCopilotTurnStatus(r *http.Request) (any, error) {
 		return nil, apperr.UnauthorizedErr("请先登录")
 	}
 	rawID := conversationIDFromPath(r.URL.Path)
-	corr := correlationIDFromTurnSubPath(r.URL.Path, "status")
+	corr := copilot.CorrelationIDFromTurnSubPath(r.URL.Path, "status")
 	if rawID == "" || corr == "" {
 		return nil, apperr.BadReq(apperr.BadRequest, "缺少会话或 correlationId")
 	}
@@ -392,13 +392,13 @@ func (s *Server) getCopilotTurnStatus(r *http.Request) (any, error) {
 	cid := s.resolveMessageBucketID(ws, rawID)
 	s.Store.RUnlock()
 
-	status := turnStatusRunning
+	status := copilot.TurnStatusRunning
 	clientMsgID := ""
-	if rec, ok := lookupCopilotTurn(corr); ok {
+	if rec, ok := copilot.LookupCopilotTurn(corr); ok {
 		status = rec.Status
 		clientMsgID = rec.ClientMsgID
 	} else if s.hasAssistantForCorrelation(cid, corr) {
-		status = turnStatusDone
+		status = copilot.TurnStatusDone
 	} else {
 		return nil, apperr.NotFoundErr(apperr.NotFound, "回合不存在或已过期")
 	}
@@ -494,11 +494,11 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, apperr.UnauthorizedErr("请先登录"))
 		return
 	}
-	if !s.allowCopilotTurn(ws, id.ID) {
+	if !s.CopSvc.AllowCopilotTurn(ws, id.ID) {
 		writeErr(w, apperr.New(apperr.RateLimited, 429, "Copilot 回合过于频繁，请稍后再试"))
 		return
 	}
-	safeIn := applyContentSafety(userMsg)
+	safeIn := copilot.ApplyContentSafety(userMsg)
 	if safeIn.Blocked {
 		IncCopilotSafetyBlocked()
 		writeErr(w, apperr.Forbidden(apperr.AccessWriteForbidden, safeIn.Text))
@@ -540,7 +540,7 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 	runMode = resolveRunMode(runMode, "", sessionMode)
 	s.Store.RUnlock()
 
-	registerCopilotTurn(cid, corr, clientMsgID)
+	copilot.RegisterCopilotTurn(cid, corr, clientMsgID)
 
 	eval, err := s.evaluateZeroTrust(id, "session", "write", "internal", false, corr)
 	if err != nil {
@@ -564,7 +564,7 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if clientMsgID != "" {
-		if prev := s.loadIdempotentTurn(cid, clientMsgID); len(prev) > 0 {
+		if prev := s.CopSvc.LoadIdempotentTurn(cid, clientMsgID); len(prev) > 0 {
 			flusher, ok := w.(http.Flusher)
 			if !ok {
 				writeErr(w, apperr.New(apperr.Unknown, 500, "流式不支持"))
@@ -573,14 +573,14 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "text/event-stream")
 			w.Header().Set("Cache-Control", "no-cache")
 			w.Header().Set("x-correlation-id", corr)
-			replayStoredSegments(func(typ, stage string, extra map[string]any) {
+			copilot.ReplayStoredSegments(func(typ, stage string, extra map[string]any) {
 				payload := map[string]any{"type": typ, "stage": stage, "correlationId": corr}
 				for k, v := range extra {
 					payload[k] = v
 				}
 				writeSSE(w, typ, payload)
 				flusher.Flush()
-			}, prev, modelIDFromStoredMessage(prev[len(prev)-1]), corr)
+			}, prev, copilot.ModelIDFromStoredMessage(prev[len(prev)-1]), corr)
 			ids := make([]string, 0, len(prev))
 			for _, m := range prev {
 				ids = append(ids, str(m["id"]))
@@ -608,14 +608,14 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 	streamOK := false
 	defer func() { IncCopilotStream(streamOK) }()
 
-	rec := &turnEventRecorder{}
-	narrCollector := newTurnNarrativeCollector()
+	rec := &copilot.TurnEventRecorder{}
+	narrCollector := copilot.NewTurnNarrativeCollector()
 	turnStartedAt := time.Now()
 	var snapRec map[string]any
 	defer func() {
 		if snapRec != nil {
 			snapRec["events"] = rec.Events()
-			s.persistContextSnapshot(snapRec)
+			s.CopSvc.PersistContextSnapshot(snapRec)
 		}
 	}()
 
@@ -645,10 +645,10 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 		// 防止并发 wecom webhook goroutine 共享同一个员工 map 导致 DATA RACE。
 		// ensureEmployeeCognitiveSkills 会就地修改 capabilities / boundaryPolicy，
 		// 而 resolveActiveEmployee 返回的是 Store.Employees 里的引用，必须先 clone 再 mutate。
-		empMap = cloneEmployeeForCognitiveSkills(empMap)
+		empMap = copilot.CloneEmployeeForCognitiveSkills(empMap)
 	}
 	if empMap != nil {
-		ensureEmployeeCognitiveSkills(empMap)
+		copilot.EnsureEmployeeCognitiveSkills(empMap)
 	}
 	if empMap != nil && empMap["skipped"] == true {
 		emit("stage", "employee", map[string]any{"status": "ok", "employee": nil, "skipped": true})
@@ -694,17 +694,17 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 		resolvedDE = str(empMap["id"])
 	}
 	s.Store.RLock()
-	memoryHits := s.retrieveMemoryForTurnLocked(ws, id.ID, resolvedDE, cid, userMsg, id)
+	memoryHits := s.CopSvc.RetrieveMemoryForTurnLocked(ws, id.ID, resolvedDE, cid, userMsg, id)
 	historySnapshot := append([]map[string]any{}, s.Store.Messages[cid]...)
 	s.Store.RUnlock()
 	emit("stage", "memory", map[string]any{
 		"status": "ok", "hitCount": len(memoryHits),
-		"provenance": memoryProvenanceMaps(memoryHits),
+		"provenance": copilot.MemoryProvenanceMaps(memoryHits),
 	})
 	// Flush the budget decision so operators can debug silent memory-recall
 	// failures from logs ("why did my 5 hits become 2?"). The tail carries
 	// dropped IDs + truncation count, both of which were previously invisible.
-	if rep := s.consumeLastMemoryBudgetReport(); rep != nil {
+	if rep := s.CopSvc.ConsumeLastMemoryBudgetReport(); rep != nil {
 		emit("memory", "budget", map[string]any{
 			"budgetTokens":   rep.BudgetTokens,
 			"usedTokens":     rep.UsedTokens,
@@ -716,7 +716,7 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 	}
 	if n := len(memoryHits); n > 0 {
 		titles := make([]string, 0, 3)
-		for _, p := range memoryProvenanceMaps(memoryHits) {
+		for _, p := range copilot.MemoryProvenanceMaps(memoryHits) {
 			if t := str(p["title"]); t != "" {
 				titles = append(titles, t)
 			}
@@ -724,26 +724,26 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 		}
-		emitThought(emit, "search", turnPhaseUnderstand,
+		copilot.EmitThought(emit, "search", copilot.TurnPhaseUnderstand,
 			fmt.Sprintf("参考了 %d 条相关记忆", n),
 			strings.Join(titles, " · "),
 		)
 	}
 
 	// Tool registry: capabilities ∩ enabledTools ∩ boundary ∩ sessionMode
-	registry := buildToolRegistry(empMap, enabledTools)
+	registry := copilot.BuildToolRegistry(empMap, enabledTools)
 	registry = filterRegistryBySessionMode(registry, sessionMode)
-	registry = filterRegistrySkipMemoryRecall(registry, len(memoryHits) > 0)
+	registry = copilot.FilterRegistrySkipMemoryRecall(registry, len(memoryHits) > 0)
 
 	// 3b) 预检索已发布知识 → 写入 system（与 ReAct bootstrap 去重）
 	var ragHits any
 	ragCount := 0
-	if registryHasEnabledTool(registry, "knowledge.retrieve") {
+	if copilot.RegistryHasEnabledTool(registry, "knowledge.retrieve") {
 		emit("stage", "rag", map[string]any{"status": "running"})
 		var ragErr error
 		ragHits, ragErr = s.retrievePublished(r, map[string]any{"query": userMsg}, corr)
-		ragCount = ragHitCount(ragHits)
-		warn := ragDegradeWarning(ragHits)
+		ragCount = copilot.RagHitCount(ragHits)
+		warn := copilot.RagDegradeWarning(ragHits)
 		if ragErr != nil {
 			warn = ragErr.Error()
 		}
@@ -753,19 +753,19 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 			emit("stage", "rag", map[string]any{"status": "ok", "hitCount": ragCount})
 		}
 		if ragCount > 0 {
-			emitThought(emit, "search", turnPhaseUnderstand, fmt.Sprintf("检索到 %d 条已发布知识", ragCount), "")
+			copilot.EmitThought(emit, "search", copilot.TurnPhaseUnderstand, fmt.Sprintf("检索到 %d 条已发布知识", ragCount), "")
 		}
 	}
 
-	system := buildCopilotSystemPromptWithEffort(empMap, ragHits, memoryHits, reasoningEffort)
+	system := copilot.BuildCopilotSystemPromptWithEffort(empMap, ragHits, memoryHits, reasoningEffort)
 	system += runModePromptClause(runMode)
-	replyMode := resolveReplyMode(body, empMap)
-	segmentPolicy := resolveSegmentPolicy(body, empMap)
-	system += replyModePromptClause(replyMode, segmentPolicy)
+	replyMode := copilot.ResolveReplyMode(body, empMap)
+	segmentPolicy := copilot.ResolveSegmentPolicy(body, empMap)
+	system += copilot.ReplyModePromptClause(replyMode, segmentPolicy)
 
-	chatMessages := assembleCopilotChatMessages(historySnapshot)
+	chatMessages := copilot.AssembleCopilotChatMessages(historySnapshot)
 	if len(chatMessages) == 0 {
-		chatMessages = []modelprov.ChatMessage{{Role: "user", Content: userMsg}}
+		chatMessages = []copilot.ChatMessage{{Role: "user", Content: userMsg}}
 	}
 
 	snapID := s.Store.ID("snap")
@@ -773,11 +773,11 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 	if str(binding["memoryPolicyId"]) == "" {
 		binding["memoryPolicyId"] = ws
 	}
-	snapRec = buildContextSnapshotRecord(map[string]any{
+	snapRec = copilot.BuildContextSnapshotRecord(map[string]any{
 		"id": snapID, "workspaceId": ws, "conversationId": cid, "sessionId": rawID,
 		"correlationId": corr, "system": system, "historyTurns": len(chatMessages),
-		"memoryProvenance": memoryProvenanceMaps(memoryHits), "ragHits": ragCount,
-		"toolRegistry": enabledToolKeys(registry), "partnerId": resolvedDE,
+		"memoryProvenance": copilot.MemoryProvenanceMaps(memoryHits), "ragHits": ragCount,
+		"toolRegistry": copilot.EnabledToolKeys(registry), "partnerId": resolvedDE,
 		"sessionMode": sessionMode, "riskLevel": riskLevel,
 		"channel": channel, "channelThreadId": channelThreadID,
 		"runtimeMode": runtimeMode(), "employeeBinding": binding,
@@ -794,31 +794,31 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 		"status": "running", "modelId": modelID, "mode": "harness",
 		"runtimeMode": runtimeMode(),
 		"sessionMode": sessionMode, "riskLevel": riskLevel,
-		"enabledTools": enabledToolKeys(registry), "historyTurns": len(chatMessages),
+		"enabledTools": copilot.EnabledToolKeys(registry), "historyTurns": len(chatMessages),
 		"replyMode": replyMode, "segmentPolicy": segmentPolicy,
 	})
-	segIDGen := defaultSegmentIDGen(s)
+	segIDGen := copilot.DefaultSegmentIDGen(s.CopSvc)
 	if firstMessageID == "" {
 		firstMessageID = segIDGen()
 	}
 	var ackPersisted []map[string]any
-	if ack, ok := buildAckSegment(userMsg, len(attachmentIDs) > 0); ok && normalizeReplyMode(replyMode) != replyModeSingle {
+	if ack, ok := copilot.BuildAckSegment(userMsg, len(attachmentIDs) > 0); ok && copilot.NormalizeReplyMode(replyMode) != copilot.ReplyModeSingle {
 		ack.ID = segIDGen()
 		ack.Index = 0
-		emitSegmentStream(emit, []AssistantSegment{ack}, modelID, corr, replyMode)
+		copilot.EmitSegmentStream(emit, []copilot.AssistantSegment{ack}, modelID, corr, replyMode)
 		ackNow := time.Now().UTC().Format(time.RFC3339)
-		ackPersisted = assistantMessagesFromSegments([]AssistantSegment{ack}, corr, replyMode, ackNow, nil, false, nil, nil, 0)
+		ackPersisted = copilot.AssistantMessagesFromSegments([]copilot.AssistantSegment{ack}, corr, replyMode, ackNow, nil, false, nil, nil, 0)
 		s.Store.Lock()
 		s.Store.Messages[cid] = append(s.Store.Messages[cid], ackPersisted...)
 		s.Store.Unlock()
 	}
 	streamCtx, streamCancel := context.WithTimeout(context.Background(), copilotStreamTimeout())
-	registerStreamCancel(corr, streamCancel)
+	copilot.RegisterStreamCancel(corr, streamCancel)
 	defer func() {
-		clearStreamCancel(corr)
+		copilot.ClearStreamCancel(corr)
 		streamCancel()
 	}()
-	var stepSegSink []AssistantSegment
+	var stepSegSink []copilot.AssistantSegment
 	reactOut := s.runRuntimeTurn(streamCtx, reactTurnInput{
 		Request: r, WorkspaceID: ws, ModelID: modelID, System: system,
 		Messages: chatMessages, Registry: registry, UserMessage: userMsg,
@@ -826,16 +826,16 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 		Viewer: id, Emit: emit, ModeHint: modeHint, ReflectHint: reflectHint,
 		SessionMode: sessionMode, RiskLevel: riskLevel, Channel: channel,
 		RAGPrefetched: ragCount > 0,
-		SnapshotID: snapID, Binding: binding, MemoryProvenance: memoryProvenanceMaps(memoryHits),
+		SnapshotID: snapID, Binding: binding, MemoryProvenance: copilot.MemoryProvenanceMaps(memoryHits),
 		ReplyMode: replyMode, SegmentPolicy: segmentPolicy, FirstMessageID: firstMessageID, StepSegments: &stepSegSink,
 		Employee: empMap,
 	})
 	_ = stepSegSink
-	if isCopilotTurnCancelled(corr) {
+	if copilot.IsCopilotTurnCancelled(corr) {
 		emit("done", "done", map[string]any{
 			"type": "done", "ok": false, "cancelled": true, "correlationId": corr,
 		})
-		finishCopilotTurn(corr, turnStatusCancelled)
+		copilot.FinishCopilotTurn(corr, copilot.TurnStatusCancelled)
 		streamOK = true
 		return
 	}
@@ -849,7 +849,7 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 		}
 		if fallback == "" {
 			emit("error", "runtime", map[string]any{"message": formatModelInvokeUserMessage(reactOut.Err)})
-			finishCopilotTurn(corr, turnStatusFailed)
+			copilot.FinishCopilotTurn(corr, copilot.TurnStatusFailed)
 			return
 		}
 		reactOut.Text = fallback
@@ -859,7 +859,7 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 		emit("stage", "runtime", map[string]any{"status": "degraded", "modelId": modelID, "warning": reactOut.Err.Error()})
 	}
 	full := reactOut.Text
-	safeOut := applyContentSafety(full)
+	safeOut := copilot.ApplyContentSafety(full)
 	if safeOut.Blocked {
 		IncCopilotSafetyBlocked()
 		full = safeOut.Text
@@ -874,17 +874,17 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 	toolCalls := reactOut.ToolCalls
 	citations := reactOut.Citations
 	if ragCount > 0 {
-		prefetched := citationsFromRagHits(ragHits)
-		citations = dedupeCitations(append(prefetched, citations...))
-		if !toolCallsIncludeName(toolCalls, "knowledge.retrieve") {
-			toolCalls = append([]map[string]any{knowledgeToolCallFromHits(ragHits, 0)}, toolCalls...)
+		prefetched := copilot.CitationsFromRagHits(ragHits)
+		citations = copilot.DedupeCitations(append(prefetched, citations...))
+		if !copilot.ToolCallsIncludeName(toolCalls, "knowledge.retrieve") {
+			toolCalls = append([]map[string]any{copilot.KnowledgeToolCallFromHits(ragHits, 0)}, toolCalls...)
 		}
 	}
 	if toolCalls == nil {
 		toolCalls = []map[string]any{}
 	}
-	full = enrichCopilotFinalText(full, toolCalls, userMsg)
-	mode := coalesce(reactOut.Mode, modeReact)
+	full = copilot.EnrichCopilotFinalText(full, toolCalls, userMsg)
+	mode := coalesce(reactOut.Mode, copilot.ModeReact)
 
 	// 5) meter (+ optional model budget hard gate)
 	emit("stage", "meter", map[string]any{"status": "running"})
@@ -894,18 +894,18 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 	s.Store.Unlock()
 	if budgetErr != nil {
 		emit("error", "meter", map[string]any{"message": budgetErr.Error()})
-		finishCopilotTurn(corr, turnStatusFailed)
+		copilot.FinishCopilotTurn(corr, copilot.TurnStatusFailed)
 		return
 	}
 	s.recordUsageWS(ws, "copilot", units, corr)
 	emit("stage", "meter", map[string]any{"status": "ok", "units": units})
 
-	segments := reconcileSegmentsWithFinalText(reactOut.Segments, full, reactOut, replyMode, segmentPolicy, firstMessageID, segIDGen)
+	segments := copilot.ReconcileSegmentsWithFinalText(reactOut.Segments, full, reactOut, replyMode, segmentPolicy, firstMessageID, segIDGen)
 	if len(segments) == 0 && strings.TrimSpace(full) != "" {
-		segments = []AssistantSegment{{ID: firstMessageID, Kind: segmentKindBody, Content: full}}
+		segments = []copilot.AssistantSegment{{ID: firstMessageID, Kind: copilot.SegmentKindBody, Content: full}}
 	}
 	for i, seg := range segments {
-		if segmentStreamAlreadyDone(reactOut.Segments, i, seg, replyMode) {
+		if copilot.SegmentStreamAlreadyDone(reactOut.Segments, i, seg, replyMode) {
 			continue
 		}
 		emit(contract.StreamMessageDone, "runtime", map[string]any{
@@ -930,7 +930,7 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 		sharedMeta["moderated"] = true
 		sharedMeta["moderationReasons"] = safeOut.Reasons
 	}
-	if prov := memoryProvenanceMaps(memoryHits); len(prov) > 0 {
+	if prov := copilot.MemoryProvenanceMaps(memoryHits); len(prov) > 0 {
 		sharedMeta["memoryProvenance"] = prov
 	}
 	if len(reactOut.Plan.Steps) > 0 {
@@ -945,23 +945,23 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 	if len(reactOut.Agents) > 0 {
 		sharedMeta["agents"] = reactOut.Agents
 	}
-	if snap := cognitiveSnapshot(reactOut.Cognitive); len(snap) > 0 {
+	if snap := copilot.CognitiveSnapshot(reactOut.Cognitive); len(snap) > 0 {
 		sharedMeta["cognitive"] = snap
 	}
 	turnDurationMs := int(time.Since(turnStartedAt).Milliseconds())
 	if turnMeta := narrCollector.Snapshot(reactOut.Cognitive, mode, turnDurationMs); len(turnMeta) > 0 {
 		sharedMeta["turnMeta"] = turnMeta
 	}
-	assistantMsgs := assistantMessagesFromSegments(segments, corr, replyMode, assistantNow, sharedMeta, true, toolCalls, citations, len(ackPersisted))
+	assistantMsgs := copilot.AssistantMessagesFromSegments(segments, corr, replyMode, assistantNow, sharedMeta, true, toolCalls, citations, len(ackPersisted))
 	assistantMsgID := firstMessageID
 	if len(assistantMsgs) > 0 {
 		assistantMsgID = str(assistantMsgs[len(assistantMsgs)-1]["id"])
 	}
-	if isCopilotTurnCancelled(corr) {
+	if copilot.IsCopilotTurnCancelled(corr) {
 		emit("done", "done", map[string]any{
 			"type": "done", "ok": false, "cancelled": true, "correlationId": corr,
 		})
-		finishCopilotTurn(corr, turnStatusCancelled)
+		copilot.FinishCopilotTurn(corr, copilot.TurnStatusCancelled)
 		streamOK = true
 		return
 	}
@@ -988,7 +988,7 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 	var evolveCreated []map[string]any
 	var postTurnPayload copilotPostTurnPayload
 	if s.ownsCapRuntime() {
-		if shouldIngestTurnMemory(historySnapshot, userMsg, full, toolCalls) {
+		if copilot.ShouldIngestTurnMemory(historySnapshot, userMsg, full, toolCalls) {
 			if _, err := s.ingestRuntimeMemoryLocked(runtimeMemoryInput{
 				WorkspaceID: ws, OwnerID: id.ID, OwnerName: id.Name, DigitalPartnerID: resolvedDE,
 				Title:      "会话上下文 · " + truncateRunes(userMsg, 40),
@@ -1000,14 +1000,14 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 				s.appendMemoryAuditLocked(ws, id.Name, "写入记忆", truncateRunes(userMsg, 40), "failed", corr)
 			}
 		}
-		evolveCreated = s.runPostTurnEvolutionLocked(evolveTurnInput{
+		evolveCreated = s.CopSvc.RunPostTurnEvolutionLocked(copilot.EvolveTurnInput{
 			WorkspaceID: ws, OwnerID: id.ID, OwnerName: id.Name, DigitalPartnerID: resolvedDE,
 			ConversationID: cid, CorrelationID: corr, MessageID: assistantMsgID,
 			UserMessage: userMsg, AssistantText: full, Mode: mode,
 			ReflectRounds: reactOut.ReflectRounds, ToolCalls: toolCalls,
 			MemoryHits: memoryHits, Emit: nil,
 		})
-	} else if shouldIngestTurnMemory(historySnapshot, userMsg, full, toolCalls) {
+	} else if copilot.ShouldIngestTurnMemory(historySnapshot, userMsg, full, toolCalls) {
 		postTurnPayload.MemoryIngest = &runtimeMemoryInput{
 			WorkspaceID: ws, OwnerID: id.ID, OwnerName: id.Name, DigitalPartnerID: resolvedDE,
 			Title:      "会话上下文 · " + truncateRunes(userMsg, 40),
@@ -1022,9 +1022,9 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 	s.Store.Persist("conversations")
 	s.Store.Persist("employees")
 	allTurnMsgs := append(append([]map[string]any{}, ackPersisted...), assistantMsgs...)
-	rememberIdempotentTurn(s, cid, clientMsgID, allTurnMsgs)
+	copilot.RememberIdempotentTurn(s.CopSvc, cid, clientMsgID, allTurnMsgs)
 	if s.ownsCapRuntime() {
-		go s.persistEvolve()
+		go s.CopSvc.PersistEvolve()
 	} else {
 		postTurnPayload.WorkspaceID = ws
 		postTurnPayload.OwnerID = id.ID
@@ -1057,21 +1057,21 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 	}
 	emit("done", "done", map[string]any{
 		"ok": true, "modelId": modelID, "mode": mode,
-		"messageId": assistantMsgID, "messageIds": append(segmentIDsFromMessages(ackPersisted), segmentMessageIDs(segments)...),
+		"messageId": assistantMsgID, "messageIds": append(copilot.SegmentIDsFromMessages(ackPersisted), copilot.SegmentMessageIDs(segments)...),
 		"replyMode": replyMode, "segmentCount": len(segments) + len(ackPersisted),
 		"sessionMode": sessionMode, "riskLevel": riskLevel,
 		"memoryHits": len(memoryHits), "historyTurns": len(chatMessages), "ragHits": ragCount,
-		"memoryProvenance": memoryProvenanceMaps(memoryHits),
+		"memoryProvenance": copilot.MemoryProvenanceMaps(memoryHits),
 		"reactSteps":       reactOut.Steps, "toolCount": len(toolCalls),
 		"reflectRounds": reactOut.ReflectRounds,
 		"policyLevel":   reactOut.PolicyLevel, "policyId": reactOut.PolicyID,
 		"evolveCandidates": len(evolveCreated),
 		"snapshotId":       snapID,
 		"runtimeMode":      runtimeMode(),
-		"cognitive":        cognitiveSnapshot(reactOut.Cognitive),
+		"cognitive":        copilot.CognitiveSnapshot(reactOut.Cognitive),
 		"turnMeta":         narrCollector.Snapshot(reactOut.Cognitive, mode, int(time.Since(turnStartedAt).Milliseconds())),
 	})
-	finishCopilotTurn(corr, turnStatusDone)
+	copilot.FinishCopilotTurn(corr, copilot.TurnStatusDone)
 	streamOK = true
 }
 

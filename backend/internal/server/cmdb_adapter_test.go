@@ -11,7 +11,7 @@ import (
 
 func TestCMDBLookupPlatformCatalog(t *testing.T) {
 	st := store.New()
-	s := &Server{Store: st}
+	s := New(st)
 	tool := &registeredTool{Name: "CMDB 查询", Key: "tool:cmdb-查询", Kind: "tool"}
 	ctx := toolRunContext{WorkspaceID: "w1", UserMessage: "prod-redis"}
 	res := s.runCMDBLookup(ctx, tool, toolCallRequest{Name: tool.Name, Args: map[string]any{"query": "prod-redis"}}, time.Now())
@@ -26,7 +26,7 @@ func TestCMDBLookupPlatformCatalog(t *testing.T) {
 func TestCMDBLookupRequireExternalUnavailable(t *testing.T) {
 	t.Setenv("DE_CMDB_REQUIRE_EXTERNAL", "1")
 	_ = os.Unsetenv("DE_CMDB_URL")
-	s := &Server{Store: store.New()}
+	s := New(store.New())
 	tool := &registeredTool{Name: "CMDB", Key: "tool:cmdb", Kind: "tool"}
 	res := s.runCMDBLookup(toolRunContext{WorkspaceID: "w1"}, tool, toolCallRequest{Args: map[string]any{"query": "x"}}, time.Now())
 	if res.Status != "unavailable" {

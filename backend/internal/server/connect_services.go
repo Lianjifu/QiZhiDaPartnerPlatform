@@ -20,6 +20,7 @@ import (
 	"github.com/qizhida-partner-platform/backend/gen/qzda/rag/v1/ragv1connect"
 	runtimev1 "github.com/qizhida-partner-platform/backend/gen/qzda/runtime/v1"
 	"github.com/qizhida-partner-platform/backend/gen/qzda/runtime/v1/runtimev1connect"
+	"github.com/qizhida-partner-platform/backend/internal/copilot"
 	"github.com/qizhida-partner-platform/backend/pkg/contract"
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
@@ -192,13 +193,13 @@ func (c *collabConnect) ReplayTurn(ctx context.Context, req *connect.Request[col
 	ws := c.s.workspaceID(r)
 	corr := req.Msg.GetCorrelationId()
 	cid := req.Msg.GetConversationId()
-	rec := c.s.lookupContextSnapshotCtx(ctx, ws, cid, corr)
+	rec := c.s.CopSvc.LookupContextSnapshotCtx(ctx, ws, cid, corr)
 	if rec == nil {
 		return nil, connect.NewError(connect.CodeNotFound, apperr.NotFoundErr(apperr.ReplayNotFound, "回合快照不存在"))
 	}
 	out := &collabv1.ReplayTurnResponse{CorrelationId: corr}
 	out.Snapshot = mapToProtoSnapshot(rec)
-	for _, ev := range snapshotEvents(rec) {
+	for _, ev := range copilot.SnapshotEvents(rec) {
 		out.Events = append(out.Events, &collabv1.StreamTurnEvent{
 			Type:          str(ev["type"]),
 			Stage:         str(ev["stage"]),
