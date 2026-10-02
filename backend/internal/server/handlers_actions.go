@@ -10,6 +10,7 @@ import (
 
 	"github.com/qizhida-partner-platform/backend/internal/auth"
 	"github.com/qizhida-partner-platform/backend/internal/copilot"
+	"github.com/qizhida-partner-platform/backend/internal/tasks"
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
@@ -210,8 +211,8 @@ func (s *Server) executeAction(r *http.Request) (any, error) {
 				t["status"] = "completed"
 				t["lifecycleStage"] = "completed"
 				t["updatedAt"] = now
-				ensureTaskShape(t)
-				appendTaskAuditLocked(t, id.Name, "受控执行完成", "关联动作已执行", "success")
+				tasks.EnsureTaskShape(t)
+				tasks.AppendTaskAuditLocked(t, id.Name, "受控执行完成", "关联动作已执行", "success")
 				s.Store.Tasks[i] = t
 				task = t
 				break
@@ -505,8 +506,8 @@ func (s *Server) executeAction(r *http.Request) (any, error) {
 			t["status"] = "completed"
 			t["lifecycleStage"] = "completed"
 			t["updatedAt"] = now
-			ensureTaskShape(t)
-			appendTaskAuditLocked(t, id.Name, "受控执行完成", "关联动作已执行", "success")
+			tasks.EnsureTaskShape(t)
+			tasks.AppendTaskAuditLocked(t, id.Name, "受控执行完成", "关联动作已执行", "success")
 			s.Store.Tasks[i] = t
 			task = t
 			break

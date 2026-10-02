@@ -12,7 +12,6 @@ import (
 	collabv1 "github.com/qizhida-partner-platform/backend/gen/qzda/collab/v1"
 	"github.com/qizhida-partner-platform/backend/gen/qzda/collab/v1/collabv1connect"
 	commonv1 "github.com/qizhida-partner-platform/backend/gen/qzda/common/v1"
-	partnerv1 "github.com/qizhida-partner-platform/backend/gen/qzda/partner/v1"
 	"github.com/qizhida-partner-platform/backend/gen/qzda/partner/v1/partnerv1connect"
 	"github.com/qizhida-partner-platform/backend/gen/qzda/platform/v1/platformv1connect"
 	"github.com/qizhida-partner-platform/backend/gen/qzda/policy/v1/policyv1connect"
@@ -21,6 +20,7 @@ import (
 	runtimev1 "github.com/qizhida-partner-platform/backend/gen/qzda/runtime/v1"
 	"github.com/qizhida-partner-platform/backend/gen/qzda/runtime/v1/runtimev1connect"
 	"github.com/qizhida-partner-platform/backend/internal/copilot"
+	"github.com/qizhida-partner-platform/backend/internal/partners"
 	"github.com/qizhida-partner-platform/backend/pkg/contract"
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
@@ -46,7 +46,12 @@ func (s *Server) mountConnectRPCForMode(mux *http.ServeMux, mode ServiceMode) {
 	if all || mode == ModeCollab {
 		p, h := collabv1connect.NewCollabServiceHandler(&collabConnect{s})
 		mux.Handle(p, h)
-		p, h = partnerv1connect.NewPartnerServiceHandler(&partnerConnect{s})
+		// M05 partnerConnect binding moved to internal/partners during
+		// the M05 P2 deep move. The buf-generated PartnerServiceHandler
+		// interface (qzda.partner.v1.PartnerService) is unchanged —
+		// partners.partnerConnect satisfies it via partners.Service's
+		// Deps.ResolveActiveEmployee function field.
+		p, h = partnerv1connect.NewPartnerServiceHandler(partners.NewPartnerConnect(s.partnerSvc))
 		mux.Handle(p, h)
 	}
 	if all || mode == ModePolicy || (mode == ModeSys && sysAbsorbsCrosscutting()) {
@@ -123,7 +128,7 @@ func (c *collabConnect) CreateConversation(ctx context.Context, req *connect.Req
 	item := &collabv1.Conversation{
 		Id: c.s.Store.ID("conv"), WorkspaceId: ws, Title: title,
 		DigitalPartnerId: req.Msg.GetDigitalPartnerId(),
-		UpdatedAt:         time.Now().UTC().Format(time.RFC3339),
+		UpdatedAt:        time.Now().UTC().Format(time.RFC3339),
 	}
 	c.s.Store.Lock()
 	c.s.Store.Conversations = append([]map[string]any{{
@@ -152,14 +157,14 @@ func (c *collabConnect) StreamTurn(ctx context.Context, req *connect.Request[col
 		corr = c.s.Store.ID("corr")
 	}
 	body := map[string]any{
-		"content":           msg.GetContent(),
-		"correlationId":     corr,
+		"content":          msg.GetContent(),
+		"correlationId":    corr,
 		"digitalPartnerId": msg.GetDigitalPartnerId(),
-		"clientMsgId":       msg.GetClientMsgId(),
-		"modelId":           msg.GetModelId(),
-		"modeHint":          msg.GetModeHint(),
-		"sessionMode":       contract.SessionModeFromProto(msg.GetSessionMode()),
-		"riskLevel":         contract.RiskLevelFromProto(msg.GetRiskLevel()),
+		"clientMsgId":      msg.GetClientMsgId(),
+		"modelId":          msg.GetModelId(),
+		"modeHint":         msg.GetModeHint(),
+		"sessionMode":      contract.SessionModeFromProto(msg.GetSessionMode()),
+		"riskLevel":        contract.RiskLevelFromProto(msg.GetRiskLevel()),
 	}
 	if len(msg.GetEnabledTools()) > 0 {
 		body["enabledTools"] = msg.GetEnabledTools()
@@ -222,7 +227,7 @@ func mapToProtoSnapshot(rec map[string]any) *commonv1.ContextSnapshot {
 		System:        str(rec["system"]),
 		HistoryTurns:  int32(intFrom(rec["historyTurns"])),
 		RagHits:       int32(intFrom(rec["ragHits"])),
-		PartnerId:    str(rec["partnerId"]),
+		PartnerId:     str(rec["partnerId"]),
 		BuiltAt:       str(rec["builtAt"]),
 		SessionMode:   contract.SessionModeToProto(str(rec["sessionMode"])),
 	}
@@ -242,22 +247,6 @@ func mapToProtoSnapshot(rec map[string]any) *commonv1.ContextSnapshot {
 		})
 	}
 	return snap
-}
-
-type partnerConnect struct{ s *Server }
-
-func (c *partnerConnect) ResolveActive(ctx context.Context, req *connect.Request[partnerv1.ResolveActiveRequest]) (*connect.Response[partnerv1.ResolveActiveResponse], error) {
-	r := requestFromConnect(ctx, req.Header())
-	raw, err := c.s.resolveActiveEmployee(r, req.Msg.GetDigitalPartnerId())
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	m, _ := raw.(map[string]any)
-	out := &partnerv1.ResolveActiveResponse{
-		Id: str(m["id"]), Name: str(m["name"]), Lifecycle: str(m["lifecycle"]),
-		Reason: str(m["reason"]), Active: m["active"] == true,
-	}
-	return connect.NewResponse(out), nil
 }
 
 type runtimeConnect struct{ s *Server }

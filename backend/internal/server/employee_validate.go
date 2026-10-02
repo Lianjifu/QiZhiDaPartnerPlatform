@@ -143,3 +143,56 @@ func validateEmployeeConfigurationBody(body map[string]any) error {
 	}
 	return nil
 }
+
+// --- Method receivers so buildPartnerSvc can bind Deps cleanly ---
+// partners.Deps takes function values, but functions that depend on the
+// receiver (`s.evaluator`, `s.requireWorkspaceAccess`) need the *Server
+// in scope. Wrapping them as methods keeps the partition happy without
+// rewriting the legacy body.
+//
+// History: these wrappers were extracted during M05 P2 — the bodies
+// stayed package-level helpers; only the method receiver is new.
+
+// validateEmployeeConfigurationBody is the M05 digital-partner configuration
+// validator (called from partners.DigitalEmployeeRoute's "configuration"
+// sub-action).
+func (s *Server) validateEmployeeConfigurationBody(body map[string]any) error {
+	return validateEmployeeConfigurationBody(body)
+}
+
+// validateEmployeeReleaseGates is the M05 release-gate validator (called
+// from DigitalEmployeeRoute's "release" / "submit" sub-actions).
+func (s *Server) validateEmployeeReleaseGates(emp map[string]any) error {
+	return validateEmployeeReleaseGates(emp)
+}
+
+// employeeEvaluateIncomplete is the M05 evaluation-completeness predicate
+// (called from DigitalEmployeeRoute's "evaluate" sub-action).
+func (s *Server) employeeEvaluateIncomplete(emp map[string]any) bool {
+	return employeeEvaluateIncomplete(emp)
+}
+
+// validatePublishedCapabilities is a thin wrapper used by partners.
+// handlers_actions.employeeAction's "submit" / "approve" branches call
+// it; the package-level helper below (validatePublishedCapabilitiesImpl)
+// holds the actual gate.
+func (s *Server) validatePublishedCapabilities(emp map[string]any) error {
+	return validatePublishedCapabilitiesImpl(emp)
+}
+
+// validatePublishedCapabilitiesImpl is the package-level M05
+// publish-validator (formerly the body of the *Server method that lived
+// in handlers_b.go L260-L270). Kept as a package-level helper so it
+// stays usable from server-only callers; the *Server method above is
+// the wiring point buildPartnerSvc binds.
+func validatePublishedCapabilitiesImpl(emp map[string]any) error {
+	caps, _ := emp["capabilities"].(map[string]any)
+	if caps == nil {
+		return nil
+	}
+	// Mock-shaped capabilities use display names / catalog options; allow non-empty model.
+	if str(caps["model"]) == "" && str(caps["modelRouteId"]) == "" {
+		return apperr.BadReq(apperr.DigitalPartnerBinding, "须装配已发布模型")
+	}
+	return nil
+}

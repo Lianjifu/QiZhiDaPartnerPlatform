@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/qizhida-partner-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/tasks"
 )
 
 func (s *Server) runPilotdeckTool(ctx toolRunContext, t *registeredTool, call toolCallRequest, started time.Time) toolExecResult {
@@ -285,8 +286,8 @@ func (s *Server) runtimeTaskCreate(ctx toolRunContext, call toolCallRequest, sta
 		viewer = &auth.Identity{ID: ctx.OwnerID, Name: "copilot"}
 	}
 	s.Store.Lock()
-	item := buildControlledTask(s.Store.ID, ctx.WorkspaceID, body, viewer)
-	item["code"] = nextTaskCode(s.Store.Tasks)
+	item := tasks.BuildControlledTask(s.Store.ID, ctx.WorkspaceID, body, viewer)
+	item["code"] = tasks.NextTaskCode(s.Store.Tasks)
 	s.Store.Tasks = append([]map[string]any{item}, s.Store.Tasks...)
 	s.Store.Unlock()
 	s.Store.Persist("tasks")
