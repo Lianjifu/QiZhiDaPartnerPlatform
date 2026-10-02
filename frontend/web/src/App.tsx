@@ -14,8 +14,8 @@ const CopilotShare = lazy(() => import('./features/copilot/components/CopilotSha
 const Tasks = lazy(() => import('./features/tasks/components/TasksPage'));
 const Workspaces = lazy(() => import('./pages/Workspaces'));
 const DigitalPartners = lazy(() => import('./features/partners/components/PartnersPage'));
-const Workflows = lazy(() => import('./pages/Workflows'));
-const WorkflowOrchestrationSession = lazy(() => import('./pages/WorkflowOrchestrationSession'));
+const Workflows = lazy(() => import('./features/workflows/components/WorkflowsPage'));
+const WorkflowOrchestrationSession = lazy(() => import('./features/workflows/components/WorkflowOrchestrationSessionPage'));
 const Knowledge = lazy(() => import('./pages/Knowledge'));
 const Memory = lazy(() => import('./pages/Memory'));
 const Skills = lazy(() => import('./pages/Skills'));

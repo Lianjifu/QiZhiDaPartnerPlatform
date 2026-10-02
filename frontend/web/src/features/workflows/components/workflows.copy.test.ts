@@ -4,10 +4,38 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const root = dirname(fileURLToPath(import.meta.url));
-const workflowsSource = readFileSync(join(root, 'Workflows.tsx'), 'utf8');
-const orchestrationSource = readFileSync(join(root, 'WorkflowOrchestrationSession.tsx'), 'utf8');
-const mockSource = readFileSync(join(root, '../../../packages/api/src/mock.ts'), 'utf8');
-const appSource = readFileSync(join(root, '../App.tsx'), 'utf8');
+
+/**
+ * M06 P1：原 pages/Workflows.tsx 与 pages/WorkflowOrchestrationSession.tsx 拆分
+ * 为 features/workflows/components/*.tsx 多文件，原始断言改读所有新文件并拼接。
+ */
+const workflowFiles = [
+  'WorkflowsPage.tsx',
+  'useWorkflowsController.ts',
+  'workflow-template-helpers.ts',
+  'WorkflowsModals.tsx',
+  'WorkflowsTab.Editor.tsx',
+  'WorkflowsTab.Generation.tsx',
+  'WorkflowsTab.List.tsx',
+  'WorkflowsTab.Runs.tsx',
+  'WorkflowsTab.Settings.tsx',
+  'WorkflowsTab.Skills.tsx',
+  'WorkflowsShared.tsx',
+];
+const orchestrationFiles = [
+  'WorkflowOrchestrationSessionPage.tsx',
+  'WorkflowOrchestratorCanvas.tsx',
+  'WorkflowOrchestratorRunPanel.tsx',
+];
+
+const workflowsSource = workflowFiles
+  .map((f) => readFileSync(join(root, f), 'utf8'))
+  .join('\n');
+const orchestrationSource = orchestrationFiles
+  .map((f) => readFileSync(join(root, f), 'utf8'))
+  .join('\n');
+const mockSource = readFileSync(join(root, '../../../../../packages/api/src/mock.ts'), 'utf8');
+const appSource = readFileSync(join(root, '../../../App.tsx'), 'utf8');
 
 const forbidden = [
   /双签/,
@@ -25,7 +53,7 @@ const forbidden = [
 describe('workflows orchestration copy', () => {
   it('keeps Workflows page free of deprecated brand terms and fake LIVE marker', () => {
     for (const pattern of forbidden) {
-      expect(workflowsSource, `Workflows.tsx must not match ${pattern}`).not.toMatch(pattern);
+      expect(workflowsSource, `workflows files must not match ${pattern}`).not.toMatch(pattern);
     }
   });
 
