@@ -11,7 +11,7 @@ vi.mock('@/services/query', () => ({
   useApiMutation: mutation,
 }));
 
-import Tasks from '@/pages/Tasks';
+import Tasks from './components/TasksPage';
 import { TaskLifecycleBoard } from './TaskLifecycleBoard';
 import { TaskLifecycleDrawer } from './TaskLifecycleDrawer';
 
