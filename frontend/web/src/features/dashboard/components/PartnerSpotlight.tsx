@@ -8,8 +8,8 @@ import { ArrowRight, Bot, MessageSquare } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge, Button } from '@qzda/web-ui';
 import { cn } from '@qzda/web-utils';
-import { DigitalPartnerAvatar } from '@/components/DigitalPartnerAvatar';
-import { employeePrimaryLabel, employeeSecondaryLabel } from '@/lib/partners';
+import { DigitalPartnerAvatar } from '@/features/partners/components/DigitalPartnerAvatar';
+import { employeePrimaryLabel, employeeSecondaryLabel } from '@/features/partners/lib/partners';
 import type { DigitalPartner } from '@qzda/web-types';
 
 type Props = {

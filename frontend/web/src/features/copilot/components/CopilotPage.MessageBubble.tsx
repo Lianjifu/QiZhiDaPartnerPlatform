@@ -3,7 +3,7 @@ import { useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import { AlertCircle, CheckCircle2, Code, Copy, Download, Pencil, RotateCcw, ShieldAlert, Square, ThumbsDown, ThumbsUp, Trash2, Wrench } from 'lucide-react';
 import { Avatar, Badge } from '@qzda/web-ui';
 import { cn } from '@qzda/web-utils';
-import { DigitalPartnerAvatar } from '@/components/DigitalPartnerAvatar';
+import { DigitalPartnerAvatar } from '@/features/partners/components/DigitalPartnerAvatar';
 import { Markdown } from '@/components/Markdown';
 import { TurnThoughtPanel } from '@/features/copilot/turn-narrative/turn-thought-panel';
 import { extractSkillArtifacts, type SkillArtifactLink } from '@/features/copilot/lib/artifact-links';

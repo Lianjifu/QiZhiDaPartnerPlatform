@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { capabilityAssemblyCompleteness, operationsHealth, OPERATIONS_HANDOFF_THRESHOLD, releaseOnboardingCompleteness, roleSetupCompleteness, type CapabilityAssemblyEmployee, type OperationsEmployee, type ReleaseOnboardingEmployee, type RoleSetupEmployee } from '@/lib/partners';
+import { capabilityAssemblyCompleteness, operationsHealth, OPERATIONS_HANDOFF_THRESHOLD, releaseOnboardingCompleteness, roleSetupCompleteness, type CapabilityAssemblyEmployee, type OperationsEmployee, type ReleaseOnboardingEmployee, type RoleSetupEmployee } from '@/features/partners/lib/partners';
 
 /** Mirrors gateLabel / terminology rules from DigitalPartners for regression. */
 function gateLabel(employee: {

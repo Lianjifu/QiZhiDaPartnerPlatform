@@ -3,7 +3,7 @@
  */
 import { Search, Sparkles, X } from 'lucide-react';
 import { Modal, Button, Input } from '@qzda/web-ui';
-import { DigitalPartnerAvatar } from '@/components/DigitalPartnerAvatar';
+import { DigitalPartnerAvatar } from '@/features/partners/components/DigitalPartnerAvatar';
 import type { DigitalPartner } from '@qzda/web-types';
 
 export interface ExpertPickerModalProps {

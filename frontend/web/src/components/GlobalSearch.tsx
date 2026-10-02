@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@qzda/web-utils';
 import type { Task, DigitalPartner, KnowledgeDoc } from '@qzda/web-types';
-import { sortDigitalPartners } from '@/lib/partners';
+import { sortDigitalPartners } from '@/features/partners/lib/partners';
 
 type Result = { type: 'task' | 'employee' | 'doc'; id: string; title: string; subtitle?: string; to: string; meta?: string };
 

@@ -12,7 +12,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useApiQuery } from '@/services/query';
 import {
   compareDigitalPartners, employeePrimaryLabel, employeeSecondaryLabel,
-} from '@/lib/partners';
+} from '@/features/partners/lib/partners';
 import { computeContextUsage } from '@/features/copilot/lib/composer-context';
 import { buildExpertSuggestions, type ExpertSuggestionIcon } from '@/features/copilot/lib/expert-suggestions';
 import {
