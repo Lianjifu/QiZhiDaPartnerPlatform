@@ -11,7 +11,6 @@ import (
 
 	"github.com/qizhida-partner-platform/backend/internal/auth"
 	"github.com/qizhida-partner-platform/backend/internal/copilot"
-	"github.com/qizhida-partner-platform/backend/internal/policy"
 	"github.com/qizhida-partner-platform/backend/pkg/contract"
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
@@ -70,88 +69,6 @@ func (s *Server) createModelProvider(r *http.Request) (any, error) {
 	s.Store.PersistCollection("model_providers", s.Store.ModelProviders)
 	s.Store.AppendAudit(s.workspaceID(r), id.Name, "接入模型供应商", str(item["name"]), "success", "credentialRef="+credRef)
 	return item, nil
-}
-
-func (s *Server) listModelRoutes(r *http.Request) (any, error) {
-	id := identityFrom(r.Context())
-	if !auth.Has(id, "model.read") {
-		return nil, apperr.Forbidden(apperr.ModelReadForbidden, "缺少 model.read")
-	}
-	ws := s.workspaceID(r)
-	s.Store.RLock()
-	defer s.Store.RUnlock()
-	var out []map[string]any
-	for _, p := range s.Store.ModelRoutes {
-		if str(p["workspaceId"]) == ws {
-			out = append(out, p)
-		}
-	}
-	return out, nil
-}
-
-func (s *Server) createModelRoute(r *http.Request) (any, error) {
-	id := identityFrom(r.Context())
-	if !auth.Has(id, "model.write") {
-		return nil, apperr.Forbidden(apperr.ModelWriteForbidden, "缺少 model.write")
-	}
-	body, _ := decodeMap(r)
-	dataScope := coalesce(str(body["dataScope"]), "internal")
-	egress := body["egressAllowed"] == true
-	if err := s.evaluateWrite(r, "model", "run", policy.Input{
-		DataClass: dataScope, EgressExternal: egress,
-	}); err != nil {
-		return nil, apperr.Forbidden(apperr.EgressBlocked, "受限数据不允许出境")
-	}
-	if dataScope == "restricted" && egress {
-		return nil, apperr.Forbidden(apperr.EgressBlocked, "受限数据不允许出境")
-	}
-	limit := 100.0
-	if n, ok := body["budgetLimitUsd"].(float64); ok {
-		limit = n
-	}
-	if limit <= 0 {
-		return nil, apperr.BadReq(apperr.BudgetExceeded, "预算必须大于 0")
-	}
-	item := map[string]any{
-		"id": s.Store.ID("mr"), "workspaceId": s.workspaceID(r),
-		"name": coalesce(str(body["name"]), "新路由"), "level": coalesce(str(body["level"]), "P1"),
-		"primaryModelId": body["primaryModelId"], "fallbackModelIds": body["fallbackModelIds"],
-		"budgetLimitUsd": limit, "dataScope": dataScope,
-		"egressAllowed": egress, "status": "draft",
-	}
-	s.Store.Lock()
-	defer s.Store.Unlock()
-	s.Store.ModelRoutes = append([]map[string]any{item}, s.Store.ModelRoutes...)
-	s.Store.AppendAudit(s.workspaceID(r), id.Name, "创建模型路由", str(item["name"]), "success", "")
-	return item, nil
-}
-
-func (s *Server) listModelBudgets(r *http.Request) (any, error) {
-	id := identityFrom(r.Context())
-	if !auth.Has(id, "model.read") {
-		return nil, apperr.Forbidden(apperr.ModelReadForbidden, "缺少 model.read")
-	}
-	s.Store.RLock()
-	defer s.Store.RUnlock()
-	return s.Store.ModelBudgets, nil
-}
-
-func (s *Server) listUsage(r *http.Request) (any, error) {
-	ws := s.workspaceID(r)
-	if s.UsageSink != nil {
-		if rows, err := s.UsageSink.List(r.Context(), ws, 100); err == nil && len(rows) > 0 {
-			return rows, nil
-		}
-	}
-	s.Store.RLock()
-	defer s.Store.RUnlock()
-	var out []map[string]any
-	for _, u := range s.Store.UsageMeters {
-		if str(u["workspaceId"]) == ws || str(u["workspaceId"]) == "" {
-			out = append(out, u)
-		}
-	}
-	return out, nil
 }
 
 func (s *Server) listKnowledgeDocs(r *http.Request) (any, error) {

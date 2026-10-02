@@ -52,6 +52,18 @@ type ResolvedTurn struct {
 	Request      modelprov.ChatRequest
 }
 
+// StreamLLMForCopilotFn is the function-type the M02 copilot module expects
+// its StreamLLMForCopilot dependency to satisfy. The function is implemented
+// in internal/models/handlers_invoke.go (a method on *models.Service bound at
+// boot time). Defining the type in the consumer package (copilot) lets the
+// provider package (models) avoid importing copilot for the type alias — it
+// only needs to import copilot for the ResolvedTurn type used in the return.
+//
+// Signature mirrors the historical `*Server.streamLLMForCopilot` so the
+// migration is signature-compatible and existing tests keep working without
+// method-count gymnastics.
+type StreamLLMForCopilotFn func(ctx context.Context, r *http.Request, ws, modelID string, messages []modelprov.ChatMessage, system string, onDelta func(text, resolvedModelID string) error) (reply string, resolved ResolvedTurn, err error)
+
 // runtimeMemoryInput is the input shape used by ingestRuntimeMemoryLocked
 // (moved from internal/server/handlers_memory.go so copilot can pass it
 // through without an import cycle).
@@ -148,7 +160,7 @@ type Deps struct {
 	ResolveDefaultSessionModeFn func(employeeID string) string
 	ResolveMessageBucketIDFn    func(ws, raw string) string
 	PublishedPolicyByLevelFn    func(ws, level string) map[string]any
-	StreamLLMForCopilotFn       func(ctx context.Context, r *http.Request, ws, modelID string, messages []modelprov.ChatMessage, system string, onDelta func(text, resolvedModelID string) error) (reply string, resolved ResolvedTurn, err error)
+	StreamLLMForCopilotFn       StreamLLMForCopilotFn
 	// Memory / audit
 	PersistMemorySyncFn             func()
 	IngestRuntimeMemoryLockedFn       func(in runtimeMemoryInput) (map[string]any, error)

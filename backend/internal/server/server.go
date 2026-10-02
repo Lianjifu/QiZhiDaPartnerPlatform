@@ -24,6 +24,7 @@ import (
 	"github.com/qizhida-partner-platform/backend/internal/metrics"
 	"github.com/qizhida-partner-platform/backend/internal/modelprov"
 	"github.com/qizhida-partner-platform/backend/internal/modelprov/trace"
+	"github.com/qizhida-partner-platform/backend/internal/models"
 	"github.com/qizhida-partner-platform/backend/internal/multimodal"
 	"github.com/qizhida-partner-platform/backend/internal/operations"
 	"github.com/qizhida-partner-platform/backend/internal/partners"
@@ -208,6 +209,15 @@ type Server struct {
 	// into the service via Deps.StartTrial in buildWorkflowSvc().
 	workflowSvc *workflows.Service
 
+	// modelSvc holds the M08 模型中心 (Model Center) HTTP-route façade.
+	// Built in New() via buildModelSvc (which wires Deps function fields
+	// to *Server methods). The models package owns the full M08 surface:
+	// 17 REST handlers (providers CRUD + governance + audit + routing
+	// policies + failover drills + model invocation) + the SSE stream
+	// endpoint + the Copilot LLM streaming bridge (StreamLLMForCopilotFn).
+	// Package boundary stays one-way: models never imports internal/server/.
+	modelSvc *models.Service
+
 	// closeMu guards closeFuncs + closed; RegisterCloseFunc and Shutdown
 	// race in tests where Shutdown runs on a different goroutine than
 	// the apprun boot path.
@@ -286,12 +296,42 @@ func New(st *store.Store) *Server {
 	// aggregate math; server/ wires Store / AuditSink / workspace resolver
 	// so the package boundary stays one-way (operations never imports server/).
 	s.opsH = s.buildOpsHandler()
+	// M08 模型中心 (Model Center) façade. The models package owns the
+	// full M08 surface: 17 REST handlers (providers CRUD + governance +
+	// audit + routing policies + failover drills + model invocation) +
+	// the SSE stream endpoint + the Copilot LLM streaming bridge
+	// (StreamLLMForCopilotFn). Server wires Deps (workspace/identity
+	// helpers, governance gates, audit sink, rate limit, metrics,
+	// mode detection, cap-base copy) so the package boundary stays
+	// one-way: models never imports internal/server/.
+	//
+	// NB: must be built BEFORE CopSvc — buildCopSvc references
+	// s.modelSvc.StreamLLMForCopilot / publishedPolicyByLevelLocked to
+	// wire the cross-module LLM bridge into Copilot.Deps.
+	s.modelSvc = s.buildModelSvc()
+	// M08 模型中心 (Model Center) façade. The models package owns the
+	// full M08 surface: 17 REST handlers (providers CRUD + governance +
+	// audit + routing policies + failover drills + model invocation) +
+	// the SSE stream endpoint + the Copilot LLM streaming bridge
+	// (StreamLLMForCopilotFn). Server wires Deps (workspace/identity
+	// helpers, governance gates, audit sink, rate limit, metrics,
+	// mode detection, cap-base copy) so the package boundary stays
+	// one-way: models never imports internal/server/.
+	//
+	// NB: must be built BEFORE CopSvc — buildCopSvc references
+	// s.modelSvc.StreamLLMForCopilot / publishedPolicyByLevelLocked to
+	// wire the cross-module LLM bridge into Copilot.Deps.
+	s.modelSvc = s.buildModelSvc()
 	// M02 专家协作 (Expert Collaboration) backend. The copilot package
 	// owns the full module (HTTP routes, turn/state machine, helpers,
 	// types). Server constructs the Service once, wires its Deps to the
 	// methods copilot needs from this Server, and the route table
 	// dispatches the 8 M02 paths through s.CopSvc.<Method>. Package
 	// boundary is real: copilot never imports server/.
+	//
+	// NB: buildCopSvc references s.modelSvc (StreamLLMForCopilotFn +
+	// PublishedPolicyByLevelFn), so the modelSvc façade MUST be built
+	// first — see the buildModelSvc call above this one.
 	s.CopSvc = s.buildCopSvc()
 	// M03 任务中心 (Task Center) façade. The tasks package owns the pure
 	// domain helpers (buildControlledTask, lifecycle FSM, audit, version,
@@ -731,46 +771,54 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) {
 	case path == "/api/agents" && method == http.MethodGet:
 		data, err = s.partnerSvc.LegacyAgentsProxy(r)
 
-	// Models — Mock paths
+	// Models — M08 模型中心 façade (internal/models/). The 13 REST + 1 SSE
+	// routes all dispatch through s.modelSvc.<Method>. Package boundary is
+	// one-way: models never imports server/.
 	case path == "/api/model-providers" && method == http.MethodGet:
-		data, err = s.listModelProvidersFE(r)
+		data, err = s.modelSvc.ListModelProviders(r)
 	case path == "/api/model-providers" && method == http.MethodPost:
-		data, err = s.createModelProviderFE(r)
+		data, err = s.modelSvc.CreateModelProvider(r)
 	case path == "/api/model-providers/discover-models" && method == http.MethodPost:
-		data, err = s.discoverModels(r)
+		data, err = s.modelSvc.DiscoverModels(r)
 	case path == "/api/model-providers/test-connection" && method == http.MethodPost:
-		data, err = s.testModelConnection(r)
+		data, err = s.modelSvc.TestModelConnection(r)
 	case strings.HasPrefix(path, "/api/model-providers/") && (method == http.MethodGet || method == http.MethodPost || method == http.MethodPatch || method == http.MethodDelete):
-		data, err = s.modelProviderAction(r)
+		data, err = s.modelSvc.ModelProviderAction(r)
 	case path == "/api/model-routing/policies" && method == http.MethodGet:
-		data, err = s.listRoutingPolicies(r)
+		data, err = s.modelSvc.ListRoutingPolicies(r)
 	case path == "/api/model-routing/policies" && method == http.MethodPost:
-		data, err = s.createRoutingPolicy(r)
+		data, err = s.modelSvc.CreateRoutingPolicy(r)
 	case strings.HasPrefix(path, "/api/model-routing/policies/") && (method == http.MethodGet || method == http.MethodPost || method == http.MethodPatch):
-		data, err = s.routingPolicyAction(r)
+		data, err = s.modelSvc.RoutingPolicyAction(r)
 	case path == "/api/model-routing/failover-tests" && method == http.MethodPost:
-		data, err = s.failoverTest(r)
+		data, err = s.modelSvc.FailoverTest(r)
 	case path == "/api/model-governance/overview" && method == http.MethodGet:
-		data, err = s.modelGovernanceOverview(r)
+		data, err = s.modelSvc.ModelGovernanceOverview(r)
 	case path == "/api/model-audit" && method == http.MethodGet:
-		data, err = s.listModelAudit(r)
+		data, err = s.modelSvc.ListModelAudit(r)
 	case path == "/api/model-invoke" && method == http.MethodPost:
-		data, err = s.modelInvoke(r)
+		data, err = s.modelSvc.ModelInvoke(r)
 	case path == "/api/model-invoke/stream" && method == http.MethodPost:
-		s.modelInvokeStream(w, r)
+		s.modelSvc.ModelInvokeStream(w, r)
 		return
 	case path == "/api/models/providers" && method == http.MethodGet:
-		data, err = s.listModelProvidersFE(r)
+		data, err = s.modelSvc.ListModelProviders(r)
 	case path == "/api/models/providers" && method == http.MethodPost:
-		data, err = s.createModelProviderFE(r)
+		data, err = s.modelSvc.CreateModelProvider(r)
 	case path == "/api/models/routes" && method == http.MethodGet:
-		data, err = s.listRoutingPolicies(r)
+		data, err = s.modelSvc.ListRoutingPolicies(r)
 	case path == "/api/models/routes" && method == http.MethodPost:
-		data, err = s.createModelRoute(r)
+		data, err = s.modelSvc.CreateModelRoute(r)
 	case path == "/api/models/budgets" && method == http.MethodGet:
-		data, err = s.listModelBudgets(r)
+		data, err = s.modelSvc.ListModelBudgets(r)
 	case path == "/api/models/usage" && method == http.MethodGet:
-		data, err = s.listUsage(r)
+		data, err = s.modelSvc.ListUsage(r)
+	case path == "/api/model/routes" && method == http.MethodGet:
+		data, err = s.modelSvc.ListModelRoutes(r)
+	case path == "/api/model/budgets" && method == http.MethodGet:
+		data, err = s.modelSvc.ListModelBudgets(r)
+	case path == "/api/usage" && method == http.MethodGet:
+		data, err = s.modelSvc.ListUsage(r)
 
 	// Knowledge
 	case path == "/api/knowledge/docs" && method == http.MethodGet:
@@ -1258,10 +1306,10 @@ func (s *serverIdentity) WorkspaceID() string {
 func (s *Server) alias(path, method string, r *http.Request) (any, error, bool) {
 	switch {
 	case path == "/api/model/providers" && method == http.MethodGet:
-		v, err := s.listModelProviders(r)
+		v, err := s.modelSvc.ListModelProviders(r)
 		return v, err, true
 	case path == "/api/model/routes" && method == http.MethodGet:
-		v, err := s.listModelRoutes(r)
+		v, err := s.modelSvc.ListModelRoutes(r)
 		return v, err, true
 	case path == "/api/channel/deployments" && method == http.MethodGet:
 		v, err := s.listChannelDeploys(r)
@@ -1348,20 +1396,95 @@ func (s *Server) buildCopSvc() *copilot.Service {
 		ResolveDefaultRiskLevelFn:   s.resolveDefaultRiskLevel,
 		ResolveDefaultSessionModeFn: s.resolveDefaultSessionMode,
 		ResolveMessageBucketIDFn:    s.resolveMessageBucketID,
-		StreamLLMForCopilotFn:       s.streamLLMForCopilot,
-		AppendMemoryAuditLockedFn:   s.appendMemoryAuditLocked,
-		RunParticipantTurnFn:        s.runParticipantTurn,
-		RunSkillToolFn:              s.runSkillTool,
-		DispatchAuthorizedToolFn:    s.dispatchAuthorizedTool,
+		// Cross-module bridge — M02 expert-collab delegates the actual LLM
+		// stream to the M08 模型中心 facade (s.modelSvc.StreamLLMForCopilot).
+		// Implementation lives in internal/models/handlers_stream.go. The
+		// published-policy lookup also moves to M08 since both share the
+		// store snapshot; see internal/models/handlers_invoke.go.
+		StreamLLMForCopilotFn:     s.modelSvc.StreamLLMForCopilot,
+		AppendMemoryAuditLockedFn: s.appendMemoryAuditLocked,
+		RunParticipantTurnFn:      s.runParticipantTurn,
+		RunSkillToolFn:            s.runSkillTool,
+		DispatchAuthorizedToolFn:  s.dispatchAuthorizedTool,
 		BuildParticipantContextFn: func(in copilot.ParticipantCtxInput, emp map[string]any) copilot.ParticipantContext {
 			return s.buildParticipantContext(participantCtxInput(in), emp)
 		},
 		IsDemoModelAliasFn:       isDemoModelAlias,
-		PublishedPolicyByLevelFn: s.publishedPolicyByLevelLocked,
+		PublishedPolicyByLevelFn: s.modelSvc.PublishedPolicyByLevelLocked,
 	}
 	svc := copilot.NewService(s.Store, deps)
 	svc.SubAgent = s.SubAgent
 	svc.Kernel = s.Kernel
+	return svc
+}
+
+// buildModelSvc wires the M08 模型中心 (Model Center) HTTP-route façade.
+// The models package owns the full M08 surface: 17 REST handlers
+// (providers CRUD + governance + audit + routing policies + failover
+// drills + model invocation) + the SSE stream endpoint + the Copilot
+// LLM streaming bridge (StreamLLMForCopilotFn). Server wires Deps
+// (workspace/identity helpers, governance gates, audit sink, rate
+// limit, metrics, mode detection, cap-base copy) so the package
+// boundary stays one-way: models never imports internal/server/.
+//
+// Why Deps as function fields (not an interface)?
+//   - Keeps models free of any internal/server/ import — Deps is the
+//     boundary, not a coupled interface.
+//   - Lets tests inject stubs selectively — most fields are nil-safe
+//     (every M08 handler does `s.<Field>` lookups before calling).
+//   - Avoids the breadth of an interface with ~15 methods when callers
+//     want one field each.
+func (s *Server) buildModelSvc() *models.Service {
+	// Adapter for AllowRate: the legacy s.allowModelRate wraps
+	// s.Cache.AllowRate with a "model:" key prefix. Service.allowModelRate
+	// already prepends that prefix, so this adapter delegates straight to
+	// the cache without re-prefixing (avoids double "model:model:" prefix).
+	allowRate := func(ctx context.Context, key string, limit int64, window time.Duration) (bool, error) {
+		if s.Cache == nil || !s.Cache.Available() {
+			return true, nil // fall back to in-process sliding window
+		}
+		return s.Cache.AllowRate(ctx, key, limit, window)
+	}
+	// IsCollabMode adapter: nil-safe wrapper around s.Mode so M08 can
+	// route the Cap-hop split without taking a hard dep on ServiceMode.
+	isCollab := func() bool { return s != nil && s.Mode == ModeCollab }
+	// AppendAudit adapter: s.Store.AppendAudit returns the audit entry
+	// map; the M08 Deps contract expects a void sink that just records
+	// the audit line. Wrapping drops the return value cleanly.
+	appendAuditSink := func(workspaceID, actor, action, target, result, reason string) {
+		s.Store.AppendAudit(workspaceID, actor, action, target, result, reason)
+	}
+	svc := models.NewService(s.Store, models.Deps{
+		WorkspaceID:                  s.workspaceID,
+		IdentityFrom:                 identityFrom,
+		DecodeMap:                    decodeMap,
+		EvaluateWrite:                s.evaluateWrite,
+		RequiresPeerApprovalGate:     requiresPeerApprovalGate,
+		RequireProductionDualApproval: requireProductionDualApproval,
+		MaybeHoldForCountersign:      maybeHoldForCountersign,
+		ProductionLikeEnv:            productionLikeEnv,
+		AppendAudit:                  appendAuditSink,
+		AllowRate:                    allowRate,
+		IncModelVaultError:           IncModelVaultError,
+		IncModelProbe:                IncModelProbe,
+		IncModelPolicyPublish:        IncModelPolicyPublish,
+		IncModelBudgetDeny:           IncModelBudgetDeny,
+		IsCollabMode:                 isCollab,
+		CapBaseURL:                   capBaseURL,
+		// Late-bound Vault accessor: tests that swap srv.Vault after
+		// New() (e.g. TestResolveModelAliasToPublishedRoute) still see
+		// their override, because the Service reads through this
+		// callback on every resolve / put / delete. The static
+		// svc.Vault field below remains for callers that built the
+		// Service without going through New() — service.currentVault
+		// prefers VaultFn when set.
+		VaultFn: func() *vault.Client { return s.Vault },
+	})
+	svc.Vault = s.Vault
+	svc.Cache = s.Cache
+	svc.ModelProbe = s.ModelProbe
+	svc.TraceRecorder = s.TraceRecorder
+	svc.UsageSink = s.UsageSink
 	return svc
 }
 

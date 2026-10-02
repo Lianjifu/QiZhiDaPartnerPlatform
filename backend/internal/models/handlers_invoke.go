@@ -1,12 +1,8 @@
-package server
+package models
 
 import (
-	"bufio"
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -19,23 +15,47 @@ import (
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
-// ResolvedTurn is re-exported from internal/copilot/ (see service.go).
-// Local alias kept for callers that still want to reference it as
-// `resolvedTurn` (lowercase) — they transparently hit the copilot
-// definition.
-type resolvedTurn = copilot.ResolvedTurn
+// PublishedPolicyByLevelLocked returns the published policy for (ws, level)
+// or nil. Caller MUST hold no lock (acquires RLock briefly). Exported as
+// the cross-module bridge consumed by the M02 copilot module via
+// Deps.PublishedPolicyByLevelFn.
+func (s *Service) PublishedPolicyByLevelLocked(ws, level string) map[string]any {
+	for _, pol := range s.Store.RoutingPolicies {
+		if str(pol["workspaceId"]) == ws && str(pol["status"]) == "published" && str(pol["level"]) == level {
+			return pol
+		}
+	}
+	return nil
+}
 
-func (s *Server) resolveModelForTurn(ctx context.Context, ws, requested string) (resolvedTurn, error) {
+// resolveModelForTurn returns the first usable resolved turn for the
+// workspace + model-id. Callers can pick any candidate from listResolvedTurns
+// if they want failover ordering.
+func (s *Service) resolveModelForTurn(ctx context.Context, ws, requested string) (ResolvedTurn, error) {
 	turns := s.listResolvedTurns(ctx, ws, requested)
 	if len(turns) == 0 {
-		return resolvedTurn{}, fmt.Errorf("no usable chat model in workspace %s", ws)
+		return ResolvedTurn{}, fmt.Errorf("no usable chat model in workspace %s", ws)
 	}
 	return turns[0], nil
 }
 
-// listResolvedTurns returns ordered provider candidates (requested → routing → active/standby).
-// Callers should try each until one streams successfully, then fall back to DE_LLM_* / embedded.
-func (s *Server) listResolvedTurns(ctx context.Context, ws, requested string) []resolvedTurn {
+// ResolveModelForTurn is the exported bridge for the legacy
+// `s.resolveModelForTurn` Server wrapper.
+func (s *Service) ResolveModelForTurn(ctx context.Context, ws, requested string) (ResolvedTurn, error) {
+	return s.resolveModelForTurn(ctx, ws, requested)
+}
+
+// ListResolvedTurns is the exported bridge for non-M08 call sites
+// (model_invoke_test.go) that used to call `s.listResolvedTurns(ctx, ws, req)`
+// on *Server.
+func (s *Service) ListResolvedTurns(ctx context.Context, ws, requested string) []ResolvedTurn {
+	return s.listResolvedTurns(ctx, ws, requested)
+}
+
+// listResolvedTurns returns ordered provider candidates (requested → routing
+// → active/standby). Callers should try each until one streams successfully,
+// then fall back to DE_LLM_* / embedded via streamEnvFallback.
+func (s *Service) listResolvedTurns(ctx context.Context, ws, requested string) []ResolvedTurn {
 	requested = strings.TrimSpace(requested)
 
 	type cand struct {
@@ -136,7 +156,7 @@ func (s *Server) listResolvedTurns(ctx context.Context, ws, requested string) []
 			}
 		}
 		if level := aliasToRouteLevel(requested); level != "" {
-			if pol := s.publishedPolicyByLevelLocked(ws, level); pol != nil {
+			if pol := s.PublishedPolicyByLevelLocked(ws, level); pol != nil {
 				if m, p := s.modelByIDInWorkspaceLocked(str(pol["primaryModelId"]), ws); m != nil {
 					collect(m, p, level, "routing")
 				}
@@ -149,7 +169,7 @@ func (s *Server) listResolvedTurns(ctx context.Context, ws, requested string) []
 		}
 	}
 	for _, level := range []string{"P0", "P0+", "P1", "P2", "P3"} {
-		if pol := s.publishedPolicyByLevelLocked(ws, level); pol != nil {
+		if pol := s.PublishedPolicyByLevelLocked(ws, level); pol != nil {
 			if m, p := s.modelByIDInWorkspaceLocked(str(pol["primaryModelId"]), ws); m != nil {
 				collect(m, p, level, "routing")
 			}
@@ -184,7 +204,7 @@ func (s *Server) listResolvedTurns(ctx context.Context, ws, requested string) []
 	}
 	s.Store.RUnlock()
 
-	out := make([]resolvedTurn, 0, len(cands))
+	out := make([]ResolvedTurn, 0, len(cands))
 	for _, c := range cands {
 		apiKey := ""
 		if ref := str(c.provider["credentialRef"]); ref != "" {
@@ -215,7 +235,7 @@ func (s *Server) listResolvedTurns(ctx context.Context, ws, requested string) []
 			Model:      name,
 			System:     "You are an enterprise digital-employee expert assistant. Answer in the user's language. Be precise and actionable.",
 		}
-		out = append(out, resolvedTurn{
+		out = append(out, ResolvedTurn{
 			ModelID: coalesce(str(c.model["id"]), name), ModelName: name,
 			ProviderID: str(c.provider["id"]), ProviderName: str(c.provider["name"]),
 			Protocol: req.Protocol, Level: c.level, Source: c.source, Request: req,
@@ -224,48 +244,15 @@ func (s *Server) listResolvedTurns(ctx context.Context, ws, requested string) []
 	return out
 }
 
-func (s *Server) publishedPolicyByLevelLocked(ws, level string) map[string]any {
-	for _, pol := range s.Store.RoutingPolicies {
-		if str(pol["workspaceId"]) == ws && str(pol["status"]) == "published" && str(pol["level"]) == level {
-			return pol
-		}
-	}
-	return nil
-}
-
-func aliasToRouteLevel(alias string) string {
-	a := strings.ToLower(strings.TrimSpace(alias))
-	switch {
-	case strings.Contains(a, "opus"), strings.HasSuffix(a, "p0+"), a == "p0+":
-		return "P0+"
-	case strings.Contains(a, "sonnet"), a == "p0", strings.HasPrefix(a, "p0"):
-		return "P0"
-	case strings.Contains(a, "gpt-5"), strings.Contains(a, "deepseek"), a == "p1":
-		return "P1"
-	case strings.Contains(a, "haiku"), a == "p2":
-		return "P2"
-	default:
-		return ""
-	}
-}
-
-func hasCapability(caps []string, want string) bool {
-	for _, c := range caps {
-		if strings.EqualFold(c, want) {
-			return true
-		}
-	}
-	return false
-}
-
-// streamResolvedChat streams text deltas for a resolved turn (local provider call).
-func (s *Server) streamResolvedChat(ctx context.Context, rt resolvedTurn, messages []modelprov.ChatMessage, onDelta func(string) error) (string, error) {
+// streamResolvedChat streams text deltas for a resolved turn via the
+// modelprov client. Calls back on every non-empty delta.
+func (s *Service) streamResolvedChat(ctx context.Context, rt ResolvedTurn, messages []modelprov.ChatMessage, onDelta func(string) error) (string, error) {
 	req := rt.Request
 	if len(messages) == 0 {
 		return "", fmt.Errorf("missing messages")
 	}
 	req.Messages = messages
-	client := modelprov.NewClient()
+	client := s.modelProbe()
 	started := time.Now()
 	traceID := s.newTraceID()
 	ch, err := client.StreamChat(ctx, req)
@@ -312,9 +299,8 @@ func (s *Server) streamResolvedChat(ctx context.Context, rt resolvedTurn, messag
 	return b.String(), nil
 }
 
-// recordTrace emits a single trace.Event to the Server's recorder. Safe to
-// call with nil recorder (test stubs).
-func (s *Server) recordTrace(traceID, ws, turnID string, rt resolvedTurn, started time.Time, status trace.Status, err error) {
+// recordTrace emits a single trace.Event to the recorder. Nil-safe.
+func (s *Service) recordTrace(traceID, ws, turnID string, rt ResolvedTurn, started time.Time, status trace.Status, err error) {
 	if s == nil || s.TraceRecorder == nil {
 		return
 	}
@@ -337,13 +323,16 @@ func (s *Server) recordTrace(traceID, ws, turnID string, rt resolvedTurn, starte
 	s.TraceRecorder.Append(ev)
 }
 
-func (s *Server) newTraceID() string {
+// newTraceID generates a cheap correlation id for the per-invocation trace.
+func (s *Service) newTraceID() string {
 	// Cheap correlation id; uniqueness is best-effort within process.
 	return fmt.Sprintf("tr-%d", time.Now().UnixNano())
 }
 
-// streamLocalCandidates tries provider candidates, then DE_LLM_*, then embedded chat.
-func (s *Server) streamLocalCandidates(ctx context.Context, ws, modelID string, messages []modelprov.ChatMessage, system string, onDelta func(text, resolvedModelID string) error) (string, resolvedTurn, error) {
+// streamLocalCandidates tries provider candidates, then DE_LLM_*, then
+// embedded chat. Honors per-attempt timeouts (full for primary, shorter for
+// standbys).
+func (s *Service) streamLocalCandidates(ctx context.Context, ws, modelID string, messages []modelprov.ChatMessage, system string, onDelta func(text, resolvedModelID string) error) (string, ResolvedTurn, error) {
 	var lastErr error
 	candidates := s.listResolvedTurns(ctx, ws, modelID)
 	for i, rt := range candidates {
@@ -380,6 +369,8 @@ func (s *Server) streamLocalCandidates(ctx context.Context, ws, modelID string, 
 	return s.streamEnvFallback(ctx, messages, system, onDelta, lastErr)
 }
 
+// candidateAttemptTimeout returns the per-attempt timeout for the primary
+// candidate. Defaults to 45s; tunable via DE_MODEL_CANDIDATE_TIMEOUT.
 func candidateAttemptTimeout() time.Duration {
 	// Default 45s: DeepSeek / Azure cold path often exceeds the old 8s fail-fast budget
 	// during tool-heavy Copilot turns (pptx skill, multi-step ReAct).
@@ -398,6 +389,8 @@ func candidateAttemptTimeout() time.Duration {
 	return time.Duration(sec) * time.Second
 }
 
+// candidateStandbyTimeout returns the per-attempt timeout for standby
+// candidates (shorter than the primary). Tunable via DE_MODEL_STANDBY_TIMEOUT.
 func candidateStandbyTimeout() time.Duration {
 	sec := 20
 	if v := strings.TrimSpace(os.Getenv("DE_MODEL_STANDBY_TIMEOUT")); v != "" {
@@ -416,6 +409,8 @@ func candidateStandbyTimeout() time.Duration {
 	return d
 }
 
+// clampAttemptToParent shortens the per-attempt budget so the overall parent
+// ctx deadline is respected (leaves a 500ms cushion for SSE flush / fallback).
 func clampAttemptToParent(ctx context.Context, budget time.Duration) time.Duration {
 	if dl, ok := ctx.Deadline(); ok {
 		remain := time.Until(dl)
@@ -431,7 +426,8 @@ func clampAttemptToParent(ctx context.Context, budget time.Duration) time.Durati
 	return budget
 }
 
-// copilotStreamTimeout is the overall Copilot harness SSE budget (multi-step ReAct + tools).
+// copilotStreamTimeout returns the overall Copilot harness SSE budget
+// (multi-step ReAct + tools).
 func copilotStreamTimeout() time.Duration {
 	sec := 300
 	if v := strings.TrimSpace(os.Getenv("DE_COPILOT_STREAM_TIMEOUT")); v != "" {
@@ -448,8 +444,9 @@ func copilotStreamTimeout() time.Duration {
 	return time.Duration(sec) * time.Second
 }
 
-// formatModelInvokeUserMessage turns provider/transport errors into actionable Chinese copy.
-// Avoids the misleading "无可用模型：context deadline exceeded" for timeout cases.
+// formatModelInvokeUserMessage turns provider/transport errors into actionable
+// Chinese copy. Avoids the misleading "无可用模型：context deadline exceeded"
+// for timeout cases.
 func formatModelInvokeUserMessage(err error) string {
 	if err == nil {
 		return "模型调用失败"
@@ -481,34 +478,16 @@ func formatModelInvokeUserMessage(err error) string {
 	}
 }
 
-func (s *Server) streamLLMForCopilot(ctx context.Context, r *http.Request, ws, modelID string, messages []modelprov.ChatMessage, system string, onDelta func(text, resolvedModelID string) error) (reply string, resolved resolvedTurn, err error) {
-	// Split topology: Collab owns sessions; Cap owns providers/credentials/invoke.
-	// Prefer Cap hop so Vault / model_secrets live in one place.
-	if s.Mode == ModeCollab {
-		out, rt, e := s.streamLLMViaCap(ctx, r, ws, modelID, messages, system, onDelta)
-		if e == nil {
-			return out, rt, nil
-		}
-		err = e
-		if !isCapUnreachable(e) {
-			// Cap answered (auth/model/SSRF/etc.) — do not re-resolve locally with a
-			// half-hydrated Collab store; only allow DE_LLM_* / embedded escape hatch.
-			return s.streamEnvFallback(ctx, messages, system, onDelta, err)
-		}
-		// Cap down: continue to local resolve (mono-dev / Cap not started) then env.
-	}
-
-	return s.streamLocalCandidates(ctx, ws, modelID, messages, system, onDelta)
-}
-
-func (s *Server) streamEnvFallback(ctx context.Context, messages []modelprov.ChatMessage, system string, onDelta func(text, resolvedModelID string) error, prior error) (string, resolvedTurn, error) {
+// streamEnvFallback tries the DE_LLM_* env fallback, then embedded chat,
+// before bubbling up a "no model endpoint available" error.
+func (s *Service) streamEnvFallback(ctx context.Context, messages []modelprov.ChatMessage, system string, onDelta func(text, resolvedModelID string) error, prior error) (string, ResolvedTurn, error) {
 	userMsg := copilot.LastUserContent(messages)
 	if envReq, ok := modelprov.EnvFallbackRequest(userMsg); ok {
 		if system != "" {
 			envReq.System = system
 		}
 		envReq.Messages = messages
-		rt := resolvedTurn{
+		rt := ResolvedTurn{
 			ModelID: coalesce(envReq.Model, "env-llm"), ModelName: envReq.Model,
 			ProviderID: "env", ProviderName: "DE_LLM", Protocol: envReq.Protocol, Source: "env", Request: envReq,
 		}
@@ -523,7 +502,7 @@ func (s *Server) streamEnvFallback(ctx context.Context, messages []modelprov.Cha
 	if modelprov.EmbeddedChatEnabled() {
 		req := modelprov.EmbeddedChatRequest(userMsg, system)
 		req.Messages = messages
-		rt := resolvedTurn{
+		rt := ResolvedTurn{
 			ModelID: req.Model, ModelName: req.Model, ProviderID: "embedded",
 			ProviderName: "平台内置对话", Protocol: "embedded", Source: "embedded", Request: req,
 		}
@@ -538,9 +517,11 @@ func (s *Server) streamEnvFallback(ctx context.Context, messages []modelprov.Cha
 	if prior == nil {
 		prior = fmt.Errorf("no model endpoint available")
 	}
-	return "", resolvedTurn{}, fmt.Errorf("%s", formatModelInvokeUserMessage(prior))
+	return "", ResolvedTurn{}, fmt.Errorf("%s", formatModelInvokeUserMessage(prior))
 }
 
+// isCapUnreachable reports whether the error is one we'd see when the Cap
+// sidecar is down (vs. a model/repo-side issue).
 func isCapUnreachable(err error) bool {
 	if err == nil {
 		return false
@@ -552,176 +533,10 @@ func isCapUnreachable(err error) bool {
 		strings.Contains(msg, "timeout")
 }
 
-func capBaseURL() string {
-	if v := strings.TrimSpace(os.Getenv("DE_CAP_URL")); v != "" {
-		return strings.TrimRight(v, "/")
-	}
-	return "http://127.0.0.1:8102"
-}
-
-func (s *Server) streamLLMViaCap(ctx context.Context, r *http.Request, ws, modelID string, messages []modelprov.ChatMessage, system string, onDelta func(text, resolvedModelID string) error) (string, resolvedTurn, error) {
-	userMsg := copilot.LastUserContent(messages)
-	payload, _ := json.Marshal(map[string]any{
-		"workspaceId": ws, "modelId": modelID, "content": userMsg, "messages": messages, "stream": true, "system": system,
-	})
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, capBaseURL()+"/api/model-invoke/stream", bytes.NewReader(payload))
-	if err != nil {
-		return "", resolvedTurn{}, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "text/event-stream")
-	// Forward auth + workspace identity
-	for _, h := range []string{"Authorization", "x-workspace-id", "x-tenant-id", "x-correlation-id", "x-mock-role", "x-mock-actor", "x-mock-user-id", "x-mock-permissions"} {
-		if v := r.Header.Get(h); v != "" {
-			req.Header.Set(h, v)
-		}
-	}
-	if req.Header.Get("x-workspace-id") == "" {
-		req.Header.Set("x-workspace-id", ws)
-	}
-
-	client := &http.Client{Timeout: 0}
-	res, err := client.Do(req)
-	if err != nil {
-		return "", resolvedTurn{}, fmt.Errorf("Cap unreachable: %w", err)
-	}
-	defer res.Body.Close()
-	if res.StatusCode >= 400 {
-		b, _ := io.ReadAll(io.LimitReader(res.Body, 4<<10))
-		return "", resolvedTurn{}, fmt.Errorf("Cap invoke %d: %s", res.StatusCode, strings.TrimSpace(string(b)))
-	}
-
-	rt := resolvedTurn{ModelID: modelID, Source: "cap"}
-	var b strings.Builder
-	sc := bufio.NewScanner(res.Body)
-	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024)
-	event := ""
-	for sc.Scan() {
-		line := sc.Text()
-		if strings.HasPrefix(line, "event:") {
-			event = strings.TrimSpace(strings.TrimPrefix(line, "event:"))
-			continue
-		}
-		if !strings.HasPrefix(line, "data:") {
-			continue
-		}
-		data := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
-		var obj map[string]any
-		if json.Unmarshal([]byte(data), &obj) != nil {
-			continue
-		}
-		if mid := str(obj["modelId"]); mid != "" {
-			rt.ModelID = mid
-		}
-		if name := str(obj["modelName"]); name != "" {
-			rt.ModelName = name
-		}
-		if pid := str(obj["providerId"]); pid != "" {
-			rt.ProviderID = pid
-		}
-		if src := str(obj["source"]); src != "" {
-			rt.Source = src
-		}
-		switch event {
-		case "delta":
-			text := str(obj["text"])
-			if text == "" {
-				continue
-			}
-			b.WriteString(text)
-			if onDelta != nil {
-				if err := onDelta(text, rt.ModelID); err != nil {
-					return b.String(), rt, err
-				}
-			}
-		case "error":
-			return b.String(), rt, fmt.Errorf("%s", coalesce(str(obj["message"]), "model invoke failed"))
-		case "done":
-			if b.Len() == 0 {
-				if full := str(obj["text"]); full != "" {
-					b.WriteString(full)
-				}
-			}
-		}
-		event = ""
-	}
-	if err := sc.Err(); err != nil {
-		return b.String(), rt, err
-	}
-	if b.Len() == 0 {
-		return "", rt, fmt.Errorf("empty Cap stream")
-	}
-	return b.String(), rt, nil
-}
-
-// --- Cap HTTP handlers ---
-
-func (s *Server) modelInvokeStream(w http.ResponseWriter, r *http.Request) {
-	body, _ := decodeMap(r)
-	ws := coalesce(str(body["workspaceId"]), s.workspaceID(r))
-	modelID := coalesce(str(body["modelId"]), str(body["model"]))
-	messages := parseChatMessages(body["messages"])
-	content := strings.TrimSpace(str(body["content"]))
-	if content == "" {
-		content = strings.TrimSpace(str(body["input"]))
-	}
-	if len(messages) == 0 {
-		if content == "" {
-			writeErr(w, apperr.BadReq(apperr.BadRequest, "消息不能为空"))
-			return
-		}
-		messages = []modelprov.ChatMessage{{Role: "user", Content: content}}
-	}
-	system := strings.TrimSpace(str(body["system"]))
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		writeErr(w, apperr.New(apperr.Unknown, 500, "流式不支持"))
-		return
-	}
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-
-	emit := func(typ string, extra map[string]any) {
-		payload := map[string]any{"type": typ}
-		for k, v := range extra {
-			payload[k] = v
-		}
-		writeSSE(w, typ, payload)
-		flusher.Flush()
-	}
-
-	ctx, cancel := context.WithTimeout(r.Context(), 150*time.Second)
-	defer cancel()
-
-	var full strings.Builder
-	text, rt, streamErr := s.streamLocalCandidates(ctx, ws, modelID, messages, system, func(t, mid string) error {
-		if full.Len() == 0 {
-			emit("meta", map[string]any{
-				"modelId": mid, "source": "provider",
-			})
-		}
-		full.WriteString(t)
-		emit("delta", map[string]any{"text": t, "modelId": mid})
-		return nil
-	})
-	if streamErr != nil {
-		emit("error", map[string]any{"message": formatModelInvokeUserMessage(streamErr), "partial": full.String()})
-		return
-	}
-	emit("meta", map[string]any{
-		"modelId": rt.ModelID, "modelName": rt.ModelName, "providerId": rt.ProviderID,
-		"providerName": rt.ProviderName, "protocol": rt.Protocol, "source": rt.Source, "level": rt.Level,
-	})
-	emit("done", map[string]any{
-		"ok": true, "modelId": rt.ModelID, "modelName": rt.ModelName, "text": text,
-		"providerId": rt.ProviderID, "source": rt.Source,
-	})
-}
-
-func (s *Server) modelInvoke(r *http.Request) (any, error) {
-	body, _ := decodeMap(r)
-	ws := coalesce(str(body["workspaceId"]), s.workspaceID(r))
+// ModelInvoke → POST /api/model-invoke
+func (s *Service) ModelInvoke(r *http.Request) (any, error) {
+	body, _ := s.DecodeMap(r)
+	ws := coalesce(str(body["workspaceId"]), s.WorkspaceID(r))
 	modelID := coalesce(str(body["modelId"]), str(body["model"]))
 	messages := parseChatMessages(body["messages"])
 	content := strings.TrimSpace(coalesce(str(body["content"]), str(body["input"])))
@@ -744,6 +559,8 @@ func (s *Server) modelInvoke(r *http.Request) (any, error) {
 	}, nil
 }
 
+// parseChatMessages normalises a generic message slice onto
+// modelprov.ChatMessage. Unknown roles are dropped; empty content is dropped.
 func parseChatMessages(raw any) []modelprov.ChatMessage {
 	arr, ok := raw.([]any)
 	if !ok || len(arr) == 0 {

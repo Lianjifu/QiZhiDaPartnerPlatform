@@ -1,4 +1,4 @@
-package server
+package models
 
 import (
 	"context"
@@ -14,9 +14,13 @@ import (
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
-// --- Models control plane (aligned with Mock + production guards) ---
+// --- Internal lookups / builders (moved from handlers_models.go) ---
 
-func (s *Server) appendModelAudit(ws, actor, action, target, result string, details map[string]any) map[string]any {
+// appendModelAudit prepends a model_audit entry to s.Store.ModelAudit and
+// persists the collection. If a correlationId is supplied via details, it
+// is preferred over a freshly minted id. Mirrors the legacy
+// `*Server.appendModelAudit`.
+func (s *Service) appendModelAudit(ws, actor, action, target, result string, details map[string]any) map[string]any {
 	corr := s.Store.ID("corr")
 	if details != nil {
 		if c := str(details["correlationId"]); c != "" {
@@ -41,7 +45,9 @@ func (s *Server) appendModelAudit(ws, actor, action, target, result string, deta
 	return ev
 }
 
-func (s *Server) findProviderLocked(pid, ws string) (map[string]any, error) {
+// findProviderLocked looks up a model provider by id (optionally scoped to
+// the named workspace). Caller must NOT hold Store.Lock.
+func (s *Service) findProviderLocked(pid, ws string) (map[string]any, error) {
 	for _, x := range s.Store.ModelProviders {
 		if str(x["id"]) != pid {
 			continue
@@ -54,7 +60,9 @@ func (s *Server) findProviderLocked(pid, ws string) (map[string]any, error) {
 	return nil, apperr.NotFoundErr(apperr.ProviderNotFound, "供应商不存在")
 }
 
-func (s *Server) findPolicyLocked(pid, ws string) (map[string]any, error) {
+// findPolicyLocked looks up a routing policy by id (optionally scoped to the
+// named workspace). Caller must NOT hold Store.Lock.
+func (s *Service) findPolicyLocked(pid, ws string) (map[string]any, error) {
 	for _, x := range s.Store.RoutingPolicies {
 		if str(x["id"]) != pid {
 			continue
@@ -67,11 +75,23 @@ func (s *Server) findPolicyLocked(pid, ws string) (map[string]any, error) {
 	return nil, apperr.NotFoundErr(apperr.PolicyNotFound, "路由策略不存在")
 }
 
-func (s *Server) modelByIDLocked(modelID string) (map[string]any, map[string]any) {
+// modelByIDLocked returns the model and its owning provider, both nil when no
+// match. Workspace-unscoped.
+func (s *Service) modelByIDLocked(modelID string) (map[string]any, map[string]any) {
 	return s.modelByIDInWorkspaceLocked(modelID, "")
 }
 
-func (s *Server) modelByIDInWorkspaceLocked(modelID, ws string) (map[string]any, map[string]any) {
+// ModelByIDLocked is the exported bridge for non-M08 call sites
+// (buildPartnerSvc) that used to call `s.modelByIDLocked(id)` on *Server.
+// Delegates to the unexported implementation; returns (nil, nil) when
+// the id doesn't resolve.
+func (s *Service) ModelByIDLocked(modelID string) (map[string]any, map[string]any) {
+	return s.modelByIDLocked(modelID)
+}
+
+// modelByIDInWorkspaceLocked returns the model and provider for the given
+// modelID. When ws != "" only in-workspace hits are returned.
+func (s *Service) modelByIDInWorkspaceLocked(modelID, ws string) (map[string]any, map[string]any) {
 	var fallbackM, fallbackP map[string]any
 	for _, p := range s.Store.ModelProviders {
 		for _, m := range providerModels(p) {
@@ -94,7 +114,9 @@ func (s *Server) modelByIDInWorkspaceLocked(modelID, ws string) (map[string]any,
 	return nil, nil
 }
 
-func (s *Server) providerImpactLocked(providerID string) map[string]any {
+// providerImpactLocked reports whether removing the named provider would break
+// a published routing policy. Caller must NOT hold Store.Lock.
+func (s *Service) providerImpactLocked(providerID string) map[string]any {
 	// Only currently published policies block deletion. Historical PolicyVersions
 	// remain immutable audit snapshots and must not permanently pin a provider.
 	refs := make([]map[string]any, 0)
@@ -138,7 +160,9 @@ func (s *Server) providerImpactLocked(providerID string) map[string]any {
 	return out
 }
 
-func (s *Server) validateRoutingPolicyLocked(policy map[string]any) []string {
+// validateRoutingPolicyLocked returns the validation issue strings for a
+// routing policy. Caller must NOT hold Store.Lock.
+func (s *Service) validateRoutingPolicyLocked(policy map[string]any) []string {
 	issues := []string{}
 	primaryID := str(policy["primaryModelId"])
 	fallbacks := stringSlice(policy["fallbackModelIds"])
@@ -185,18 +209,24 @@ func (s *Server) validateRoutingPolicyLocked(policy map[string]any) []string {
 	return issues
 }
 
-func (s *Server) putProviderCredential(r *http.Request, providerID, raw string) (credRef, masked string, err error) {
+// putProviderCredential stores a raw credential via Vault (production) or
+// via the local model_secrets map (dev). Caller MUST NOT hold Store.Lock
+// when calling this; the local-secrets path takes it internally.
+func (s *Service) putProviderCredential(r *http.Request, providerID, raw string) (credRef, masked string, err error) {
 	if raw == "" {
 		return "", "", apperr.BadReq(apperr.ProviderInvalid, "凭据不能为空")
 	}
-	if vaultRequiredForCredentials() && (s.Vault == nil || !s.Vault.Enabled()) {
+	v := s.currentVault()
+	if vaultRequiredForCredentials() && (v == nil || !v.Enabled()) {
 		return "", "", apperr.BadReq(apperr.ProviderCredential, "生产环境必须配置 Vault")
 	}
 	credRef = "vault://model-providers/" + providerID + "/credential"
 	masked = modelprov.MaskCredential(raw)
-	if s.Vault != nil {
-		if err := s.Vault.Put(r.Context(), credRef, raw); err != nil {
-			IncModelVaultError()
+	if v != nil {
+		if err := v.Put(r.Context(), credRef, raw); err != nil {
+			if s.IncModelVaultError != nil {
+				s.IncModelVaultError()
+			}
 			return "", "", apperr.BadReq(apperr.ProviderCredential, "写入凭据失败")
 		}
 	}
@@ -216,13 +246,16 @@ func (s *Server) putProviderCredential(r *http.Request, providerID, raw string) 
 	return credRef, masked, nil
 }
 
-func (s *Server) resolveProviderCredential(ctx context.Context, credRef string) string {
+// resolveProviderCredential returns the raw API key for the named credential
+// reference. Falls back to the local model_secrets store when the vault lookup
+// fails and we're not in a vault-required env.
+func (s *Service) resolveProviderCredential(ctx context.Context, credRef string) string {
 	if credRef == "" {
 		return ""
 	}
-	if s.Vault != nil {
-		if v, err := s.Vault.Resolve(ctx, credRef); err == nil && v != "" {
-			return v
+	if v := s.currentVault(); v != nil {
+		if val, err := v.Resolve(ctx, credRef); err == nil && val != "" {
+			return val
 		}
 	}
 	// DE_BAN_MOCK_TOKEN 只禁 mock 身份，不能挡住本地 model_secrets。
@@ -238,12 +271,72 @@ func (s *Server) resolveProviderCredential(ctx context.Context, credRef string) 
 	return ""
 }
 
-func (s *Server) listModelProvidersFE(r *http.Request) (any, error) {
-	id := identityFrom(r.Context())
+// checkModelBudgetLocked returns an error when the workspace's published
+// budget is exceeded. Caller MUST hold Store.Lock.
+func (s *Service) checkModelBudgetLocked(workspaceID string) error {
+	if !budgetEnforceEnabled() {
+		return nil
+	}
+	limit := 0.0
+	for _, p := range s.Store.RoutingPolicies {
+		if str(p["workspaceId"]) == workspaceID && str(p["status"]) == "published" {
+			limit += toFloat(p["budgetLimitUsd"])
+		}
+	}
+	if limit <= 0 {
+		return nil
+	}
+	spend := 0.0
+	for _, b := range s.Store.ModelBudgets {
+		if str(b["workspaceId"]) == workspaceID {
+			spend += toFloat(b["usedUsd"])
+		}
+	}
+	units := 0
+	for _, u := range s.Store.UsageMeters {
+		if str(u["workspaceId"]) == workspaceID && (str(u["kind"]) == "copilot" || str(u["kind"]) == "model") {
+			units += intFrom(u["units"])
+		}
+	}
+	est := spend
+	if est == 0 {
+		est = float64(units) * 0.002
+	}
+	if est >= limit {
+		if s.IncModelBudgetDeny != nil {
+			s.IncModelBudgetDeny()
+		}
+		return apperr.Forbidden(apperr.BudgetExceeded, "工作区模型预算已超限")
+	}
+	return nil
+}
+
+// CheckModelBudgetLocked is the exported bridge for non-M08 call sites
+// (copilot harness, channel ingress, models_budget_test.go) that used
+// to call `s.checkModelBudgetLocked(ws)` on *Server. Delegates to the
+// unexported implementation; returns nil when budgetEnforceEnabled is
+// off.
+func (s *Service) CheckModelBudgetLocked(workspaceID string) error {
+	return s.checkModelBudgetLocked(workspaceID)
+}
+
+// ResolveProviderCredential is the exported bridge for non-M08 call
+// sites (model_secrets_test.go) that used to call
+// `s.resolveProviderCredential(ctx, ref)` on *Server. Delegates to the
+// unexported implementation.
+func (s *Service) ResolveProviderCredential(ctx context.Context, credRef string) string {
+	return s.resolveProviderCredential(ctx, credRef)
+}
+
+// --- Provider CRUD (FE-friendly paths) ---
+
+// ListModelProviders → GET /api/model-providers
+func (s *Service) ListModelProviders(r *http.Request) (any, error) {
+	id := s.IdentityFrom(r.Context())
 	if err := requireModelRead(id); err != nil {
 		return nil, err
 	}
-	ws := s.workspaceID(r)
+	ws := s.WorkspaceID(r)
 	s.Store.RLock()
 	defer s.Store.RUnlock()
 	out := make([]map[string]any, 0)
@@ -265,16 +358,21 @@ func (s *Server) listModelProvidersFE(r *http.Request) (any, error) {
 	return out, nil
 }
 
-func (s *Server) createModelProviderFE(r *http.Request) (any, error) {
-	id := identityFrom(r.Context())
+// CreateModelProvider → POST /api/model-providers
+func (s *Service) CreateModelProvider(r *http.Request) (any, error) {
+	id := s.IdentityFrom(r.Context())
 	if err := requireModelWrite(id); err != nil {
 		return nil, err
 	}
-	if err := s.evaluateWrite(r, "model", "create", policy.Input{}); err != nil && id.Role != "admin" {
-		return nil, err
+	if err := s.EvaluateWrite(r, "model", "create", policy.Input{}); err != nil {
+		// No-op: legacy code did `if err := ...; err != nil && id.Role != "admin"`
+		// Preserve the original guard: only fail when err != nil AND not admin.
+		if id.Role != "admin" {
+			return nil, err
+		}
 	}
-	body, _ := decodeMap(r)
-	ws := s.workspaceID(r)
+	body, _ := s.DecodeMap(r)
+	ws := s.WorkspaceID(r)
 	name := strings.TrimSpace(str(body["name"]))
 	modelName := strings.TrimSpace(str(body["model"]))
 	cred := modelprov.ExtractCredential(body)
@@ -315,11 +413,153 @@ func (s *Server) createModelProviderFE(r *http.Request) (any, error) {
 	s.Store.ModelProviders = append([]map[string]any{item}, s.Store.ModelProviders...)
 	s.Store.PersistCollection("model_providers", s.Store.ModelProviders)
 	s.appendModelAudit(ws, id.Name, "接入供应商", name, "success", map[string]any{"reason": str(body["reason"])})
-	s.Store.AppendAudit(ws, id.Name, "接入模型供应商", name, "success", "credentialRef="+credRef)
+	if s.AppendAudit != nil {
+		s.AppendAudit(ws, id.Name, "接入模型供应商", name, "success", "credentialRef="+credRef)
+	}
 	return item, nil
 }
 
-func (s *Server) modelProviderAction(r *http.Request) (any, error) {
+// DiscoverModels → POST /api/model-providers/discover-models
+func (s *Service) DiscoverModels(r *http.Request) (any, error) {
+	id := s.IdentityFrom(r.Context())
+	if err := requireModelWrite(id); err != nil {
+		return nil, err
+	}
+	ws := s.WorkspaceID(r)
+	if !s.allowModelRate(ws+":discover", 30, time.Minute) {
+		return nil, apperr.New(apperr.RateLimited, 429, "拉取请求过于频繁")
+	}
+	body, _ := s.DecodeMap(r)
+	protocol := coalesce(str(body["protocol"]), "openai_compatible")
+	baseURL := strings.TrimSpace(str(body["baseUrl"]))
+	apiKey := modelprov.ExtractCredential(body)
+	if apiKey == "" {
+		apiKey = strings.TrimSpace(str(body["apiKey"]))
+	}
+	apiVersion := str(body["apiVersion"])
+	credRef := ""
+	if pid := str(body["providerId"]); pid != "" {
+		s.Store.RLock()
+		if p, err := s.findProviderLocked(pid, ws); err == nil {
+			if baseURL == "" {
+				baseURL = str(p["baseUrl"])
+			}
+			if protocol == "openai_compatible" || str(body["protocol"]) == "" {
+				protocol = coalesce(str(p["protocol"]), protocol)
+			}
+			if apiVersion == "" {
+				apiVersion = str(p["apiVersion"])
+			}
+			if apiKey == "" {
+				credRef = str(p["credentialRef"])
+			}
+		}
+		s.Store.RUnlock()
+		if apiKey == "" && credRef != "" {
+			apiKey = s.resolveProviderCredential(r.Context(), credRef)
+		}
+	}
+	if baseURL == "" {
+		return nil, apperr.BadReq(apperr.ProviderDiscoverInvalid, "请先填写 API 请求地址")
+	}
+	if !strings.HasPrefix(strings.ToLower(baseURL), "http://") && !strings.HasPrefix(strings.ToLower(baseURL), "https://") {
+		return nil, apperr.BadReq(apperr.ProviderDiscoverInvalid, "API 请求地址格式无效")
+	}
+	if protocol != "ollama" && apiKey == "" && str(body["providerId"]) == "" {
+		return nil, apperr.BadReq(apperr.ProviderDiscoverAuth, "拉取模型列表需要 API Key")
+	}
+	dr, err := s.modelProbe().Discover(r.Context(), protocol, baseURL, apiKey, apiVersion)
+	if err != nil {
+		msg := "拉取模型失败：无法从供应商端点获取模型列表"
+		code := apperr.ProviderUnreachable
+		if strings.Contains(err.Error(), "auth") {
+			code = apperr.ProviderAuth
+			msg = "拉取模型鉴权失败，请检查 API Key 与协议是否匹配"
+		} else if strings.Contains(err.Error(), "ssrf") || strings.Contains(err.Error(), "private") {
+			code = apperr.EgressBlocked
+			msg = "目标地址被安全策略拦截（内网地址需设置 DE_MODEL_ALLOW_PRIVATE=1）"
+		} else if strings.Contains(err.Error(), "empty") {
+			msg = "供应商返回空模型列表，请确认 Base URL / 协议是否正确"
+		}
+		s.Store.Lock()
+		s.appendModelAudit(ws, id.Name, "拉取模型列表", baseURL, "failed", map[string]any{"reason": msg})
+		s.Store.Unlock()
+		return nil, apperr.BadReq(code, msg)
+	}
+	models := make([]map[string]any, 0, len(dr.Models))
+	for _, m := range dr.Models {
+		models = append(models, map[string]any{"id": m["id"], "name": m["name"]})
+	}
+	s.Store.Lock()
+	s.appendModelAudit(ws, id.Name, "拉取模型列表", baseURL, "success", map[string]any{
+		"reason": protocol + ":" + itoa(len(models)) + ":" + dr.Source,
+	})
+	s.Store.Unlock()
+	return map[string]any{
+		"protocol": dr.Protocol, "baseUrl": dr.BaseURL, "models": models, "fetchedAt": dr.FetchedAt,
+		"source": dr.Source, "resolvedUrl": dr.ResolvedURL, "suggestedProtocol": dr.SuggestedProt,
+	}, nil
+}
+
+// TestModelConnection → POST /api/model-providers/test-connection
+func (s *Service) TestModelConnection(r *http.Request) (any, error) {
+	id := s.IdentityFrom(r.Context())
+	if err := requireModelWrite(id); err != nil {
+		return nil, err
+	}
+	ws := s.WorkspaceID(r)
+	if !s.allowModelRate(ws+":probe", 30, time.Minute) {
+		return nil, apperr.New(apperr.RateLimited, 429, "探活请求过于频繁")
+	}
+	body, _ := s.DecodeMap(r)
+	protocol := coalesce(str(body["protocol"]), "openai_compatible")
+	baseURL := strings.TrimSpace(str(body["baseUrl"]))
+	apiKey := modelprov.ExtractCredential(body)
+	apiVersion := str(body["apiVersion"])
+	deployment := str(body["deploymentName"])
+	if baseURL == "" {
+		return nil, apperr.BadReq(apperr.ProviderInvalid, "请先填写 API 请求地址")
+	}
+	if protocol != "ollama" && apiKey == "" {
+		return nil, apperr.BadReq(apperr.ProviderDiscoverAuth, "连接测试需要 API Key")
+	}
+	pr, err := s.modelProbe().Probe(r.Context(), protocol, baseURL, apiKey, apiVersion, deployment)
+	if s.IncModelProbe != nil {
+		s.IncModelProbe(err == nil && pr.Healthy, pr.LatencyMS)
+	}
+	if err != nil {
+		msg := "连接测试失败"
+		code := apperr.ProviderUnreachable
+		if strings.Contains(err.Error(), "auth") {
+			code = apperr.ProviderAuth
+			msg = "鉴权失败，请检查 API Key 或协议（DeepSeek 请用 OpenAI 兼容）"
+		} else if strings.Contains(err.Error(), "timeout") {
+			code = apperr.ProviderTimeout
+			msg = "连接超时"
+		} else if strings.Contains(err.Error(), "ssrf") || strings.Contains(err.Error(), "private") {
+			code = apperr.EgressBlocked
+			msg = "目标地址被安全策略拦截"
+		}
+		s.Store.Lock()
+		s.appendModelAudit(ws, id.Name, "连接测试", baseURL, "failed", map[string]any{"reason": msg})
+		s.Store.Unlock()
+		return nil, apperr.BadReq(code, msg)
+	}
+	s.Store.Lock()
+	s.appendModelAudit(ws, id.Name, "连接测试", baseURL, "success", map[string]any{
+		"reason": "latencyMs=" + itoa(int(pr.LatencyMS)),
+	})
+	s.Store.Unlock()
+	return map[string]any{
+		"status": "healthy", "latencyMs": pr.LatencyMS, "protocol": protocol,
+		"baseUrl": baseURL, "suggestedProtocol": modelprov.InferProtocolFromURL(baseURL),
+		"verifiedAt": time.Now().UTC().Format(time.RFC3339),
+	}, nil
+}
+
+// ModelProviderAction → /api/model-providers/{id}/{action} catch-all
+// (impact / test / disable / patch / delete).
+func (s *Service) ModelProviderAction(r *http.Request) (any, error) {
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	if len(parts) < 3 {
 		return nil, apperr.NotFoundErr(apperr.ProviderNotFound, "供应商不存在")
@@ -328,8 +568,8 @@ func (s *Server) modelProviderAction(r *http.Request) (any, error) {
 	if len(parts) >= 4 {
 		action = parts[3]
 	}
-	id := identityFrom(r.Context())
-	ws := s.workspaceID(r)
+	id := s.IdentityFrom(r.Context())
+	ws := s.WorkspaceID(r)
 
 	if action == "impact" && r.Method == http.MethodGet {
 		if err := requireModelRead(id); err != nil {
@@ -351,8 +591,10 @@ func (s *Server) modelProviderAction(r *http.Request) (any, error) {
 	case action == "test" && r.Method == http.MethodPost:
 		return s.testModelProvider(r, id, ws, pid)
 	case action == "disable" && r.Method == http.MethodPost:
-		if err := s.evaluateWrite(r, "model", "disable", policy.Input{}); err != nil && id.Role != "admin" {
-			return nil, err
+		if err := s.EvaluateWrite(r, "model", "disable", policy.Input{}); err != nil {
+			if id.Role != "admin" {
+				return nil, err
+			}
 		}
 		s.Store.Lock()
 		defer s.Store.Unlock()
@@ -377,14 +619,18 @@ func (s *Server) modelProviderAction(r *http.Request) (any, error) {
 	return nil, apperr.NotFoundErr(apperr.NotFound, "未知供应商动作")
 }
 
-func (s *Server) testModelProvider(r *http.Request, id *auth.Identity, ws, pid string) (any, error) {
+// testModelProvider probes an existing provider (by id). Pulled out of the
+// action switch so the body stays readable.
+func (s *Service) testModelProvider(r *http.Request, id *auth.Identity, ws, pid string) (any, error) {
 	if !s.allowModelRate(ws+":test", 30, time.Minute) {
 		return nil, apperr.New(apperr.RateLimited, 429, "探活请求过于频繁")
 	}
-	if err := s.evaluateWrite(r, "model", "test", policy.Input{}); err != nil && id.Role != "admin" {
-		return nil, err
+	if err := s.EvaluateWrite(r, "model", "test", policy.Input{}); err != nil {
+		if id.Role != "admin" {
+			return nil, err
+		}
 	}
-	body, _ := decodeMap(r)
+	body, _ := s.DecodeMap(r)
 
 	s.Store.RLock()
 	p, err := s.findProviderLocked(pid, ws)
@@ -408,13 +654,17 @@ func (s *Server) testModelProvider(r *http.Request, id *auth.Identity, ws, pid s
 	} else if ref != "" {
 		secret = s.resolveProviderCredential(r.Context(), ref)
 		resolved = secret != ""
-		if !resolved && s.Vault != nil && s.Vault.Enabled() {
-			IncModelVaultError()
-			s.Store.Lock()
-			s.appendModelAudit(ws, id.Name, "验证供应商连通性", name, "failed", map[string]any{"reason": "凭据不可用"})
-			s.Store.Unlock()
-			return nil, apperr.BadReq(apperr.ProviderCredential, "凭据不可用: "+vault.Redact(ref))
-		}
+		if !resolved {
+			v := s.currentVault()
+			if v != nil && v.Enabled() {
+				if s.IncModelVaultError != nil {
+					s.IncModelVaultError()
+				}
+				s.Store.Lock()
+				s.appendModelAudit(ws, id.Name, "验证供应商连通性", name, "failed", map[string]any{"reason": "凭据不可用"})
+				s.Store.Unlock()
+				return nil, apperr.BadReq(apperr.ProviderCredential, "凭据不可用: "+vault.Redact(ref))
+			}
 		if !resolved && protocol != "ollama" {
 			s.Store.Lock()
 			s.appendModelAudit(ws, id.Name, "验证供应商连通性", name, "failed", map[string]any{"reason": "凭据不可用"})
@@ -422,6 +672,7 @@ func (s *Server) testModelProvider(r *http.Request, id *auth.Identity, ws, pid s
 			return nil, apperr.BadReq(apperr.ProviderCredential, "凭据不可用，请重新填写 API Key 后再验证")
 		}
 	}
+}
 
 	statusLabel := "healthy"
 	providerStatus := "active"
@@ -431,7 +682,9 @@ func (s *Server) testModelProvider(r *http.Request, id *auth.Identity, ws, pid s
 	if baseURL != "" {
 		pr, err := s.modelProbe().Probe(r.Context(), protocol, baseURL, secret, apiVersion, deployment)
 		latency = pr.LatencyMS
-		IncModelProbe(err == nil && pr.Healthy, latency)
+		if s.IncModelProbe != nil {
+			s.IncModelProbe(err == nil && pr.Healthy, latency)
+		}
 		if err != nil {
 			code := apperr.ProviderUnreachable
 			msg := "供应商不可达"
@@ -488,8 +741,10 @@ func (s *Server) testModelProvider(r *http.Request, id *auth.Identity, ws, pid s
 	}, nil
 }
 
-func (s *Server) patchModelProvider(r *http.Request, id *auth.Identity, ws, pid string) (any, error) {
-	body, _ := decodeMap(r)
+// patchModelProvider applies a PATCH body to an existing provider. Caller
+// already authenticated and authorized; this only mutates store state.
+func (s *Service) patchModelProvider(r *http.Request, id *auth.Identity, ws, pid string) (any, error) {
+	body, _ := s.DecodeMap(r)
 	has := false
 	for _, k := range []string{"name", "region", "tier", "baseUrl", "protocol", "model", "note", "apiVersion", "organizationId", "deploymentName", "credential", "apiKey"} {
 		if _, ok := body[k]; ok {
@@ -582,9 +837,12 @@ func (s *Server) patchModelProvider(r *http.Request, id *auth.Identity, ws, pid 
 	return p, nil
 }
 
-func (s *Server) deleteModelProvider(r *http.Request, id *auth.Identity, ws, pid string) (any, error) {
-	if err := s.evaluateWrite(r, "model", "delete", policy.Input{}); err != nil && id.Role != "admin" {
-		return nil, err
+// deleteModelProvider removes a provider (subject to impact check).
+func (s *Service) deleteModelProvider(r *http.Request, id *auth.Identity, ws, pid string) (any, error) {
+	if err := s.EvaluateWrite(r, "model", "delete", policy.Input{}); err != nil {
+		if id.Role != "admin" {
+			return nil, err
+		}
 	}
 	s.Store.Lock()
 	defer s.Store.Unlock()
@@ -608,474 +866,29 @@ func (s *Server) deleteModelProvider(r *http.Request, id *auth.Identity, ws, pid
 	s.Store.ModelProviders = out
 	s.Store.PersistCollection("model_providers", s.Store.ModelProviders)
 	s.appendModelAudit(ws, id.Name, "删除供应商", name, "success", nil)
-	s.Store.AppendAudit(ws, id.Name, "删除模型供应商", pid, "success", "")
+	if s.AppendAudit != nil {
+		s.AppendAudit(ws, id.Name, "删除模型供应商", pid, "success", "")
+	}
 	if err := s.Store.PersistDeleteSync("model_providers", pid); err != nil {
 		log.Printf("persist-delete model_providers %s: %v", pid, err)
 	}
 	if ref != "" {
 		delete(s.Store.ModelSecrets, ref)
 		s.Store.PersistDelete("model_secrets", ref)
-		if s.Vault != nil {
-			_ = s.Vault.Delete(r.Context(), ref)
+		if v := s.currentVault(); v != nil {
+			_ = v.Delete(r.Context(), ref)
 		}
 	}
 	return map[string]any{"id": pid, "status": "deleted"}, nil
 }
 
-func (s *Server) discoverModels(r *http.Request) (any, error) {
-	id := identityFrom(r.Context())
-	if err := requireModelWrite(id); err != nil {
-		return nil, err
-	}
-	ws := s.workspaceID(r)
-	if !s.allowModelRate(ws+":discover", 30, time.Minute) {
-		return nil, apperr.New(apperr.RateLimited, 429, "拉取请求过于频繁")
-	}
-	body, _ := decodeMap(r)
-	protocol := coalesce(str(body["protocol"]), "openai_compatible")
-	baseURL := strings.TrimSpace(str(body["baseUrl"]))
-	apiKey := modelprov.ExtractCredential(body)
-	if apiKey == "" {
-		apiKey = strings.TrimSpace(str(body["apiKey"]))
-	}
-	apiVersion := str(body["apiVersion"])
-	credRef := ""
-	if pid := str(body["providerId"]); pid != "" {
-		s.Store.RLock()
-		if p, err := s.findProviderLocked(pid, ws); err == nil {
-			if baseURL == "" {
-				baseURL = str(p["baseUrl"])
-			}
-			if protocol == "openai_compatible" || str(body["protocol"]) == "" {
-				protocol = coalesce(str(p["protocol"]), protocol)
-			}
-			if apiVersion == "" {
-				apiVersion = str(p["apiVersion"])
-			}
-			if apiKey == "" {
-				credRef = str(p["credentialRef"])
-			}
-		}
-		s.Store.RUnlock()
-		if apiKey == "" && credRef != "" {
-			apiKey = s.resolveProviderCredential(r.Context(), credRef)
-		}
-	}
-	if baseURL == "" {
-		return nil, apperr.BadReq(apperr.ProviderDiscoverInvalid, "请先填写 API 请求地址")
-	}
-	if !strings.HasPrefix(strings.ToLower(baseURL), "http://") && !strings.HasPrefix(strings.ToLower(baseURL), "https://") {
-		return nil, apperr.BadReq(apperr.ProviderDiscoverInvalid, "API 请求地址格式无效")
-	}
-	if protocol != "ollama" && apiKey == "" && str(body["providerId"]) == "" {
-		return nil, apperr.BadReq(apperr.ProviderDiscoverAuth, "拉取模型列表需要 API Key")
-	}
-	dr, err := s.modelProbe().Discover(r.Context(), protocol, baseURL, apiKey, apiVersion)
-	if err != nil {
-		msg := "拉取模型失败：无法从供应商端点获取模型列表"
-		code := apperr.ProviderUnreachable
-		if strings.Contains(err.Error(), "auth") {
-			code = apperr.ProviderAuth
-			msg = "拉取模型鉴权失败，请检查 API Key 与协议是否匹配"
-		} else if strings.Contains(err.Error(), "ssrf") || strings.Contains(err.Error(), "private") {
-			code = apperr.EgressBlocked
-			msg = "目标地址被安全策略拦截（内网地址需设置 DE_MODEL_ALLOW_PRIVATE=1）"
-		} else if strings.Contains(err.Error(), "empty") {
-			msg = "供应商返回空模型列表，请确认 Base URL / 协议是否正确"
-		}
-		s.Store.Lock()
-		s.appendModelAudit(ws, id.Name, "拉取模型列表", baseURL, "failed", map[string]any{"reason": msg})
-		s.Store.Unlock()
-		return nil, apperr.BadReq(code, msg)
-	}
-	models := make([]map[string]any, 0, len(dr.Models))
-	for _, m := range dr.Models {
-		models = append(models, map[string]any{"id": m["id"], "name": m["name"]})
-	}
-	s.Store.Lock()
-	s.appendModelAudit(ws, id.Name, "拉取模型列表", baseURL, "success", map[string]any{
-		"reason": protocol + ":" + itoa(len(models)) + ":" + dr.Source,
-	})
-	s.Store.Unlock()
-	return map[string]any{
-		"protocol": dr.Protocol, "baseUrl": dr.BaseURL, "models": models, "fetchedAt": dr.FetchedAt,
-		"source": dr.Source, "resolvedUrl": dr.ResolvedURL, "suggestedProtocol": dr.SuggestedProt,
-	}, nil
-}
-
-// testModelConnection probes a draft provider config before create (no provider id required).
-func (s *Server) testModelConnection(r *http.Request) (any, error) {
-	id := identityFrom(r.Context())
-	if err := requireModelWrite(id); err != nil {
-		return nil, err
-	}
-	ws := s.workspaceID(r)
-	if !s.allowModelRate(ws+":probe", 30, time.Minute) {
-		return nil, apperr.New(apperr.RateLimited, 429, "探活请求过于频繁")
-	}
-	body, _ := decodeMap(r)
-	protocol := coalesce(str(body["protocol"]), "openai_compatible")
-	baseURL := strings.TrimSpace(str(body["baseUrl"]))
-	apiKey := modelprov.ExtractCredential(body)
-	apiVersion := str(body["apiVersion"])
-	deployment := str(body["deploymentName"])
-	if baseURL == "" {
-		return nil, apperr.BadReq(apperr.ProviderInvalid, "请先填写 API 请求地址")
-	}
-	if protocol != "ollama" && apiKey == "" {
-		return nil, apperr.BadReq(apperr.ProviderDiscoverAuth, "连接测试需要 API Key")
-	}
-	pr, err := s.modelProbe().Probe(r.Context(), protocol, baseURL, apiKey, apiVersion, deployment)
-	IncModelProbe(err == nil && pr.Healthy, pr.LatencyMS)
-	if err != nil {
-		msg := "连接测试失败"
-		code := apperr.ProviderUnreachable
-		if strings.Contains(err.Error(), "auth") {
-			code = apperr.ProviderAuth
-			msg = "鉴权失败，请检查 API Key 或协议（DeepSeek 请用 OpenAI 兼容）"
-		} else if strings.Contains(err.Error(), "timeout") {
-			code = apperr.ProviderTimeout
-			msg = "连接超时"
-		} else if strings.Contains(err.Error(), "ssrf") || strings.Contains(err.Error(), "private") {
-			code = apperr.EgressBlocked
-			msg = "目标地址被安全策略拦截"
-		}
-		s.Store.Lock()
-		s.appendModelAudit(ws, id.Name, "连接测试", baseURL, "failed", map[string]any{"reason": msg})
-		s.Store.Unlock()
-		return nil, apperr.BadReq(code, msg)
-	}
-	s.Store.Lock()
-	s.appendModelAudit(ws, id.Name, "连接测试", baseURL, "success", map[string]any{
-		"reason": "latencyMs=" + itoa(int(pr.LatencyMS)),
-	})
-	s.Store.Unlock()
-	return map[string]any{
-		"status": "healthy", "latencyMs": pr.LatencyMS, "protocol": protocol,
-		"baseUrl": baseURL, "suggestedProtocol": modelprov.InferProtocolFromURL(baseURL),
-		"verifiedAt": time.Now().UTC().Format(time.RFC3339),
-	}, nil
-}
-
-func (s *Server) listRoutingPolicies(r *http.Request) (any, error) {
-	id := identityFrom(r.Context())
+// ModelGovernanceOverview → GET /api/model-governance/overview
+func (s *Service) ModelGovernanceOverview(r *http.Request) (any, error) {
+	id := s.IdentityFrom(r.Context())
 	if err := requireModelRead(id); err != nil {
 		return nil, err
 	}
-	ws := s.workspaceID(r)
-	s.Store.RLock()
-	defer s.Store.RUnlock()
-	out := make([]map[string]any, 0)
-	for _, p := range s.Store.RoutingPolicies {
-		if str(p["workspaceId"]) != ws {
-			continue
-		}
-		cp := map[string]any{}
-		for k, v := range p {
-			cp[k] = v
-		}
-		fb := stringSlice(p["fallbackModelIds"])
-		if fb == nil {
-			fb = []string{}
-		}
-		cp["fallbackModelIds"] = fb
-		issues := stringSlice(p["validationIssues"])
-		if issues == nil {
-			issues = []string{}
-		}
-		cp["validationIssues"] = issues
-		out = append(out, cp)
-	}
-	return out, nil
-}
-
-func (s *Server) createRoutingPolicy(r *http.Request) (any, error) {
-	id := identityFrom(r.Context())
-	if err := requireModelWrite(id); err != nil {
-		return nil, err
-	}
-	body, _ := decodeMap(r)
-	ws := s.workspaceID(r)
-	dataScope := coalesce(str(body["dataScope"]), "internal")
-	egress := body["egressAllowed"] == true
-	if dataScope == "restricted" && egress {
-		return nil, apperr.Forbidden(apperr.EgressBlocked, "受限数据不允许出境")
-	}
-	item := map[string]any{
-		"id": s.Store.ID("rp"), "workspaceId": ws,
-		"level": coalesce(str(body["level"]), "P3"), "primaryModelId": coalesce(str(body["primaryModelId"]), ""),
-		"fallbackModelIds": stringSlice(body["fallbackModelIds"]), "dataScope": dataScope,
-		"egressAllowed": egress, "budgetLimitUsd": body["budgetLimitUsd"],
-		"status": "draft", "validationIssues": []string{},
-	}
-	if item["budgetLimitUsd"] == nil {
-		item["budgetLimitUsd"] = 0
-	}
-	s.Store.Lock()
-	defer s.Store.Unlock()
-	s.Store.RoutingPolicies = append([]map[string]any{item}, s.Store.RoutingPolicies...)
-	s.Store.PersistCollection("routing_policies", s.Store.RoutingPolicies)
-	s.appendModelAudit(ws, id.Name, "创建路由草稿", str(item["level"]), "success", nil)
-	return item, nil
-}
-
-func (s *Server) routingPolicyAction(r *http.Request) (any, error) {
-	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-	if len(parts) < 4 {
-		return nil, apperr.NotFoundErr(apperr.PolicyNotFound, "策略不存在")
-	}
-	pid := parts[3]
-	action := ""
-	if len(parts) >= 5 {
-		action = parts[4]
-	}
-	id := identityFrom(r.Context())
-	ws := s.workspaceID(r)
-
-	if action == "versions" && r.Method == http.MethodGet {
-		if err := requireModelRead(id); err != nil {
-			return nil, err
-		}
-		s.Store.RLock()
-		defer s.Store.RUnlock()
-		if _, err := s.findPolicyLocked(pid, ws); err != nil {
-			return nil, err
-		}
-		var out []map[string]any
-		for _, v := range s.Store.PolicyVersions {
-			if str(v["policyId"]) == pid {
-				out = append(out, v)
-			}
-		}
-		return out, nil
-	}
-
-	if err := requireModelWrite(id); err != nil {
-		return nil, err
-	}
-
-	switch action {
-	case "draft":
-		if r.Method != http.MethodPatch {
-			return nil, apperr.NotFoundErr(apperr.NotFound, "未知策略动作")
-		}
-		body, _ := decodeMap(r)
-		s.Store.Lock()
-		defer s.Store.Unlock()
-		p, err := s.findPolicyLocked(pid, ws)
-		if err != nil {
-			return nil, err
-		}
-		for _, k := range []string{"level", "primaryModelId", "fallbackModelIds", "dataScope", "egressAllowed", "budgetLimitUsd"} {
-			if v, ok := body[k]; ok {
-				p[k] = v
-			}
-		}
-		p["id"] = pid
-		p["workspaceId"] = ws
-		p["status"] = "draft"
-		p["validationIssues"] = []string{}
-		s.Store.PersistCollection("routing_policies", s.Store.RoutingPolicies)
-		s.appendModelAudit(ws, id.Name, "更新路由草稿", str(p["level"]), "success", map[string]any{"reason": str(body["reason"])})
-		return p, nil
-	case "validate":
-		s.Store.Lock()
-		defer s.Store.Unlock()
-		p, err := s.findPolicyLocked(pid, ws)
-		if err != nil {
-			return nil, err
-		}
-		issues := s.validateRoutingPolicyLocked(p)
-		p["validationIssues"] = issues
-		if len(issues) == 0 {
-			p["status"] = "ready"
-		} else {
-			p["status"] = "draft"
-		}
-		s.Store.PersistCollection("routing_policies", s.Store.RoutingPolicies)
-		result := "success"
-		reason := ""
-		if len(issues) > 0 {
-			result = "failed"
-			reason = strings.Join(issues, "；")
-		}
-		s.appendModelAudit(ws, id.Name, "校验路由草稿", str(p["level"]), result, map[string]any{"reason": reason})
-		return p, nil
-	case "publish":
-		s.Store.Lock()
-		p, err := s.findPolicyLocked(pid, ws)
-		if err != nil {
-			s.Store.Unlock()
-			return nil, err
-		}
-		st := str(p["status"])
-		if st != "ready" && st != "pending_approval" && st != "pending_countersign" {
-			s.appendModelAudit(ws, id.Name, "发布路由版本", str(p["level"]), "failed", map[string]any{"reason": "草稿尚未通过校验"})
-			s.Store.Unlock()
-			return nil, apperr.BadReq(apperr.PolicyNotReady, "草稿尚未通过校验，无法发布")
-		}
-		if requiresPeerApprovalGate(id) && st == "ready" {
-			p["status"] = "pending_approval"
-			p["requestedBy"] = id.Name
-			p["requestedById"] = id.ID
-			p["requestedAt"] = time.Now().UTC().Format(time.RFC3339)
-			s.Store.PersistCollection("routing_policies", s.Store.RoutingPolicies)
-			s.appendModelAudit(ws, id.Name, "申请发布路由版本", str(p["level"]), "success", map[string]any{"reason": "待管理员审批"})
-			s.Store.Unlock()
-			return p, nil
-		}
-		if err := requireProductionDualApproval(str(p["requestedById"]), str(p["requestedBy"]), id, "路由发布"); err != nil {
-			s.Store.Unlock()
-			return nil, err
-		}
-		if hold, herr := maybeHoldForCountersign(p, id, str(p["dataScope"]), "路由发布"); herr != nil {
-			s.Store.Unlock()
-			return nil, herr
-		} else if hold {
-			s.Store.PersistCollection("routing_policies", s.Store.RoutingPolicies)
-			s.appendModelAudit(ws, id.Name, "路由发布会签待副署", str(p["level"]), "success", map[string]any{"reason": "pending_countersign"})
-			s.Store.Unlock()
-			return p, nil
-		}
-		s.Store.Unlock()
-		if err := s.evaluateWrite(r, "model", "publish", policy.Input{ApproverID: id.ID, SubmitterID: id.ID}); err != nil && id.Role != "admin" {
-			return nil, err
-		}
-		s.Store.Lock()
-		defer s.Store.Unlock()
-		p, err = s.findPolicyLocked(pid, ws)
-		if err != nil {
-			return nil, err
-		}
-		// supersede other published at same level
-		for _, other := range s.Store.RoutingPolicies {
-			if str(other["workspaceId"]) == ws && str(other["level"]) == str(p["level"]) && str(other["id"]) != pid && str(other["status"]) == "published" {
-				other["status"] = "superseded"
-			}
-		}
-		maxVer := 0
-		for _, v := range s.Store.PolicyVersions {
-			if str(v["policyId"]) == pid {
-				if n := intFrom(v["version"]); n > maxVer {
-					maxVer = n
-				}
-			}
-		}
-		snap := map[string]any{}
-		for k, v := range p {
-			snap[k] = v
-		}
-		snap["fallbackModelIds"] = append([]string{}, stringSlice(p["fallbackModelIds"])...)
-		snap["validationIssues"] = []string{}
-		ver := map[string]any{
-			"id": s.Store.ID("rpv"), "policyId": pid, "version": maxVer + 1,
-			"snapshot": snap, "publishedAt": time.Now().UTC().Format(time.RFC3339), "publishedBy": id.Name,
-		}
-		p["status"] = "published"
-		s.Store.PolicyVersions = append([]map[string]any{ver}, s.Store.PolicyVersions...)
-		s.Store.PersistCollection("routing_policies", s.Store.RoutingPolicies)
-		s.Store.PersistCollection("policy_versions", s.Store.PolicyVersions)
-		s.appendModelAudit(ws, id.Name, "发布路由版本", str(p["level"]), "success", map[string]any{"policyVersion": str(ver["id"])})
-		s.Store.AppendAudit(ws, id.Name, "发布路由策略", str(p["level"]), "success", "")
-		IncModelPolicyPublish()
-		return ver, nil
-	case "unpublish":
-		body, _ := decodeMap(r)
-		s.Store.Lock()
-		defer s.Store.Unlock()
-		p, err := s.findPolicyLocked(pid, ws)
-		if err != nil {
-			return nil, err
-		}
-		if str(p["status"]) != "published" {
-			s.appendModelAudit(ws, id.Name, "取消发布路由", str(p["level"]), "failed", map[string]any{"reason": "仅已发布路由可取消发布"})
-			return nil, apperr.BadReq(apperr.PolicyNotPublished, "仅已发布路由可取消发布")
-		}
-		p["status"] = "draft"
-		p["validationIssues"] = []string{}
-		s.Store.PersistCollection("routing_policies", s.Store.RoutingPolicies)
-		s.appendModelAudit(ws, id.Name, "取消发布路由", str(p["level"]), "success", map[string]any{"reason": str(body["reason"])})
-		s.Store.AppendAudit(ws, id.Name, "取消发布路由策略", str(p["level"]), "success", str(body["reason"]))
-		return p, nil
-	case "rollback":
-		body, _ := decodeMap(r)
-		versionID := str(body["versionId"])
-		s.Store.Lock()
-		defer s.Store.Unlock()
-		p, err := s.findPolicyLocked(pid, ws)
-		if err != nil {
-			return nil, err
-		}
-		var target map[string]any
-		for _, v := range s.Store.PolicyVersions {
-			if str(v["id"]) == versionID && str(v["policyId"]) == pid {
-				target = v
-				break
-			}
-		}
-		if target == nil {
-			return nil, apperr.NotFoundErr(apperr.VersionNotFound, "路由版本不存在")
-		}
-		snap, _ := target["snapshot"].(map[string]any)
-		if snap == nil {
-			return nil, apperr.BadReq(apperr.RollbackInvalid, "版本快照无效")
-		}
-		rollbackSnap := map[string]any{}
-		for k, v := range snap {
-			rollbackSnap[k] = v
-		}
-		rollbackSnap["status"] = "ready"
-		rollbackSnap["fallbackModelIds"] = append([]string{}, stringSlice(snap["fallbackModelIds"])...)
-		rollbackSnap["validationIssues"] = []string{}
-		issues := s.validateRoutingPolicyLocked(rollbackSnap)
-		if len(issues) > 0 {
-			s.appendModelAudit(ws, id.Name, "回滚路由版本", str(p["level"]), "failed", map[string]any{
-				"reason": strings.Join(issues, "；"), "policyVersion": str(target["id"]),
-			})
-			return nil, apperr.BadReq(apperr.RollbackInvalid, strings.Join(issues, "；"))
-		}
-		maxVer := 0
-		for _, v := range s.Store.PolicyVersions {
-			if str(v["policyId"]) == pid {
-				if n := intFrom(v["version"]); n > maxVer {
-					maxVer = n
-				}
-			}
-		}
-		newSnap := map[string]any{}
-		for k, v := range snap {
-			newSnap[k] = v
-		}
-		newSnap["status"] = "published"
-		newSnap["fallbackModelIds"] = append([]string{}, stringSlice(snap["fallbackModelIds"])...)
-		newSnap["validationIssues"] = []string{}
-		ver := map[string]any{
-			"id": s.Store.ID("rpv"), "policyId": pid, "version": maxVer + 1,
-			"snapshot": newSnap, "publishedAt": time.Now().UTC().Format(time.RFC3339),
-			"publishedBy": id.Name, "rollbackOf": target["id"],
-		}
-		for k, v := range newSnap {
-			if k != "id" {
-				p[k] = v
-			}
-		}
-		p["status"] = "published"
-		s.Store.PolicyVersions = append([]map[string]any{ver}, s.Store.PolicyVersions...)
-		s.Store.PersistCollection("routing_policies", s.Store.RoutingPolicies)
-		s.Store.PersistCollection("policy_versions", s.Store.PolicyVersions)
-		s.appendModelAudit(ws, id.Name, "回滚路由版本", str(p["level"]), "success", map[string]any{"policyVersion": str(ver["id"])})
-		s.Store.AppendAudit(ws, id.Name, "回滚路由策略", pid, "success", "")
-		return ver, nil
-	}
-	return nil, apperr.NotFoundErr(apperr.NotFound, "未知策略动作")
-}
-
-func (s *Server) modelGovernanceOverview(r *http.Request) (any, error) {
-	id := identityFrom(r.Context())
-	if err := requireModelRead(id); err != nil {
-		return nil, err
-	}
-	ws := s.workspaceID(r)
+	ws := s.WorkspaceID(r)
 	s.Store.RLock()
 	defer s.Store.RUnlock()
 	active, standby, disabled := 0, 0, 0
@@ -1165,12 +978,13 @@ func (s *Server) modelGovernanceOverview(r *http.Request) (any, error) {
 	}, nil
 }
 
-func (s *Server) listModelAudit(r *http.Request) (any, error) {
-	id := identityFrom(r.Context())
+// ListModelAudit → GET /api/model-audit
+func (s *Service) ListModelAudit(r *http.Request) (any, error) {
+	id := s.IdentityFrom(r.Context())
 	if err := requireModelRead(id); err != nil {
 		return nil, err
 	}
-	ws := s.workspaceID(r)
+	ws := s.WorkspaceID(r)
 	action := r.URL.Query().Get("action")
 	s.Store.RLock()
 	defer s.Store.RUnlock()
@@ -1187,16 +1001,17 @@ func (s *Server) listModelAudit(r *http.Request) (any, error) {
 	return out, nil
 }
 
-func (s *Server) failoverTest(r *http.Request) (any, error) {
-	id := identityFrom(r.Context())
+// FailoverTest → POST /api/model-routing/failover-tests
+func (s *Service) FailoverTest(r *http.Request) (any, error) {
+	id := s.IdentityFrom(r.Context())
 	if err := requireModelWrite(id); err != nil {
 		return nil, err
 	}
-	ws := s.workspaceID(r)
+	ws := s.WorkspaceID(r)
 	if !s.allowModelRate(ws+":failover", 30, time.Minute) {
 		return nil, apperr.New(apperr.RateLimited, 429, "演练请求过于频繁")
 	}
-	body, _ := decodeMap(r)
+	body, _ := s.DecodeMap(r)
 	scope := str(body["scope"])
 	if scope != "sandbox" && scope != "canary" {
 		return nil, apperr.BadReq(apperr.DrillScopeInvalid, "演练仅允许在 sandbox 或 canary 隔离范围执行")
@@ -1229,41 +1044,4 @@ func (s *Server) failoverTest(r *http.Request) (any, error) {
 		"status": "passed", "fromModelId": str(p["primaryModelId"]), "toModelId": fallbacks[0],
 		"correlationId": corr,
 	}, nil
-}
-
-// checkModelBudgetLocked returns error when published budget is exceeded (caller holds lock).
-func (s *Server) checkModelBudgetLocked(workspaceID string) error {
-	if !budgetEnforceEnabled() {
-		return nil
-	}
-	limit := 0.0
-	for _, p := range s.Store.RoutingPolicies {
-		if str(p["workspaceId"]) == workspaceID && str(p["status"]) == "published" {
-			limit += toFloat(p["budgetLimitUsd"])
-		}
-	}
-	if limit <= 0 {
-		return nil
-	}
-	spend := 0.0
-	for _, b := range s.Store.ModelBudgets {
-		if str(b["workspaceId"]) == workspaceID {
-			spend += toFloat(b["usedUsd"])
-		}
-	}
-	units := 0
-	for _, u := range s.Store.UsageMeters {
-		if str(u["workspaceId"]) == workspaceID && (str(u["kind"]) == "copilot" || str(u["kind"]) == "model") {
-			units += intFrom(u["units"])
-		}
-	}
-	est := spend
-	if est == 0 {
-		est = float64(units) * 0.002
-	}
-	if est >= limit {
-		IncModelBudgetDeny()
-		return apperr.Forbidden(apperr.BudgetExceeded, "工作区模型预算已超限")
-	}
-	return nil
 }
