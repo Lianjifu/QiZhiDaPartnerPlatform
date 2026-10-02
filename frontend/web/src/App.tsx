@@ -19,7 +19,7 @@ const WorkflowOrchestrationSession = lazy(() => import('./features/workflows/com
 const Knowledge = lazy(() => import('./pages/Knowledge'));
 const Memory = lazy(() => import('./pages/Memory'));
 const Skills = lazy(() => import('./pages/Skills'));
-const Models = lazy(() => import('./pages/Models'));
+const Models = lazy(() => import('./features/models/components/ModelsPage'));
 const Channels = lazy(() => import('./pages/Channels'));
 const Settings = lazy(() => import('./pages/Settings'));
 const AuditCenter = lazy(() => import('./pages/AuditCenter'));
