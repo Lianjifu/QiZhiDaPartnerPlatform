@@ -178,12 +178,11 @@ type Server struct {
 	opsH *operations.Handler
 
 	// taskSvc holds the M03 任务中心 (Task Center) HTTP-route façade.
-	// Built in New() with method values bound to *Server methods so the
-	// tasks package stays free of any internal/server/ import. The route
-	// switch consults s.taskSvc for the 4 M03 endpoints (2 list/create +
-	// 1 task-by-id catch-all + 1 conversation-derived cross-module
-	// entry). Nil-tolerant: falls back to the legacy receiver methods
-	// when s.taskSvc is nil (matches the copH / opsH precedent).
+	// Built in New() via buildTaskSvc (which wires Deps function fields
+	// to *Server methods). The tasks package owns the full M03 surface
+	// (4 REST handlers + lifecycle/audit/visibility helpers) and the
+	// route switch dispatches the 4 M03 endpoints through this struct.
+	// Package boundary is one-way: tasks never imports internal/server/.
 	taskSvc *tasks.Service
 
 	// partnerSvc holds the M05 数字伙伴 (Digital Partner) HTTP-route
@@ -705,23 +704,11 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) {
 	case strings.HasPrefix(path, "/api/partners/") && (method == http.MethodGet || method == http.MethodPost || method == http.MethodPatch):
 		data, err = s.partnerSvc.DigitalEmployeeRoute(r)
 	case path == "/api/tasks" && method == http.MethodGet:
-		if s.taskSvc != nil && s.taskSvc.ListTasksAligned != nil {
-			data, err = s.taskSvc.ListTasksAligned(r)
-		} else {
-			data, err = s.listTasksAligned(r)
-		}
+		data, err = s.taskSvc.ListTasks(r)
 	case path == "/api/tasks" && method == http.MethodPost:
-		if s.taskSvc != nil && s.taskSvc.CreateTaskAligned != nil {
-			data, err = s.taskSvc.CreateTaskAligned(r)
-		} else {
-			data, err = s.createTaskAligned(r)
-		}
+		data, err = s.taskSvc.CreateTask(r)
 	case strings.HasPrefix(path, "/api/tasks/") && (method == http.MethodGet || method == http.MethodPost || method == http.MethodPatch):
-		if s.taskSvc != nil && s.taskSvc.TaskRoute != nil {
-			data, err = s.taskSvc.TaskRoute(r)
-		} else {
-			data, err = s.taskRoute(r)
-		}
+		data, err = s.taskSvc.TaskRoute(r)
 	case path == "/api/agents" && method == http.MethodGet:
 		data, err = s.partnerSvc.LegacyAgentsProxy(r)
 
@@ -863,11 +850,7 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) {
 		s.conversationStream(w, r)
 		return
 	case strings.HasPrefix(path, "/api/conversations/") && strings.HasSuffix(path, "/tasks") && method == http.MethodPost:
-		if s.taskSvc != nil && s.taskSvc.ConversationCreateTask != nil {
-			data, err = s.taskSvc.ConversationCreateTask(r)
-		} else {
-			data, err = s.conversationCreateTask(r)
-		}
+		data, err = s.taskSvc.ConversationCreateTask(r)
 	case strings.HasPrefix(path, "/api/conversations/") && strings.HasSuffix(path, "/attachments") && method == http.MethodPost:
 		data, err = s.uploadConversationAttachment(r)
 	case strings.HasPrefix(path, "/api/conversations/") && strings.HasSuffix(path, "/messages") && method == http.MethodGet:
@@ -1364,20 +1347,51 @@ func (s *Server) buildCopSvc() *copilot.Service {
 }
 
 // buildTaskSvc wires the M03 任务中心 (Task Center) HTTP-route façade.
-// The tasks package owns the pure domain helpers (lifecycle FSM, audit,
-// version, visibility, code generation, filter, paginate, build, and
-// legacy status edges — see internal/tasks/domain.go + domain_extra.go
-// + fsm.go). The 4 HTTP route handlers stay on *Server (they depend on
-// server-only helpers like requireWorkspaceAccess, evaluateWriteLocked,
-// writeTaskWorkingMemoryLocked, IncTask*, s.Store ops) and are bound to
-// the Service as method values. Package boundary stays one-way: tasks
-// never imports server/ — only server/ imports tasks/.
+// The tasks package owns the full M03 surface: the 4 M03 REST handlers
+// (listTasks / createTask / taskRoute catch-all /
+// conversationCreateTask), the lifecycle FSM + audit + version +
+// visibility helpers, and the legacy status-edge table (see
+// internal/tasks/{service.go,handlers_*.go,domain.go,domain_extra.go,
+// fsm.go}). Server wires the cross-package Deps — workspaceID,
+// identityFrom, requireWorkspaceAccess, decodeMap, evaluateWriteLocked,
+// the working-memory ingest adapter (lock-protected), persistMemory,
+// and the IncTask* metrics — so the package boundary stays one-way:
+// tasks never imports server/ — only server/ imports tasks/.
 func (s *Server) buildTaskSvc() *tasks.Service {
-	return tasks.NewService(tasks.Deps{
-		ListTasksAligned:       s.listTasksAligned,
-		CreateTaskAligned:      s.createTaskAligned,
-		TaskRoute:              s.taskRoute,
-		ConversationCreateTask: s.conversationCreateTask,
+	// ingestRuntimeMemoryAdapter converts the server-side
+	// runtimeMemoryInput type into tasks.RuntimeMemoryInput and calls
+	// s.ingestRuntimeMemoryLocked (which requires Store.Lock held by
+	// the caller — taskRoute holds the lock when invoking this).
+	ingestRuntimeMemoryAdapter := func(in tasks.RuntimeMemoryInput) (map[string]any, error) {
+		return s.ingestRuntimeMemoryLocked(runtimeMemoryInput{
+			WorkspaceID:       in.WorkspaceID,
+			OwnerID:           in.OwnerID,
+			OwnerName:         in.OwnerName,
+			DigitalPartnerID: in.DigitalPartnerID,
+			Title:             in.Title,
+			Content:           in.Content,
+			SourceType:        in.SourceType,
+			SourceID:          in.SourceID,
+			CorrelationID:     in.CorrelationID,
+			Layer:             in.Layer,
+			Scope:             in.Scope,
+			Classification:    in.Classification,
+			Confidence:        in.Confidence,
+		})
+	}
+	return tasks.NewService(s.Store, tasks.Deps{
+		IdentityFrom:           identityFrom,
+		WorkspaceID:            s.workspaceID,
+		RequireWorkspaceAccess: s.requireWorkspaceAccess,
+		DecodeMap:              decodeMap,
+		EvaluateWriteLocked:    s.evaluateWriteLocked,
+		IncTaskCreated:          IncTaskCreated,
+		IncTaskTransition:      IncTaskTransition,
+		IncTaskApprove:         IncTaskApprove,
+		IncTaskTakeover:        IncTaskTakeover,
+		IncTaskRetry:           IncTaskRetry,
+		IngestRuntimeMemoryLocked: ingestRuntimeMemoryAdapter,
+		PersistMemory:          s.persistMemory,
 	})
 }
 

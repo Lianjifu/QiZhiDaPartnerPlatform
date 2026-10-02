@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -9,6 +10,28 @@ import (
 	"github.com/qizhida-partner-platform/backend/internal/auth"
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
+
+// RuntimeMemoryInput mirrors the fields of server.runtimeMemoryInput
+// (internal/server/handlers_memory.go). Defined in the tasks package so
+// writeTaskWorkingMemoryLocked can build the payload without importing
+// internal/server/. Server.New closes over s.ingestRuntimeMemoryLocked
+// and converts the server-side type into tasks.RuntimeMemoryInput at
+// the Deps wire site, so the cross-package contract stays one-way.
+type RuntimeMemoryInput struct {
+	WorkspaceID       string
+	OwnerID           string
+	OwnerName         string
+	DigitalPartnerID string
+	Title             string
+	Content           string
+	SourceType        string
+	SourceID          string
+	CorrelationID     string
+	Layer             string // short_term | working
+	Scope             string
+	Classification    string
+	Confidence        float64
+}
 
 // str returns the string form of `v` if it is a string, otherwise "".
 // Mirrors the legacy str() helper from internal/server/server.go.
@@ -35,6 +58,54 @@ func ToInt(v any) int {
 	case string:
 		n, _ := strconv.Atoi(t)
 		return n
+	}
+	return 0
+}
+
+// intFrom coerces v to int with a zero default. Strictly richer than
+// ToInt — accepts int / int32 / int64 / float32 / float64 / string
+// (Atoi) / json.Number. Mirrors the legacy server.intFrom helper used
+// by the moved listTasks / TaskRoute handlers.
+func intFrom(v any) int {
+	switch t := v.(type) {
+	case int:
+		return t
+	case int32:
+		return int(t)
+	case int64:
+		return int(t)
+	case float64:
+		return int(t)
+	case float32:
+		return int(t)
+	case string:
+		n, err := strconv.Atoi(strings.TrimSpace(t))
+		if err != nil {
+			return 0
+		}
+		return n
+	case json.Number:
+		n, err := t.Int64()
+		if err != nil {
+			return 0
+		}
+		return int(n)
+	}
+	return 0
+}
+
+// toFloat coerces v to float64 with a zero default. Accepts float64,
+// int, int64, int32. Mirrors the legacy server.toFloat helper.
+func toFloat(v any) float64 {
+	switch t := v.(type) {
+	case float64:
+		return t
+	case int:
+		return float64(t)
+	case int64:
+		return float64(t)
+	case int32:
+		return float64(t)
 	}
 	return 0
 }
