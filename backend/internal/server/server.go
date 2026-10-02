@@ -12,30 +12,32 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/qizhida-partner-platform/backend/internal/agentos"
 	"github.com/qizhida-partner-platform/backend/internal/auth"
 	"github.com/qizhida-partner-platform/backend/internal/channel"
 	"github.com/qizhida-partner-platform/backend/internal/copilot"
-	"github.com/qizhida-partner-platform/backend/internal/qzdaworkflow"
+	"github.com/qizhida-partner-platform/backend/internal/gateway"
 	"github.com/qizhida-partner-platform/backend/internal/heartbeat"
 	"github.com/qizhida-partner-platform/backend/internal/infra"
-	"github.com/qizhida-partner-platform/backend/internal/multimodal"
-	"github.com/qizhida-partner-platform/backend/internal/operations"
-	"github.com/qizhida-partner-platform/backend/internal/pmsop"
 	memid "github.com/qizhida-partner-platform/backend/internal/memory/identity"
+	"github.com/qizhida-partner-platform/backend/internal/metrics"
 	"github.com/qizhida-partner-platform/backend/internal/modelprov"
 	"github.com/qizhida-partner-platform/backend/internal/modelprov/trace"
+	"github.com/qizhida-partner-platform/backend/internal/multimodal"
+	"github.com/qizhida-partner-platform/backend/internal/operations"
+	"github.com/qizhida-partner-platform/backend/internal/partners"
+	"github.com/qizhida-partner-platform/backend/internal/pmsop"
 	"github.com/qizhida-partner-platform/backend/internal/policy"
-	"github.com/qizhida-partner-platform/backend/internal/skills/registry"
-	"github.com/qizhida-partner-platform/backend/services/qzda-sandbox/signing"
+	"github.com/qizhida-partner-platform/backend/internal/qzdaworkflow"
 	"github.com/qizhida-partner-platform/backend/internal/runtimeenv"
-	"github.com/qizhida-partner-platform/backend/internal/gateway"
-	"github.com/qizhida-partner-platform/backend/internal/metrics"
+	"github.com/qizhida-partner-platform/backend/internal/skills/registry"
 	"github.com/qizhida-partner-platform/backend/internal/store"
+	"github.com/qizhida-partner-platform/backend/internal/tasks"
 	"github.com/qizhida-partner-platform/backend/internal/vault"
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 	"github.com/qizhida-partner-platform/backend/pkg/response"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/qizhida-partner-platform/backend/services/qzda-sandbox/signing"
 )
 
 // Type aliases — the original copilot-internal types moved to internal/copilot
@@ -44,18 +46,18 @@ import (
 // definitions live in the copilot package. These MUST stay byte-identical
 // to the originals — see internal/copilot/service.go and copilot_*.go.
 type (
-	memoryBudgetReport = copilot.MemoryBudgetReport
-	toolRunContext     = copilot.ToolRunContext
-	registeredTool     = copilot.RegisteredTool
-	toolCallRequest    = copilot.ToolCallRequest
-	toolExecResult     = copilot.ToolExecResult
-	reactTurnInput     = copilot.ReactTurnInput
-	reactTurnResult    = copilot.ReactTurnResult
-	reactEmitFunc      = copilot.ReactEmitFunc
-	participantContext = copilot.ParticipantContext
+	memoryBudgetReport    = copilot.MemoryBudgetReport
+	toolRunContext        = copilot.ToolRunContext
+	registeredTool        = copilot.RegisteredTool
+	toolCallRequest       = copilot.ToolCallRequest
+	toolExecResult        = copilot.ToolExecResult
+	reactTurnInput        = copilot.ReactTurnInput
+	reactTurnResult       = copilot.ReactTurnResult
+	reactEmitFunc         = copilot.ReactEmitFunc
+	participantContext    = copilot.ParticipantContext
 	participantTurnResult = copilot.ParticipantTurnResult
-	cognitiveDecision  = copilot.CognitiveDecision
-	memoryHit          = copilot.MemoryHit
+	cognitiveDecision     = copilot.CognitiveDecision
+	memoryHit             = copilot.MemoryHit
 )
 
 type Server struct {
@@ -175,6 +177,27 @@ type Server struct {
 	// switch consults s.opsH for the 7 M01 endpoints.
 	opsH *operations.Handler
 
+	// taskSvc holds the M03 任务中心 (Task Center) HTTP-route façade.
+	// Built in New() with method values bound to *Server methods so the
+	// tasks package stays free of any internal/server/ import. The route
+	// switch consults s.taskSvc for the 4 M03 endpoints (2 list/create +
+	// 1 task-by-id catch-all + 1 conversation-derived cross-module
+	// entry). Nil-tolerant: falls back to the legacy receiver methods
+	// when s.taskSvc is nil (matches the copH / opsH precedent).
+	taskSvc *tasks.Service
+
+	// partnerSvc holds the M05 数字伙伴 (Digital Partner) HTTP-route
+	// façade. Built in New() with method values bound to *Server methods
+	// so the partners package stays free of any internal/server/ import.
+	// The route switch consults s.partnerSvc for the 11 M05 endpoints
+	// (employees list/create/overview, templates list/adopt, capability
+	// catalog, partner-by-id catch-all, legacy /api/agents proxy). The
+	// Connect-RPC PartnerServiceHandler also delegates to it via
+	// partners.newPartnerConnect. Nil-tolerant: falls back to the
+	// legacy receiver methods when s.partnerSvc is nil (kept around for
+	// tests that don't wire the package).
+	partnerSvc *partners.Service
+
 	// closeMu guards closeFuncs + closed; RegisterCloseFunc and Shutdown
 	// race in tests where Shutdown runs on a different goroutine than
 	// the apprun boot path.
@@ -203,15 +226,15 @@ type serverTestHooks struct {
 
 func New(st *store.Store) *Server {
 	s := &Server{
-		Store:         st,
-		Mode:          ModeAll,
-		RuntimeURL:    envOr("DE_AGENT_RUNTIME_URL", "http://127.0.0.1:8091"),
-		RAGURL:        envOr("DE_RAG_URL", "http://127.0.0.1:8092"),
-		Policy:        policy.New(),
-		Vault:         vault.NewFromEnv(),
-		OIDC:          auth.LoadOIDC(),
-		Workflows:     qzdaworkflow.New(),
-		ModelProbe:    modelprov.NewClient(),
+		Store:            st,
+		Mode:             ModeAll,
+		RuntimeURL:       envOr("DE_AGENT_RUNTIME_URL", "http://127.0.0.1:8091"),
+		RAGURL:           envOr("DE_RAG_URL", "http://127.0.0.1:8092"),
+		Policy:           policy.New(),
+		Vault:            vault.NewFromEnv(),
+		OIDC:             auth.LoadOIDC(),
+		Workflows:        qzdaworkflow.New(),
+		ModelProbe:       modelprov.NewClient(),
 		TraceRecorder:    trace.NewRecorder(5000),
 		SkillRegistry:    defaultSkillRegistry(),
 		IdentityProfiles: memid.NewStore(),
@@ -260,6 +283,22 @@ func New(st *store.Store) *Server {
 	// dispatches the 8 M02 paths through s.CopSvc.<Method>. Package
 	// boundary is real: copilot never imports server/.
 	s.CopSvc = s.buildCopSvc()
+	// M03 任务中心 (Task Center) façade. The tasks package owns the pure
+	// domain helpers (buildControlledTask, lifecycle FSM, audit, version,
+	// visibility, filter, paginate, code generation, legacy status
+	// edges). The 4 HTTP route handlers stay on *Server (they need
+	// server-only helpers like evaluateWriteLocked, writeTaskWorkingMemoryLocked,
+	// IncTask*, s.Store ops) and are bound to the Service as method
+	// values. Package boundary stays one-way: tasks never imports
+	// server/.
+	s.taskSvc = s.buildTaskSvc()
+	// M05 数字伙伴 (Digital Partner) façade. The partners package owns
+	// the M05 surface: 11 REST routes + the partnerConnect binding for
+	// Connect-RPC. Server wires Deps (workspace/identity helpers,
+	// cross-module validation, runtime projections, peer-fetch, etc.)
+	// at boot so the package boundary stays one-way: partners never
+	// imports server/.
+	s.partnerSvc = s.buildPartnerSvc()
 	return s
 }
 
@@ -644,35 +683,47 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) {
 	case path == "/api/audit-center/export" && method == http.MethodPost:
 		data, err = s.auditExport(r)
 
-	// Phase B — Mock-aligned digital employees / tasks
+	// Phase B — Mock-aligned digital employees / tasks (M05 数字伙伴 façade)
 	case path == "/api/partners" && method == http.MethodGet:
-		data, err = s.listEmployees(r)
+		data, err = s.partnerSvc.ListEmployees(r)
 	case path == "/api/partners" && method == http.MethodPost:
-		data, err = s.createEmployee(r)
+		data, err = s.partnerSvc.CreateEmployee(r)
 	case path == "/api/partners/overview" && method == http.MethodGet:
-		data, err = s.employeeOverview(r)
+		data, err = s.partnerSvc.EmployeeOverview(r)
 	case path == "/api/partner-templates" && method == http.MethodGet:
-		data, err = s.listEmployeeTemplates(r)
+		data, err = s.partnerSvc.ListEmployeeTemplates(r)
 	case path == "/api/partner-templates" && method == http.MethodPost:
-		data, err = s.listEmployeeTemplates(r) // create uses same list seed shape via adopt flow primarily
+		data, err = s.partnerSvc.ListEmployeeTemplates(r) // create uses same list seed shape via adopt flow primarily
 	case path == "/api/partner-template-adoptions" && method == http.MethodGet:
-		data, err = s.listTemplateAdoptions(r)
+		data, err = s.partnerSvc.ListTemplateAdoptions(r)
 	case path == "/api/partner-capability-catalog" && method == http.MethodGet:
-		data, err = s.capabilityCatalog(r)
+		data, err = s.partnerSvc.CapabilityCatalog(r)
 	case strings.HasPrefix(path, "/api/partner-templates/") && strings.HasSuffix(path, "/adopt") && method == http.MethodPost:
-		data, err = s.adoptTemplate(r)
+		data, err = s.partnerSvc.AdoptTemplate(r)
 	case strings.HasPrefix(path, "/api/partner-templates/") && method == http.MethodPatch:
-		data, err = s.listEmployeeTemplates(r)
+		data, err = s.partnerSvc.ListEmployeeTemplates(r)
 	case strings.HasPrefix(path, "/api/partners/") && (method == http.MethodGet || method == http.MethodPost || method == http.MethodPatch):
-		data, err = s.digitalEmployeeRoute(r)
+		data, err = s.partnerSvc.DigitalEmployeeRoute(r)
 	case path == "/api/tasks" && method == http.MethodGet:
-		data, err = s.listTasksAligned(r)
+		if s.taskSvc != nil && s.taskSvc.ListTasksAligned != nil {
+			data, err = s.taskSvc.ListTasksAligned(r)
+		} else {
+			data, err = s.listTasksAligned(r)
+		}
 	case path == "/api/tasks" && method == http.MethodPost:
-		data, err = s.createTaskAligned(r)
+		if s.taskSvc != nil && s.taskSvc.CreateTaskAligned != nil {
+			data, err = s.taskSvc.CreateTaskAligned(r)
+		} else {
+			data, err = s.createTaskAligned(r)
+		}
 	case strings.HasPrefix(path, "/api/tasks/") && (method == http.MethodGet || method == http.MethodPost || method == http.MethodPatch):
-		data, err = s.taskRoute(r)
+		if s.taskSvc != nil && s.taskSvc.TaskRoute != nil {
+			data, err = s.taskSvc.TaskRoute(r)
+		} else {
+			data, err = s.taskRoute(r)
+		}
 	case path == "/api/agents" && method == http.MethodGet:
-		data, err = s.legacyAgentsProxy(r)
+		data, err = s.partnerSvc.LegacyAgentsProxy(r)
 
 	// Models — Mock paths
 	case path == "/api/model-providers" && method == http.MethodGet:
@@ -812,7 +863,11 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) {
 		s.conversationStream(w, r)
 		return
 	case strings.HasPrefix(path, "/api/conversations/") && strings.HasSuffix(path, "/tasks") && method == http.MethodPost:
-		data, err = s.conversationCreateTask(r)
+		if s.taskSvc != nil && s.taskSvc.ConversationCreateTask != nil {
+			data, err = s.taskSvc.ConversationCreateTask(r)
+		} else {
+			data, err = s.conversationCreateTask(r)
+		}
 	case strings.HasPrefix(path, "/api/conversations/") && strings.HasSuffix(path, "/attachments") && method == http.MethodPost:
 		data, err = s.uploadConversationAttachment(r)
 	case strings.HasPrefix(path, "/api/conversations/") && strings.HasSuffix(path, "/messages") && method == http.MethodGet:
@@ -1299,13 +1354,116 @@ func (s *Server) buildCopSvc() *copilot.Service {
 		BuildParticipantContextFn: func(in copilot.ParticipantCtxInput, emp map[string]any) copilot.ParticipantContext {
 			return s.buildParticipantContext(participantCtxInput(in), emp)
 		},
-		IsDemoModelAliasFn:            isDemoModelAlias,
-		PublishedPolicyByLevelFn:      s.publishedPolicyByLevelLocked,
+		IsDemoModelAliasFn:       isDemoModelAlias,
+		PublishedPolicyByLevelFn: s.publishedPolicyByLevelLocked,
 	}
 	svc := copilot.NewService(s.Store, deps)
 	svc.SubAgent = s.SubAgent
 	svc.Kernel = s.Kernel
 	return svc
+}
+
+// buildTaskSvc wires the M03 任务中心 (Task Center) HTTP-route façade.
+// The tasks package owns the pure domain helpers (lifecycle FSM, audit,
+// version, visibility, code generation, filter, paginate, build, and
+// legacy status edges — see internal/tasks/domain.go + domain_extra.go
+// + fsm.go). The 4 HTTP route handlers stay on *Server (they depend on
+// server-only helpers like requireWorkspaceAccess, evaluateWriteLocked,
+// writeTaskWorkingMemoryLocked, IncTask*, s.Store ops) and are bound to
+// the Service as method values. Package boundary stays one-way: tasks
+// never imports server/ — only server/ imports tasks/.
+func (s *Server) buildTaskSvc() *tasks.Service {
+	return tasks.NewService(tasks.Deps{
+		ListTasksAligned:       s.listTasksAligned,
+		CreateTaskAligned:      s.createTaskAligned,
+		TaskRoute:              s.taskRoute,
+		ConversationCreateTask: s.conversationCreateTask,
+	})
+}
+
+// buildPartnerSvc wires the M05 数字伙伴 (Digital Partner) HTTP-route
+// façade. The partners package owns the full M05 surface — the 11 REST
+// route handlers + the partnerConnect binding for Connect-RPC. Server
+// constructs the Service once at boot and binds every cross-package
+// helper as a method value on Deps.
+//
+// Why Deps as function fields (not an interface)?
+//   - Keeps partners free of any internal/server/ import — Deps is the
+//     boundary, not a coupled interface
+//   - Lets tests inject stubs selectively — most fields are nil-safe
+//   - Avoids the breadth of an interface with ~30 methods when callers
+//     want one field each
+//
+// Required helpers that stay on *Server (and are wired here as method
+// values): workspaceID, identityFrom, requireWorkspaceAccess,
+// evaluateWriteLocked, actorIsAdmin, requiresPeerApprovalGate,
+// requireProductionDualApproval, maybeHoldForCountersign,
+// productionLikeEnv, validateEmployeeConfigurationBody,
+// validateEmployeeReleaseGates, employeeEvaluateIncomplete,
+// validatePublishedCapabilities, employeeWithRuntimeLocked,
+// realEmployeeEvidenceLocked, computeEmployeeRuntimeLocked,
+// resolveActiveEmployee, persistEmployeesLocked, afterWriteLocked,
+// Store.PersistCollection, modelByIDLocked (adapted), peerGET,
+// fetchCapCatalogParts, fetchWorkflowCatalogParts, capBaseURL,
+// platformToolsRegistryItems, runtimeToolsRegistryItems, providerModels,
+// knowledgeSliceMaps, hasCapability.
+func (s *Server) buildPartnerSvc() *partners.Service {
+	// modelByIDLocked adapts the *Server signature
+	// `(string) (map[string]any, map[string]any)` to the partners.Deps
+	// signature `(string) (map[string]any, bool)` — the second map in
+	// the original return is the provider record (only relevant for
+	// budget lookups), not needed by capability-catalog builders.
+	modelByID := func(id string) (map[string]any, bool) {
+		m, _ := s.modelByIDLocked(id)
+		if m == nil {
+			return nil, false
+		}
+		return m, true
+	}
+	// persistCollectionForEmp is a thin closure that closes over s.Store
+	// so the partner package can write "employees" without holding any
+	// pointer to *Server.
+	persistCollection := func(collection string, rows []map[string]any) {
+		s.Store.PersistCollection(collection, rows)
+	}
+	// catalogRuntimeTools adapter — partners.Deps.CatalogRuntimeTools
+	// accepts an optional `filter any` (currently unused); the local
+	// registry helper is parameterless.
+	catalogRuntime := func(_ any) []map[string]any {
+		return runtimeToolsRegistryItems()
+	}
+	return partners.NewService(s.Store, partners.Deps{
+		WorkspaceID:                       s.workspaceID,
+		IdentityFrom:                      identityFrom,
+		RequireWorkspaceAccess:            s.requireWorkspaceAccess,
+		EvaluateWriteLocked:               s.evaluateWriteLocked,
+		ActorIsAdmin:                      actorIsAdmin,
+		RequiresPeerApprovalGate:          requiresPeerApprovalGate,
+		RequireProductionDualApprovalFn:   requireProductionDualApproval,
+		MaybeHoldForCountersign:           maybeHoldForCountersign,
+		ProductionLikeEnv:                 productionLikeEnv,
+		ValidateEmployeeConfigurationBody: s.validateEmployeeConfigurationBody,
+		ValidateEmployeeReleaseGates:      s.validateEmployeeReleaseGates,
+		EmployeeEvaluateIncomplete:        s.employeeEvaluateIncomplete,
+		ValidatePublishedCapabilities:     s.validatePublishedCapabilities,
+		EmployeeWithRuntimeLocked:         s.employeeWithRuntimeLocked,
+		RealEmployeeEvidenceLocked:        s.realEmployeeEvidenceLocked,
+		ComputeEmployeeRuntimeLocked:      s.computeEmployeeRuntimeLocked,
+		ResolveActiveEmployee:             s.resolveActiveEmployee,
+		PersistEmployeesLocked:            s.persistEmployeesLocked,
+		AfterWriteLocked:                  s.afterWriteLocked,
+		PersistCollection:                 persistCollection,
+		ModelByIDLocked:                   modelByID,
+		CapBaseURL:                        capBaseURL,
+		PeerGET:                           s.peerGET,
+		FetchCapCatalogParts:              s.fetchCapCatalogParts,
+		FetchWorkflowCatalogParts:         s.fetchWorkflowCatalogParts,
+		CatalogPlatformTools:              platformToolsRegistryItems,
+		CatalogRuntimeTools:               catalogRuntime,
+		ProviderModels:                    providerModels,
+		KnowledgeSliceMaps:                knowledgeSliceMaps,
+		HasCapability:                     hasCapability,
+	})
 }
 
 // HasPostgres reports whether the backing Postgres pool is wired into the
@@ -1327,11 +1485,11 @@ func (s *Server) HasRedis() bool {
 // imports.
 func (s *Server) buildAuthMiddleware() *auth.Middleware {
 	return &auth.Middleware{
-		Parse:                auth.Parse,
-		AllowMockIdentity:    auth.AllowMockIdentity,
+		Parse:                  auth.Parse,
+		AllowMockIdentity:      auth.AllowMockIdentity,
 		HasMockIdentityHeaders: auth.HasMockIdentityHeaders,
-		AuditorWriteGate:     s.auditorWriteGate,
-		UserWriteGate:        s.userWriteGate,
+		AuditorWriteGate:       s.auditorWriteGate,
+		UserWriteGate:          s.userWriteGate,
 	}
 }
 
