@@ -1,4 +1,4 @@
-.PHONY: help test build lint skill-gate vet visualdiff ci-frontend ci-backend
+.PHONY: help test build lint skill-gate vet visualdiff ci-frontend ci-backend run-app run-app-stop run-app-status
 
 # Default target prints the menu.
 help:
@@ -10,10 +10,14 @@ help:
 	@echo "  make skill-gate      — W1-D1 退出门槛：vetter strict + 签名 verify-skill"
 	@echo "  make ci-backend      — alias for test + lint"
 	@echo "  make ci-frontend     — frontend/web vitest (run inside frontend/web)"
+	@echo "  make run-app         — start local dev stack (gateway :8089 + qzda-app :8100 + vite :5173)"
+	@echo "  make run-app-stop    — stop local dev stack"
+	@echo "  make run-app-status  — show dev stack ports + processes"
 	@echo ""
 	@echo "Env knobs (override on the command line):"
 	@echo "  SKILL_DIR    builtin skills dir   [backend/builtin/skills]"
 	@echo "  MANIFEST      manifest.json path    [backend/builtin/skills/manifest.json]"
+	@echo "  DE_STACK      monolith | coarse    [monolith]"
 
 # ---------- Backend ----------
 
@@ -43,3 +47,24 @@ skill-gate:
 
 ci-frontend:
 	cd frontend/web && npm ci --no-audit --no-fund && npx vitest run --reporter=default
+
+# ---------- Local dev stack ----------
+#
+# Brings up the full monolith stack: gateway :8089 (Vite proxy target) +
+# qzda-app :8100 + sandbox :8093 + Vite :5173. Wraps the launchd-supervised
+# restart-stack.sh so the stack survives transient crashes.
+#
+# DE_STACK=coarse switches to the split qzda-sys / qzda-collab / qzda-cap
+# topology. See docs/数字伙伴平台-架构文档.md.
+
+DE_STACK ?= monolith
+export DE_STACK
+
+run-app:
+	DE_STACK=$(DE_STACK) ./scripts/dev-stack/restart-stack.sh start
+
+run-app-stop:
+	./scripts/dev-stack/restart-stack.sh stop
+
+run-app-status:
+	./scripts/dev-stack/restart-stack.sh status
