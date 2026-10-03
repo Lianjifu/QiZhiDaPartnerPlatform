@@ -1,13 +1,17 @@
-// Package server — M09 技能中心 compat shim.
+// Package server — M09 技能中心 (Skills Center) façade construction.
 //
 // Phase 2 of the M09 技能中心整合方案
 // (docs/整合方案/技能中心模块整合方案.md §3.2 + §四 D1-D13 + §五 G1-G13)
 // extracted the M09 handlers out of internal/server/ into
-// internal/skills/. The legacy *Server receiver methods
-// (s.listSkillsAligned, s.createSkill, …) are kept here as thin
-// forwarders to s.skillsSvc.<Method> so the rest of the codebase can
-// migrate to the new façade incrementally without breaking tests
-// that reference the *Server method names directly.
+// internal/skills/. This file holds the lone bridge between the two
+// packages: buildSkillsSvc constructs the *skills.Service façade and
+// wires every cross-package Deps callback to its *Server method.
+//
+// Extracted from the legacy internal/server/skills_compat.go compat
+// shim once the route table + cross-module Deps injections were in
+// place (commit 1a7f8c6 + follow-up). At that point the shim's only
+// surviving value was the buildSkillsSvc factory; keeping it on disk
+// under a compat-* name would be misleading.
 //
 // Package boundary stays one-way: internal/skills/ never imports
 // internal/server/; internal/server/ imports internal/skills/.

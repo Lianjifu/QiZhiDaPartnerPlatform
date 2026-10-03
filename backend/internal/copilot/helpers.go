@@ -126,6 +126,17 @@ func builtinSkillsRoot() string {
 	return filepath.Join("backend", "builtin", "skills")
 }
 
+// (s *Service).BuiltinSkillsRoot is the Deps-aware variant. Production
+// callers (Server.buildCopSvc) inject BuiltinSkillsRootFn on Deps; nil
+// means "use the package-private builtinSkillsRoot fallback". This
+// keeps the copilot package free of any internal/server/ import.
+func (s *Service) BuiltinSkillsRoot() string {
+	if s != nil && s.Deps.BuiltinSkillsRootFn != nil {
+		return s.Deps.BuiltinSkillsRootFn()
+	}
+	return builtinSkillsRoot()
+}
+
 // decodeStringSlice normalizes heterogeneous JSON shapes (string array,
 // any array, RawMessage) into []string. Non-string entries are coerced
 // via str(); empty entries are dropped.

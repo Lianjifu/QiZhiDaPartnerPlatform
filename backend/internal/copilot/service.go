@@ -191,6 +191,12 @@ type Deps struct {
 	ShouldAutoRunAfterSkillWriteFn   func(res toolExecResult, runCmd string) bool
 	IsSkillWorkspaceWriteCallFn      func(call toolCallRequest, tool *registeredTool) bool
 	BuildAutoRunToolCallAfterWriteFn func(reg []registeredTool, tool *registeredTool, writeCall toolCallRequest, runCmd string) toolCallRequest
+	// BuiltinSkillsRootFn resolves the on-disk directory containing the
+	// bundled builtin skills. Provided by *Server so the copilot module
+	// stays free of any internal/server/ import (the lookup is a package
+	// of M09 skills/, owned outside copilot). Nil-safe — falls back to
+	// the in-package builtinSkillsRoot default.
+	BuiltinSkillsRootFn func() string
 }
 
 // Service is the M02 专家协作 (Expert Collaboration) HTTP handler + state

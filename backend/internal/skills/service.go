@@ -314,3 +314,13 @@ func (s *Service) SkillInvocationAPI(r *http.Request) (any, error) {
 func (s *Service) UpsertSkillCatalogAPI(r *http.Request) (any, error) {
 	return s.upsertSkillCatalogAPI(r)
 }
+
+// BuiltinSkillsRoot returns the on-disk directory containing the
+// bundled builtin skills. Injected into copilot.Deps so the copilot
+// module can locate per-skill digest.md without importing skills/
+// directly. Falls back to the DE_BUILTIN_SKILLS_DIR env override,
+// then probes three common layouts (matches the legacy server-side
+// builtinSkillsRoot helper).
+func (s *Service) BuiltinSkillsRoot() string {
+	return builtinSkillsRoot()
+}

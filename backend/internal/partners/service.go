@@ -86,6 +86,13 @@ type Deps struct {
 	ProviderModels            func(p map[string]any) []map[string]any
 	KnowledgeSliceMaps        func(v any) []map[string]any
 	HasCapability             func(caps []string, want string) bool
+	// BindSkillToAgentFn is the M09 cross-module delegate invoked by
+	// M05 partners handlers when binding a skill to a digital employee.
+	// Implementation lives on *skills.Service.BindSkillToAgent; injected
+	// here as a function field so partners stays free of any
+	// internal/skills/ import (the package boundary is Deps, not a
+	// direct import).
+	BindSkillToAgentFn func(r *http.Request) (any, error)
 }
 
 // Service is the M05 数字伙伴 (Digital Partner) HTTP handler + Connect-RPC

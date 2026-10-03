@@ -1030,9 +1030,9 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) {
 
 	// Skills
 	case path == "/api/internal/skill-catalog" && method == http.MethodPost:
-		data, err = s.upsertSkillCatalogAPI(r)
+		data, err = s.skillsSvc.UpsertSkillCatalogAPI(r)
 	case path == "/api/internal/skill/invocation" && method == http.MethodPost:
-		data, err = s.skillInvocationAPI(r)
+		data, err = s.skillsSvc.SkillInvocationAPI(r)
 
 	// W3-D1 · Expert Inbox review flow. Order matters: the /:id/review
 	// suffix match must precede the generic /api/expert-inbox/:id match
@@ -1046,56 +1046,56 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) {
 		data, err = s.reviewExpertInbox(r)
 
 	case path == "/api/skills" && method == http.MethodGet:
-		data, err = s.listSkillsAligned(r)
+		data, err = s.skillsSvc.ListSkillsAligned(r)
 	case path == "/api/skills" && method == http.MethodPost:
-		data, err = s.createSkill(r)
+		data, err = s.skillsSvc.CreateSkill(r)
 	case path == "/api/skills/import" && method == http.MethodPost:
-		data, err = s.importSkills(r)
+		data, err = s.skillsSvc.ImportSkills(r)
 	case path == "/api/skills/import-package" && method == http.MethodPost:
-		data, err = s.importSkillPackage(r)
+		data, err = s.skillsSvc.ImportSkillPackage(r)
 	case path == "/api/skills/catalog" && method == http.MethodGet:
-		data, err = s.listSkillCatalog(r)
+		data, err = s.skillsSvc.ListSkillCatalog(r)
 	case path == "/api/skills/catalog/publish" && method == http.MethodPost:
-		data, err = s.publishSkillToCatalog(r)
+		data, err = s.skillsSvc.PublishSkillToCatalog(r)
 	case path == "/api/skills/catalog/sync" && method == http.MethodPost:
-		data, err = s.syncSkillCatalog(r)
+		data, err = s.skillsSvc.SyncSkillCatalog(r)
 	case path == "/api/skills/apply-general-pack" && method == http.MethodPost:
-		data, err = s.applyGeneralPack(r)
+		data, err = s.skillsSvc.ApplyGeneralPack(r)
 	case path == "/api/skills/packs" && method == http.MethodGet:
-		data, err = s.listSkillPacks(r)
+		data, err = s.skillsSvc.ListSkillPacks(r)
 	case path == "/api/skills/dependency-matrix" && method == http.MethodGet:
-		data, err = s.skillDependencyMatrix(r)
+		data, err = s.skillsSvc.SkillDependencyMatrix(r)
 	case strings.HasPrefix(path, "/api/skills/apply-pack/") && method == http.MethodPost:
-		data, err = s.applySkillPack(r)
+		data, err = s.skillsSvc.ApplySkillPack(r)
 	case path == "/api/platform-tools/registry" && method == http.MethodGet:
 		data, err = s.platformToolsRegistry(r)
 	case path == "/api/skills/governance/overview" && method == http.MethodGet:
-		data, err = s.skillsGovernanceOverview(r)
+		data, err = s.skillsSvc.SkillsGovernanceOverview(r)
 	case path == "/api/skills/governance/health" && method == http.MethodGet:
-		data, err = s.skillsGovernanceHealth(r)
+		data, err = s.skillsSvc.SkillsGovernanceHealth(r)
 	case path == "/api/skills/governance/incidents" && method == http.MethodGet:
-		data, err = s.skillsGovernanceIncidents(r)
+		data, err = s.skillsSvc.SkillsGovernanceIncidents(r)
 	case path == "/api/skills/governance/events" && method == http.MethodGet:
-		data, err = s.skillsGovernanceEvents(r)
+		data, err = s.skillsSvc.SkillsGovernanceEvents(r)
 	case path == "/api/skills/governance/trends" && method == http.MethodGet:
-		data, err = s.skillsGovernanceTrends(r)
+		data, err = s.skillsSvc.SkillsGovernanceTrends(r)
 	case path == "/api/skills/governance/batch" && method == http.MethodPost:
-		data, err = s.skillsGovernanceBatch(r)
+		data, err = s.skillsSvc.SkillsGovernanceBatch(r)
 	case path == "/api/skills/audit" && method == http.MethodGet:
-		data, err = s.listSkillAudit(r)
+		data, err = s.skillsSvc.ListSkillAudit(r)
 	case path == "/api/skills/execute" && method == http.MethodPost:
-		data, err = s.executeSkill(r)
+		data, err = s.skillsSvc.ExecuteSkill(r)
 	case strings.HasPrefix(path, "/api/skill-artifacts/") && strings.Contains(path, "/slides/") && strings.HasSuffix(strings.ToLower(path), ".png") && (method == http.MethodGet || method == http.MethodHead):
-		s.serveSkillArtifactSlidePNG(w, r)
+		s.skillsSvc.ServeSkillArtifactSlidePNG(w, r)
 		return
 	case strings.HasPrefix(path, "/api/skill-artifacts/") && strings.HasSuffix(path, "/preview") && (method == http.MethodGet || method == http.MethodHead):
-		s.serveSkillArtifactPreview(w, r)
+		s.skillsSvc.ServeSkillArtifactPreview(w, r)
 		return
 	case strings.HasPrefix(path, "/api/skill-artifacts/") && (method == http.MethodGet || method == http.MethodHead):
-		s.serveSkillArtifact(w, r)
+		s.skillsSvc.ServeSkillArtifact(w, r)
 		return
 	case strings.HasPrefix(path, "/api/skills/") && (method == http.MethodGet || method == http.MethodPost || method == http.MethodPatch):
-		data, err = s.skillByID(r)
+		data, err = s.skillsSvc.SkillByID(r)
 	// W4-D1 · Heartbeat + 在线探测
 	case path == "/api/heartbeat" && method == http.MethodGet:
 		s.heartbeatProbe(w, r)
@@ -1131,15 +1131,15 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) {
 		s.pmsopPlanEventHandler(w, r)
 		return
 	case path == "/api/skill-integrations" && method == http.MethodGet:
-		data, err = s.listSkillIntegrations(r)
+		data, err = s.skillsSvc.ListSkillIntegrations(r)
 	case strings.HasPrefix(path, "/api/skill-integrations/") && (method == http.MethodPost || method == http.MethodPatch):
-		data, err = s.skillIntegrationAction(r)
+		data, err = s.skillsSvc.SkillIntegrationAction(r)
 	case path == "/api/mcp-connections" && method == http.MethodPost:
-		data, err = s.createMCPConnection(r)
+		data, err = s.skillsSvc.CreateMCPConnection(r)
 	case path == "/api/tools" && method == http.MethodPost:
-		data, err = s.createTool(r)
+		data, err = s.skillsSvc.CreateTool(r)
 	case strings.HasPrefix(path, "/api/agents/") && strings.HasSuffix(path, "/skills") && method == http.MethodPost:
-		data, err = s.bindAgentSkill(r)
+		data, err = s.skillsSvc.BindSkillToAgent(r)
 
 	// Memory
 	case path == "/api/memory/overview" && method == http.MethodGet:
@@ -1459,6 +1459,12 @@ func (s *Server) buildCopSvc() *copilot.Service {
 		},
 		IsDemoModelAliasFn:       isDemoModelAlias,
 		PublishedPolicyByLevelFn: s.modelSvc.PublishedPolicyByLevelLocked,
+		// BuiltinSkillsRootFn — the M09 (skills) module owns the on-disk
+		// builtin skills directory. We expose s.skillsSvc.BuiltinSkillsRoot
+		// as a method value so the copilot module can locate the digest.md
+		// for each cognitive framework without copilot→server/ or
+		// copilot→skills/ direct imports.
+		BuiltinSkillsRootFn: s.skillsSvc.BuiltinSkillsRoot,
 	}
 	svc := copilot.NewService(s.Store, deps)
 	svc.SubAgent = s.SubAgent
@@ -1667,6 +1673,11 @@ func (s *Server) buildPartnerSvc() *partners.Service {
 		ProviderModels:                    providerModels,
 		KnowledgeSliceMaps:                knowledgeSliceMaps,
 		HasCapability:                     hasCapability,
+		// BindSkillToAgentFn is the M09 cross-module delegate invoked by
+		// the partner-skill-binding handler. Implementation lives on
+		// skills.Service so the M05 partners module stays free of any
+		// internal/skills/ import — Deps is the boundary.
+		BindSkillToAgentFn: s.skillsSvc.BindSkillToAgent,
 	})
 }
 
