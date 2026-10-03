@@ -21,7 +21,7 @@ const Memory = lazy(() => import('./features/memory/components/MemoryPage'));
 const Skills = lazy(() => import('./features/skills/components/SkillsPage'));
 const Models = lazy(() => import('./features/models/components/ModelsPage'));
 const Channels = lazy(() => import('./features/channels/components/ChannelsPage'));
-const Settings = lazy(() => import('./pages/Settings'));
+const Settings = lazy(() => import('./features/settings/components/SettingsPage'));
 const AuditCenter = lazy(() => import('./pages/AuditCenter'));
 const ZeroTrust = lazy(() => import('./pages/ZeroTrust'));
 
