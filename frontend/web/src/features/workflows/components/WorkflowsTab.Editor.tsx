@@ -81,32 +81,10 @@ export function WorkflowsTabEditor({ c }: Props) {
         <WorkflowLifecycleStrip highlight="version" />
       </div>
 
-      <div className="wf-editor__body grid grid-cols-12 gap-2 flex-1 min-h-0">
-        <div className="wf-editor__canvas-wrapper col-span-6 min-h-0 relative" ref={c.wrapperRef} onDragOver={c.handleDragOver} onDrop={c.handleDrop}>
-          <ReactFlowProvider>
-            <ReactFlow
-              ref={c.reactFlowRef}
-              nodes={c.rfNodes}
-              edges={c.rfEdges}
-              nodeTypes={nodeTypes}
-              fitView
-              onNodeClick={handleNodeClick}
-              onNodeContextMenu={c.onNodeContextMenu}
-              onNodesChange={c.onNodesChange}
-              onConnect={c.onConnect}
-              onEdgeDoubleClick={(_, edge) => c.deleteEdge(edge.id)}
-            >
-              <Background gap={20} size={1} />
-              <Controls position="bottom-right" showInteractive={false} />
-              <MiniMap
-                position="top-right"
-                nodeColor={(n) => NODE_COLORS[(n.data as any)?.kind as WorkflowNodeKind] ?? '#3b82f6'}
-                style={{ background: 'var(--surface-1)', border: '1px solid var(--border)' }}
-              />
-            </ReactFlow>
-          </ReactFlowProvider>
-          {c.nodeLibraryOpen && (
-            <div className="absolute left-3 top-3 z-20 flex max-h-[calc(100%-24px)] w-[318px] flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg)]/95 shadow-xl backdrop-blur">
+      <div className={cn('wf-editor__body grid flex-1 min-h-0 gap-2', c.nodeLibraryOpen ? 'grid-cols-[minmax(0,3fr)_minmax(0,2fr)_minmax(0,3fr)]' : 'grid-cols-[minmax(0,1fr)_minmax(0,3fr)]')}>
+        {c.nodeLibraryOpen && (
+          <aside className="wf-editor__library min-h-0 overflow-y-auto" aria-label="节点库">
+            <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-1)]">
               <div className="border-b border-[var(--border)] p-3">
                 <div className="flex items-center gap-1.5 text-xs font-semibold">
                   <span className="grid h-6 w-6 place-items-center rounded-lg bg-blue-50 text-blue-600"><Box className="h-3.5 w-3.5" /></span>
@@ -115,7 +93,7 @@ export function WorkflowsTabEditor({ c }: Props) {
                 </div>
                 <div className="relative mt-2">
                   <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--text-muted)]" />
-                  <input value={c.librarySearchQ} onChange={(e) => c.setLibrarySearchQ(e.target.value)} placeholder="搜索节点、能力或系统" className="h-8 w-full rounded-lg border border-[var(--border)] bg-[var(--surface-1)] pl-8 pr-2 text-[11px] outline-none focus:border-[var(--brand)]" />
+                  <input value={c.librarySearchQ} onChange={(e) => c.setLibrarySearchQ(e.target.value)} placeholder="搜索节点、能力或系统" className="h-8 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] pl-8 pr-2 text-[11px] outline-none focus:border-[var(--brand)]" />
                 </div>
                 <div className="mt-2 flex items-center gap-1 rounded-lg bg-[var(--bg-elevated)] p-1">
                   {(['recommended', 'all'] as const).map((view) => (
@@ -152,7 +130,7 @@ export function WorkflowsTabEditor({ c }: Props) {
                                 onDragEnd={() => c.setDraggedKind(null)}
                                 onClick={() => c.addNode(kind)}
                                 title={NODE_DESCS[kind]}
-                                className="flex flex-col gap-1 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-2 text-left hover:border-[var(--brand)]"
+                                className="flex flex-col gap-1 rounded-lg border border-[var(--border)] bg-[var(--bg)] p-2 text-left hover:border-[var(--brand)]"
                               >
                                 <span className="flex items-center gap-1.5">
                                   <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md" style={{ backgroundColor: `${color}1a`, color }}><Icon className="h-3.5 w-3.5" /></span>
@@ -170,7 +148,31 @@ export function WorkflowsTabEditor({ c }: Props) {
                 ) : <div className="grid min-h-28 place-items-center px-5 text-center text-[11px] text-[var(--text-muted)]">未找到匹配节点</div>}
               </div>
             </div>
-          )}
+          </aside>
+        )}
+        <div className="wf-editor__canvas-wrapper min-h-0 relative" ref={c.wrapperRef} onDragOver={c.handleDragOver} onDrop={c.handleDrop}>
+          <ReactFlowProvider>
+            <ReactFlow
+              ref={c.reactFlowRef}
+              nodes={c.rfNodes}
+              edges={c.rfEdges}
+              nodeTypes={nodeTypes}
+              fitView
+              onNodeClick={handleNodeClick}
+              onNodeContextMenu={c.onNodeContextMenu}
+              onNodesChange={c.onNodesChange}
+              onConnect={c.onConnect}
+              onEdgeDoubleClick={(_, edge) => c.deleteEdge(edge.id)}
+            >
+              <Background gap={20} size={1} />
+              <Controls position="bottom-right" showInteractive={false} />
+              <MiniMap
+                position="top-right"
+                nodeColor={(n) => NODE_COLORS[(n.data as any)?.kind as WorkflowNodeKind] ?? '#3b82f6'}
+                style={{ background: 'var(--surface-1)', border: '1px solid var(--border)' }}
+              />
+            </ReactFlow>
+          </ReactFlowProvider>
           {c.draggedKind && (
             <div className="pointer-events-none absolute inset-0 grid place-items-center bg-blue-50 border-2 border-dashed border-blue-300 z-10">
               <div className="rounded-md bg-[var(--surface-1)] border border-[var(--brand)] px-4 py-2 text-sm font-semibold text-[var(--brand)] shadow-lg">释放鼠标添加到画布 · {NODE_LABELS[c.draggedKind]}</div>
@@ -188,7 +190,7 @@ export function WorkflowsTabEditor({ c }: Props) {
             {c.searchMatch && <button onClick={() => c.focusNode(c.searchMatch!.id)} className="rounded bg-[var(--brand)] px-1.5 py-0.5 text-[9px] text-white">跳转</button>}
           </div>
         </div>
-        <aside className="wf-editor__inspector col-span-3 min-h-0 overflow-y-auto">
+        <aside className="wf-editor__inspector min-h-0 overflow-y-auto">
           {c.selectedNode ? (
             <NodeInspector selectedNode={c.selectedNode} c={c} tab={inspectorTab} setTab={setInspectorTab} />
           ) : (
