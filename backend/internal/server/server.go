@@ -21,6 +21,7 @@ import (
 	"github.com/qizhida-partner-platform/backend/internal/heartbeat"
 	"github.com/qizhida-partner-platform/backend/internal/infra"
 	"github.com/qizhida-partner-platform/backend/internal/knowledge"
+	"github.com/qizhida-partner-platform/backend/internal/skills"
 	memid "github.com/qizhida-partner-platform/backend/internal/memory/identity"
 	"github.com/qizhida-partner-platform/backend/internal/metrics"
 	"github.com/qizhida-partner-platform/backend/internal/modelprov"
@@ -232,6 +233,18 @@ type Server struct {
 	// around for tests that don't wire the package).
 	knowledgeSvc *knowledge.Service
 
+	// skillsSvc holds the M09 技能中心 (Skills Center) HTTP-route
+	// façade. Built in New() via buildSkillsSvc (which wires Deps
+	// function fields to *Server methods). The skills package owns the
+	// full M09 surface: 20 REST routes + skill-artifacts media + the
+	// catch-all skillByID + governance batch + skill execute + cap-
+	// runtime delegate routes. Package boundary stays one-way: skills
+	// never imports internal/server/. The legacy *Server receiver
+	// methods (s.listSkillsAligned, s.createSkill, …) are kept as
+	// thin forwarders to s.skillsSvc.<Method> so the route table can
+	// migrate incrementally.
+	skillsSvc *skills.Service
+
 	// closeMu guards closeFuncs + closed; RegisterCloseFunc and Shutdown
 	// race in tests where Shutdown runs on a different goroutine than
 	// the apprun boot path.
@@ -382,6 +395,16 @@ func New(st *store.Store) *Server {
 	// qzdaworkflow.Engine.StartTrial closure so workflows never imports
 	// server/ — package boundary is one-way.
 	s.workflowSvc = s.buildWorkflowSvc()
+	// M09 技能中心 (Skills Center) façade. The skills package owns
+	// the M09 surface: 20 REST routes + skill-artifacts media + the
+	// catch-all skillByID + governance batch + skill execute +
+	// internal cap-runtime delegate. Server wires Deps (workspace/
+	// identity helpers, audit sink, persistence hooks, signing
+	// trust-store + dev-key + signer-resolver, peer-fetch, knowledge
+	// slice coercion) so the package boundary stays one-way: skills
+	// never imports server/. Built AFTER CopSvc since the skill
+	// harness references s.CopSvc for tool authorization + execution.
+	s.skillsSvc = s.buildSkillsSvc()
 	return s
 }
 
