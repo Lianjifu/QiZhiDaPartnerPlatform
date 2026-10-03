@@ -20,7 +20,7 @@ const Knowledge = lazy(() => import('./features/knowledge/components/KnowledgePa
 const Memory = lazy(() => import('./features/memory/components/MemoryPage'));
 const Skills = lazy(() => import('./features/skills/components/SkillsPage'));
 const Models = lazy(() => import('./features/models/components/ModelsPage'));
-const Channels = lazy(() => import('./pages/Channels'));
+const Channels = lazy(() => import('./features/channels/components/ChannelsPage'));
 const Settings = lazy(() => import('./pages/Settings'));
 const AuditCenter = lazy(() => import('./pages/AuditCenter'));
 const ZeroTrust = lazy(() => import('./pages/ZeroTrust'));
