@@ -15,11 +15,11 @@ import (
 	"github.com/qizhida-partner-platform/backend/gen/qzda/partner/v1/partnerv1connect"
 	"github.com/qizhida-partner-platform/backend/gen/qzda/platform/v1/platformv1connect"
 	"github.com/qizhida-partner-platform/backend/gen/qzda/policy/v1/policyv1connect"
-	ragv1 "github.com/qizhida-partner-platform/backend/gen/qzda/rag/v1"
 	"github.com/qizhida-partner-platform/backend/gen/qzda/rag/v1/ragv1connect"
 	runtimev1 "github.com/qizhida-partner-platform/backend/gen/qzda/runtime/v1"
 	"github.com/qizhida-partner-platform/backend/gen/qzda/runtime/v1/runtimev1connect"
 	"github.com/qizhida-partner-platform/backend/internal/copilot"
+	"github.com/qizhida-partner-platform/backend/internal/knowledge"
 	"github.com/qizhida-partner-platform/backend/internal/partners"
 	"github.com/qizhida-partner-platform/backend/pkg/contract"
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
@@ -38,7 +38,13 @@ func (s *Server) mountConnectRPC(mux *http.ServeMux) {
 func (s *Server) mountConnectRPCForMode(mux *http.ServeMux, mode ServiceMode) {
 	all := mode.IsUnified()
 	if all || mode == ModeCap {
-		p, h := ragv1connect.NewRagServiceHandler(&ragConnect{s})
+		// M07 ragConnect binding moved to internal/knowledge during the
+		// M07 P2 deep move. The buf-generated RagServiceHandler
+		// interface (qzda.rag.v1.RagService) is unchanged —
+		// knowledge.ragConnect (constructed via knowledge.NewConnect)
+		// satisfies it via knowledge.Service's methods (KnowledgeRetrieve,
+		// KnowledgeRetrieveConnect).
+		p, h := ragv1connect.NewRagServiceHandler(knowledge.NewConnect(s.knowledgeSvc))
 		mux.Handle(p, h)
 		p, h = runtimev1connect.NewRuntimeServiceHandler(&runtimeConnect{s})
 		mux.Handle(p, h)
@@ -66,53 +72,6 @@ func (s *Server) mountConnectRPCForMode(mux *http.ServeMux, mode ServiceMode) {
 		p, h := platformv1connect.NewPlatformServiceHandler(&platformConnect{s})
 		mux.Handle(p, h)
 	}
-}
-
-type ragConnect struct{ s *Server }
-
-func (c *ragConnect) Retrieve(ctx context.Context, req *connect.Request[ragv1.RetrieveRequest]) (*connect.Response[ragv1.RetrieveResponse], error) {
-	r := requestFromConnect(ctx, req.Header())
-	corr := req.Msg.GetCorrelationId()
-	if corr == "" {
-		corr = c.s.Store.ID("corr")
-	}
-	body := map[string]any{"query": req.Msg.GetQuery(), "correlationId": corr}
-	raw, err := c.s.retrievePublished(r, body, corr)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	out := &ragv1.RetrieveResponse{Query: req.Msg.GetQuery(), CorrelationId: corr, Backend: "published-memory"}
-	if m, ok := raw.(map[string]any); ok {
-		if b := str(m["backend"]); b != "" {
-			out.Backend = b
-		}
-		if results, ok := m["results"].([]map[string]any); ok {
-			for _, hit := range results {
-				out.Results = append(out.Results, &ragv1.RetrieveHit{
-					DocId: str(hit["docId"]), Title: str(hit["title"]), Snippet: str(hit["snippet"]),
-					Score: toFloat(hit["score"]), Status: coalesce(str(hit["status"]), "published"),
-				})
-			}
-		} else if arr, ok := m["results"].([]any); ok {
-			for _, x := range arr {
-				hit, _ := x.(map[string]any)
-				if hit == nil {
-					continue
-				}
-				out.Results = append(out.Results, &ragv1.RetrieveHit{
-					DocId: str(hit["docId"]), Title: str(hit["title"]), Snippet: str(hit["snippet"]),
-					Score: toFloat(hit["score"]), Status: coalesce(str(hit["status"]), "published"),
-				})
-			}
-		}
-	}
-	return connect.NewResponse(out), nil
-}
-
-func (c *ragConnect) SyncPublished(ctx context.Context, req *connect.Request[ragv1.SyncPublishedRequest]) (*connect.Response[ragv1.SyncPublishedResponse], error) {
-	_ = ctx
-	n := int32(len(req.Msg.GetDocs()))
-	return connect.NewResponse(&ragv1.SyncPublishedResponse{Indexed: n}), nil
 }
 
 type collabConnect struct{ s *Server }

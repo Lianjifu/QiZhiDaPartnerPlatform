@@ -20,6 +20,7 @@ import (
 	"github.com/qizhida-partner-platform/backend/internal/gateway"
 	"github.com/qizhida-partner-platform/backend/internal/heartbeat"
 	"github.com/qizhida-partner-platform/backend/internal/infra"
+	"github.com/qizhida-partner-platform/backend/internal/knowledge"
 	memid "github.com/qizhida-partner-platform/backend/internal/memory/identity"
 	"github.com/qizhida-partner-platform/backend/internal/metrics"
 	"github.com/qizhida-partner-platform/backend/internal/modelprov"
@@ -218,6 +219,19 @@ type Server struct {
 	// Package boundary stays one-way: models never imports internal/server/.
 	modelSvc *models.Service
 
+	// knowledgeSvc holds the M07 知识中心 (Knowledge Center) HTTP-route
+	// façade. Built in New() with method values bound to *Server methods
+	// so the knowledge package stays free of any internal/server/ import.
+	// The route switch consults s.knowledgeSvc for the 25 M07 endpoints
+	// (docs CRUD + retrieve + kb-list + packages + sources + governance +
+	// processing-jobs + retrieval-profiles + evaluations + graph +
+	// bindings + citation-trace + eval + chunks + review + reindex +
+	// rescore + evaluation-run). The Connect-RPC RagServiceHandler also
+	// delegates to it via knowledge.NewConnect. Nil-tolerant: falls back
+	// to the legacy receiver methods when s.knowledgeSvc is nil (kept
+	// around for tests that don't wire the package).
+	knowledgeSvc *knowledge.Service
+
 	// closeMu guards closeFuncs + closed; RegisterCloseFunc and Shutdown
 	// race in tests where Shutdown runs on a different goroutine than
 	// the apprun boot path.
@@ -342,6 +356,17 @@ func New(st *store.Store) *Server {
 	// values. Package boundary stays one-way: tasks never imports
 	// server/.
 	s.taskSvc = s.buildTaskSvc()
+	// M07 知识中心 (Knowledge Center) façade. The knowledge package owns
+	// the full M07 surface: 25 REST handlers (docs CRUD + retrieve +
+	// kb-list + packages + sources + governance + processing-jobs +
+	// retrieval-profiles + evaluations + graph + bindings +
+	// citation-trace + eval + chunks + review + reindex + rescore +
+	// evaluation-run) + the ragConnect binding for Connect-RPC. Server
+	// wires Deps (workspace/identity helpers, governance gates, audit
+	// sink, RAG sidecar URL, citation / citationlog helpers, record
+	// usage, builtin tool registry) so the package boundary stays
+	// one-way: knowledge never imports internal/server/.
+	s.knowledgeSvc = s.buildKnowledgeSvc()
 	// M05 数字伙伴 (Digital Partner) façade. The partners package owns
 	// the M05 surface: 11 REST routes + the partnerConnect binding for
 	// Connect-RPC. Server wires Deps (workspace/identity helpers,
@@ -822,65 +847,65 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) {
 
 	// Knowledge
 	case path == "/api/knowledge/docs" && method == http.MethodGet:
-		data, err = s.listKnowledgeDocsAuth(r)
+		data, err = s.knowledgeSvc.ListKnowledgeDocs(r)
 	case path == "/api/knowledge/docs" && method == http.MethodPost:
-		data, err = s.createKnowledgeDocAuth(r)
+		data, err = s.knowledgeSvc.CreateKnowledgeDoc(r)
 	case path == "/api/knowledge/docs/delete" && method == http.MethodPost:
-		data, err = s.deleteKnowledgeDocsAuth(r)
+		data, err = s.knowledgeSvc.DeleteKnowledgeDocs(r)
 	case path == "/api/knowledge/kb-list" && method == http.MethodGet:
-		data, err = s.listKBAuth(r)
+		data, err = s.knowledgeSvc.ListKB(r)
 	case path == "/api/knowledge/retrieve" && method == http.MethodPost:
-		data, err = s.knowledgeRetrieveAuth(r)
+		data, err = s.knowledgeSvc.KnowledgeRetrieve(r)
 	case strings.HasPrefix(path, "/api/knowledge/doc/") && method == http.MethodGet:
-		data, err = s.knowledgeDocDetailAuth(r)
+		data, err = s.knowledgeSvc.KnowledgeDocDetail(r)
 	case strings.HasPrefix(path, "/api/knowledge/doc/") && method == http.MethodDelete:
-		data, err = s.deleteKnowledgeDocAuth(r)
+		data, err = s.knowledgeSvc.DeleteKnowledgeDoc(r)
 	case path == "/api/knowledge/packages" && method == http.MethodGet:
-		data, err = s.knowledgeExtraFiltered(r, "packages")
+		data, err = s.knowledgeSvc.KnowledgeListFiltered(r, "packages")
 	case path == "/api/knowledge/packages" && method == http.MethodPost:
-		data, err = s.createKnowledgePackage(r)
+		data, err = s.knowledgeSvc.CreateKnowledgePackage(r)
 	case strings.HasPrefix(path, "/api/knowledge/packages/") && method == http.MethodPost:
-		data, err = s.knowledgePackageAction(r)
+		data, err = s.knowledgeSvc.KnowledgePackageAction(r)
 	case path == "/api/knowledge/sources" && method == http.MethodGet:
-		data, err = s.knowledgeExtraFiltered(r, "sources")
+		data, err = s.knowledgeSvc.KnowledgeListFiltered(r, "sources")
 	case path == "/api/knowledge/sources" && method == http.MethodPost:
-		data, err = s.createKnowledgeSource(r)
+		data, err = s.knowledgeSvc.CreateKnowledgeSource(r)
 	case strings.HasPrefix(path, "/api/knowledge/sources/") && strings.HasSuffix(path, "/sync") && method == http.MethodPost:
-		data, err = s.syncKnowledgeSource(r)
+		data, err = s.knowledgeSvc.SyncKnowledgeSource(r)
 	case path == "/api/knowledge/governance" && method == http.MethodGet:
-		data, err = s.knowledgeExtraFiltered(r, "governance")
+		data, err = s.knowledgeSvc.KnowledgeListFiltered(r, "governance")
 	case path == "/api/knowledge/governance" && method == http.MethodPatch:
-		data, err = s.patchKnowledgeGovernanceAuth(r)
+		data, err = s.knowledgeSvc.PatchKnowledgeGovernance(r)
 	case path == "/api/knowledge/audit" && method == http.MethodGet:
-		data, err = s.knowledgeExtraFiltered(r, "audit")
+		data, err = s.knowledgeSvc.KnowledgeListFiltered(r, "audit")
 	case path == "/api/knowledge/processing-jobs" && method == http.MethodGet:
-		data, err = s.knowledgeExtraFiltered(r, "processingJobs")
+		data, err = s.knowledgeSvc.KnowledgeListFiltered(r, "processingJobs")
 	case strings.HasPrefix(path, "/api/knowledge/processing-jobs/") && strings.HasSuffix(path, "/retry") && method == http.MethodPost:
-		data, err = s.retryKnowledgeJob(r)
+		data, err = s.knowledgeSvc.RetryKnowledgeJob(r)
 	case path == "/api/knowledge/retrieval-profiles" && method == http.MethodGet:
-		data, err = s.knowledgeExtraFiltered(r, "retrievalProfiles")
+		data, err = s.knowledgeSvc.KnowledgeListFiltered(r, "retrievalProfiles")
 	case path == "/api/knowledge/evaluations" && method == http.MethodGet:
-		data, err = s.knowledgeExtraFiltered(r, "evaluations")
+		data, err = s.knowledgeSvc.KnowledgeListFiltered(r, "evaluations")
 	case path == "/api/knowledge/graph/entities" && method == http.MethodGet:
-		data, err = s.knowledgeExtraFiltered(r, "graphEntities")
+		data, err = s.knowledgeSvc.KnowledgeListFiltered(r, "graphEntities")
 	case path == "/api/knowledge/graph/relations" && method == http.MethodGet:
-		data, err = s.knowledgeExtraFiltered(r, "graphRelations")
+		data, err = s.knowledgeSvc.KnowledgeListFiltered(r, "graphRelations")
 	case path == "/api/knowledge/bindings" && method == http.MethodGet:
-		data, err = s.knowledgeExtraFiltered(r, "bindings")
+		data, err = s.knowledgeSvc.KnowledgeListFiltered(r, "bindings")
 	case path == "/api/knowledge/citation-trace" && method == http.MethodGet:
-		data, err = s.knowledgeExtraFiltered(r, "citationTrace")
+		data, err = s.knowledgeSvc.KnowledgeListFiltered(r, "citationTrace")
 	case path == "/api/knowledge/eval" && method == http.MethodGet:
-		data, err = s.knowledgeExtraFiltered(r, "eval")
+		data, err = s.knowledgeSvc.KnowledgeListFiltered(r, "eval")
 	case path == "/api/knowledge/chunks/top" && method == http.MethodGet:
-		data, err = s.knowledgeExtraFiltered(r, "chunksTop")
+		data, err = s.knowledgeSvc.KnowledgeListFiltered(r, "chunksTop")
 	case path == "/api/knowledge/docs/review" && method == http.MethodPost:
-		data, err = s.reviewKnowledgeDocs(r)
+		data, err = s.knowledgeSvc.ReviewKnowledgeDocs(r)
 	case path == "/api/knowledge/reindex" && method == http.MethodPost:
-		data, err = s.reindexKnowledgeAuth(r)
+		data, err = s.knowledgeSvc.ReindexKnowledge(r)
 	case path == "/api/knowledge/chunks/rescore" && method == http.MethodPost:
-		data, err = s.rescoreKnowledgeChunks(r)
+		data, err = s.knowledgeSvc.RescoreKnowledgeChunks(r)
 	case path == "/api/knowledge/evaluations/run" && method == http.MethodPost:
-		data, err = s.runKnowledgeEvaluation(r)
+		data, err = s.knowledgeSvc.RunKnowledgeEvaluation(r)
 
 	// Copilot — sessions / conversations / actions
 	case path == "/api/internal/channel-sessions" && method == http.MethodPost:
@@ -1685,6 +1710,171 @@ func (s *Server) EnsureBuiltinWorkflowsReady() {
 		return
 	}
 	s.workflowSvc.EnsureBuiltinWorkflowsReady()
+}
+
+// buildKnowledgeSvc wires the M07 知识中心 (Knowledge Center) HTTP-route
+// façade. The knowledge package owns the full M07 surface: 25 REST
+// handlers (docs CRUD + retrieve + kb-list + packages + sources +
+// governance + processing-jobs + retrieval-profiles + evaluations +
+// graph + bindings + citation-trace + eval + chunks + review +
+// reindex + rescore + evaluation-run) + the ragConnect binding for
+// Connect-RPC + the office builtin loader (EnsureBuiltinKnowledgeReady
+// + RetrieveBuiltin). Server wires Deps (workspace/identity helpers,
+// governance gates, audit sink, RAG sidecar URL, citation / citationlog
+// helpers, record usage, builtin tool registry) so the package
+// boundary stays one-way: knowledge never imports internal/server/.
+//
+// Why Deps as function fields (not an interface)?
+//   - Keeps knowledge free of any internal/server/ import — Deps is the
+//     boundary, not a coupled interface
+//   - Lets tests inject stubs selectively — most fields are nil-safe
+//   - Avoids the breadth of an interface with ~25 methods when callers
+//     want one field each
+//
+// Required helpers that stay on *Server (and are wired here as method
+// values): workspaceID, identityFrom, decodeMap, evaluateWrite,
+// requiresPeerApprovalGate, requireProductionDualApproval,
+// maybeHoldForCountersign, productionLikeEnv, appendAuditSink,
+// afterWriteLocked, afterWrite, durableDeleteSync, recordUsageWS,
+// s.RAGURL accessor, citation.ExtractQuote + citation.QuoteHash +
+// citationlog.NewLog etc.
+func (s *Server) buildKnowledgeSvc() *knowledge.Service {
+	// RAGURL is a string; the knowledge package Deps contract expects a
+	// closure so the sidecar URL can be swapped (test stubs). Adapter
+	// closure closes over s.RAGURL.
+	ragURL := func() string { return s.RAGURL }
+	// recordUsageWS is already a *Server method that records a usage
+	// meter entry; we adapt its signature from (ws, kind, units, corr)
+	// to the knowledge.Deps.RecordUsageWS contract.
+	recordUsageWS := s.recordUsageWS
+	// appendAuditSink wraps s.Store.AppendAudit so the M07 module can
+	// record audit rows without holding any pointer to *Server.
+	appendAuditSink := func(workspaceID, actor, action, target, result, reason string) {
+		s.Store.AppendAudit(workspaceID, actor, action, target, result, reason)
+	}
+	// afterWrite / afterWriteLocked / durableDeleteSync are existing
+	// *Server helpers exposed via method values.
+	return knowledge.NewService(s.Store, knowledge.Deps{
+		WorkspaceID:                    s.workspaceID,
+		IdentityFrom:                   identityFrom,
+		DecodeMap:                      decodeMap,
+		EvaluateWrite:                  s.evaluateWrite,
+		RequiresPeerApprovalGate:       requiresPeerApprovalGate,
+		RequireProductionDualApproval:  requireProductionDualApproval,
+		MaybeHoldForCountersign:        maybeHoldForCountersign,
+		ProductionLikeEnv:              productionLikeEnv,
+		AppendAudit:                    appendAuditSink,
+		AfterWriteLocked:               s.afterWriteLocked,
+		AfterWrite:                     s.afterWrite,
+		DurableDeleteSync:              s.durableDeleteSync,
+		RAGURL:                         ragURL,
+		RecordUsageWS:                  recordUsageWS,
+	})
+}
+
+// EnsureBuiltinKnowledgeReady is a thin delegator over the M07
+// knowledge service's office builtin loader. The apprun boot path
+// (DomainKnowledge / DomainCap / DomainAll) still calls this method
+// on the freshly-built *Server so the legacy call sites keep working
+// unchanged. Pattern mirrors EnsureBuiltinWorkflowsReady above.
+func (s *Server) EnsureBuiltinKnowledgeReady() {
+	if s.knowledgeSvc == nil {
+		return
+	}
+	s.knowledgeSvc.EnsureBuiltinKnowledgeReady()
+}
+
+// RetrieveBuiltin is a thin delegator over the M07 knowledge service's
+// "knowledge.retrieve" copilot builtin tool handler. Used by the M02
+// copilot module when it needs to invoke the tool through a Server
+// method (e.g. the supervisor shared retrieve path).
+func (s *Server) RetrieveBuiltin(ctx context.Context, r *http.Request, query, corr string) (any, error) {
+	if s.knowledgeSvc == nil {
+		return nil, nil
+	}
+	return s.knowledgeSvc.RetrieveBuiltin(ctx, r, query, corr)
+}
+
+// citationLog is a thin delegator over the M07 knowledge service's
+// per-workspace citation log accessor. Used by handlers_c.go +
+// session_panel.go to record citations via the Service façade.
+func (s *Server) citationLog() *knowledge.CitationLog {
+	if s.knowledgeSvc == nil {
+		return nil
+	}
+	return s.knowledgeSvc.CitationLog()
+}
+
+// retrievePublished lives in connect_gateway.go (line 189) as the
+// canonical implementation surface that handlers_c.go and
+// connect_gateway.go's ragConnect call into. The connect_gateway.go
+// version does scope.Allowed filtering + RAG fallback that the M07
+// service's retrievePublishedNormalized does not need to duplicate.
+
+// appendKnowledgeAuditLocked is a thin delegator over the M07
+// knowledge service's audit-row append. Used by handlers_memory.go +
+// handlers_pmsop.go + handlers_selfimproving.go to stamp knowledge
+// audit rows into the shared Store.KnowledgeExtra["audit"] slice.
+//
+// Lock-safety: caller MUST hold Store.Lock — the implementation
+// enforces that contract (the package-private helper is named
+// ...Locked). The Service-side public wrapper does NOT acquire the
+// lock again so re-entrant calls don't deadlock Go's non-reentrant
+// sync.Mutex.
+func (s *Server) appendKnowledgeAuditLocked(ws, actor, action, target, result, reason string) {
+	if s.knowledgeSvc == nil {
+		return
+	}
+	s.knowledgeSvc.AppendKnowledgeAuditLocked(ws, actor, action, target, result, reason)
+}
+
+// persistKnowledgeExtra is a thin delegator over the M07 knowledge
+// service's persist hook. Used by handlers_memory.go +
+// handlers_pmsop.go + handlers_selfimproving.go.
+func (s *Server) persistKnowledgeExtra() {
+	if s.knowledgeSvc == nil {
+		return
+	}
+	s.knowledgeSvc.PersistKnowledgeExtra()
+}
+
+// writeKnowledgeBlob is a thin delegator over the M07 knowledge
+// service's blob write helper. Used by handlers_selfimproving.go.
+func (s *Server) writeKnowledgeBlob(ws, docID, content string) (string, error) {
+	if s.knowledgeSvc == nil {
+		return "", nil
+	}
+	return s.knowledgeSvc.WriteKnowledgeBlob(ws, docID, content)
+}
+
+// ensureDraftPackageLocked is a thin delegator over the M07 knowledge
+// service's draft-package helper. Used by handlers_selfimproving.go.
+// Caller MUST hold Store.Lock.
+func (s *Server) ensureDraftPackageLocked(ws, owner string) string {
+	if s.knowledgeSvc == nil {
+		return ""
+	}
+	return s.knowledgeSvc.EnsureDraftPackageLocked(ws, owner)
+}
+
+// attachDocsToPackageLocked is a thin delegator over the M07
+// knowledge service's package-attach helper. Used by
+// handlers_selfimproving.go. Caller MUST hold Store.Lock.
+func (s *Server) attachDocsToPackageLocked(ws, pkgID string, docIDs []string, markReview bool) int {
+	if s.knowledgeSvc == nil {
+		return 0
+	}
+	return s.knowledgeSvc.AttachDocsToPackageLocked(ws, pkgID, docIDs, markReview)
+}
+
+// runKnowledgeJob is a thin delegator over the M07 knowledge
+// service's job runner. Used by handlers_selfimproving.go. Background
+// goroutine — not safe to call from a request handler.
+func (s *Server) runKnowledgeJob(jobID string) {
+	if s.knowledgeSvc == nil {
+		return
+	}
+	s.knowledgeSvc.RunKnowledgeJob(jobID)
 }
 
 // HasPostgres reports whether the backing Postgres pool is wired into the

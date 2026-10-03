@@ -1,14 +1,40 @@
-package server
+package knowledge
 
 import (
+	"context"
 	"encoding/json"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/qizhida-partner-platform/backend/internal/copilot"
+	"github.com/qizhida-partner-platform/backend/internal/knowledge/citation"
 )
 
+// Package builtin holds the M07 知识中心 boot-time helpers that
+// previously lived in internal/server/builtin_knowledge.go:
+//
+//   - builtin loader for the office builtin knowledge packs
+//     (manifest.json + per-pack package.json + per-doc markdown files
+//     in backend/builtin/knowledge/office/)
+//   - EnsureBuiltinKnowledgeReady, the boot-time invocation that
+//     seeds each workspace's Store.KnowledgeDocs +
+//     KnowledgeExtra["packages"] + retrievalProfiles + evaluations
+//     with the office packs
+//   - RetrieveBuiltin, the M02 copilot "knowledge.retrieve" tool
+//     handler (registered through copilot.Deps.RetrieveBuiltinFn)
+//   - citationLog + LogCitation helpers used by the session_panel
+//     audit path
+//
+// After M07 P2 these helpers live on the Service so the package
+// boundary stays one-way (knowledge never imports server/).
+
+// builtinKnowledgeManifest / builtinKnowledgePackage — JSON shapes for
+// the office builtin loader. Mirrors the legacy internal/server
+// types.
 type builtinKnowledgeManifest struct {
 	Version string `json:"version"`
 	Packs   []struct {
@@ -42,6 +68,9 @@ var (
 	builtinKnowledgeErr   error
 )
 
+// builtinKnowledgeRoot resolves the office-pack root directory.
+// Override with DE_BUILTIN_KNOWLEDGE_DIR; otherwise walks the standard
+// candidates relative to the working directory.
 func builtinKnowledgeRoot() string {
 	if v := strings.TrimSpace(os.Getenv("DE_BUILTIN_KNOWLEDGE_DIR")); v != "" {
 		return v
@@ -66,6 +95,9 @@ func builtinKnowledgeRoot() string {
 	return filepath.Join("backend", "builtin", "knowledge", "office")
 }
 
+// loadBuiltinKnowledgePacks loads the manifest + per-pack package.json
+// files exactly once per process. Returns (packs, docsByPkg, err).
+// The err is sticky — once set, subsequent calls return the same value.
 func loadBuiltinKnowledgePacks() ([]builtinKnowledgePackage, map[string][]map[string]any, error) {
 	builtinKnowledgeOnce.Do(func() {
 		root := builtinKnowledgeRoot()
@@ -129,8 +161,14 @@ func loadBuiltinKnowledgePacks() ([]builtinKnowledgePackage, map[string][]map[st
 	return builtinKnowledgePacks, builtinKnowledgeDocs, builtinKnowledgeErr
 }
 
-// EnsureBuiltinKnowledgeReady 将办公开箱知识包装入各工作区（已存在同 id 则跳过覆盖自定义字段，仅补齐缺失）。
-func (s *Server) EnsureBuiltinKnowledgeReady() {
+// EnsureBuiltinKnowledgeReady 将办公开箱知识包装入各工作区（已存在
+// 同 id 则跳过覆盖自定义字段，仅补齐缺失）。
+//
+// Seeded under Store.Lock so concurrent boot paths (apprun/run.go,
+// DomainWorkflow/DomainCap/DomainAll unit tests) don't race. Idempotent:
+// re-running this method leaves existing rows in place (only fills in
+// missing fields and adds packs that weren't there).
+func (s *Service) EnsureBuiltinKnowledgeReady() {
 	packs, docsByPkg, err := loadBuiltinKnowledgePacks()
 	if err != nil || len(packs) == 0 {
 		return
@@ -250,4 +288,81 @@ func (s *Server) EnsureBuiltinKnowledgeReady() {
 		}
 	}
 	s.Store.KnowledgeExtra["packages"] = packages
+}
+
+// RetrieveBuiltin is the M02 copilot "knowledge.retrieve" tool
+// handler. Wraps retrievePublishedNormalized so the tool returns the
+// canonical {query, results, backend, correlationId} envelope. Server
+// wires the closure into copilot.Deps.RetrieveBuiltinFn at boot.
+//
+// The reason this lives on the Service (rather than as a free function
+// in copilot/copilot_tools.go): the retrieve path itself is M07 —
+// without this delegation the M02 copilot module would need to import
+// internal/knowledge/ for the canonical implementation, which would
+// break the M02 → M07 one-way dependency direction.
+func (s *Service) RetrieveBuiltin(ctx context.Context, r *http.Request, query, corr string) (any, error) {
+	if s == nil {
+		return nil, nil
+	}
+	if corr == "" {
+		corr = s.Store.ID("corr")
+	}
+	return s.retrievePublishedNormalized(r, map[string]any{"query": query, "correlationId": corr}, corr)
+}
+
+// LogCitationsForRAG is the Deps.LogCitationsForRAGFn entry point —
+// iterates the supplied RAG hits and writes one citationlog row per
+// hit into the per-workspace citation log. The session_panel path
+// uses this through Deps so it can stay free of citation + citationlog
+// imports.
+//
+// The format mirrors the legacy *Server.logCitationsForRAG:
+//   - snippet / title fallback
+//   - quote extraction + quote-hash via CitationQuoteFn
+//   - tier derivation (when the retriever didn't populate it directly)
+//     from the doc-status string via copilot.CitationTierFromDocStatus
+func (s *Service) LogCitationsForRAG(ws, turnID string, hits []map[string]any) {
+	if len(hits) == 0 || s.Store == nil {
+		return
+	}
+	cl := s.CitationLog()
+	quoteFn := s.Deps.CitationQuoteFn
+	for _, h := range hits {
+		snippet := coalesce(str(h["snippet"]), str(h["title"]))
+		var quotedHash string
+		if quoteFn != nil {
+			_, quotedHash = quoteFn(snippet)
+		} else {
+			// Fallback: when Deps.CitationQuoteFn isn't wired (tests,
+			// boot ordering edge cases) call citation.ExtractQuote +
+			// citation.QuoteHash directly. The knowledge package owns
+			// the citation sub-package so this stays inside the
+			// one-way boundary.
+			quoted, _, _ := citation.ExtractQuote(snippet)
+			quotedHash = citation.QuoteHash(quoted)
+		}
+		tier := str(h["tier"])
+		if tier == "" {
+			tier = string(copilot.CitationTierFromDocStatus(str(h["status"])))
+		}
+		cl.Append(citationlogRec(ws, turnID, h, tier, quotedHash))
+	}
+}
+
+// citationlogRec constructs the citationlog.Record — kept on the
+// Service so the same shape is used by LogCitationsForRAG and any
+// future caller (e.g. session_panel tests that synthesize rows
+// directly). Centralizing the row shape keeps the QuoteHash /
+// extract-quote contract consistent with citation.Build.
+func citationlogRec(ws, turnID string, hit map[string]any, tier, quoteHash string) citationlogRecord {
+	return citationlogRecord{
+		WorkspaceID: ws,
+		TurnID:      turnID,
+		DocID:       str(hit["docId"]),
+		ChunkID:     str(hit["chunkId"]),
+		Tier:        tier,
+		QuoteHash:   quoteHash,
+		Score:       toFloat(hit["score"]),
+		CreatedAt:   time.Now().UTC(),
+	}
 }

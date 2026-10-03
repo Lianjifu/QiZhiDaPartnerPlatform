@@ -10,8 +10,6 @@ import (
 	"github.com/qizhida-partner-platform/backend/internal/auth"
 	"github.com/qizhida-partner-platform/backend/internal/channel"
 	"github.com/qizhida-partner-platform/backend/internal/copilot"
-	"github.com/qizhida-partner-platform/backend/internal/knowledge/citation"
-	"github.com/qizhida-partner-platform/backend/internal/knowledge/citationlog"
 	"github.com/qizhida-partner-platform/backend/internal/modelprov"
 )
 
@@ -28,29 +26,16 @@ import (
 // only carries {docId, title, snippet, status, score}); without this fallback
 // every audit row would store Tier="" and lose the published/review/workspace
 // distinction that downstream consumers rely on.
+//
+// After M07 P2 this is a thin delegator over knowledge.Service.LogCitationsForRAG
+// so the server package no longer imports internal/knowledge/citation +
+// citationlog directly. The implementation (per-hit row shape, quote
+// extraction, tier fallback, audit-row dedup) lives in internal/knowledge.
 func (s *Server) logCitationsForRAG(ws, turnID string, hits []map[string]any) {
-	if len(hits) == 0 || s.Store == nil {
+	if len(hits) == 0 || s.knowledgeSvc == nil {
 		return
 	}
-	cl := s.citationLog()
-	for _, h := range hits {
-		snippet := coalesce(str(h["snippet"]), str(h["title"]))
-		quoted, _, _ := citation.ExtractQuote(snippet)
-		tier := str(h["tier"])
-		if tier == "" {
-			tier = string(copilot.CitationTierFromDocStatus(str(h["status"])))
-		}
-		cl.Append(citationlog.Record{
-			WorkspaceID: ws,
-			TurnID:      turnID,
-			DocID:       str(h["docId"]),
-			ChunkID:     str(h["chunkId"]),
-			Tier:        tier,
-			QuoteHash:   citation.QuoteHash(quoted),
-			Score:       func() float64 { f, _ := asFloat(h["score"]); return f }(),
-			CreatedAt:   time.Now().UTC(),
-		})
-	}
+	s.knowledgeSvc.LogCitationsForRAG(ws, turnID, hits)
 }
 
 // participantCtxInput is the dispatch-side carrier for building a
