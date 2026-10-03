@@ -24,7 +24,7 @@ cd backend
 pip install -r services/qzda-rag/requirements.txt
 # optional Milvus:
 pip install -r services/qzda-rag/requirements-milvus.txt
-python3 runtimes/de_rag/main.py
+cd services/qzda-rag && python3 main.py
 # or
 cd services/qzda-rag && uvicorn app.main:app --host 127.0.0.1 --port 8092
 ```

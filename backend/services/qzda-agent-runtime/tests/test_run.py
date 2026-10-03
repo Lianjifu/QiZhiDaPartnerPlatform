@@ -1,13 +1,11 @@
-#!/usr/bin/env python3
 """Smoke tests for qzda-agent-runtime Run prompt helpers."""
 from __future__ import annotations
 
+import os
 import sys
-from pathlib import Path
 
-_SERVICE = Path(__file__).resolve().parents[2] / "services" / "qzda-agent-runtime"
-if str(_SERVICE) not in sys.path:
-    sys.path.insert(0, str(_SERVICE))
+# Import from service root (parent of tests/).
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.llm import build_run_prompt, chunk_text  # noqa: E402
 from app.loop import enabled_tools, iter_run_events, tool_events  # noqa: E402

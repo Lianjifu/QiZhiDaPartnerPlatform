@@ -2,11 +2,17 @@
 """Smoke tests for published-only vector index."""
 from __future__ import annotations
 
-import main as rag
+import os
+import sys
+
+# Import from service root (parent of tests/).
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from app.vector import VectorIndex  # noqa: E402,F401
 
 
 def test_published_only_filter() -> None:
-    idx = rag.VectorIndex()
+    idx = VectorIndex()
     n = idx.reindex(
         [
             {"docId": "1", "title": "ok", "snippet": "redis cache", "status": "published"},
@@ -20,7 +26,7 @@ def test_published_only_filter() -> None:
 
 
 def test_cosine_ranks_relevant() -> None:
-    idx = rag.VectorIndex()
+    idx = VectorIndex()
     idx.reindex(
         [
             {"docId": "a", "title": "缓存手册", "snippet": "Redis 热点 key", "status": "published"},

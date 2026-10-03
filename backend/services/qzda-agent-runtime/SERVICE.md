@@ -36,7 +36,7 @@ Go 控制面：
 ```bash
 cd backend
 pip install -r services/qzda-agent-runtime/requirements.txt
-python3 runtimes/de_agent_runtime/main.py
+cd services/qzda-agent-runtime && python3 main.py
 # or
 cd services/qzda-agent-runtime && uvicorn app.main:app --host 127.0.0.1 --port 8091
 ```

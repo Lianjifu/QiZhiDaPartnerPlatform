@@ -299,9 +299,9 @@ smoke-coarse:
 	curl -sf -H "Authorization: Bearer $$TOKEN" http://127.0.0.1:8102/api/channel/deployments >/dev/null && echo "cap channel ok"
 
 test-python:
-	python3 runtimes/de_rag/test_vector.py
+	python3 services/qzda-rag/tests/test_vector.py
 	python3 services/qzda-sandbox/dev/qzda_sandbox/test_runtoken.py
-	python3 runtimes/de_agent_runtime/test_run.py
+	python3 services/qzda-agent-runtime/tests/test_run.py
 
 # W1-D3 · Skill 签名校验 CI gate。校验 services/qzda-sandbox/builtin/skills/manifest.json
 # 中所有 skill 的 Ed25519 签名 + 每个文件 SHA256。CI 必跑：失败即阻断

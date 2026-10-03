@@ -75,7 +75,7 @@ jobs:
           test -f deploy/qzda-sandbox/seccomp.json
           test -f Dockerfile
           test -f runtimes/Dockerfile
-          test -f runtimes/de_rag/requirements.txt
+          test -f services/qzda-rag/requirements-milvus.txt
           test ! -d go
           test ! -d python
       - name: Error code surface
@@ -86,7 +86,7 @@ jobs:
           grep -q 'E_DIGITAL_EMPLOYEE_PROFILE_INCOMPLETE' pkg/errors/errors.go
           grep -q 'E_DIGITAL_EMPLOYEE_CONFIGURATION_REQUIRED' pkg/errors/errors.go
       - name: RAG vector smoke
-        run: python3 runtimes/de_rag/test_vector.py
+        run: python3 services/qzda-rag/tests/test_vector.py
       - name: Skill RunToken smoke
         run: python3 runtimes/de_skill_runtime/test_runtoken.py
 
