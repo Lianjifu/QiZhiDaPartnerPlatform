@@ -16,7 +16,7 @@ const Workspaces = lazy(() => import('./pages/Workspaces'));
 const DigitalPartners = lazy(() => import('./features/partners/components/PartnersPage'));
 const Workflows = lazy(() => import('./features/workflows/components/WorkflowsPage'));
 const WorkflowOrchestrationSession = lazy(() => import('./features/workflows/components/WorkflowOrchestrationSessionPage'));
-const Knowledge = lazy(() => import('./pages/Knowledge'));
+const Knowledge = lazy(() => import('./features/knowledge/components/KnowledgePage'));
 const Memory = lazy(() => import('./pages/Memory'));
 const Skills = lazy(() => import('./pages/Skills'));
 const Models = lazy(() => import('./features/models/components/ModelsPage'));

@@ -3,6 +3,7 @@ import { Badge, Button, KpiCard } from '@qzda/web-ui';
 import {
   Boxes, CheckCircle2, ChevronRight, Clock3, Database, FileText, Layers, PlayCircle, Plus, RefreshCw, RotateCcw,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import type { KnowledgePackage, KnowledgeProcessingJob, KnowledgeSourceConnection } from '@qzda/web-types';
 import { cn } from '@qzda/web-utils';
 import { EmptyState } from '@/components/shared';
@@ -14,7 +15,7 @@ type PipelineTone = 'default' | 'active' | 'attention';
 type PipelineStage = {
   key: string;
   label: string;
-  icon: typeof Layers;
+  icon: LucideIcon;
   capability: string;
   statusLabel: string;
   tone: PipelineTone;
