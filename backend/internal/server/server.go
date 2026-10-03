@@ -35,6 +35,7 @@ import (
 	"github.com/qizhida-partner-platform/backend/internal/policy"
 	"github.com/qizhida-partner-platform/backend/internal/qzdaworkflow"
 	"github.com/qizhida-partner-platform/backend/internal/runtimeenv"
+	"github.com/qizhida-partner-platform/backend/internal/settings"
 	"github.com/qizhida-partner-platform/backend/internal/skills/registry"
 	"github.com/qizhida-partner-platform/backend/internal/store"
 	"github.com/qizhida-partner-platform/backend/internal/tasks"
@@ -246,6 +247,12 @@ type Server struct {
 	// migrate incrementally.
 	skillsSvc *skills.Service
 
+	// settingsSvc is the M09 平台设置 module façade (extracted from this
+	// package by M09 P2). Route cases for /api/billing, /api/billing/quota,
+	// /api/backups/*, /api/notification-channels, /api/tenant/profile,
+	// /api/api-keys, and /api/webhooks-config all dispatch through it.
+	settingsSvc *settings.Service
+
 	// closeMu guards closeFuncs + closed; RegisterCloseFunc and Shutdown
 	// race in tests where Shutdown runs on a different goroutine than
 	// the apprun boot path.
@@ -352,19 +359,6 @@ func New(st *store.Store) *Server {
 	// s.modelSvc.StreamLLMForCopilot / publishedPolicyByLevelLocked to
 	// wire the cross-module LLM bridge into Copilot.Deps.
 	s.modelSvc = s.buildModelSvc()
-	// M08 模型中心 (Model Center) façade. The models package owns the
-	// full M08 surface: 17 REST handlers (providers CRUD + governance +
-	// audit + routing policies + failover drills + model invocation) +
-	// the SSE stream endpoint + the Copilot LLM streaming bridge
-	// (StreamLLMForCopilotFn). Server wires Deps (workspace/identity
-	// helpers, governance gates, audit sink, rate limit, metrics,
-	// mode detection, cap-base copy) so the package boundary stays
-	// one-way: models never imports internal/server/.
-	//
-	// NB: must be built BEFORE CopSvc — buildCopSvc references
-	// s.modelSvc.StreamLLMForCopilot / publishedPolicyByLevelLocked to
-	// wire the cross-module LLM bridge into Copilot.Deps.
-	s.modelSvc = s.buildModelSvc()
 	// M02 专家协作 (Expert Collaboration) backend. The copilot package
 	// owns the full module (HTTP routes, turn/state machine, helpers,
 	// types). Server constructs the Service once, wires its Deps to the
@@ -430,6 +424,31 @@ func New(st *store.Store) *Server {
 	// cross-module bridge) so the package boundary stays one-way:
 	// memory never imports internal/server/.
 	s.memorySvc = s.buildMemorySvc()
+	// M09 P2 · 平台设置 Service façade — wires all cross-package helpers
+	// via method values so internal/settings stays one-way
+	// (never imports internal/server).
+	s.settingsSvc = settings.NewService(st, settings.Deps{
+		WorkspaceID:  s.workspaceID,
+		IdentityFrom: identityFrom,
+		DecodeMap:    decodeMap,
+		// Store.AppendAudit returns map[string]any (the persisted audit row);
+		// settings.Deps expects a void callback. Wrap in a closure that
+		// drops the return value.
+		AppendAudit: func(workspaceId, actor, action, target, result, reason string) {
+			s.Store.AppendAudit(workspaceId, actor, action, target, result, reason)
+		},
+		// Store.PersistCollection takes []map[string]any specifically;
+		// settings.Deps is the looser (name, v any) signature so the
+		// package can stay generic. Cast at the boundary.
+		PersistCollection: func(name string, v any) {
+			if items, ok := v.([]map[string]any); ok {
+				s.Store.PersistCollection(name, items)
+			}
+		},
+		ActorIsAdmin:  actorIsAdmin,
+		EvaluateWrite: s.evaluateWrite,
+	})
+
 	return s
 }
 
@@ -1273,27 +1292,27 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) {
 	case path == "/api/operations/overview" && method == http.MethodGet:
 		data, err = s.opsH.OpsOverview(r)
 	case path == "/api/billing" && method == http.MethodGet:
-		data, err = s.getBilling(r)
+		data, err = s.settingsSvc.GetBilling(r)
 	case path == "/api/billing/quota" && method == http.MethodGet:
-		data, err = s.getBillingQuota(r)
+		data, err = s.settingsSvc.GetBillingQuota(r)
 	case path == "/api/backups" && method == http.MethodGet:
-		data, err = s.listBackups(r)
+		data, err = s.settingsSvc.ListBackups(r)
 	case path == "/api/backups" && method == http.MethodPost:
-		data, err = s.requestBackup(r)
+		data, err = s.settingsSvc.RequestBackup(r)
 	case strings.HasPrefix(path, "/api/backups/") && method == http.MethodPost:
-		data, err = s.backupAction(r)
+		data, err = s.settingsSvc.BackupAction(r)
 	case path == "/api/notification-channels" && method == http.MethodGet:
-		data, err = s.listNotificationChannels(r)
+		data, err = s.settingsSvc.ListNotificationChannels(r)
 	case strings.HasPrefix(path, "/api/notification-channels/") && method == http.MethodPatch:
-		data, err = s.patchNotificationChannel(r)
+		data, err = s.settingsSvc.PatchNotificationChannel(r)
 	case path == "/api/tenant/profile" && method == http.MethodGet:
-		data, err = s.getTenantProfile(r)
+		data, err = s.settingsSvc.GetTenantProfile(r)
 	case path == "/api/tenant/profile" && method == http.MethodPatch:
-		data, err = s.patchTenantProfile(r)
+		data, err = s.settingsSvc.PatchTenantProfile(r)
 	case path == "/api/api-keys" && method == http.MethodGet:
-		data, err = s.listAPIKeys(r)
+		data, err = s.settingsSvc.ListAPIKeys(r)
 	case path == "/api/webhooks-config" && method == http.MethodGet:
-		data, err = s.listWebhooksConfig(r)
+		data, err = s.settingsSvc.ListWebhooksConfig(r)
 
 	// Aliases absorbed from former qzda-policy / qzda-audit proxy surfaces
 	case path == "/api/governance" && method == http.MethodGet:

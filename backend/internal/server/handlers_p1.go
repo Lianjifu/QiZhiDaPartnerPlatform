@@ -3,10 +3,18 @@ package server
 import (
 	"net/http"
 	"strings"
-	"time"
 
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
+
+// M09 P2: platform-settings handlers (listNotificationChannels,
+// getTenantProfile, patchTenantProfile, patchNotificationChannel,
+// listAPIKeys, listWebhooksConfig, emptyOK) were extracted to
+// backend/internal/settings/. This file now hosts only the knowledge
+// trio (knowledgeExtra / knowledgeDocDetail / patchKnowledgeGovernance).
+// The workflow trio (workflowByID / listWorkflowGenerations /
+// generateWorkflow) and publishWorkflowAsSkillLocked live in the
+// workflows package (M06 P2 extraction).
 
 func (s *Server) knowledgeExtra(key string) (any, error) {
 	s.Store.RLock()
@@ -49,90 +57,3 @@ func (s *Server) patchKnowledgeGovernance(r *http.Request) (any, error) {
 	return gov, nil
 }
 
-func (s *Server) listNotificationChannels(r *http.Request) (any, error) {
-	s.Store.RLock()
-	defer s.Store.RUnlock()
-	return s.Store.NotificationChannels, nil
-}
-
-func (s *Server) getTenantProfile(r *http.Request) (any, error) {
-	s.Store.RLock()
-	defer s.Store.RUnlock()
-	if s.Store.TenantProfile == nil {
-		return map[string]any{"name": "ACME Corp", "tenantId": "tenant-acme", "region": "cn-east-1"}, nil
-	}
-	out := map[string]any{}
-	for k, v := range s.Store.TenantProfile {
-		out[k] = v
-	}
-	return out, nil
-}
-
-func (s *Server) patchTenantProfile(r *http.Request) (any, error) {
-	id := identityFrom(r.Context())
-	if id.Role != "admin" {
-		return nil, apperr.Forbidden(apperr.AdminRequired, "仅管理员可更新组织资料")
-	}
-	body, _ := decodeMap(r)
-	s.Store.Lock()
-	defer s.Store.Unlock()
-	if s.Store.TenantProfile == nil {
-		s.Store.TenantProfile = map[string]any{}
-	}
-	for _, k := range []string{"name", "region", "status"} {
-		if v := strings.TrimSpace(str(body[k])); v != "" {
-			s.Store.TenantProfile[k] = v
-		}
-	}
-	s.Store.TenantProfile["updatedAt"] = time.Now().UTC().Format(time.RFC3339)
-	s.Store.TenantProfile["updatedBy"] = id.Name
-	s.Store.AppendAudit("tenant", id.Name, "更新组织资料", str(s.Store.TenantProfile["name"]), "success", "")
-	out := map[string]any{}
-	for k, v := range s.Store.TenantProfile {
-		out[k] = v
-	}
-	return out, nil
-}
-
-func (s *Server) patchNotificationChannel(r *http.Request) (any, error) {
-	id := identityFrom(r.Context())
-	if id.Role != "admin" {
-		return nil, apperr.Forbidden(apperr.AdminRequired, "仅管理员可配置通知渠道")
-	}
-	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-	if len(parts) < 3 {
-		return nil, apperr.NotFoundErr(apperr.NotFound, "通知渠道不存在")
-	}
-	cid := parts[2]
-	body, _ := decodeMap(r)
-	s.Store.Lock()
-	defer s.Store.Unlock()
-	for _, ch := range s.Store.NotificationChannels {
-		if str(ch["id"]) != cid {
-			continue
-		}
-		if _, ok := body["enabled"]; ok {
-			ch["enabled"] = body["enabled"] == true || str(body["enabled"]) == "true"
-		}
-		if v := strings.TrimSpace(str(body["name"])); v != "" {
-			ch["name"] = v
-		}
-		s.Store.AppendAudit(s.workspaceID(r), id.Name, "更新通知渠道", cid, "success", "")
-		return ch, nil
-	}
-	return nil, apperr.NotFoundErr(apperr.NotFound, "通知渠道不存在")
-}
-
-func (s *Server) listAPIKeys(r *http.Request) (any, error) {
-	s.Store.RLock()
-	defer s.Store.RUnlock()
-	return s.Store.APIKeys, nil
-}
-
-func (s *Server) listWebhooksConfig(r *http.Request) (any, error) {
-	s.Store.RLock()
-	defer s.Store.RUnlock()
-	return s.Store.WebhooksConfig, nil
-}
-
-func (s *Server) emptyOK(r *http.Request) (any, error) { return []any{}, nil }
