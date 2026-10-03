@@ -81,9 +81,9 @@ export function WorkflowsTabEditor({ c }: Props) {
         <WorkflowLifecycleStrip highlight="version" />
       </div>
 
-      <div className={cn('wf-editor__body grid flex-1 min-h-0 gap-2', c.nodeLibraryOpen ? 'grid-cols-[minmax(0,3fr)_minmax(0,2fr)_minmax(0,3fr)]' : 'grid-cols-[minmax(0,1fr)_minmax(0,3fr)]')}>
+      <div className={cn('wf-editor__body grid flex-1 min-h-0 gap-2', c.nodeLibraryOpen ? 'grid-cols-[minmax(0,1fr)_minmax(0,3fr)_minmax(0,1fr)]' : 'grid-cols-[minmax(0,3fr)_minmax(0,1fr)]')}>
         {c.nodeLibraryOpen && (
-          <aside className="wf-editor__library min-h-0 overflow-y-auto" aria-label="节点库">
+          <aside className="wf-editor__library min-h-0 h-full overflow-y-auto" aria-label="节点库">
             <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-1)]">
               <div className="border-b border-[var(--border)] p-3">
                 <div className="flex items-center gap-1.5 text-xs font-semibold">
@@ -150,7 +150,7 @@ export function WorkflowsTabEditor({ c }: Props) {
             </div>
           </aside>
         )}
-        <div className="wf-editor__canvas-wrapper min-h-0 relative" ref={c.wrapperRef} onDragOver={c.handleDragOver} onDrop={c.handleDrop}>
+        <div className="wf-editor__canvas-wrapper min-h-0 h-full relative" ref={c.wrapperRef} onDragOver={c.handleDragOver} onDrop={c.handleDrop}>
           <ReactFlowProvider>
             <ReactFlow
               ref={c.reactFlowRef}
@@ -158,6 +158,7 @@ export function WorkflowsTabEditor({ c }: Props) {
               edges={c.rfEdges}
               nodeTypes={nodeTypes}
               fitView
+              style={{ width: '100%', height: '100%' }}
               onNodeClick={handleNodeClick}
               onNodeContextMenu={c.onNodeContextMenu}
               onNodesChange={c.onNodesChange}
@@ -190,7 +191,7 @@ export function WorkflowsTabEditor({ c }: Props) {
             {c.searchMatch && <button onClick={() => c.focusNode(c.searchMatch!.id)} className="rounded bg-[var(--brand)] px-1.5 py-0.5 text-[9px] text-white">跳转</button>}
           </div>
         </div>
-        <aside className="wf-editor__inspector min-h-0 overflow-y-auto">
+        <aside className="wf-editor__inspector min-h-0 h-full overflow-y-auto">
           {c.selectedNode ? (
             <NodeInspector selectedNode={c.selectedNode} c={c} tab={inspectorTab} setTab={setInspectorTab} />
           ) : (

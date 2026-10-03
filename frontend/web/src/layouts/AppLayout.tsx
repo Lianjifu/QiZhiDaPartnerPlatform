@@ -445,7 +445,7 @@ export function AppLayout() {
         )}
       </aside>
 
-      <main className={cn('row-start-2 col-span-2 min-w-0 bg-[var(--bg-elevated)] lg:col-start-2 lg:col-span-1', location.pathname.startsWith('/workflows') || location.pathname.startsWith('/partners') || location.pathname.startsWith('/copilot') ? 'overflow-hidden' : 'overflow-y-auto')}>
+      <main className={cn('row-start-2 col-span-2 min-w-0 min-h-0 bg-[var(--bg-elevated)] lg:col-start-2 lg:col-span-1', location.pathname.startsWith('/workflows') || location.pathname.startsWith('/partners') || location.pathname.startsWith('/copilot') ? 'overflow-hidden' : 'overflow-y-auto')}>
         <Outlet />
       </main>
       <OnboardingGuide open={onboardingOpen} onClose={closeOnboarding} role={user?.role} />

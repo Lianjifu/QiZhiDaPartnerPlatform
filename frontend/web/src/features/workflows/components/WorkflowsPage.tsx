@@ -27,7 +27,7 @@ export function WorkflowsPage() {
 function WorkflowsPageShell({ controller: c, t }: { controller: WorkflowsController; t: TT }) {
   const visibleTabs = c.workflowTabs ?? visibleWorkflowTabs(undefined);
   return (
-    <div className="wf-page flex flex-col gap-3 p-4" data-testid="page-workflows">
+    <div className="wf-page flex h-full min-h-0 flex-col gap-3 p-4" data-testid="page-workflows">
       <header className="wf-page__header flex items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-[var(--text)]">{t('module.workflows.title')}</h1>
