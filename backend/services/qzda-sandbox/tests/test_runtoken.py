@@ -10,10 +10,12 @@ import sys
 import time
 from base64 import urlsafe_b64encode
 
-# Import from same directory
-sys.path.insert(0, os.path.dirname(__file__))
-os.environ["DE_SANDBOX_RUN_SECRET"] = "test-secret"
-import main  # noqa: E402
+# Import from service root (parent of tests/).
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from app.sandbox import verify_run_token  # noqa: E402
+
+os.environ.setdefault("DE_SANDBOX_RUN_SECRET", "test-secret")
 
 
 def mint(skill: str, ws: str, actor: str, exp: int) -> str:
@@ -25,11 +27,11 @@ def mint(skill: str, ws: str, actor: str, exp: int) -> str:
 
 
 def main_test() -> None:
-    ok, err, claims = main.verify_run_token(mint("sk1", "w1", "u1", int(time.time()) + 60))
+    ok, err, claims = verify_run_token(mint("sk1", "w1", "u1", int(time.time()) + 60))
     assert ok and claims["skillId"] == "sk1", (ok, err, claims)
-    ok, err, _ = main.verify_run_token(mint("sk1", "w1", "u1", int(time.time()) - 10))
+    ok, err, _ = verify_run_token(mint("sk1", "w1", "u1", int(time.time()) - 10))
     assert not ok and "expired" in err
-    ok, err, _ = main.verify_run_token("v1.bad.deadbeef")
+    ok, err, _ = verify_run_token("v1.bad.deadbeef")
     assert not ok
     print("skill_runtime runtoken ok")
 

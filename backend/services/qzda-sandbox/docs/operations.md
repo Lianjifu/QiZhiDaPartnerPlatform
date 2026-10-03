@@ -106,7 +106,7 @@ OTel:
 
 | 症状 | 原因 | 解决 |
 | --- | --- | --- |
-| `lsof -i :8093` 报两个 listener | host `runtimes/qzda_sandbox/main.py` 与容器 uvicorn 都起了 8093 | 杀 host,只用容器(详细见 auto-memory `sandbox_port_conflict.md`) |
+| `lsof -i :8093` 报两个 listener | host `services/qzda-sandbox/main.py` 与容器 uvicorn 都起了 8093 | 杀 host,只用容器(详细见 auto-memory `sandbox_port_conflict.md`) |
 | `/v1/execute` 始终 401 `runToken expired` | 控制面与沙箱时钟漂移 > 60s | ntpdate / chrony 对齐 |
 | `DE_SANDBOX_SANDBOX=gvisor-local` 沙箱降级 `process` | 没设 runsc | 见上文 *gVisor 启用* |
 | `sealelf: not found` 容器启动失败 | Dockerfile builder stage 缺 `libc6-dev`,本机 `Makefile` 没跑 `make bake` | `make bake` 重 build |

@@ -88,7 +88,7 @@ jobs:
       - name: RAG vector smoke
         run: python3 services/qzda-rag/tests/test_vector.py
       - name: Skill RunToken smoke
-        run: python3 runtimes/de_skill_runtime/test_runtoken.py
+        run: python3 services/qzda-sandbox/tests/test_runtoken.py
 
   contract-routes:
     runs-on: ubuntu-latest

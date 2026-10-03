@@ -300,7 +300,7 @@ smoke-coarse:
 
 test-python:
 	python3 services/qzda-rag/tests/test_vector.py
-	python3 services/qzda-sandbox/dev/qzda_sandbox/test_runtoken.py
+	python3 services/qzda-sandbox/tests/test_runtoken.py
 	python3 services/qzda-agent-runtime/tests/test_run.py
 
 # W1-D3 · Skill 签名校验 CI gate。校验 services/qzda-sandbox/builtin/skills/manifest.json
