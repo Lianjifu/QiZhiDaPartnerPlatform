@@ -24,7 +24,7 @@ import { cn } from '@qzda/web-utils';
 import { EmptyState } from '@/components/shared';
 import { useApiQuery } from '@/services/query';
 import { clampMemoryPage, memoryPageCount, paginateItems } from '@/features/memory/record-list';
-import { PackInstallPanel } from '@/features/skills/pack-install-panel';
+import { PackInstallPanel } from './SkillsTab.Packages';
 
 type RegistryTool = {
   name: string;

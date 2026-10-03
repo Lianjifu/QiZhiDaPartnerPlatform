@@ -18,7 +18,7 @@ const Workflows = lazy(() => import('./features/workflows/components/WorkflowsPa
 const WorkflowOrchestrationSession = lazy(() => import('./features/workflows/components/WorkflowOrchestrationSessionPage'));
 const Knowledge = lazy(() => import('./features/knowledge/components/KnowledgePage'));
 const Memory = lazy(() => import('./pages/Memory'));
-const Skills = lazy(() => import('./pages/Skills'));
+const Skills = lazy(() => import('./features/skills/components/SkillsPage'));
 const Models = lazy(() => import('./features/models/components/ModelsPage'));
 const Channels = lazy(() => import('./pages/Channels'));
 const Settings = lazy(() => import('./pages/Settings'));

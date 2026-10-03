@@ -1,7 +1,22 @@
+/**
+ * 技能中心 · 技能包（packages）子页（M09 P1 拆分）。
+ *
+ * 由原 pages/Skills.tsx 的「技能岗位包」（`pack-install-panel.tsx`）+「流程技能」块合并而成：
+ *   - `PackInstallPanel` 行为保持不变（cold-start 自动包 / 协作 / 重依赖 / 全量）
+ *   - 新增「流程技能」块（原 pages/Skills.tsx L549-620）：展示 M06 publish 出来的
+ *     workflow skill，提供治理发布入口。
+ *
+ * 复用约定：本文件保留 PackInstallPanel 既有 props（`onInstalled?: (msg) => void`），
+ * 不重写任何 hook / query；流程技能块使用独立的 useApiQuery / useApiMutation。
+ */
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Badge, Button, Input } from '@qzda/web-ui';
-import { Box, CheckCircle2, Cpu, Package, ShieldAlert } from 'lucide-react';
+import { Box, CheckCircle2, Cpu, GitBranch, Package, ShieldAlert } from 'lucide-react';
+import { cn } from '@qzda/web-utils';
 import { useApiMutation, useApiQuery } from '@/services/query';
+import { EmptyState } from '@/components/shared';
+import type { WorkflowSkill } from '@qzda/web-types';
 
 type SkillPack = {
   packId: string;
@@ -228,5 +243,104 @@ export function PackInstallPanel({ onInstalled }: { onInstalled?: (msg: string) 
         </section>
       )}
     </div>
+  );
+}
+
+/**
+ * 流程技能清单块（M06 publish 产物）。原 pages/Skills.tsx L549-620 抽出。
+ * 治理发布操作通过 `onPromoteWorkflowSkill` 回调反馈给 SkillsPage（统一通知）。
+ */
+export function WorkflowSkillList({
+  canWrite,
+  onNotice,
+}: {
+  canWrite: boolean;
+  onNotice?: (message: string, tone?: 'success' | 'warn' | 'error') => void;
+}) {
+  const { data: workflowSkillsData, refetch: refetchWorkflowSkills } = useApiQuery<WorkflowSkill[]>(['workflow-skills'], '/api/workflow-skills');
+  const workflowSkills = workflowSkillsData ?? [];
+  const promoteWorkflowSkillApi = useApiMutation<WorkflowSkill, { id: string }>(
+    (vars) => `/api/workflow-skills/${vars.id}/publish`,
+    {
+      onSuccess: (skill) => {
+        refetchWorkflowSkills();
+        onNotice?.(`已治理发布流程技能「${skill.name}」`, 'success');
+      },
+      onError: (err) => {
+        const message = err instanceof Error ? err.message : '治理发布失败';
+        onNotice?.(message.replace(/^E_[A-Z_]+:\s*/, ''), 'error');
+      },
+    },
+  );
+  return (
+    <section className="skills-workflow">
+      <div className="skills-workflow__intro">
+        <div className="min-w-0 flex-1">
+          <p className="skills-workflow__intro-text">
+            流程技能来自「工作流程 → 发布技能」。仅<strong>已发布</strong>项可装配给数字伙伴；「调用需审批」表示执行时需双重审批。高风险草稿需管理员完成治理发布。
+          </p>
+          <div className="skills-workflow__links">
+            <Link to="/workflows">前往工作流程</Link>
+            <Link to="/partners">数字伙伴装配</Link>
+          </div>
+        </div>
+      </div>
+      <div className="skills-workflow__shell">
+        <header className="skills-workflow__header">
+          <div>
+            <h3>流程技能清单</h3>
+            <p>{workflowSkills.length} 项 · 均回链流程版本</p>
+          </div>
+        </header>
+        {workflowSkills.length ? (
+          <div className="skills-workflow__list">
+            {workflowSkills.map((skill) => (
+              <article key={skill.id} className="skills-workflow-card">
+                <div className="skills-workflow-card__main">
+                  <div className="skills-workflow-card__icon">
+                    <GitBranch className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                      <h4>{skill.name}</h4>
+                      <span className={cn(
+                        'skills-workflow-card__risk',
+                        skill.riskLevel === 'high' ? 'is-high' : skill.riskLevel === 'mid' ? 'is-mid' : 'is-low',
+                      )}>
+                        {skill.riskLevel === 'high' ? '高风险' : skill.riskLevel === 'mid' ? '中风险' : '低风险'}
+                      </span>
+                    </div>
+                    <p className="skills-workflow-card__desc">{skill.description}</p>
+                    <div className="skills-workflow-card__meta">
+                      <span className="font-mono">{skill.sourceWorkflowId}</span>
+                      <span>·</span>
+                      <span className="font-mono">{skill.sourceVersionId}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="skills-workflow-card__aside">
+                  <div className="skills-workflow-card__tags">
+                    <Badge tone={skill.status === 'published' ? 'success' : skill.status === 'draft' ? 'warn' : 'neutral'}>
+                      {skill.status === 'published' ? '已发布' : skill.status === 'draft' ? '待治理发布' : skill.status}
+                    </Badge>
+                    {skill.approvalRequired && <Badge tone="warn">调用需审批</Badge>}
+                    {skill.rollbackSupported && <Badge tone="info">可回滚</Badge>}
+                  </div>
+                  {canWrite && skill.status === 'draft' && (
+                    <Button size="sm" variant="secondary" loading={promoteWorkflowSkillApi.isPending} onClick={() => promoteWorkflowSkillApi.mutate({ id: skill.id })}>
+                      治理发布
+                    </Button>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="px-5 py-10">
+            <EmptyState icon={GitBranch} title="暂无流程技能" description="在工作流程完成编排校验后，通过「发布技能」写入此处。" />
+          </div>
+        )}
+      </div>
+    </section>
   );
 }

@@ -1,11 +1,9 @@
 import { useState } from 'react';
 import { Button, Input } from '@qzda/web-ui';
-import {
-  Upload, Trash2, FileCode2, CheckCircle2, X,
-} from 'lucide-react';
+import { Upload, FileCode2, CheckCircle2, X } from 'lucide-react';
 import { cn } from '@qzda/web-utils';
 import { Modal } from '@/components/shared';
-import { KIND_META, KIND_PROFILE, type SkillRow } from './skill-ui';
+import { KIND_META, KIND_PROFILE, type SkillRow } from './SkillsShared';
 
 export function Mini({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -37,9 +35,7 @@ export function Field({ label, required, children }: { label: string; required?:
   );
 }
 
-export function StoreSkillDetail({
-  skill, detailTab, setDetailTab,
-}: {
+export function StoreSkillDetail({ skill, detailTab, setDetailTab }: {
   skill: SkillRow;
   detailTab: 'overview' | 'access' | 'versions' | 'runtime';
   setDetailTab: (tab: 'overview' | 'access' | 'versions' | 'runtime') => void;
@@ -166,9 +162,7 @@ export function StoreSkillDetail({
   );
 }
 
-export function ImportSkillModal({
-  open, onClose, onSubmitText, onSubmitFile, uploading = false,
-}: {
+export function ImportSkillModal({ open, onClose, onSubmitText, onSubmitFile, uploading = false }: {
   open: boolean;
   onClose: () => void;
   onSubmitText: (raw: string) => void;
@@ -402,5 +396,4 @@ export function CapabilityConfigModal({
     </Modal>
   );
 }
-
 export { X };
