@@ -167,6 +167,7 @@ type Deps struct {
 	AppendMemoryAuditLockedFn         func(ws, actor, action, target, result, corr string)
 	LogCitationsForRAGFn        func(ws, turnID string, hits []map[string]any)
 	MemoryPolicyForFn           func(ws string) map[string]any
+	MemoryCanReadFn             func(id *auth.Identity, item map[string]any) bool
 	// RAG / knowledge
 	RetrievePublishedFn         func(r *http.Request, body map[string]any, corr string) (any, error)
 	// Skills / tools

@@ -22,6 +22,7 @@ import (
 	"github.com/qizhida-partner-platform/backend/internal/infra"
 	"github.com/qizhida-partner-platform/backend/internal/knowledge"
 	"github.com/qizhida-partner-platform/backend/internal/skills"
+	mem "github.com/qizhida-partner-platform/backend/internal/memory"
 	memid "github.com/qizhida-partner-platform/backend/internal/memory/identity"
 	"github.com/qizhida-partner-platform/backend/internal/metrics"
 	"github.com/qizhida-partner-platform/backend/internal/modelprov"
@@ -251,6 +252,21 @@ type Server struct {
 	closeMu    sync.Mutex
 	closeFuncs []func() error // external resources, invoked in parallel by Shutdown
 	closed     bool           // set after first Shutdown completes
+
+	// memorySvc holds the M07 记忆中心 (Memory Center) HTTP-route
+	// façade. Built in New() via buildMemorySvc (which wires Deps
+	// function fields to *Server methods). The memory package owns the
+	// full M07 surface: 13 REST handlers (overview + records CRUD +
+	// candidates + refinement + policy + audit + identity profiles) +
+	// the runtime ingest entrypoint used by tasks + copilot +
+	// cap-delegate + the TTL expiry goroutine. Server wires Deps
+	// (workspace / identity helpers, zero-trust evaluation, knowledge
+	// cross-module bridge) so the package boundary stays one-way:
+	// memory never imports internal/server/. Nil-tolerant: the
+	// server.go route switch + the Server-side thin delegators below
+	// both no-op when memorySvc is nil (kept around for tests that
+	// don't wire the package).
+	memorySvc *mem.Service
 }
 
 // serverTestHooks groups the optional test seams. Field types are kept in
@@ -405,6 +421,15 @@ func New(st *store.Store) *Server {
 	// never imports server/. Built AFTER CopSvc since the skill
 	// harness references s.CopSvc for tool authorization + execution.
 	s.skillsSvc = s.buildSkillsSvc()
+	// M07 记忆中心 (Memory Center) façade. The memory package owns the
+	// full M07 surface: 13 REST handlers (overview + records CRUD +
+	// candidates + refinement + policy + audit + identity profiles) +
+	// the runtime ingest entrypoint used by tasks + copilot +
+	// cap-delegate + the TTL expiry goroutine. Server wires Deps
+	// (workspace / identity helpers, zero-trust evaluation, knowledge
+	// cross-module bridge) so the package boundary stays one-way:
+	// memory never imports internal/server/.
+	s.memorySvc = s.buildMemorySvc()
 	return s
 }
 
@@ -1143,31 +1168,31 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) {
 
 	// Memory
 	case path == "/api/memory/overview" && method == http.MethodGet:
-		data, err = s.memoryOverviewAligned(r)
+		data, err = s.memorySvc.MemoryOverview(r)
 	case path == "/api/memory/records" && method == http.MethodGet:
-		data, err = s.listMemory(r)
+		data, err = s.memorySvc.MemoryRecords(r)
 	case path == "/api/memory/records" && method == http.MethodPost:
-		data, err = s.createMemory(r)
+		data, err = s.memorySvc.MemoryRecordCreate(r)
 	case strings.HasPrefix(path, "/api/memory/records/") && (method == http.MethodPost || method == http.MethodDelete):
-		data, err = s.memoryRecordAction(r)
+		data, err = s.memorySvc.MemoryRecordAction(r)
 	case path == "/api/memory/candidates" && method == http.MethodGet:
-		data, err = s.listMemoryCandidates(r)
+		data, err = s.memorySvc.MemoryCandidates(r)
 	case strings.HasPrefix(path, "/api/memory/candidates/") && method == http.MethodPost:
-		data, err = s.memoryCandidateActionAligned(r)
+		data, err = s.memorySvc.MemoryCandidateAction(r)
 	case path == "/api/memory/refinement/run" && method == http.MethodPost:
-		data, err = s.memoryRefinement(r)
+		data, err = s.memorySvc.MemoryRefinement(r)
 	case path == "/api/memory/policy" && method == http.MethodGet:
-		data, err = s.getMemoryPolicy(r)
+		data, err = s.memorySvc.MemoryPolicy(r)
 	case path == "/api/memory/policy" && method == http.MethodPatch:
-		data, err = s.patchMemoryPolicy(r)
+		data, err = s.memorySvc.MemoryPolicyPatch(r)
 	case path == "/api/memory/audit" && method == http.MethodGet:
-		data, err = s.listMemoryAudits(r)
+		data, err = s.memorySvc.MemoryAudit(r)
 	case path == "/api/memory/identity" && method == http.MethodGet:
-		data, err = s.listMemoryIdentity(r)
+		data, err = s.memorySvc.MemoryIdentity(r)
 	case path == "/api/memory/identity" && method == http.MethodPut:
-		data, err = s.upsertMemoryIdentity(r)
+		data, err = s.memorySvc.MemoryIdentityUpsert(r)
 	case strings.HasPrefix(path, "/api/memory/identity/") && method == http.MethodDelete:
-		data, err = s.deleteMemoryIdentity(r)
+		data, err = s.memorySvc.MemoryIdentityDelete(r)
 
 	// Self-Evolution (Phase 4)
 	case path == "/api/evolve/candidates" && method == http.MethodGet:
@@ -1439,7 +1464,7 @@ func (s *Server) buildOpsHandler() *operations.Handler {
 func (s *Server) buildCopSvc() *copilot.Service {
 	deps := copilot.Deps{
 		WorkspaceIDFn:               s.workspaceID,
-		RequireMemoryGovernanceFn:   s.requireMemoryGovernance,
+		RequireMemoryGovernanceFn:   s.memorySvc.RequireMemoryGovernanceCompat,
 		EvaluateZeroTrustFn:         s.evaluateZeroTrust,
 		ResolveDefaultRiskLevelFn:   s.resolveDefaultRiskLevel,
 		ResolveDefaultSessionModeFn: s.resolveDefaultSessionMode,
@@ -1452,6 +1477,7 @@ func (s *Server) buildCopSvc() *copilot.Service {
 		StreamLLMForCopilotFn:     s.modelSvc.StreamLLMForCopilot,
 		AppendMemoryAuditLockedFn: s.appendMemoryAuditLocked,
 		RunParticipantTurnFn:      s.runParticipantTurn,
+		MemoryCanReadFn:           s.memoryCanRead,
 		RunSkillToolFn:            s.runSkillTool,
 		DispatchAuthorizedToolFn:  s.dispatchAuthorizedTool,
 		BuildParticipantContextFn: func(in copilot.ParticipantCtxInput, emp map[string]any) copilot.ParticipantContext {
@@ -1995,3 +2021,166 @@ func contains(ss []string, x string) bool {
 	}
 	return false
 }
+
+// --- M07 记忆中心 (Memory Center) cross-package wiring ---
+//
+// After M07 P2 the memory module's HTTP handlers + helpers live in
+// internal/memory/ as a standalone service package. The legacy
+// (s *Server) receivers (appendMemoryAuditLocked, memoryPolicyFor,
+// ingestRuntimeMemoryLocked, identityStore, persistMemory,
+// memoryOverviewAligned, RunMemoryTTLForTest, StartMemoryMaintenance)
+// are kept here as thin delegators over s.memorySvc so the rest of
+// the server package + the copilot / tasks / cap-delegate cross-
+// module callers don't need to be rewritten. The route table at the
+// top of route() was already migrated to dispatch M07 paths
+// through s.memorySvc.<Method> directly; the delegators below only
+// exist for the cross-package helper sites that read into Server
+// state directly.
+//
+// buildMemorySvc is wired once in New(); the dep function fields
+// close over the *Server helpers the memory module needs (workspace
+// resolver, identity reader, body decoder, zero-trust evaluator, and
+// the knowledge cross-module bridge).
+
+// buildMemorySvc wires the M07 记忆中心 (Memory Center) HTTP-route
+// façade. The memory package owns the full M07 surface (13 REST
+// handlers + the runtime ingest entrypoint + the TTL expiry
+// goroutine + the identity profile CRUD). Server wires Deps
+// (workspace / identity helpers, zero-trust evaluation, knowledge
+// cross-module bridge) so the package boundary stays one-way:
+// memory never imports internal/server/.
+func (s *Server) buildMemorySvc() *mem.Service {
+	return mem.NewService(s.Store, mem.Deps{
+		WorkspaceID:  s.workspaceID,
+		IdentityFrom: identityFrom,
+		DecodeMap:    decodeMap,
+		EvaluateZeroTrust: func(id *auth.Identity, resource, action, classification string, external bool, corr string) (map[string]any, error) {
+			return s.evaluateZeroTrust(id, resource, action, classification, external, corr)
+		},
+		AppendKnowledgeAuditLocked: s.appendKnowledgeAuditLocked,
+		PersistKnowledgeExtra:      s.persistKnowledgeExtra,
+		KnowledgeSliceMaps:         knowledgeSliceMaps,
+	}, s.IdentityProfiles)
+}
+
+// --- Server-side thin delegators over s.memorySvc ---
+//
+// These methods preserve the legacy (s *Server) call shape so the
+// rest of the server package + cross-package helpers (handlers_c.go,
+// copilot_evolve.go, handlers_contract.go, session_panel.go,
+// cap_delegate.go, handlers_internal.go) keep working unchanged.
+// Nil-safe: every delegator no-ops when s.memorySvc is nil so tests
+// that don't wire the package keep compiling.
+
+// StartMemoryMaintenance launches the TTL expiry ticker via the
+// memory service. Stores the cancel func on s.MemoryTTLCancel so
+// Server.Shutdown stops it deterministically (mirrors the legacy
+// (s *Server).StartMemoryMaintenance that wired the goroutine in
+// server/memory_ttl.go before M07 P2).
+func (s *Server) StartMemoryMaintenance() {
+	if s.memorySvc == nil {
+		return
+	}
+	s.MemoryTTLCancel = s.memorySvc.StartMemoryMaintenance()
+}
+
+// RunMemoryTTLForTest exposes the TTL pass for unit tests (mirrors
+// the legacy (s *Server).RunMemoryTTLForTest shim).
+func (s *Server) RunMemoryTTLForTest() {
+	if s.memorySvc == nil {
+		return
+	}
+	s.memorySvc.RunMemoryTTLForTest()
+}
+
+// appendMemoryAuditLocked is a thin delegator over the memory service.
+// Caller MUST hold Store.Lock.
+func (s *Server) appendMemoryAuditLocked(ws, actor, action, target, result, corr string) {
+	if s.memorySvc == nil {
+		return
+	}
+	s.memorySvc.AppendMemoryAuditLocked(ws, actor, action, target, result, corr)
+}
+
+// memoryCanRead is a thin delegator over the memory service. Used by
+// copilot context assembly to filter records the viewer can read.
+func (s *Server) memoryCanRead(id *auth.Identity, item map[string]any) bool {
+	if s.memorySvc == nil {
+		return false
+	}
+	return s.memorySvc.MemoryCanRead(id, item)
+}
+
+// memoryPolicyFor returns the workspace memory policy (lazily
+// materializing the default).
+func (s *Server) memoryPolicyFor(ws string) map[string]any {
+	if s.memorySvc == nil {
+		return defaultMemoryPolicyLegacy(ws)
+	}
+	return s.memorySvc.MemoryPolicyFor(ws)
+}
+
+// defaultMemoryPolicyLegacy is the seed policy used by the Server-
+// side memoryPolicyFor fallback when s.memorySvc isn't yet wired (test
+// paths that exercise the legacy code without spinning up the new
+// module). Mirrors memory.defaultMemoryPolicy; duplicated here so
+// the memory package can stay free of any internal/server/ import.
+func defaultMemoryPolicyLegacy(ws string) map[string]any {
+	return map[string]any{
+		"workspaceId": ws, "shortTermTtlHours": 24, "workingMemoryTtlDays": 30, "dailyRefinementTime": "02:00",
+		"shortToWorkingEnabled": true, "workingToLongEnabled": true, "longToKnowledgeEnabled": true,
+		"minimumConfidence": 0.85, "longTermWriteApproval": true, "sensitiveDataMasking": true,
+		"longTermCapacity": 5000, "usedCapacity": 0,
+	}
+}
+
+// ingestRuntimeMemoryLocked requires Store.Lock held by caller.
+// Adapter signature accepts the legacy server.runtimeMemoryInput type
+// (which is now a type alias for mem.RuntimeMemoryInput).
+func (s *Server) ingestRuntimeMemoryLocked(in runtimeMemoryInput) (map[string]any, error) {
+	if s.memorySvc == nil {
+		return nil, nil
+	}
+	return s.memorySvc.IngestRuntimeMemoryLocked(in)
+}
+
+// persistMemory flushes the four memory collections to the durable
+// backend. Mirrors the legacy (s *Server).persistMemory helper.
+func (s *Server) persistMemory() {
+	if s.memorySvc == nil {
+		return
+	}
+	s.memorySvc.PersistMemory()
+}
+
+// identityStore returns the canonical *memid.Store. Mirrors the
+// legacy (s *Server).identityStore that lazily initialized a fresh
+// store on first use.
+func (s *Server) identityStore() *memid.Store {
+	if s.memorySvc != nil {
+		return s.memorySvc.IdentityStore()
+	}
+	if s.IdentityProfiles == nil {
+		s.IdentityProfiles = memid.NewStore()
+	}
+	return s.IdentityProfiles
+}
+
+// memoryOverviewAligned is a legacy alias for MemoryOverview that
+// returns the (map, nil) tuple the route switch expects. Kept so
+// the legacy handlers_d.go memoryOverview shim still compiles
+// (the shim itself is removed in the migration but tests that
+// reference it through Server methods keep working).
+func (s *Server) memoryOverviewAligned(r *http.Request) (any, error) {
+	if s.memorySvc == nil {
+		return nil, nil
+	}
+	return s.memorySvc.MemoryOverview(r)
+}
+
+// runtimeMemoryInput is the legacy input type used by the
+// ingestRuntimeMemoryLocked adapter; re-aliased to mem.RuntimeMemoryInput
+// so callers that still construct the unexported type (handlers_c.go,
+// handlers_contract.go, handlers_internal.go, cap_delegate.go,
+// copilot_phase4_test.go) keep working without churning every site.
+type runtimeMemoryInput = mem.RuntimeMemoryInput

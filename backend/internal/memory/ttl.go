@@ -1,4 +1,4 @@
-package server
+package memory
 
 import (
 	"context"
@@ -6,12 +6,16 @@ import (
 	"time"
 )
 
-// StartMemoryMaintenance runs TTL expiry for short/working memory on an interval.
-// The goroutine listens on its own ctx, stored as s.MemoryTTLCancel so
-// Server.Shutdown can stop it deterministically.
-func (s *Server) StartMemoryMaintenance() {
+// StartMemoryMaintenance runs TTL expiry for short/working memory on an
+// interval. The goroutine listens on its own ctx, returned via the
+// cancel callback so Server.Shutdown can stop it deterministically.
+//
+// The cancel callback should be registered with Server.closeMu and
+// invoked during Shutdown — mirroring the legacy
+// Server.MemoryTTLCancel pattern that wired (s *Server).StartMemoryMaintenance
+// into the Shutdown fan-out via {"memoryTTL", s.MemoryTTLCancel}.
+func (s *Service) StartMemoryMaintenance() (cancel context.CancelFunc) {
 	ctx, cancel := context.WithCancel(context.Background())
-	s.MemoryTTLCancel = cancel
 	go func() {
 		ticker := time.NewTicker(60 * time.Second)
 		defer ticker.Stop()
@@ -25,9 +29,15 @@ func (s *Server) StartMemoryMaintenance() {
 			}
 		}
 	}()
+	return cancel
 }
 
-func (s *Server) runMemoryTTLPass() {
+// runMemoryTTLPass scans every active / pending_review short_term +
+// working memory record and expires the ones whose expiresAt timestamp
+// has passed. Long-term records are exempt — they live forever until
+// the owner explicitly expires them. Caller MUST NOT hold Store.Lock;
+// this helper acquires + releases it itself.
+func (s *Service) runMemoryTTLPass() {
 	now := time.Now().UTC()
 	nowStr := now.Format(time.RFC3339)
 	changed := 0
@@ -93,5 +103,7 @@ func (s *Server) runMemoryTTLPass() {
 	}
 }
 
-// RunMemoryTTLForTest exposes TTL pass for unit tests.
-func (s *Server) RunMemoryTTLForTest() { s.runMemoryTTLPass() }
+// RunMemoryTTLForTest exposes TTL pass for unit tests. Mirrors the
+// legacy (s *Server).RunMemoryTTLForTest shim that lived in
+// server/memory_ttl.go.
+func (s *Service) RunMemoryTTLForTest() { s.runMemoryTTLPass() }

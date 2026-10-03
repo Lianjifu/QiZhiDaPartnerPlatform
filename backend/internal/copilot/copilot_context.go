@@ -266,7 +266,7 @@ func (s *Service) retrieveMemoryForTurnLocked(ws, ownerID, deID, excludeSourceID
 		if str(m["status"]) != "active" {
 			continue
 		}
-		if !memoryCanRead(viewer, m) {
+		if s.Deps.MemoryCanReadFn != nil && !s.Deps.MemoryCanReadFn(viewer, m) {
 			continue
 		}
 		layer := str(m["layer"])
