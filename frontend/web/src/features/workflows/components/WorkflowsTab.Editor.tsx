@@ -290,7 +290,7 @@ function DebugPanel({ selectedNode }: { selectedNode: import('reactflow').Node }
   return (
     <Section title="模拟重跑">
       <p className="text-xs text-[var(--text-muted)]">模拟重跑仅展示节点级入参/出参，不会创建执行记录或审计留痕。</p>
-      <div className="mt-2 grid grid-cols-2 gap-1 text-xs">
+      <div className="mt-2 grid grid-cols-1 gap-2 text-xs">
         <Field label="节点 ID"><code>{selectedNode.id}</code></Field>
         <Field label="入参样例"><code>{'{ alertId, severity }'}</code></Field>
         <Field label="审批超时（秒）"><code>{String((selectedNode.data.approvalTimeoutSec ?? 300) as number)}</code></Field>

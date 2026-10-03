@@ -270,7 +270,7 @@ function WorkflowOrchestrationSession() {
         </div>
       </header>
       <div className="wf-orch-session__body grid grid-cols-12 flex-1 min-h-0 overflow-hidden" style={{ gridTemplateColumns: `${splitPercent}% 8px 1fr` }}>
-        <div className="wf-orch-session__left col-span-1 overflow-hidden">
+        <div className="wf-orch-session__left h-full min-h-0 overflow-hidden">
           <WorkflowOrchestratorRunPanel
             goal={goal}
             onGoal={setGoal}
@@ -304,7 +304,7 @@ function WorkflowOrchestrationSession() {
           aria-valuetext="拖动调整左右区域宽度"
           title="拖动调整左右区域宽度"
         />
-        <div className="wf-orch-session__right col-span-1 overflow-hidden">
+        <div className="wf-orch-session__right h-full min-h-0 overflow-hidden">
           <WorkflowOrchestratorCanvas
             candidates={candidates}
             selectedCandidateId={selectedCandidateId}

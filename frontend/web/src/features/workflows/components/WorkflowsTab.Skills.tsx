@@ -15,13 +15,13 @@ export function WorkflowsTabSkills({ c }: { c: WorkflowsController }) {
     if (!c.skillSourceVersion && c.activeVersion) c.setSkillSourceVersion(c.activeVersion);
   }, [c]);
   return (
-    <div className="wf-publish-tab space-y-3" data-testid="wf-publish">
+    <div className="wf-publish-tab flex h-full min-h-0 flex-col gap-3" data-testid="wf-publish">
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold">{t('module.workflows.publishSkill.title')}</h2>
         <Badge tone="info">已发布 {c.publishedSkillCount} · 草稿 {c.draftSkillCount}</Badge>
       </div>
-      <div className="wf-publish-tab__grid grid grid-cols-2 gap-3">
-        <section className="wf-publish-tab__form rounded-md border border-[var(--border)] bg-[var(--surface-1)] p-3 space-y-2">
+      <div className="wf-publish-tab__grid flex-1 grid grid-cols-2 gap-3 min-h-0">
+        <section className="wf-publish-tab__form h-full overflow-y-auto rounded-md border border-[var(--border)] bg-[var(--surface-1)] p-3 space-y-2">
           <FormRow label="技能名称">
             <input className="wf-input w-full" value={c.skillName} onChange={(e) => c.setSkillName(e.target.value)} disabled={!c.canWrite} />
           </FormRow>
@@ -45,7 +45,7 @@ export function WorkflowsTabSkills({ c }: { c: WorkflowsController }) {
             {c.skillGateHint && <span className="text-xs text-amber-500">{c.skillGateHint}</span>}
           </div>
         </section>
-        <section className="wf-publish-tab__gates rounded-md border border-[var(--border)] bg-[var(--surface-1)] p-3 space-y-2">
+        <section className="wf-publish-tab__gates h-full overflow-y-auto rounded-md border border-[var(--border)] bg-[var(--surface-1)] p-3 space-y-2">
           <div className="flex items-center gap-2"><ShieldCheck className="h-4 w-4" /><strong>技能发布门禁</strong></div>
           <ol className="space-y-2">
             {c.skillGateSteps.map((step) => (
