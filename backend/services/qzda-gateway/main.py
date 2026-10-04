@@ -1,10 +1,22 @@
 #!/usr/bin/env python3
-"""Gateway for monolith stack: all API traffic → qzda-app :8100."""
-from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
+"""Gateway for monolith stack: all API traffic → qzda-app :8100.
+
+Mirrors the qzda-rag / qzda-sandbox launcher pattern so the dev-stack
+script can `python3 services/qzda-gateway/main.py` and a container
+can `CMD ["python3", "main.py"]` with no extra wiring.
+
+Env (all optional):
+  DE_BIND_HOST      — listen host (default 127.0.0.1)
+  DE_BIND_PORT      — listen port for this proxy (default 8089)
+  DE_BACKEND_PORT   — upstream qzda-app port (default 8100)
+"""
+from __future__ import annotations
+
+import os
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import urllib.error
 import urllib.request
 
-BACKEND_PORT = 8100
 SKIP = {
     "connection", "keep-alive", "proxy-authenticate", "proxy-authorization",
     "te", "trailers", "transfer-encoding", "upgrade", "content-length",
@@ -16,8 +28,9 @@ def is_stream_path(path: str) -> bool:
     return "/stream" in path
 
 
-class H(BaseHTTPRequestHandler):
+class GatewayHandler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
+    backend_port = 8100  # overridden in main() below
 
     def log_message(self, *args):
         return
@@ -54,7 +67,7 @@ class H(BaseHTTPRequestHandler):
             self.wfile.write(body)
 
     def _proxy(self):
-        url = f"http://127.0.0.1:{BACKEND_PORT}{self.path}"
+        url = f"http://127.0.0.1:{self.backend_port}{self.path}"
         n = int(self.headers.get("Content-Length") or 0)
         body = self.rfile.read(n) if n else None
         req = urllib.request.Request(url, data=body, method=self.command)
@@ -105,4 +118,14 @@ class H(BaseHTTPRequestHandler):
         self._proxy()
 
 
-ThreadingHTTPServer(("127.0.0.1", 8089), H).serve_forever()
+def main() -> None:
+    host = os.environ.get("DE_BIND_HOST", "127.0.0.1")
+    port = int(os.environ.get("DE_BIND_PORT", "8089") or "8089")
+    backend_port = int(os.environ.get("DE_BACKEND_PORT", "8100") or "8100")
+    GatewayHandler.backend_port = backend_port
+    print(f"qzda-gateway on http://{host}:{port} → 127.0.0.1:{backend_port}")
+    ThreadingHTTPServer((host, port), GatewayHandler).serve_forever()
+
+
+if __name__ == "__main__":
+    main()
