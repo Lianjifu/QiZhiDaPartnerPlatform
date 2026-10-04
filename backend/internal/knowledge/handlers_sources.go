@@ -55,7 +55,7 @@ func (s *Service) CreateKnowledgeSource(r *http.Request) (any, error) {
 // Mark the source healthy, increment the document count, and create a
 // placeholder doc for the synced content. This is the legacy stub
 // implementation — the production sync path goes through the
-// connect_gateway service and is bounded by s.callRAGPublished.
+// connect_gateway service and is bounded by Service.RAGRetrieveForConnect.
 func (s *Service) SyncKnowledgeSource(r *http.Request) (any, error) {
 	id := identityFromCtx(r)
 	if err := requireKnowledgeWrite(id); err != nil {

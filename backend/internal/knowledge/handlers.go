@@ -1,7 +1,7 @@
 package knowledge
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -42,6 +42,13 @@ func (s *Service) listKnowledgeDocs(r *http.Request) any {
 		}
 		if str(cp["version"]) == "" {
 			cp["version"] = "v1.0"
+		}
+		// summary 用 snippet 兜底,知识库选择器 / 列表预览需要它
+		if str(cp["summary"]) == "" {
+			cp["summary"] = str(cp["snippet"])
+		}
+		if cp["tags"] == nil {
+			cp["tags"] = []string{}
 		}
 		if cp["quality"] == nil {
 			cp["quality"] = map[string]any{"completeness": 80, "freshness": 80, "citationAccuracy": 80}
@@ -348,7 +355,7 @@ func (s *Service) retrievePublishedNormalized(r *http.Request, body map[string]a
 	start := time.Now()
 	var results []map[string]any
 	sidecarOK := false
-	if hits := s.callRAGPublished(query, ws, corr); hits != nil {
+	if hits := s.RAGRetrieveForConnect(r.Context(), query, ws, corr); hits != nil {
 		sidecarOK = true
 		if m, ok := hits.(map[string]any); ok {
 			results = filterRetrieveToPublished(s, ws, normalizeRetrieveHitList(m["results"]))
@@ -454,66 +461,124 @@ func normalizeRetrieveHitList(v any) []map[string]any {
 	return out
 }
 
-// callRAGPublished is the sidecar POST. Mirrors the legacy
-// connect_gateway implementation; lives on the Service so the package
-// owns its RAG projection. Bound to s.RAGURL() via Deps.
-func (s *Service) callRAGPublished(query, workspaceID, corr string) any {
-	url := ""
-	if s.Deps.RAGURL != nil {
-		url = s.Deps.RAGURL()
-	}
-	if url == "" {
+// RAGRetrieveForConnect is the canonical sidecar projection used by
+// the Connect-RPC RagService binding, the Copilot SSE path, and the
+// /api/knowledge/retrieve envelope. Single source of truth — server
+// and knowledge call sites all funnel through here instead of each
+// minting their own http.Client.
+//
+// Returns nil when:
+//   - no RAG URL is configured (DE_RAG_URL=""),
+//   - the workspace has no published corpus (skips the sidecar so
+//     its process-global INDEX can't leak demo seeds), or
+//   - the sidecar is unreachable / returned non-2xx.
+//
+// On success the returned map mirrors the sidecar's
+// {results[], backend, correlationId} shape with results[] already
+// filtered to the workspace's published corpus (defense in depth).
+// The caller is expected to layer its own per-doc ACL filter on top
+// (Server.filterRAGHitsByScope, eval_gate.go, etc.).
+func (s *Service) RAGRetrieveForConnect(ctx context.Context, query, ws, corr string) any {
+	if s.Deps.RAGURL == nil || s.Deps.RAGURL() == "" {
 		return nil
 	}
-	client := &http.Client{Timeout: 2 * time.Second}
-	s.Store.RLock()
-	var docs []map[string]any
-	allowed := map[string]struct{}{}
-	for _, d := range s.Store.KnowledgeDocs {
-		if str(d["workspaceId"]) == workspaceID && str(d["status"]) == "published" {
-			id := str(d["id"])
-			allowed[id] = struct{}{}
-			docs = append(docs, map[string]any{
-				"docId": id, "title": d["title"],
-				"snippet": "已发布：" + str(d["title"]), "score": 0.9, "status": "published",
-			})
-		}
-	}
-	s.Store.RUnlock()
-	// No published corpus → skip sidecar (avoids RAG global INDEX leaking non-published seeds).
+	docs, allowed := s.snapshotPublishedCorpus(ws)
 	if len(docs) == 0 {
 		return nil
 	}
-	payload, _ := json.Marshal(map[string]any{
-		"query": query, "workspaceId": workspaceID, "correlationId": corr,
-		"publishedOnly": true, "docs": docs,
-	})
-	resp, err := client.Post(url+"/v1/retrieve", "application/json", strings.NewReader(string(payload)))
-	if err != nil {
+	raw, err := s.ragClient().Retrieve(ctx, query, ws, corr, docs)
+	if err != nil || raw == nil {
 		return nil
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode >= 300 {
-		return nil
+	if corr != "" {
+		raw["correlationId"] = corr
 	}
-	var out map[string]any
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return nil
+	return filterRAGResultsToAllowed(raw, allowed)
+}
+
+// SyncRAGIndex snapshots the workspace's published + ready docs and
+// pushes them to qzda-rag (/v1/ingest, fallback /v1/sync). Returns
+// the indexed count (sidecar-reported or fallback len(docs)). When
+// no RAG URL is configured this is a no-op returning 0.
+//
+// Mirrors the legacy Server.syncRAGIndex; the migration moves the
+// HTTP boundary into Service.ragClient() so server/ no longer
+// touches qzda-rag directly.
+func (s *Service) SyncRAGIndex(ws string) int {
+	if s.Deps.RAGURL == nil || s.Deps.RAGURL() == "" {
+		return 0
 	}
-	// Defense in depth: drop any hit outside the published corpus we authorized.
-	if raw, ok := out["results"]; ok {
-		filtered := make([]any, 0)
-		for _, item := range knowledgeSliceMaps(raw) {
-			id := coalesce(str(item["docId"]), str(item["id"]))
-			if _, ok := allowed[id]; !ok {
-				continue
-			}
-			filtered = append(filtered, item)
+	s.Store.RLock()
+	var docs []map[string]any
+	for _, d := range s.Store.KnowledgeDocs {
+		if str(d["workspaceId"]) != ws {
+			continue
 		}
-		out["results"] = filtered
+		st := str(d["status"])
+		if st != "published" && st != "ready" {
+			continue
+		}
+		docs = append(docs, map[string]any{
+			"docId": str(d["id"]), "title": str(d["title"]),
+			"snippet": coalesce(str(d["snippet"]), "已发布："+str(d["title"])),
+			"score":   0.9, "status": "published",
+		})
 	}
-	out["correlationId"] = corr
-	return out
+	s.Store.RUnlock()
+	n, _ := s.ragClient().Ingest(context.Background(), ws, docs)
+	return n
+}
+
+// snapshotPublishedCorpus returns (1) the minimal doc shape the
+// qzda-rag /v1/retrieve payload expects and (2) the set of allowed
+// docIds the post-sidecar filter must accept. Caller skips the
+// sidecar entirely when len(docs) == 0.
+func (s *Service) snapshotPublishedCorpus(ws string) ([]map[string]any, map[string]struct{}) {
+	allowed := map[string]struct{}{}
+	if ws == "" {
+		return nil, allowed
+	}
+	s.Store.RLock()
+	defer s.Store.RUnlock()
+	var docs []map[string]any
+	for _, d := range s.Store.KnowledgeDocs {
+		if str(d["workspaceId"]) != ws || str(d["status"]) != "published" {
+			continue
+		}
+		id := str(d["id"])
+		if id == "" {
+			continue
+		}
+		allowed[id] = struct{}{}
+		docs = append(docs, map[string]any{
+			"docId": id, "title": str(d["title"]),
+			"snippet": "已发布：" + str(d["title"]), "score": 0.9, "status": "published",
+		})
+	}
+	return docs, allowed
+}
+
+// filterRAGResultsToAllowed is the defense-in-depth pass that drops
+// sidecar hits whose docId isn't in the workspace's published corpus.
+// Mirrors the trailing block of the legacy Service.callRAGPublished.
+func filterRAGResultsToAllowed(raw map[string]any, allowed map[string]struct{}) map[string]any {
+	if raw == nil {
+		return nil
+	}
+	resultsRaw, ok := raw["results"]
+	if !ok {
+		return raw
+	}
+	filtered := make([]any, 0, len(knowledgeSliceMaps(resultsRaw)))
+	for _, item := range knowledgeSliceMaps(resultsRaw) {
+		id := coalesce(str(item["docId"]), str(item["id"]))
+		if _, ok := allowed[id]; !ok {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	raw["results"] = filtered
+	return raw
 }
 
 // --- kb-list ---
