@@ -31,7 +31,7 @@
 // (evaluateWriteLocked), skill-skill helpers (requireSkillRead,
 // requireSkillWrite), governance (requireDualApproval,
 // maybeHoldForCountersign), bootstrap (EnsureBuiltinWorkflowsReady —
-// promoted to a Service method but the DomainWorkflow boot path still
+// promoted to a Service method but the single-monolith boot path still
 // goes through Server.workflowSvc.EnsureBuiltinWorkflowsReady()), and
 // applyWorkflowSkillCatalog (kept on Server because it depends on
 // peerPOST + capBaseURL runtime gating).

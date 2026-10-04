@@ -9,9 +9,10 @@ import (
 )
 
 func (s *Server) persistSkillExtra() {
-	if s.Store != nil && s.Store.CanWrite("skill_extra") {
-		s.Store.Persist("skill_extra")
+	if s.Store == nil {
+		return
 	}
+	s.Store.Persist("skill_extra")
 }
 
 func (s *Server) skillExtraSlice(key string) []map[string]any {

@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/qizhida-partner-platform/backend/internal/qzdapolicy"
 	"github.com/qizhida-partner-platform/backend/internal/policy"
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
@@ -48,12 +47,8 @@ func (s *Server) evaluateWriteLocked(r *http.Request, resource, action string, e
 	return nil
 }
 
-// decidePolicy prefers peer policy service (DE_POLICY_URL → qzda-sys or qzda-policy /v1/evaluate), else local Engine.
+// decidePolicy runs the in-process Engine. qzda-sys always owns policy + audit,
+// so no peer call is needed (qzda-policy binary retired).
 func (s *Server) decidePolicy(ctx context.Context, in policy.Input) policy.Decision {
-	if c := qzdapolicy.NewClientFromEnv(); c.Available() {
-		if d, err := c.Evaluate(ctx, in); err == nil {
-			return d
-		}
-	}
 	return s.Policy.Evaluate(ctx, in)
 }

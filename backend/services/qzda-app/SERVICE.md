@@ -1,19 +1,21 @@
 # qzda-app
 
-Monolith control plane — **sys + collab + cap** in one Go process（方案 A）。
+Monolith control plane — **sys + collab + cap + workflow** in one Go process. `qzda-app` 是当前阶段（联调 + demo + 单租户开发）的唯一控制面进程。
 
 | 项 | 值 |
 |----|-----|
-| 模式 | `DE_SERVICE=app` / `ModeApp` |
+| 模式 | `DE_SERVICE=app` / `ModeApp`（旧值 sys / collab / cap / workflow 也归 ModeApp） |
 | 端口 | `8100`（`DE_APP_ADDR`） |
 | 写域 | `DomainAll`（全 PG 集合） |
-| 侧车 | `qzda-sandbox :8093`（必须）；`qzda-workflow`（可选） |
+| 侧车 | `qzda-sandbox :8093`（必须）；可选 `qzda-agent-runtime :8091` / `qzda-rag :8092` |
+| Temporal worker | 可选进程内 goroutine（`DE_WORKFLOW_WORKER=1 DE_TEMPORAL_HOST=...`） |
 
 ## 启动
 
 ```bash
 cd backend
-make run-app          # 本机裸跑
+make run-app              # 本机裸跑
+make run-app-workflow     # + 进程内 Temporal worker
 make compose-up-monolith
 make smoke-monolith
 ```
@@ -25,9 +27,11 @@ make smoke-monolith
 | `DE_APP_ADDR` | `:8100` | Listen address |
 | `DE_RUNTIME_MODE` | `local` | 进程内 ReAct Harness（不启 qzda-agent） |
 | `DE_SANDBOX_RUNTIME_URL` | `http://127.0.0.1:8093` | 技能沙箱 |
-| `DE_CAP_URL` | — | **不设置**（同进程，无 peer 委托） |
+| `DE_TEMPORAL_HOST` | — | 非空启用进程内 Temporal worker |
+| `DE_WORKFLOW_WORKER` | `0` | `1` 启用进程内 Temporal worker（需 `DE_TEMPORAL_HOST`） |
 
-## 与 coarse 的关系
+## 与历史 coarse 拓扑的关系
 
-- `qzda-sys` / `qzda-collab` / `qzda-cap` 二进制保留，用于规模化拆分部署。
-- 本地 dev-stack 默认 `DE_STACK=monolith`；`DE_STACK=coarse` 回退四进程。
+- `qzda-sys` / `qzda-collab` / `qzda-cap` / `qzda-workflow` 已在 M10 折叠到 `qzda-app`，二进制不再维护。
+- 不再提供 `compose-up-coarse` / `run-sys` / `run-collab` / `run-cap` / `run-workflow` 等目标。
+- 当前阶段不引入新的 Go 微服务；详见 [`docs/后端单进程方案.md`](../../../docs/后端单进程方案.md) §1.2（按需切分）。

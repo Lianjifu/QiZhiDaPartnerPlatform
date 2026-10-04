@@ -2,7 +2,7 @@
 
 真相源：`frontend/packages/api/src/mock.ts` + 页面 `useApiQuery` 路径。  
 目标：`VITE_USE_MOCK=false` 时首屏 GET 非 404，关键写路径语义与 Mock 一致。  
-默认后端：**qzda-gateway :8089 → qzda-app :8100**（monolith）；coarse 模式下路由拆到 sys/collab/cap。
+默认后端：**qzda-gateway :8089 → qzda-app :8100**（monolith 单进程,内含 sys / collab / cap / workflow 全部域逻辑）。
 
 ## P0（控制台主路径）— 已对齐
 
@@ -19,7 +19,7 @@
 | `GET /api/zero-trust/*` | OK |
 | `GET /api/audit-center` | OK |
 | `POST /api/home/alerts/:id/acknowledge` | OK（`/ack` 兼容） |
-| `GET /api/digital-employees*` + lifecycle/release/configuration | OK（简化校验） |
+| `GET /api/partners*` + lifecycle/release/configuration | OK（简化校验） |
 | `POST /api/tasks/:id/transition` | OK（`stage`） |
 | Models 控制面（providers/routing/governance/audit）字段级 | OK（M0–M7：credential 别名、discover 形状、租户隔离、impact、failover、ModelAudit、预算门禁开关） |
 | `GET /api/channel-control/*` | OK（P0–P3 字段级） |
@@ -88,6 +88,6 @@
 - Skills：真 Vault secretRef、生产 gVisor runsc、去掉本地 policy-sim
 - 非 Models/Memory 域的字段级与 Mock 100% 一致（Models/Memory 已字段级对齐）
 
-已推进：控制面持久化、生产禁密码登录、apps 镜像、OPA/OpenSearch、Authentik、观测基线、RunToken HMAC、SPIFFE、路径拆分网关、skill 隔离与策略供应链、**qzda-policy / qzda-audit 微服务**、**P3 staging**（`make compose-up-staging` + `.env.staging`）、写路径 `evaluateWrite`（release/employee/skill/workflow）、Copilot/审计失败指标与告警、数字伙伴配置/上岗门禁向 Mock 靠拢、**记忆中心 P0–P2**（approve→草稿知识包、TTL、容量门禁、refinement 实跑）。
+已推进：控制面持久化、生产禁密码登录、apps 镜像、OPA/OpenSearch、Authentik、观测基线、RunToken HMAC、SPIFFE、路径拆分网关、skill 隔离与策略供应链、**P3 staging**（`make compose-up-staging` + `.env.staging`）、写路径 `evaluateWrite`（release/employee/skill/workflow）、Copilot/审计失败指标与告警、数字伙伴配置/上岗门禁向 Mock 靠拢、**记忆中心 P0–P2**（approve→草稿知识包、TTL、容量门禁、refinement 实跑）、**qzda-policy / qzda-audit 退役并入 qzda-sys**（M10 前）、**M10 qzda-sys / qzda-collab / qzda-cap / qzda-workflow 折叠到 qzda-app 单进程**。
 
 回归：`make test` 含 `TestPageSmokeGETs` / `TestEvaluateFailsIncompleteEmployee` / `TestSkillCenterP0|P1|P2|P3*` / `TestMemory*`。

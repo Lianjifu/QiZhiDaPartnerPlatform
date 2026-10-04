@@ -9,7 +9,7 @@ import (
 // upsertSkillCatalogLocked is the package-private mutation that
 // upsertSkillCatalogAPI delegates to. Mirrors server.Server.upsertSkillCatalogLocked.
 func (s *Service) upsertSkillCatalogLocked(item map[string]any) {
-	if item == nil || !s.Store.CanWrite("skills") {
+	if item == nil {
 		return
 	}
 	sid := str(item["id"])
@@ -63,9 +63,6 @@ func (s *Service) upsertSkillCatalogAPI(r *http.Request) (any, error) {
 func (s *Service) skillInvocationAPI(r *http.Request) (any, error) {
 	if r.Method != http.MethodPost {
 		return nil, apperr.BadReq(apperr.BadRequest, "仅支持 POST")
-	}
-	if s.OwnsCapRuntime != nil && !s.OwnsCapRuntime() {
-		return nil, apperr.Forbidden(apperr.AdminRequired, "仅 cap 进程可处理 skill invocation")
 	}
 	body, _ := decodeMap(r)
 	ws := coalesce(s.WorkspaceID(r), str(body["workspaceId"]))

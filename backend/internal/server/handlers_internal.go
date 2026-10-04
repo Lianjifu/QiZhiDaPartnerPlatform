@@ -54,7 +54,7 @@ func (s *Server) upsertSkillCatalogAPI(r *http.Request) (any, error) {
 }
 
 func (s *Server) upsertSkillCatalogLocked(item map[string]any) {
-	if item == nil || !s.Store.CanWrite("skills") {
+	if item == nil {
 		return
 	}
 	sid := str(item["id"])
@@ -85,49 +85,34 @@ func (s *Server) applyWorkflowSkillCatalog(actor *auth.Identity, skill map[strin
 		item["runtime"] = "qzda-workflow"
 	}
 	item["source"] = "workflow"
-	if s.ownsCapRuntime() {
-		s.Store.Lock()
-		s.upsertSkillCatalogLocked(item)
-		if str(item["lifecycleStatus"]) == "enabled" || str(item["status"]) == "published" {
-			if s.Store.CapabilityCatalog == nil {
-				s.Store.CapabilityCatalog = map[string]any{}
-			}
-			wfs, _ := s.Store.CapabilityCatalog["workflows"].([]map[string]any)
-			sid := str(item["id"])
-			found := false
-			for _, w := range wfs {
-				if str(w["id"]) == sid {
-					found = true
-					break
-				}
-			}
-			if !found {
-				s.Store.CapabilityCatalog["workflows"] = append([]map[string]any{{
-					"id": sid, "name": str(item["name"]), "meta": "流程技能 · " + coalesce(str(item["version"]), "—"),
-				}}, wfs...)
+	s.Store.Lock()
+	s.upsertSkillCatalogLocked(item)
+	if str(item["lifecycleStatus"]) == "enabled" || str(item["status"]) == "published" {
+		if s.Store.CapabilityCatalog == nil {
+			s.Store.CapabilityCatalog = map[string]any{}
+		}
+		wfs, _ := s.Store.CapabilityCatalog["workflows"].([]map[string]any)
+		sid := str(item["id"])
+		found := false
+		for _, w := range wfs {
+			if str(w["id"]) == sid {
+				found = true
+				break
 			}
 		}
-		s.Store.Unlock()
-		s.persistSkills()
-		return
+		if !found {
+			s.Store.CapabilityCatalog["workflows"] = append([]map[string]any{{
+				"id": sid, "name": str(item["name"]), "meta": "流程技能 · " + coalesce(str(item["version"]), "—"),
+			}}, wfs...)
+		}
 	}
-	if r == nil {
-		r, _ = http.NewRequest(http.MethodPost, "/", nil)
-	}
-	if actor != nil && r.Header.Get("Authorization") == "" {
-		r = s.requestWithActor(r, actor, str(item["workspaceId"]))
-	}
-	if _, err := s.peerPOST(r, capBaseURL(), "/api/internal/skill-catalog", item); err != nil {
-		s.Store.AppendAudit(str(item["workspaceId"]), coalesce(actorName(actor), "workflow"), "同步流程技能目录失败", str(item["id"]), "failed", err.Error())
-	}
+	s.Store.Unlock()
+	s.persistSkills()
 }
 
 func (s *Server) copilotPostTurnAPI(r *http.Request) (any, error) {
 	if r.Method != http.MethodPost {
 		return nil, apperr.BadReq(apperr.BadRequest, "仅支持 POST")
-	}
-	if !s.ownsCapRuntime() {
-		return nil, apperr.Forbidden(apperr.AdminRequired, "仅 cap 进程可处理 post-turn")
 	}
 	body, _ := decodeMap(r)
 	ws := coalesce(str(body["workspaceId"]), s.workspaceID(r))
@@ -191,9 +176,6 @@ func (s *Server) purgeConversationMemoryAPI(r *http.Request) (any, error) {
 	if r.Method != http.MethodPost {
 		return nil, apperr.BadReq(apperr.BadRequest, "仅支持 POST")
 	}
-	if !s.ownsCapRuntime() {
-		return nil, apperr.Forbidden(apperr.AdminRequired, "仅 cap 进程可清理记忆")
-	}
 	body, _ := decodeMap(r)
 	ws := coalesce(str(body["workspaceId"]), s.workspaceID(r))
 	convID := str(body["conversationId"])
@@ -203,23 +185,18 @@ func (s *Server) purgeConversationMemoryAPI(r *http.Request) (any, error) {
 	s.Store.Lock()
 	deleted := s.removeMemoryForConversationLocked(ws, convID)
 	s.Store.Unlock()
-	if s.Store.CanWrite("memory_records") {
-		if len(deleted) > 0 {
-			if err := s.Store.PersistDeleteSync("memory_records", deleted...); err != nil {
-				log.Printf("persist-delete memory_records: %v", err)
-			}
+	if len(deleted) > 0 {
+		if err := s.Store.PersistDeleteSync("memory_records", deleted...); err != nil {
+			log.Printf("persist-delete memory_records: %v", err)
 		}
-		s.Store.Persist("memory_records")
 	}
+	s.Store.Persist("memory_records")
 	return map[string]any{"deleted": len(deleted), "conversationId": convID}, nil
 }
 
 func (s *Server) skillInvocationAPI(r *http.Request) (any, error) {
 	if r.Method != http.MethodPost {
 		return nil, apperr.BadReq(apperr.BadRequest, "仅支持 POST")
-	}
-	if !s.ownsCapRuntime() {
-		return nil, apperr.Forbidden(apperr.AdminRequired, "仅 cap 进程可处理 skill invocation")
 	}
 	body, _ := decodeMap(r)
 	ws := coalesce(str(body["workspaceId"]), s.workspaceID(r))
@@ -249,11 +226,4 @@ func (s *Server) skillInvocationAPI(r *http.Request) (any, error) {
 	s.Store.Unlock()
 	s.persistSkillHealth()
 	return map[string]any{"ok": true}, nil
-}
-
-func actorName(id *auth.Identity) string {
-	if id == nil {
-		return ""
-	}
-	return id.Name
 }

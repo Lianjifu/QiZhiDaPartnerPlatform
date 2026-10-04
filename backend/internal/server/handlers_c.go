@@ -139,52 +139,18 @@ func (s *Server) createKnowledgeDoc(r *http.Request) (any, error) {
 	s.Store.AppendAudit(ws, id.Name, "上传知识文档", title, "success", "")
 	s.Store.Unlock()
 	s.Store.Persist("knowledge_docs")
-	s.syncRAGIndex(ws)
+	s.knowledgeSvc.SyncRAGIndex(ws)
 	return item, nil
 }
 
 func (s *Server) reindexKnowledge(r *http.Request) (any, error) {
 	id := identityFrom(r.Context())
 	ws := s.workspaceID(r)
-	n := s.syncRAGIndex(ws)
+	n := s.knowledgeSvc.SyncRAGIndex(ws)
 	s.Store.Lock()
 	s.Store.AppendAudit(ws, id.Name, "重建知识索引", ws, "success", fmt.Sprintf("affected=%d", n))
 	s.Store.Unlock()
 	return map[string]any{"status": "ok", "affected": n}, nil
-}
-
-func (s *Server) syncRAGIndex(workspaceID string) int {
-	client := &http.Client{Timeout: 3 * time.Second}
-	s.Store.RLock()
-	var docs []map[string]any
-	for _, d := range s.Store.KnowledgeDocs {
-		if str(d["workspaceId"]) == workspaceID && (str(d["status"]) == "published" || str(d["status"]) == "ready") {
-			docs = append(docs, map[string]any{
-				"docId": d["id"], "title": d["title"],
-				"snippet": coalesce(str(d["snippet"]), "已发布："+str(d["title"])),
-				"score":   0.9, "status": "published",
-			})
-		}
-	}
-	s.Store.RUnlock()
-	payload, _ := json.Marshal(map[string]any{"docs": docs, "workspaceId": workspaceID})
-	resp, err := client.Post(s.RAGURL+"/v1/ingest", "application/json", strings.NewReader(string(payload)))
-	if err != nil {
-		// fallback sync endpoint
-		resp, err = client.Post(s.RAGURL+"/v1/sync", "application/json", strings.NewReader(string(payload)))
-	}
-	if err != nil || resp == nil {
-		return len(docs)
-	}
-	defer resp.Body.Close()
-	var out struct {
-		Indexed int `json:"indexed"`
-	}
-	_ = json.NewDecoder(resp.Body).Decode(&out)
-	if out.Indexed > 0 {
-		return out.Indexed
-	}
-	return len(docs)
 }
 
 func (s *Server) listKB(r *http.Request) (any, error) {
@@ -200,10 +166,6 @@ func (s *Server) knowledgeRetrieve(r *http.Request) (any, error) {
 		corr = s.Store.ID("corr")
 	}
 	return s.retrievePublished(r, body, corr)
-}
-
-func (s *Server) callRAG(query string) any {
-	return s.callRAGPublished(query, "w1", s.Store.ID("corr"))
 }
 
 func (s *Server) listConversations(r *http.Request) (any, error) {
@@ -746,6 +708,7 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 		SnapshotID: snapID, Binding: binding, MemoryProvenance: copilot.MemoryProvenanceMaps(memoryHits),
 		ReplyMode: replyMode, SegmentPolicy: segmentPolicy, FirstMessageID: firstMessageID, StepSegments: &stepSegSink,
 		Employee: empMap,
+		BranchFromMessageID: str(body["branchFromMessageId"]),
 	})
 	_ = stepSegSink
 	if copilot.IsCopilotTurnCancelled(corr) {
@@ -883,6 +846,28 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.Store.Lock()
+	branchFrom := str(body["branchFromMessageId"])
+	if branchFrom != "" && len(assistantMsgs) > 0 {
+		var siblings int
+		for _, m := range s.Store.Messages[cid] {
+			if m == nil {
+				continue
+			}
+			if str(m["id"]) == branchFrom || str(m[copilot.MsgKeyParentMessageID]) == branchFrom {
+				siblings++
+			}
+		}
+		for _, m := range assistantMsgs {
+			copilot.StampVariantSibling(m, branchFrom, siblings)
+			siblings++
+		}
+	} else if len(assistantMsgs) > 0 {
+		for i, m := range assistantMsgs {
+			if i == 0 {
+				copilot.StampVariantRoot(m, "")
+			}
+		}
+	}
 	s.Store.Messages[cid] = append(s.Store.Messages[cid], assistantMsgs...)
 	preview := truncateRunes(full, 80)
 	s.touchSessionLocked(resolvedWS, rawID, cid, preview, assistantNow, modelID, resolvedDE, id.ID)

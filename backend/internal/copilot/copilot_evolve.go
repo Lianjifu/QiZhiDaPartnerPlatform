@@ -423,9 +423,7 @@ func (s *Service) evolveDreamRun(r *http.Request) (any, error) {
 }
 
 func (s *Service) persistEvolve() {
-	if s.Store.CanWrite("evolve_candidates") {
-		s.Store.Persist("evolve_candidates")
-	}
+	s.Store.Persist("evolve_candidates")
 	if s.Deps.PersistMemorySyncFn != nil {
 		s.Deps.PersistMemorySyncFn()
 	}

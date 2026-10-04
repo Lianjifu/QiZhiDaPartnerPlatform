@@ -291,17 +291,15 @@ func (s *Service) publishWorkflowAsSkillLocked(actor *auth.Identity, ws string, 
 		"environment": coalesce(str(wf["environment"]), "production"),
 		"riskLevel":   risk,
 	}
-	if s.Store.CanWrite("skills") {
-		s.Store.Skills = append([]map[string]any{catalogItem}, s.Store.Skills...)
-		if s.Store.CapabilityCatalog == nil {
-			s.Store.CapabilityCatalog = map[string]any{}
-		}
-		if status == "published" {
-			wfs, _ := s.Store.CapabilityCatalog["workflows"].([]map[string]any)
-			s.Store.CapabilityCatalog["workflows"] = append([]map[string]any{{
-				"id": skill["id"], "name": name, "meta": "流程技能 · " + str(skill["version"]),
-			}}, wfs...)
-		}
+	s.Store.Skills = append([]map[string]any{catalogItem}, s.Store.Skills...)
+	if s.Store.CapabilityCatalog == nil {
+		s.Store.CapabilityCatalog = map[string]any{}
+	}
+	if status == "published" {
+		wfs, _ := s.Store.CapabilityCatalog["workflows"].([]map[string]any)
+		s.Store.CapabilityCatalog["workflows"] = append([]map[string]any{{
+			"id": skill["id"], "name": name, "meta": "流程技能 · " + str(skill["version"]),
+		}}, wfs...)
 	}
 	s.Store.AppendAudit(ws, actor.Name, "发布流程技能", name, "success", status)
 	skill["_catalog"] = catalogItem
@@ -317,9 +315,6 @@ func (s *Service) PublishWorkflowAsSkillLockedForTest(actor *auth.Identity, ws s
 }
 
 func (s *Service) syncWorkflowSkillCatalogLocked(skill map[string]any) {
-	if !s.Store.CanWrite("skills") {
-		return
-	}
 	sid := str(skill["id"])
 	for _, item := range s.Store.Skills {
 		if str(item["id"]) != sid {
@@ -332,9 +327,6 @@ func (s *Service) syncWorkflowSkillCatalogLocked(skill map[string]any) {
 }
 
 func (s *Service) enableWorkflowSkillCatalogLocked(skill map[string]any) {
-	if !s.Store.CanWrite("skills") {
-		return
-	}
 	sid := str(skill["id"])
 	found := false
 	for _, item := range s.Store.Skills {

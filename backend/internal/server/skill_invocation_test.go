@@ -1,7 +1,6 @@
 package server
 
 import (
-	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -53,44 +52,30 @@ func TestRecordSkillInvocationUpdatesGovernance(t *testing.T) {
 	}
 }
 
-func TestCollabSkillInvocationDelegatesToCap(t *testing.T) {
+func TestMonolithSkillInvocationInProcess(t *testing.T) {
 	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "1")
 
-	capStore := store.New()
-	capStore.SetWriteDomain(store.DomainCap)
-	capStore.DropUnowned(store.DomainCap)
-	capStore.EnsureDocxSkillReady()
-	capSrv := New(capStore)
-	capSrv.Mode = ModeCap
-	capTS := httptest.NewServer(capSrv.Handler())
-	t.Cleanup(capTS.Close)
-
-	collabStore := store.New()
-	collabStore.SetWriteDomain(store.DomainCollab)
-	collabStore.DropUnowned(store.DomainCollab)
-	collabStore.EnsureDocxSkillReady()
-	collab := New(collabStore)
-	collab.Mode = ModeCollab
-	collab.PeerHTTP = capTS.Client()
-	t.Setenv("DE_CAP_URL", capTS.URL)
+	st := store.New()
+	st.EnsureDocxSkillReady()
+	srv := New(st)
 
 	var sk map[string]any
-	collab.Store.RLock()
-	for _, item := range collabStore.Skills {
+	srv.Store.RLock()
+	for _, item := range st.Skills {
 		if str(item["id"]) == "sk-docx" {
 			sk = item
 			break
 		}
 	}
-	collab.Store.RUnlock()
+	srv.Store.RUnlock()
 	if sk == nil {
-		t.Fatal("docx skill missing on collab bootstrap")
+		t.Fatal("docx skill missing")
 	}
 
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		collab.recordSkillInvocationWithRequest(nil, "w1", sk, 42, true, "tester", "unit-test")
+		srv.recordSkillInvocationWithRequest(nil, "w1", sk, 42, true, "tester", "unit-test")
 	}()
 
 	select {
@@ -101,19 +86,19 @@ func TestCollabSkillInvocationDelegatesToCap(t *testing.T) {
 
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
-		capStore.RLock()
+		st.RLock()
 		calls := 0
-		for _, h := range capStore.SkillHealth {
+		for _, h := range st.SkillHealth {
 			if str(h["skillId"]) == "sk-docx" {
 				calls = intFrom(h["calls24h"])
 				break
 			}
 		}
-		capStore.RUnlock()
+		st.RUnlock()
 		if calls > 0 {
 			return
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
-	t.Fatal("expected cap to receive delegated skill invocation metrics")
+	t.Fatal("expected in-process skill invocation metrics")
 }

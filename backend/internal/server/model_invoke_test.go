@@ -149,7 +149,6 @@ func TestModelInvokeStreamHandler(t *testing.T) {
 	seedLocalChatProvider(st, ts.URL)
 
 	srv := New(st)
-	srv.Mode = ModeAll
 	srv.Vault = vault.NewFromEnv()
 	_ = srv.Vault.Put(context.Background(), "vault://model-providers/mp-local/credential", "sk-x")
 
@@ -290,47 +289,3 @@ func TestResolveActiveEmployeeEmptySkipped(t *testing.T) {
 	}
 }
 
-func TestCopilotStreamViaCapHop(t *testing.T) {
-	t.Setenv("DE_MODEL_ALLOW_PRIVATE", "1")
-	muxProvider := http.NewServeMux()
-	muxProvider.HandleFunc("/v1/chat/completions", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/event-stream")
-		_, _ = w.Write([]byte("data: {\"choices\":[{\"delta\":{\"content\":\"【Cap】真实LLM\"}}]}\n\n"))
-		_, _ = w.Write([]byte("data: [DONE]\n\n"))
-	})
-	llm := httptest.NewServer(muxProvider)
-	defer llm.Close()
-
-	capStore := store.New()
-	seedLocalChatProvider(capStore, llm.URL)
-	capSrv := New(capStore)
-	capSrv.Mode = ModeCap
-	capSrv.Vault = vault.NewFromEnv()
-	_ = capSrv.Vault.Put(context.Background(), "vault://model-providers/mp-local/credential", "sk-x")
-	capHTTP := httptest.NewServer(capSrv.Handler())
-	defer capHTTP.Close()
-
-	t.Setenv("DE_CAP_URL", capHTTP.URL)
-
-	collab := New(store.New()) // empty providers — must use Cap
-	collab.Mode = ModeCollab
-
-	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/api/copilot/conversations/conv-cap/stream",
-		strings.NewReader(`{"content":"hello","modelId":"mdl-local","digitalPartnerId":"de-1","correlationId":"corr-cap"}`))
-	req.Header.Set("Authorization", "Bearer mock-admin-token")
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Workspace-Id", "w1")
-	collab.Handler().ServeHTTP(rr, req)
-	if rr.Code != 200 {
-		t.Fatalf("status %d %s", rr.Code, rr.Body.String())
-	}
-	body := rr.Body.String()
-	if !strings.Contains(body, "【Cap】真实LLM") {
-		t.Fatalf("missing Cap llm delta: %s", body)
-	}
-	// Memory stage may report degraded independently; only fail on runtime stub/degrade.
-	if strings.Contains(body, "runtime stub") || strings.Contains(body, `"stage":"runtime","status":"degraded"`) {
-		t.Fatalf("fell back to stub/degraded runtime: %s", body)
-	}
-}

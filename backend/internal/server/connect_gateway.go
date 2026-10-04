@@ -189,7 +189,7 @@ func (s *Server) resolveActiveEmployee(r *http.Request, deID string) (any, error
 func (s *Server) retrievePublished(r *http.Request, body map[string]any, corr string) (any, error) {
 	query := str(body["query"])
 	ws := s.workspaceID(r)
-	if hits := s.callRAGPublished(query, ws, corr); hits != nil {
+	if hits := s.knowledgeSvc.RAGRetrieveForConnect(r.Context(), query, ws, corr); hits != nil {
 		s.recordUsageWS(ws, "rag", 1, corr)
 		return s.filterRAGHitsByScope(r, hits), nil
 	}
@@ -288,58 +288,6 @@ func (s *Server) filterRAGHitsByScope(r *http.Request, hits any) any {
 	}
 	m["results"] = filtered
 	return m
-}
-
-func (s *Server) callRAGPublished(query, workspaceID, corr string) any {
-	client := &http.Client{Timeout: 2 * time.Second}
-	s.Store.RLock()
-	var docs []map[string]any
-	allowed := map[string]struct{}{}
-	for _, d := range s.Store.KnowledgeDocs {
-		if str(d["workspaceId"]) == workspaceID && str(d["status"]) == "published" {
-			id := str(d["id"])
-			allowed[id] = struct{}{}
-			docs = append(docs, map[string]any{
-				"docId": id, "title": d["title"],
-				"snippet": "已发布：" + str(d["title"]), "score": 0.9, "status": "published",
-			})
-		}
-	}
-	s.Store.RUnlock()
-	// No published corpus → skip sidecar (avoids RAG global INDEX leaking non-published seeds).
-	if len(docs) == 0 {
-		return nil
-	}
-	payload, _ := json.Marshal(map[string]any{
-		"query": query, "workspaceId": workspaceID, "correlationId": corr,
-		"publishedOnly": true, "docs": docs,
-	})
-	resp, err := client.Post(s.RAGURL+"/v1/retrieve", "application/json", strings.NewReader(string(payload)))
-	if err != nil {
-		return nil
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode >= 300 {
-		return nil
-	}
-	var out map[string]any
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return nil
-	}
-	// Defense in depth: drop any hit outside the published corpus we authorized.
-	if raw, ok := out["results"]; ok {
-		filtered := make([]any, 0)
-		for _, item := range knowledgeSliceMaps(raw) {
-			id := coalesce(str(item["docId"]), str(item["id"]))
-			if _, ok := allowed[id]; !ok {
-				continue
-			}
-			filtered = append(filtered, item)
-		}
-		out["results"] = filtered
-	}
-	out["correlationId"] = corr
-	return out
 }
 
 type nopCloser struct{ *strings.Reader }

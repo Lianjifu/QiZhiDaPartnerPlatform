@@ -73,52 +73,38 @@ func TestCapabilityCatalogAggregatesLiveAssets(t *testing.T) {
 	}
 }
 
-func TestCapabilityCatalogCollabFetchesCapPeers(t *testing.T) {
-	capStore := store.New()
-	capSrv := New(capStore)
-	capSrv.Mode = ModeCap
-	capHTTP := httptest.NewServer(capSrv.Handler())
-	t.Cleanup(capHTTP.Close)
-	t.Setenv("DE_CAP_URL", capHTTP.URL)
-	t.Setenv("DE_WORKFLOW_URL", "http://127.0.0.1:1") // unreachable; local/workflow soft-fail
+func TestCapabilityCatalogMonolithReadsLocalStore(t *testing.T) {
+	st := store.New()
+	srv := New(st)
 
-	// Cap-only package skill
-	capStore.Lock()
-	capStore.Skills = append([]map[string]any{{
+	// Seed a package skill + knowledge package on the same store the
+	// catalog handler reads from.
+	st.Lock()
+	st.Skills = append([]map[string]any{{
 		"id": "sk-pptx", "workspaceId": "w1", "name": "pptx", "kind": "skill",
 		"version": "0.1.0", "status": "installed", "lifecycleStatus": "enabled", "source": "package",
-	}}, capStore.Skills...)
-	pkgs, _ := capStore.KnowledgeExtra["packages"].([]map[string]any)
-	capStore.KnowledgeExtra["packages"] = append([]map[string]any{{
+	}}, st.Skills...)
+	pkgs, _ := st.KnowledgeExtra["packages"].([]map[string]any)
+	st.KnowledgeExtra["packages"] = append([]map[string]any{{
 		"id": "pkg-hr", "workspaceId": "w1", "name": "人事制度库", "domain": "人事", "status": "published",
 		"currentVersion": map[string]any{"version": "1.0.0", "status": "published"},
 	}}, pkgs...)
-	capStore.Unlock()
-
-	collab := New(store.New())
-	collab.Mode = ModeCollab
-	// Wipe local skills/knowledge so catalog must come from Cap peer.
-	collab.Store.Lock()
-	collab.Store.Skills = nil
-	collab.Store.SkillCatalog = nil
-	collab.Store.KnowledgeExtra = map[string]any{"packages": []map[string]any{}}
-	collab.Store.KnowledgeDocs = nil
-	collab.Store.Unlock()
+	st.Unlock()
 
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/partner-capability-catalog", nil)
 	req.Header.Set("Authorization", "Bearer mock-admin-token")
 	req.Header.Set("X-Workspace-Id", "w1")
-	collab.Handler().ServeHTTP(rr, req)
+	srv.Handler().ServeHTTP(rr, req)
 	if rr.Code != 200 {
 		t.Fatalf("status %d %s", rr.Code, rr.Body.String())
 	}
 	body := rr.Body.String()
 	if !strings.Contains(body, "pptx") {
-		t.Fatalf("expected peer skill pptx in catalog: %s", body)
+		t.Fatalf("expected local skill pptx in catalog: %s", body)
 	}
 	if !strings.Contains(body, "人事制度库") {
-		t.Fatalf("expected peer knowledge in catalog: %s", body)
+		t.Fatalf("expected local knowledge in catalog: %s", body)
 	}
 }
 

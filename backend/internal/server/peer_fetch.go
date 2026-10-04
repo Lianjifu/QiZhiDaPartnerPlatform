@@ -9,16 +9,10 @@ import (
 	"time"
 )
 
-// peerGET calls another deployment unit (qzda-cap or qzda-workflow) over
-// HTTP. Method formerly lived in handlers_capability_catalog.go (deleted
-// during M05 P2) — relocated here so the partners package can wire it
-// into its Deps without importing internal/server/'s catalog internals.
-//
-// Behaviour is byte-faithful with the legacy implementation:
-//   - 8-second timeout
-//   - copies auth/workspace/correlation/mock headers verbatim
-//   - always injects x-workspace-id (falls back to local resolver)
-//   - unwraps `{ok, data}` envelopes before returning
+// peerGET calls another deployment unit over HTTP. With the coarse split
+// retired it is no longer used internally for catalog fetches, but the
+// partners.Deps wiring still exposes it for downstream consumers that
+// want to reach an external service (e.g. a remote RAG sidecar).
 func (s *Server) peerGET(r *http.Request, base, path string) (any, error) {
 	url := strings.TrimRight(base, "/") + path
 	ctx := r.Context()
@@ -58,27 +52,24 @@ func (s *Server) peerGET(r *http.Request, base, path string) (any, error) {
 	return raw, nil
 }
 
-// fetchCapCatalogParts asks qzda-cap for the five catalog partitions used
-// by the digital-employee assembly surface (skills / tools / knowledge /
-// channels / models). Soft-fails when the peer is unreachable so the
-// caller's local store can still serve the request.
+// fetchCapCatalogParts assembles the five catalog partitions used by the
+// digital-employee assembly surface (skills / tools / knowledge / channels
+// / models) from the local store directly. Before the coarse split was
+// retired, this called qzda-cap over HTTP; in the qzda-app monolith the
+// store is authoritative, so we just read it.
 //
-// History: relocated from handlers_capability_catalog.go during M05 P2
-// consolidation. Now wired into partners.Deps.FetchCapCatalogParts at
-// server boot.
+// History: relocated from handlers_capability_catalog.go during M05 P2,
+// then made in-process during the Phase-2 collapse of qzda-sys /
+// qzda-collab / qzda-cap / qzda-workflow into qzda-app.
 func (s *Server) fetchCapCatalogParts(r *http.Request, ws string) (skills, tools, knowledge, channels, models []map[string]any, err error) {
-	base := capBaseURL()
-	skillsRaw, e1 := s.peerGET(r, base, "/api/skills")
-	pkgsRaw, e2 := s.peerGET(r, base, "/api/knowledge/packages")
-	providersRaw, e3 := s.peerGET(r, base, "/api/model-providers")
-	policiesRaw, e4 := s.peerGET(r, base, "/api/model-routing/policies")
-	channelsRaw, e5 := s.peerGET(r, base, "/api/channels")
-	if e1 != nil && e2 != nil && e3 != nil && e4 != nil && e5 != nil {
-		return nil, nil, nil, nil, nil, fmt.Errorf("cap unreachable: %v", e1)
+	if s.Store == nil {
+		return nil, nil, nil, nil, nil, fmt.Errorf("store unavailable")
 	}
+	s.Store.RLock()
+	defer s.Store.RUnlock()
 
 	seenSkill, seenTool := map[string]bool{}, map[string]bool{}
-	for _, item := range mapsFromAny(skillsRaw) {
+	for _, item := range s.Store.Skills {
 		if str(item["workspaceId"]) != "" && str(item["workspaceId"]) != ws {
 			continue
 		}
@@ -104,7 +95,7 @@ func (s *Server) fetchCapCatalogParts(r *http.Request, ws string) (skills, tools
 		}
 	}
 
-	for _, pkg := range mapsFromAny(pkgsRaw) {
+	for _, pkg := range s.Store.KnowledgeDocs {
 		if str(pkg["workspaceId"]) != "" && str(pkg["workspaceId"]) != ws {
 			continue
 		}
@@ -117,7 +108,7 @@ func (s *Server) fetchCapCatalogParts(r *http.Request, ws string) (skills, tools
 		}
 		knowledge = append(knowledge, map[string]any{
 			"id":   pkg["id"],
-			"name": pkg["name"],
+			"name": str(pkg["name"]),
 			"meta": fmt.Sprintf("%s · v%s", coalesce(str(pkg["domain"]), "知识"), ver),
 		})
 	}
@@ -132,7 +123,7 @@ func (s *Server) fetchCapCatalogParts(r *http.Request, ws string) (skills, tools
 		models = append(models, map[string]any{"id": coalesce(id, key), "name": key, "meta": meta})
 	}
 	modelNameByID := map[string]string{}
-	for _, p := range mapsFromAny(providersRaw) {
+	for _, p := range s.Store.ModelProviders {
 		if str(p["workspaceId"]) != "" && str(p["workspaceId"]) != ws {
 			continue
 		}
@@ -162,7 +153,7 @@ func (s *Server) fetchCapCatalogParts(r *http.Request, ws string) (skills, tools
 			addModel(str(m["id"]), coalesce(str(m["name"]), str(m["id"])), meta)
 		}
 	}
-	for _, pol := range mapsFromAny(policiesRaw) {
+	for _, pol := range s.Store.RoutingPolicies {
 		if str(pol["workspaceId"]) != "" && str(pol["workspaceId"]) != ws {
 			continue
 		}
@@ -186,7 +177,7 @@ func (s *Server) fetchCapCatalogParts(r *http.Request, ws string) (skills, tools
 		channels = append(channels, map[string]any{"id": coalesce(id, key), "name": key, "meta": meta})
 	}
 	addCh("ch-web", "Web", "渠道 · web")
-	for _, ch := range mapsFromAny(channelsRaw) {
+	for _, ch := range s.Store.ChannelDeploys {
 		if str(ch["workspaceId"]) != "" && str(ch["workspaceId"]) != ws {
 			continue
 		}
@@ -199,21 +190,18 @@ func (s *Server) fetchCapCatalogParts(r *http.Request, ws string) (skills, tools
 	return skills, tools, knowledge, channels, models, nil
 }
 
-// fetchWorkflowCatalogParts asks qzda-workflow for workflow + workflow-skill
-// catalog options. Returns whatever the peer has, with nil/empty fallbacks
-// when neither endpoint responds.
-//
-// History: relocated from handlers_capability_catalog.go during M05 P2
-// consolidation. Now wired into partners.Deps.FetchWorkflowCatalogParts.
+// fetchWorkflowCatalogParts assembles workflow + workflow-skill catalog
+// options from the local store directly. Before the coarse split was
+// retired, this called qzda-workflow over HTTP.
 func (s *Server) fetchWorkflowCatalogParts(r *http.Request, ws string) ([]map[string]any, error) {
-	base := workflowBaseURL()
-	wfsRaw, err1 := s.peerGET(r, base, "/api/workflow-skills")
-	wfRaw, err2 := s.peerGET(r, base, "/api/workflows")
-	if err1 != nil && err2 != nil {
-		return nil, err1
+	if s.Store == nil {
+		return nil, fmt.Errorf("store unavailable")
 	}
+	s.Store.RLock()
+	defer s.Store.RUnlock()
+
 	out := make([]map[string]any, 0)
-	for _, wf := range mapsFromAny(wfsRaw) {
+	for _, wf := range s.Store.WorkflowSkills {
 		if str(wf["workspaceId"]) != "" && str(wf["workspaceId"]) != ws {
 			continue
 		}
@@ -222,11 +210,11 @@ func (s *Server) fetchWorkflowCatalogParts(r *http.Request, ws string) ([]map[st
 		}
 		out = append(out, map[string]any{
 			"id":   wf["id"],
-			"name": wf["name"],
+			"name": str(wf["name"]),
 			"meta": fmt.Sprintf("流程技能 · %s", coalesce(str(wf["version"]), coalesce(str(wf["sourceVersionId"]), "—"))),
 		})
 	}
-	for _, wf := range mapsFromAny(wfRaw) {
+	for _, wf := range s.Store.Workflows {
 		if str(wf["workspaceId"]) != "" && str(wf["workspaceId"]) != ws {
 			continue
 		}
@@ -236,57 +224,18 @@ func (s *Server) fetchWorkflowCatalogParts(r *http.Request, ws string) ([]map[st
 		}
 		out = append(out, map[string]any{
 			"id":   wf["id"],
-			"name": wf["name"],
+			"name": str(wf["name"]),
 			"meta": "工作流 · " + coalesce(st, "active"),
 		})
 	}
 	return out, nil
 }
 
-// mapsFromAny coerces JSON list responses (sometimes raw arrays,
-// sometimes {items: [...]}) into []map[string]any. History: helper from
-// the legacy handlers_capability_catalog.go (M05 P2 relocation).
-func mapsFromAny(v any) []map[string]any {
-	switch t := v.(type) {
-	case []map[string]any:
-		return t
-	case []any:
-		out := make([]map[string]any, 0, len(t))
-		for _, item := range t {
-			if m, ok := item.(map[string]any); ok {
-				out = append(out, m)
-			}
-		}
-		return out
-	case map[string]any:
-		// some list endpoints wrap { items: [...] }
-		if items, ok := t["items"]; ok {
-			return mapsFromAny(items)
-		}
-		return nil
-	default:
-		return nil
-	}
-}
-
-// workflowBaseURL is the small URL helper paired with capBaseURL. Moved
-// here from handlers_capability_catalog.go so the partners package can
-// inject it via Deps without importing the entire internal/server/
-// catalog surface. Falls back to qzda-workflow's default port 8103 when
-// DE_WORKFLOW_URL is unset.
-func workflowBaseURL() string {
-	if v := strings.TrimSpace(envOr("DE_WORKFLOW_URL", "")); v != "" {
-		return strings.TrimRight(v, "/")
-	}
-	return "http://127.0.0.1:8103"
-}
-
 // skillAssemblable returns true when a skill is in a state where the UI
-// can offer it as an assemblable capability. Mirrors the helper that
-// previously lived in handlers_capability_catalog.go (deleted during
-// M05 P2). The partners package has its own copy in capability_catalog.go
-// for its buildCapabilityCatalogFromStoreLocked caller; this duplicate
-// stays so the server-side fetchCapCatalogParts still compiles.
+// can offer it as an assemblable capability. The partners package has its
+// own copy in capability_catalog.go for its buildCapabilityCatalogFromStoreLocked
+// caller; this duplicate stays so the server-side fetchCapCatalogParts still
+// compiles.
 func skillAssemblable(sk map[string]any) bool {
 	life := strings.ToLower(strings.TrimSpace(coalesce(str(sk["lifecycleStatus"]), str(sk["status"]))))
 	if life == "" {
@@ -301,9 +250,7 @@ func skillAssemblable(sk map[string]any) bool {
 }
 
 // kindLabel renders a human-friendly Chinese label for a capability
-// kind (tool / mcp / skill). Mirrors the helper that previously lived in
-// handlers_capability_catalog.go (deleted during M05 P2). Duplicate kept
-// for the same reason as skillAssemblable above.
+// kind (tool / mcp / skill).
 func kindLabel(kind string) string {
 	switch strings.ToLower(kind) {
 	case "tool":
@@ -312,5 +259,29 @@ func kindLabel(kind string) string {
 		return "MCP"
 	default:
 		return "技能"
+	}
+}
+
+// mapsFromAny coerces JSON list responses (sometimes raw arrays,
+// sometimes {items: [...]}) into []map[string]any.
+func mapsFromAny(v any) []map[string]any {
+	switch t := v.(type) {
+	case []map[string]any:
+		return t
+	case []any:
+		out := make([]map[string]any, 0, len(t))
+		for _, item := range t {
+			if m, ok := item.(map[string]any); ok {
+				out = append(out, m)
+			}
+		}
+		return out
+	case map[string]any:
+		if items, ok := t["items"]; ok {
+			return mapsFromAny(items)
+		}
+		return nil
+	default:
+		return nil
 	}
 }

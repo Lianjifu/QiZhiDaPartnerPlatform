@@ -44,7 +44,6 @@ func (s *Server) buildSkillsSvc() *skills.Service {
 			return s.evaluateZeroTrust(id, kind, action, target, isExternal, reason)
 		},
 		ActorIsAdmin:      actorIsAdmin,
-		OwnsCapRuntime:    s.ownsCapRuntime,
 		ProductionLikeEnv: productionLikeEnv,
 		AppendAudit: func(ws, actor, action, target, result, reason string) {
 			if s.Store != nil {

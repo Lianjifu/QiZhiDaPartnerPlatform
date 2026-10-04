@@ -1,4 +1,4 @@
-.PHONY: run test tidy build compose-up compose-up-full compose-up-temporal compose-up-oidc compose-up-authentik compose-up-kafka compose-up-mtls compose-up-spiffe compose-up-coarse compose-up-monolith compose-up-monolith-workflow compose-up-milvus compose-up-opa compose-up-search compose-up-obs compose-up-staging compose-up-replica compose-down compose-ps compose-logs infra-env smoke smoke-coarse smoke-monolith test-python runtime rag skill sync-builtin-skills qzda-workflow docker-engine buf-generate buf-lint worker certs certs-rotate run-sys run-collab run-cap run-app run-workflow run-policy run-audit run-demo run-dev db-reset-dev
+.PHONY: run test tidy build compose-up compose-up-full compose-up-temporal compose-up-oidc compose-up-authentik compose-up-kafka compose-up-mtls compose-up-spiffe compose-up-monolith compose-up-monolith-workflow compose-up-milvus compose-up-opa compose-up-search compose-up-obs compose-up-staging compose-up-replica compose-down compose-ps compose-logs infra-env smoke smoke-monolith test-python runtime rag skill sync-builtin-skills run-app run-app-workflow run-demo run-dev db-reset-dev docker-engine buf-generate buf-lint certs certs-rotate
 
 
 export DE_DATABASE_URL ?= postgres://de:de@127.0.0.1:5432/digital_employee?sslmode=disable
@@ -21,11 +21,17 @@ run-demo:
 # 本机生产数据模式：需 PG；空库不灌演示 seed。
 run-dev: infra-env run-app
 
-run-sys: infra-env
-	$(GO) run ./cmd/qzda-sys
-
 run-app: infra-env
 	DE_ENV=$${DE_ENV:-development} \
+	DE_RUNTIME_MODE=local \
+	DE_SANDBOX_RUNTIME_URL=$${DE_SANDBOX_RUNTIME_URL:-http://127.0.0.1:8093} \
+	$(GO) run ./cmd/qzda-app
+
+# Run qzda-app with the in-process Temporal workflow worker enabled.
+run-app-workflow: infra-env
+	DE_ENV=$${DE_ENV:-development} \
+	DE_WORKFLOW_WORKER=1 \
+	DE_TEMPORAL_HOST=$${DE_TEMPORAL_HOST:-127.0.0.1:7233} \
 	DE_RUNTIME_MODE=local \
 	DE_SANDBOX_RUNTIME_URL=$${DE_SANDBOX_RUNTIME_URL:-http://127.0.0.1:8093} \
 	$(GO) run ./cmd/qzda-app
@@ -36,21 +42,6 @@ db-reset-dev: docker-engine
 	@$(COMPOSE) exec -T postgres psql -U de -d digital_employee -c "DROP SCHEMA IF EXISTS platform CASCADE; DROP SCHEMA IF EXISTS audit CASCADE; DROP SCHEMA IF EXISTS policy CASCADE; DROP SCHEMA IF EXISTS collab CASCADE; DROP SCHEMA IF EXISTS cap CASCADE;" || true
 	@echo "Restart qzda-app with DE_ENV=development to re-apply migrations / empty durable store."
 
-run-collab: infra-env
-	DE_CAP_URL=$${DE_CAP_URL:-http://127.0.0.1:8102} DE_WORKFLOW_URL=$${DE_WORKFLOW_URL:-http://127.0.0.1:8103} $(GO) run ./cmd/qzda-collab
-
-run-cap: infra-env
-	$(GO) run ./cmd/qzda-cap
-
-run-workflow: infra-env
-	DE_WORKFLOW_HTTP=1 DE_WORKFLOW_WORKER=$${DE_WORKFLOW_WORKER:-0} $(GO) run ./cmd/qzda-workflow
-
-run-policy: infra-env
-	$(GO) run ./cmd/qzda-policy
-
-run-audit: infra-env
-	$(GO) run ./cmd/qzda-audit
-
 test:
 	# Isolate unit tests from a locally running FastAPI RAG on :8092.
 	DE_RAG_URL=http://127.0.0.1:1 $(GO) test ./...
@@ -59,13 +50,7 @@ tidy:
 	$(GO) mod tidy
 
 build:
-	$(GO) build -o ./bin/qzda-sys ./cmd/qzda-sys
 	$(GO) build -o ./bin/qzda-app ./cmd/qzda-app
-	$(GO) build -o ./bin/qzda-collab ./cmd/qzda-collab
-	$(GO) build -o ./bin/qzda-cap ./cmd/qzda-cap
-	$(GO) build -o ./bin/qzda-workflow ./cmd/qzda-workflow
-	$(GO) build -o ./bin/qzda-policy ./cmd/qzda-policy
-	$(GO) build -o ./bin/qzda-audit ./cmd/qzda-audit
 	$(GO) build -o ./bin/qzda-local-llm ./cmd/qzda-local-llm
 
 # Local OpenAI-compatible chat (default :18080) for Copilot when no cloud key is set.
@@ -140,23 +125,17 @@ compose-up-spiffe: docker-engine certs
 	$(COMPOSE) --profile spiffe up -d
 	@echo "Envoy SPIFFE mTLS: https://127.0.0.1:8444 — see deploy/spiffe/README.md"
 
-compose-up-coarse: docker-engine
-	@$(MAKE) compose-up
-	$(COMPOSE) --profile coarse up -d --build
-	@echo "coarse: gateway:8089 → sys:8100 collab:8101 cap:8102 workflow:8103 + FastAPI 8091-8093"
-	@echo "  FE proxy default → http://127.0.0.1:8089"
-
 compose-up-monolith: docker-engine
 	@$(MAKE) compose-up
 	$(COMPOSE) --profile monolith up -d --build
 	@echo "monolith: gateway:8089 → qzda-app:8100 + qzda-skill:8093"
 	@echo "  FE proxy default → http://127.0.0.1:8089"
-	@echo "  optional workflow: make compose-up-monolith-workflow"
+	@echo "  optional workflow: DE_WORKFLOW_WORKER=1 DE_TEMPORAL_HOST=... make run-app-workflow"
 
 compose-up-monolith-workflow: docker-engine
 	@$(MAKE) compose-up
-	DE_WORKFLOW_URL=http://qzda-workflow:8103 $(COMPOSE) --profile monolith --profile monolith-workflow up -d --build
-	@echo "monolith+workflow: qzda-app + qzda-skill + qzda-workflow:8103"
+	DE_WORKFLOW_WORKER=1 DE_TEMPORAL_HOST=$${DE_TEMPORAL_HOST:-127.0.0.1:7233} $(COMPOSE) --profile monolith-workflow up -d --build
+	@echo "monolith+workflow: qzda-app (with in-process Temporal worker) + qzda-skill"
 
 compose-up-milvus: docker-engine
 	$(COMPOSE) --profile milvus up -d
@@ -212,23 +191,18 @@ compose-up-search: docker-engine
 	done; \
 	echo "OpenSearch not healthy yet; check: docker logs qzda-opensearch"; exit 1
 
-compose-up-policy compose-up-qzda-policy compose-up-audit compose-up-qzda-audit compose-up-apps compose-up-split:
-	@echo "retired compose profile: coarse qzda-sys still absorbs policy/audit."
-	@echo "optional binaries: make run-policy (:8104) / make run-audit (:8105); set DE_CROSSCUTTING_SPLIT=1 on qzda-sys to drop those routes."
-	@exit 1
-
-# Staging: coarse + oidc + opa + search + obs
+# Staging: monolith + oidc + opa + search + obs
 compose-up-staging: docker-engine
 	@$(MAKE) compose-up
 	@set -a; \
 	if [ -f deploy/.env.staging ]; then . ./deploy/.env.staging; fi; \
 	set +a; \
-	$(COMPOSE) --profile coarse --profile oidc --profile opa --profile search --profile obs up -d --build
+	$(COMPOSE) --profile monolith --profile oidc --profile opa --profile search --profile obs up -d --build
 	@echo "staging: BAN_MOCK=1 FORCE_OIDC=1 — Dex :5556 · OPA · OpenSearch · Obs · gateway:8089"
 	@echo "env file: deploy/.env.staging (override before make if needed)"
 
 compose-down:
-	$(COMPOSE) --profile full --profile temporal --profile oidc --profile authentik --profile kafka --profile mtls --profile spiffe --profile coarse --profile milvus --profile opa --profile search --profile obs --profile replica down
+	$(COMPOSE) --profile full --profile temporal --profile oidc --profile authentik --profile kafka --profile mtls --profile spiffe --profile milvus --profile opa --profile search --profile obs --profile replica down
 
 buf-generate:
 	@command -v buf >/dev/null || { echo "install buf CLI into PATH"; exit 1; }
@@ -245,9 +219,6 @@ certs:
 
 certs-rotate:
 	@bash deploy/certs/rotate.sh 1
-
-worker qzda-workflow:
-	$(GO) run ./cmd/qzda-workflow
 
 compose-ps:
 	$(COMPOSE) ps
@@ -290,13 +261,6 @@ smoke smoke-monolith:
 	curl -sf -H "Authorization: Bearer $$TOKEN" $(BASE)/api/skills >/dev/null && echo "skills ok" && \
 	curl -sf -H "Authorization: Bearer $$TOKEN" $(BASE)/api/sessions >/dev/null && echo "sessions ok" && \
 	curl -sf -X POST -H "Authorization: Bearer $$TOKEN" -H 'Content-Type: application/json' -d '{"resource":"workflow","action":"publish"}' $(BASE)/api/zero-trust/evaluate >/dev/null && echo "evaluate ok"
-
-smoke-coarse:
-	@curl -sf $(BASE)/healthz >/dev/null && echo "healthz ok" || (echo "start coarse stack first: make compose-up-coarse" && exit 1)
-	@TOKEN=$$(curl -sf -X POST $(BASE)/api/auth/login -H 'Content-Type: application/json' -d '{"email":"admin@acme.com","password":"x"}' | python3 -c 'import sys,json; print(json.load(sys.stdin)["data"]["token"])') && \
-	curl -sf -H "Authorization: Bearer $$TOKEN" $(BASE)/api/workspaces >/dev/null && echo "workspaces ok" && \
-	curl -sf -X POST -H "Authorization: Bearer $$TOKEN" -H 'Content-Type: application/json' -d '{"resource":"workflow","action":"publish"}' $(BASE)/api/zero-trust/evaluate >/dev/null && echo "evaluate ok" && \
-	curl -sf -H "Authorization: Bearer $$TOKEN" http://127.0.0.1:8102/api/channel/deployments >/dev/null && echo "cap channel ok"
 
 test-python:
 	python3 services/qzda-rag/tests/test_vector.py

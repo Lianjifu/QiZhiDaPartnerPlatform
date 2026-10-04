@@ -5,7 +5,6 @@
 | 项 | 默认 |
 |----|------|
 | **本地拓扑** | **monolith**：`qzda-gateway:8089` → `qzda-app:8100` + `qzda-sandbox:8093` |
-| **规模化对照** | coarse 四进程（sys / collab / cap / workflow） |
 | **数据** | Docker Postgres 16 + Redis；禁止 Homebrew 抢占 `5432` |
 | **环境** | `DE_ENV=development`（空库 hydrate，不灌 ACME seed） |
 
@@ -14,8 +13,8 @@
 | 文档 | 用途 |
 |------|------|
 | [docs/后端架构规划.md](../docs/后端架构规划.md) | 服务边界与交付阶段 |
-| [docs/后端微服务重构方案.md](../docs/后端微服务重构方案.md) | 粗粒度拆分演进 |
-| [deploy/topology-split.md](deploy/topology-split.md) | monolith / coarse 切流 |
+| [docs/后端单进程方案.md](../docs/后端单进程方案.md) | 单进程 + 未来切分路径 |
+| [deploy/topology-split.md](deploy/topology-split.md) | monolith 拓扑说明 |
 | [deploy/MIGRATION-de-to-qzda.md](deploy/MIGRATION-de-to-qzda.md) | Phase 3 外部集成迁移指南(OIDC client / Kafka 包名 / SPIFFE trust domain) |
 | [docs/环境与数据模式.md](../docs/环境与数据模式.md) | `DE_ENV`、Persist、办公开箱 |
 | [api/routes.md](api/routes.md) | HTTP 路由契约 |
@@ -43,7 +42,7 @@
 ## 架构总览
 
 **控制面管可信与编排，执行面跑推理与工具，网关统一入口。**  
-`ServiceMode` 过滤路由；共享 PG KV 水合。monolith 下 `qzda-app` 以 `ModeApp` / `DomainAll` 吸收 sys + collab + cap。
+`qzda-app` 是单进程 monolith：sys / collab / cap / workflow 域逻辑共存于同一 Go 进程，`ModeApp` / `DomainAll` 吸收所有 collection。Temporal worker 可作为进程内 goroutine 启动（`DE_WORKFLOW_WORKER=1`）。
 
 ```mermaid
 flowchart TB
@@ -57,38 +56,23 @@ flowchart TB
   FE --> GW
   CH --> GW
 
-  subgraph Mono["monolith 默认 · qzda-app :8100"]
+  subgraph Mono["monolith · qzda-app :8100"]
     SYS["sys<br/>platform · policy · audit · ops"]
     COL["collab<br/>session · task · employee"]
     CAP["cap<br/>model · knowledge · memory · skill · channel"]
-  end
-
-  subgraph Coarse["coarse 四进程"]
-    S1["qzda-sys :8100"]
-    S2["qzda-collab :8101"]
-    S3["qzda-cap :8102"]
-    S4["qzda-workflow :8103"]
+    FLOW["workflow<br/>HTTP + 可选 Temporal worker"]
   end
 
   SK["qzda-sandbox :8093<br/>技能沙箱 · 必须"]
-  WF["qzda-workflow :8103<br/>可选"]
   AI["qzda-agent / qzda-rag<br/>:8091–8092 · 按需"]
   PG[(PostgreSQL 16)]
   RD[(Redis)]
 
-  GW -->|"默认"| Mono
-  GW -->|"规模化"| S1
-  GW --> S2
-  GW --> S3
-  GW --> S4
-
+  GW --> Mono
   Mono --> SK
-  Mono --> WF
   Mono -.-> AI
   Mono --> PG
   Mono --> RD
-  S3 --> SK
-  S2 -.-> AI
 ```
 
 文档分层对照：
@@ -103,7 +87,7 @@ flowchart TB
 
 ## 模块交互图
 
-产品能力域在进程内（monolith）或进程间（coarse）的依赖关系：
+产品能力域全部在 `qzda-app` 单进程内的依赖关系：
 
 ```mermaid
 flowchart LR
@@ -111,7 +95,7 @@ flowchart LR
     GW[qzda-gateway]
   end
 
-  subgraph Control["Go 控制面"]
+  subgraph Control["Go 控制面 · 单进程"]
     PLAT[platform / ops]
     POL[policy / 零信任]
     AUD[audit]
@@ -130,7 +114,7 @@ flowchart LR
     AGENT[qzda-agent-runtime]
     RAG[qzda-rag]
     SKRT[qzda-sandbox]
-    TEMP[qzda-workflow<br/>+ Temporal]
+    TEMP[Temporal worker<br/>qzda-app 内]
   end
 
   GW --> PLAT
@@ -154,16 +138,17 @@ flowchart LR
   PLAT -.用量.-> AUD
 ```
 
-| 域 | 职责 | monolith | coarse |
-|----|------|----------|--------|
-| **sys** | 工作区、设置、策略、审计、运营聚合 | qzda-app | qzda-sys（+ 可选独立 policy/audit） |
-| **collab** | 会话、任务、审核、流式回合 | qzda-app | qzda-collab |
-| **employee** | 岗位、装配、上岗 | qzda-app | qzda-collab |
-| **cap** | 模型 / 知识 / 记忆 / 技能 / 渠道 | qzda-app | qzda-cap |
-| **workflow** | 流程版本、试运行、Temporal | 可选 qzda-workflow | qzda-workflow |
-| **sandbox** | 沙箱执行 | 必须独立 :8093 | 同左 |
+| 域 | 职责 | 部署 |
+|----|------|------|
+| **sys** | 工作区、设置、策略、审计、运营聚合 | qzda-app 单进程 |
+| **collab** | 会话、任务、审核、流式回合 | qzda-app 单进程 |
+| **employee** | 岗位、装配、上岗 | qzda-app 单进程 |
+| **cap** | 模型 / 知识 / 记忆 / 技能 / 渠道 | qzda-app 单进程 |
+| **workflow** | 流程 HTTP、试运行 | qzda-app 单进程 |
+| **workflow Temporal** | 流程编排（可选） | qzda-app 进程内 goroutine |
+| **sandbox** | 沙箱执行 | 必须独立 :8093 |
 
-已退役：`qzda-core`、细端口 `qzda-policy:8094` / `qzda-audit:8095`。独立切开：`DE_CROSSCUTTING_SPLIT=1` + `make run-policy` / `make run-audit`。
+已退役：`qzda-core`、细端口 `qzda-policy:8094` / `qzda-audit:8095`、独立 `qzda-policy:8104` / `qzda-audit:8105`、`qzda-sys:8100` / `qzda-collab:8101` / `qzda-cap:8102` / `qzda-workflow:8103`（M10 折叠到 qzda-app）。
 
 ---
 
@@ -180,7 +165,7 @@ sequenceDiagram
   participant PG as PostgreSQL / Redis
   participant LLM as 模型供应商
   participant SK as qzda-sandbox
-  participant WF as qzda-workflow
+  participant WF as Temporal worker<br/>(qzda-app 内可选)
   participant AUD as 审计 / 用量
 
   UI->>GW: HTTPS / SSE · x-workspace-id
@@ -227,21 +212,15 @@ sequenceDiagram
 
 | 单元 | 端口 | 说明 |
 |------|------|------|
-| **qzda-gateway** | 8089 | Envoy / `gateway-proxy-monolith.py`；健康检查 `/healthz` |
-| **qzda-app** | 8100 | **monolith 默认**：sys + collab + cap |
-| qzda-sys | 8100 | coarse：platform · ops；默认仍吸收 policy · audit |
-| qzda-collab | 8101 | coarse：collab · employee |
-| qzda-cap | 8102 | coarse：五中心能力 |
-| qzda-workflow | 8103 | 流程 HTTP + Temporal Worker（可选） |
-| qzda-policy | 8104 | 可选独立策略 |
-| qzda-audit | 8105 | 可选独立审计读面 |
+| **qzda-gateway** | 8089 | Python 代理 `services/qzda-gateway/main.py`；健康检查 `/healthz` |
+| **qzda-app** | 8100 | **monolith 单进程**：sys + collab + cap + workflow,可设 `DE_WORKFLOW_WORKER=1` 启用进程内 Temporal worker |
 | **qzda-sandbox** | 8093 | 技能沙箱（**必须**） |
-| qzda-agent / qzda-rag | 8091–8092 | coarse 或按需；monolith 默认不启 agent |
+| qzda-agent / qzda-rag | 8091–8092 | Python sidecar,按需 |
 
 切流要点：
 
-- collab/cap → `DE_POLICY_URL`（默认 `http://qzda-sys:8100` 的 `/v1/evaluate`）
-- 审计写入各进程本地 sink；独立 qzda-audit 读 `audit.events`
+- 策略评估在 qzda-app 进程内由 `internal/policy.Engine` 处理；`/api/zero-trust/evaluate` 与 `/v1/evaluate` 都直接走本进程
+- 审计写入本进程本地 sink（PG / Redis / Kafka / OpenSearch）
 - 多活最小集：`DE_REPLICA_MODE=standby` 拒写；优先 `DE_DATABASE_REPLICA_URL`（`make compose-up-replica` → `:5433`）
 
 ---
@@ -251,9 +230,7 @@ sequenceDiagram
 ```text
 backend/
 ├── cmd/                       # 进程入口
-│   ├── qzda-app/                # monolith 主进程（默认）
-│   ├── qzda-sys/ · qzda-collab/ · qzda-cap/
-│   ├── qzda-workflow/ · qzda-policy/ · qzda-audit/
+│   ├── qzda-app/                # monolith 主进程（默认，唯一部署入口）
 │   └── qzda-local-llm/          # 本地模型辅助
 ├── builtin/                   # 出厂包（冷启动 EnsureBuiltin*）
 │   ├── knowledge/office/      # kp.office.* 办公开箱知识
@@ -271,14 +248,12 @@ backend/
 │   └── feishu/ · wecom/ · dingtalk/ · weixin/
 ├── api/                       # routes.md · proto · 契约说明
 ├── services/                  # 一部署单元一目录
-│   ├── qzda-app/ · qzda-sys/ · qzda-collab/ · qzda-cap/
-│   ├── qzda-gateway/ · qzda-workflow/
-│   ├── qzda-sandbox/ · qzda-agent-runtime/ · qzda-rag/
-│   └── qzda-policy/ · qzda-audit/
+│   ├── qzda-app/              # monolith Dockerfile
+│   ├── qzda-gateway/          # Envoy 配置
+│   └── qzda-sandbox/ · qzda-agent-runtime/ · qzda-rag/
 ├── deploy/                    # compose · envoy · migrations · topology-split
 ├── infra/ · obs/              # 基础依赖与可观测
 ├── libs/ · pkg/ · gen/        # hexkit 等与 buf 生成代码
-├── runtimes/                  # 测试辅助（非部署入口）
 ├── scripts/                   # purge-demo-seed-ids.sql 等
 ├── bin/                       # make build 产物（LaunchAgent 读取）
 ├── buf.yaml · buf.gen.yaml
@@ -344,25 +319,19 @@ launchctl kickstart -k "gui/$(id -u)/com.qizhida.dev-stack"
 |------|------|
 | `make compose-up` | 仅 PG + Redis |
 | `make compose-up-monolith` / `make run` | **主路径** |
-| `make compose-up-monolith-workflow` | monolith + workflow |
-| `make compose-up-coarse` | 四进程 coarse |
-| `make compose-up-staging` | coarse + Dex + OPA + OpenSearch + obs |
+| `make compose-up-monolith-workflow` | monolith + 启用进程内 Temporal worker |
+| `make compose-up-staging` | monolith + Dex + OPA + OpenSearch + obs |
 | `make compose-up-replica` | 本机从库 `:5433` |
 | `make infra-env` | 校验 / 拉起 Docker Postgres 16 |
 
 单进程调试：
 
 ```bash
-make run-app       # :8100 monolith · DE_ENV=development
-make run-demo      # 内存 ACME seed，不写 PG
-make run-dev       # infra-env + run-app
-make run-sys       # :8100 sys only
-make run-collab    # :8101
-make run-cap       # :8102
-make run-workflow  # :8103
-make run-policy    # :8104
-make run-audit     # :8105
-make skill         # :8093 沙箱
+make run-app              # :8100 monolith · DE_ENV=development
+make run-app-workflow     # :8100 monolith + 进程内 Temporal worker
+make run-demo             # 内存 ACME seed，不写 PG
+make run-dev              # infra-env + run-app
+make skill                # :8093 沙箱
 ```
 
 网络：[`deploy/networks.md`](deploy/networks.md) · 拓扑：[`deploy/topology-split.md`](deploy/topology-split.md)。
@@ -438,23 +407,22 @@ psql "$DE_DATABASE_URL" -f scripts/purge-demo-seed-ids.sql
 | `DE_BAN_MOCK_TOKEN` / `DE_BAN_DEMO_TOKEN` | 禁止 mock token；**不**触发双人审批 |
 | `DE_ALLOW_DEMO_TOKEN` | `development` 下显式允许演示 token |
 | `DE_DATABASE_URL` / `DE_REDIS_URL` | PG / Redis |
-| `DE_SYS_ADDR` / `DE_COLLAB_ADDR` / `DE_CAP_ADDR` / `DE_WORKFLOW_ADDR` / `DE_POLICY_ADDR` / `DE_AUDIT_ADDR` | 监听 |
-| `DE_SERVICE` | `sys` / `collab` / `cap` / `workflow`；可选 `policy` / `audit` |
-| `DE_POLICY_URL` | collab/cap → 策略 evaluate；sys 留空用本地 Engine |
-| `DE_CROSSCUTTING_SPLIT` | `1` 时 qzda-sys 不再吸收 policy/audit |
+| `DE_APP_ADDR` / `DE_LISTEN_ADDR` | monolith 监听（默认 `:8100`） |
+| `DE_SERVICE` | 兼容字段，归 `app`；旧值（`sys` / `collab` / `cap` / `workflow`）也归 `app` |
 | `DE_DATABASE_REPLICA_URL` | standby 从库；本机 `compose-up-replica` → `:5433` |
 | `DE_AGENT_RUNTIME_URL` / `DE_RAG_URL` / `DE_SANDBOX_RUNTIME_URL` | 侧车 |
 | `DE_RUNTIME_MODE` | `local`（默认）或 `remote` |
 | `DE_RUNTIME_FAILOVER_LOCAL` | 非生产 remote 失败可回落 local |
 | `DE_SANDBOX_TEST_SIM` | 开发默认开；生产强制关 |
 | `DE_SANDBOX_RUN_SECRET` | RunToken HMAC |
-| `DE_TEMPORAL_HOST` | 非空则流程走 Temporal；生产/staging 默认 fail-closed |
+| `DE_TEMPORAL_HOST` | 非空则启用进程内 Temporal worker；生产/staging 默认 fail-closed |
+| `DE_WORKFLOW_WORKER` | `1` 启用 qzda-app 进程内 Temporal worker（需 `DE_TEMPORAL_HOST`） |
 | `DE_MODEL_BUDGET_ENFORCE` | 用量硬门禁；生产默认开 |
 | `DE_REPLICA_MODE` | `active`（默认）或 `standby` |
 | `DE_INSTANCE_ID` | 实例标识 |
 | `DE_EVAL_RECALL_MIN` / `DE_EVAL_SCORE_MIN` | 生产评测门禁 |
 | `DE_ENSURE_GENERAL` | `1` 时非 demo 也可补通用员工 |
-| `DE_WITH_WORKFLOW` / `DE_BUILTIN_WORKFLOWS_DIR` | 启 workflow / 覆盖流程包路径 |
+| `DE_BUILTIN_WORKFLOWS_DIR` | 覆盖流程包路径 |
 
 ---
 
@@ -462,7 +430,6 @@ psql "$DE_DATABASE_URL" -f scripts/purge-demo-seed-ids.sql
 
 ```bash
 make test && make test-python && make smoke-monolith
-# coarse：make smoke-coarse
 ```
 
 `make smoke-monolith` 经 `:8089` 探测 workspaces / skills / sessions / evaluate 等主路径。

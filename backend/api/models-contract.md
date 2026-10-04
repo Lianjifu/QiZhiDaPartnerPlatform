@@ -30,6 +30,6 @@
 - `:id` 动作必须 `workspaceId` 匹配（跨租户 → 404）
 - PATCH 白名单；禁止明文 credential 落库
 - test/discover/failover 限流 30/min/workspace
-- Probe SSRF：默认禁私网，`DE_MODEL_ALLOW_PRIVATE=1` 放行（设在 **qzda-cap**；本机 Ollama / 内网网关）
-- Copilot 真实调用：qzda-collab `POST .../stream` → `DE_CAP_URL` `/api/model-invoke/stream`（凭据仅 Cap 解析）
+- Probe SSRF：默认禁私网，`DE_MODEL_ALLOW_PRIVATE=1` 放行（monolith 默认在 qzda-app 内；本机 Ollama / 内网网关）
+- Copilot 真实调用：qzda-app 内 `POST .../stream` → `/api/model-invoke/stream`（凭据在同进程内解析）
 - 逃生舱：`DE_LLM_BASE_URL` + `DE_LLM_API_KEY` + `DE_LLM_MODEL`（OpenAI-compatible）

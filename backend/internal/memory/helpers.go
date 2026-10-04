@@ -144,9 +144,7 @@ func (s *Service) appendMemoryAuditLocked(ws, actor, action, target, result, cor
 // Called via `go s.persistMemory()` after successful mutations.
 func (s *Service) persistMemory() {
 	for _, coll := range []string{"memory_records", "memory_candidates", "memory_policies", "memory_audits"} {
-		if s.Store.CanWrite(coll) {
-			s.Store.Persist(coll)
-		}
+		s.Store.Persist(coll)
 	}
 }
 

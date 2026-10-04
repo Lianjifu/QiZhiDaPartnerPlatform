@@ -6,10 +6,8 @@ export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/Users/LIANJIFU/ops
 ROOT="/Users/LIANJIFU/ops/QiZhiDaPartnerPlatform"
 BACKEND="$ROOT/backend"
 FRONTEND="$ROOT/frontend"
-GATEWAY_COARSE="$ROOT/scripts/dev-stack/gateway-proxy.py"
-GATEWAY_MONOLITH="$ROOT/scripts/dev-stack/gateway-proxy-monolith.py"
+GATEWAY_MONOLITH="$BACKEND/services/qzda-gateway/main.py"
 LOGDIR="/tmp/qzda-stack"
-DE_STACK="${DE_STACK:-monolith}"
 mkdir -p "$LOGDIR"
 cd "$BACKEND" || exit 1
 
@@ -48,6 +46,16 @@ export PATH="$SKILL_BIN:$PATH"
 export DE_MODEL_CANDIDATE_TIMEOUT="${DE_MODEL_CANDIDATE_TIMEOUT:-45}"
 export DE_COPILOT_STREAM_TIMEOUT="${DE_COPILOT_STREAM_TIMEOUT:-300}"
 
+# 沙箱 HMAC 密钥:控制面与 qzda-sandbox 必须共用同一份(默认占位
+# "qzda-skill-run-dev" 在阶段 4 fail-closed 中被拒)。首次启动生成一次,
+# 后续复用同一文件,重启后 RunToken 仍可校验。
+SKILL_SECRET_FILE="$LOGDIR/skill-run-secret"
+if [ ! -s "$SKILL_SECRET_FILE" ]; then
+  umask 077
+  head -c 32 /dev/urandom | shasum -a 256 | awk '{print $1}' >"$SKILL_SECRET_FILE"
+fi
+export DE_SANDBOX_RUN_SECRET_FILE="$SKILL_SECRET_FILE"
+
 listening() { /usr/sbin/lsof -nP -iTCP:"$1" -sTCP:LISTEN >/dev/null 2>&1; }
 
 start_one() {
@@ -74,34 +82,24 @@ start_vite() {
   sleep 1
 }
 
-echo "$(date '+%F %T') keeper boot pid=$$ stack=$DE_STACK" >>"$LOGDIR/keeper.log"
-if [ ! -x "$BACKEND/bin/qzda-app" ] || [ ! -x "$BACKEND/bin/qzda-sys" ]; then
+echo "$(date '+%F %T') keeper boot pid=$$ stack=monolith" >>"$LOGDIR/keeper.log"
+if [ ! -x "$BACKEND/bin/qzda-app" ]; then
   echo "$(date '+%F %T') building backend binaries..." >>"$LOGDIR/keeper.log"
   (cd "$BACKEND" && make build) >>"$LOGDIR/keeper.log" 2>&1 || true
 fi
 while true; do
-  if [ "$DE_STACK" = "monolith" ]; then
-    unset DE_CAP_URL DE_COLLAB_URL DE_POLICY_URL 2>/dev/null || true
-    export DE_RUNTIME_MODE=local
-    export DE_SANDBOX_RUNTIME_URL="${DE_SANDBOX_RUNTIME_URL:-http://127.0.0.1:8093}"
-    export DE_WORKFLOW_URL="${DE_WORKFLOW_URL:-http://127.0.0.1:8103}"
-    start_one 8100 qzda-app env DE_RUNTIME_MODE=local DE_SANDBOX_RUNTIME_URL="$DE_SANDBOX_RUNTIME_URL" DE_WORKFLOW_URL="$DE_WORKFLOW_URL" DE_EMBEDDED_CHAT=0 DE_MODEL_CANDIDATE_TIMEOUT=45 DE_COPILOT_STREAM_TIMEOUT=300 DE_BUILTIN_SKILL_BIN="$SKILL_BIN" PATH="$SKILL_BIN:$PATH" "$BACKEND/bin/qzda-app"
-    start_one 8093 qzda-skill env DE_SANDBOX_REQUIRE_ISOLATION=0 DE_SANDBOX_ARTIFACT_DIR=/tmp/qzda-stack/artifacts DE_BIND_HOST=127.0.0.1 DE_BIND_PORT=8093 python3 "$BACKEND/services/qzda-sandbox/main.py"
-    if [ -n "${DE_WITH_WORKFLOW:-}" ]; then
-      start_one 8103 qzda-workflow env DE_WORKFLOW_WORKER=0 DE_WORKFLOW_URL=http://127.0.0.1:8103 "$BACKEND/bin/qzda-workflow"
-    fi
-    start_one 8089 qzda-gateway python3 "$GATEWAY_MONOLITH"
+  export DE_RUNTIME_MODE=local
+  export DE_SANDBOX_RUNTIME_URL="${DE_SANDBOX_RUNTIME_URL:-http://127.0.0.1:8093}"
+  workflow_env=()
+  if [ -n "${DE_WITH_WORKFLOW:-}" ]; then
+    workflow_env=(DE_WORKFLOW_WORKER=1 DE_TEMPORAL_HOST="${DE_TEMPORAL_HOST:-127.0.0.1:7233}")
   else
-    export DE_POLICY_URL='http://127.0.0.1:8100'
-    export DE_CAP_URL='http://127.0.0.1:8102'
-    start_one 8100 qzda-sys "$BACKEND/bin/qzda-sys"
-    start_one 8101 qzda-collab env DE_POLICY_URL=http://127.0.0.1:8100 DE_CAP_URL=http://127.0.0.1:8102 DE_EMBEDDED_CHAT=0 DE_MODEL_CANDIDATE_TIMEOUT=45 DE_COPILOT_STREAM_TIMEOUT=300 DE_BUILTIN_SKILL_BIN="$SKILL_BIN" PATH="$SKILL_BIN:$PATH" "$BACKEND/bin/qzda-collab"
-    start_one 8102 qzda-cap env DE_POLICY_URL=http://127.0.0.1:8100 DE_PUBLIC_BASE_URL=http://127.0.0.1:8089 DE_EMBEDDED_CHAT=0 DE_MODEL_CANDIDATE_TIMEOUT=45 DE_COPILOT_STREAM_TIMEOUT=300 DE_BUILTIN_SKILL_BIN="$SKILL_BIN" PATH="$SKILL_BIN:$PATH" "$BACKEND/bin/qzda-cap"
-    start_one 8103 qzda-workflow env DE_WORKFLOW_WORKER=0 "$BACKEND/bin/qzda-workflow"
-    start_one 8091 qzda-agent python3 -m uvicorn app.main:app --host 127.0.0.1 --port 8091 --app-dir "$BACKEND/services/qzda-agent-runtime"
-    start_one 8093 qzda-skill env DE_SANDBOX_REQUIRE_ISOLATION=0 DE_SANDBOX_ARTIFACT_DIR=/tmp/qzda-stack/artifacts DE_BIND_HOST=127.0.0.1 DE_BIND_PORT=8093 python3 "$BACKEND/services/qzda-sandbox/main.py"
-    start_one 8089 qzda-gateway python3 "$GATEWAY_COARSE"
+    workflow_env=(DE_WORKFLOW_WORKER=0)
   fi
+  start_one 8100 qzda-app env "${workflow_env[@]}" DE_RAG_URL=http://127.0.0.1:8092 DE_RUNTIME_MODE=local DE_SANDBOX_RUNTIME_URL="$DE_SANDBOX_RUNTIME_URL" DE_EMBEDDED_CHAT=0 DE_MODEL_CANDIDATE_TIMEOUT=45 DE_COPILOT_STREAM_TIMEOUT=300 DE_BUILTIN_SKILL_BIN="$SKILL_BIN" PATH="$SKILL_BIN:$PATH" "$BACKEND/bin/qzda-app"
+  start_one 8093 qzda-skill env DE_SANDBOX_REQUIRE_ISOLATION=0 DE_SANDBOX_ARTIFACT_DIR=/tmp/qzda-stack/artifacts DE_BIND_HOST=127.0.0.1 DE_BIND_PORT=8093 python3 "$BACKEND/services/qzda-sandbox/main.py"
+  start_one 8092 qzda-rag env DE_BIND_HOST=127.0.0.1 DE_BIND_PORT=8092 python3 "$BACKEND/services/qzda-rag/main.py"
+  start_one 8089 qzda-gateway python3 "$GATEWAY_MONOLITH"
   start_vite
   sleep 5
 done

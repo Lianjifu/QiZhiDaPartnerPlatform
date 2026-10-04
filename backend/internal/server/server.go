@@ -739,11 +739,9 @@ func (s *Server) Handler() http.Handler {
 		}
 		response.OK(w, status)
 	})
-	if mode == ModeAll || mode == ModeApp || mode == ModeSys || mode == ModeCollab || mode == ModeCap || mode == ModePolicy || mode == ModeAudit {
-		s.mountConnectRPCForMode(mux, mode)
+	if mode == ModeAll || mode == ModeApp {
+		s.mountConnectRPC(mux)
 		mux.HandleFunc("/connect/", s.handleConnect)
-	}
-	if mode == ModeAll || mode == ModeApp || mode == ModePolicy || (mode == ModeSys && sysAbsorbsCrosscutting()) {
 		mux.HandleFunc("/v1/evaluate", s.handleLocalPolicyEvaluate)
 	}
 	mux.HandleFunc("/metrics", s.metricsPrometheus)
@@ -754,14 +752,6 @@ func (s *Server) Handler() http.Handler {
 func (s *Server) route(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	method := r.Method
-	mode := s.Mode
-	if mode == "" {
-		mode = ModeAll
-	}
-	if !mode.OwnsPath(path) {
-		writeErr(w, apperr.NotFoundErr(apperr.NotFound, fmt.Sprintf("route owned by other unit: %s %s (this=%s)", method, path, mode.String())))
-		return
-	}
 	var (
 		data any
 		err  error
@@ -997,6 +987,15 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) {
 		data, err = s.patchSession(r)
 	case strings.HasPrefix(path, "/api/sessions/") && method == http.MethodDelete:
 		data, err = s.deleteSession(r)
+	case path == "/api/sessions/bulk-archive" && method == http.MethodPost:
+		s.bulkArchiveSessions(w, r)
+		return
+	case path == "/api/sessions/bulk-export" && method == http.MethodPost:
+		s.bulkExportSessions(w, r)
+		return
+	case path == "/api/sessions/bulk" && method == http.MethodDelete:
+		s.bulkDeleteSessions(w, r)
+		return
 	case strings.HasPrefix(path, "/api/conversations/") && method == http.MethodDelete && !strings.Contains(path, "/stream") && !strings.Contains(path, "/messages") && !strings.Contains(path, "/tasks") && !strings.Contains(path, "/attachments"):
 		data, err = s.deleteConversation(r)
 	case path == "/api/slash-commands" && method == http.MethodGet:
@@ -1032,6 +1031,12 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) {
 		return
 	case strings.HasPrefix(path, "/api/copilot/conversations/") && strings.Contains(path, "/messages/") && strings.HasSuffix(path, "/feedback") && method == http.MethodPost:
 		data, err = s.CopSvc.CopilotMessageFeedback(r)
+	case strings.HasPrefix(path, "/api/copilot/conversations/") && strings.Contains(path, "/messages/") && strings.HasSuffix(path, "/variants") && method == http.MethodGet:
+		s.listConversationVariants(w, r)
+		return
+	case strings.HasPrefix(path, "/api/copilot/conversations/") && strings.Contains(path, "/messages/") && strings.HasSuffix(path, "/branch-active") && method == http.MethodPost:
+		s.switchConversationVariant(w, r)
+		return
 	case strings.HasPrefix(path, "/api/actions/") && strings.HasSuffix(path, "/approve") && method == http.MethodPost:
 		data, err = s.approveAction(r)
 	case strings.HasPrefix(path, "/api/actions/") && strings.HasSuffix(path, "/reject") && method == http.MethodPost:
@@ -1314,12 +1319,6 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) {
 	case path == "/api/webhooks-config" && method == http.MethodGet:
 		data, err = s.settingsSvc.ListWebhooksConfig(r)
 
-	// Aliases absorbed from former qzda-policy / qzda-audit proxy surfaces
-	case path == "/api/governance" && method == http.MethodGet:
-		data, err = s.accessGovernance(r)
-	case (path == "/api/audit" || path == "/api/audits") && method == http.MethodGet:
-		data, err = s.auditCenter(r)
-
 	default:
 		if d, e, ok := s.alias(path, method, r); ok {
 			data, err = d, e
@@ -1402,12 +1401,6 @@ func (s *Server) alias(path, method string, r *http.Request) (any, error, bool) 
 		return v, err, true
 	case path == "/api/model/routes" && method == http.MethodGet:
 		v, err := s.modelSvc.ListModelRoutes(r)
-		return v, err, true
-	case path == "/api/channel/deployments" && method == http.MethodGet:
-		v, err := s.listChannelDeploys(r)
-		return v, err, true
-	case path == "/api/channels/list" && method == http.MethodGet:
-		v, err := s.listChannels(r)
 		return v, err, true
 	}
 	return nil, nil, false
@@ -1544,9 +1537,11 @@ func (s *Server) buildModelSvc() *models.Service {
 		}
 		return s.Cache.AllowRate(ctx, key, limit, window)
 	}
-	// IsCollabMode adapter: nil-safe wrapper around s.Mode so M08 can
-	// route the Cap-hop split without taking a hard dep on ServiceMode.
-	isCollab := func() bool { return s != nil && s.Mode == ModeCollab }
+	// IsCollabMode adapter: nil-safe wrapper around s.Mode. The Cap-hop
+	// split was retired when qzda-app absorbed qzda-cap, so this is
+	// effectively dead; kept as a bool closure to satisfy any M08
+	// consumers that still wire it.
+	isCollab := func() bool { return s != nil && s.Mode == ModeApp }
 	// AppendAudit adapter: s.Store.AppendAudit returns the audit entry
 	// map; the M08 Deps contract expects a void sink that just records
 	// the audit line. Wrapping drops the return value cleanly.
@@ -1780,8 +1775,8 @@ func (s *Server) buildWorkflowSvc() *workflows.Service {
 // EnsureBuiltinWorkflowsReady is a thin delegator over the M06 workflow
 // service's builtin pack loader. The M06 builtin_workflows.go + the
 // builtin loader moved to internal/workflows/ during the M06 P2 deep
-// move; the domain-aware apprun boot path still calls this method on
-// the freshly-built *Server (DomainWorkflow / DomainCap / DomainAll),
+// move; the single-monolith apprun boot path still calls this method on
+// the freshly-built *Server (DomainAll),
 // so we keep a public *Server entry point that closes over the
 // workflowSvc built in New().
 func (s *Server) EnsureBuiltinWorkflowsReady() {
@@ -1852,8 +1847,8 @@ func (s *Server) buildKnowledgeSvc() *knowledge.Service {
 }
 
 // EnsureBuiltinKnowledgeReady is a thin delegator over the M07
-// knowledge service's office builtin loader. The apprun boot path
-// (DomainKnowledge / DomainCap / DomainAll) still calls this method
+// knowledge service's office builtin loader. The single-monolith apprun
+// boot path (DomainAll) still calls this method
 // on the freshly-built *Server so the legacy call sites keep working
 // unchanged. Pattern mirrors EnsureBuiltinWorkflowsReady above.
 func (s *Server) EnsureBuiltinKnowledgeReady() {

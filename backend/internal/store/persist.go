@@ -2,7 +2,6 @@ package store
 
 import (
 	"context"
-	"fmt"
 	"log"
 )
 
@@ -137,9 +136,6 @@ func normalizeDeleteIDs(ids []string) []string {
 
 // PersistCollection snapshots a collection asynchronously (caller should hold Lock or own slice).
 func (s *Store) PersistCollection(collection string, items []map[string]any) {
-	if !s.CanWrite(collection) {
-		panic(fmt.Sprintf("store write-guard: domain %s cannot persist %s", s.WriteDomain(), collection))
-	}
 	if s.persistHook == nil {
 		return
 	}
@@ -154,9 +150,6 @@ func (s *Store) PersistCollection(collection string, items []map[string]any) {
 
 // Persist snapshots a named durable collection (safe to call without holding Lock).
 func (s *Store) Persist(collection string) {
-	if !s.CanWrite(collection) {
-		panic(fmt.Sprintf("store write-guard: domain %s cannot persist %s", s.WriteDomain(), collection))
-	}
 	s.RLock()
 	items := s.snapshotLocked(collection)
 	s.RUnlock()
@@ -168,9 +161,6 @@ func (s *Store) Persist(collection string) {
 
 // PersistSync writes a collection through persistHook and waits (Replay / kernel tables).
 func (s *Store) PersistSync(collection string) error {
-	if !s.CanWrite(collection) {
-		panic(fmt.Sprintf("store write-guard: domain %s cannot persist %s", s.WriteDomain(), collection))
-	}
 	if s.persistHook == nil {
 		return nil
 	}
@@ -390,9 +380,6 @@ func (s *Store) PersistNow(ctx context.Context) error {
 	s.RLock()
 	defer s.RUnlock()
 	for _, name := range CollectionsForDomain(s.writeDomain) {
-		if !s.CanWrite(name) {
-			continue
-		}
 		items := s.snapshotLocked(name)
 		if items == nil {
 			continue

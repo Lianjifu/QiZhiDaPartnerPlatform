@@ -189,12 +189,6 @@ func (s *Server) createChannel(r *http.Request) (any, error) {
 	return item, nil
 }
 
-func (s *Server) listChannelDeploys(r *http.Request) (any, error) {
-	s.Store.RLock()
-	defer s.Store.RUnlock()
-	return s.Store.ChannelDeploys, nil
-}
-
 func (s *Server) channelOutbound(r *http.Request) (any, error) {
 	id := identityFrom(r.Context())
 	if !auth.Has(id, "channel.write") {

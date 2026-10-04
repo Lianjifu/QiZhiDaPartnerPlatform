@@ -25,7 +25,7 @@ func (s *Server) afterWriteLocked(collections ...string) {
 		return
 	}
 	for _, c := range collections {
-		if c == "" || !s.Store.CanWrite(c) {
+		if c == "" {
 			continue
 		}
 		items := s.Store.SnapshotUnderLock(c)

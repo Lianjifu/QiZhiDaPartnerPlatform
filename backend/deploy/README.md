@@ -40,8 +40,7 @@ Schema 初始化：`deploy/migrations/*.sql` 挂载到 Postgres 的 `/docker-ent
 ```bash
 export DE_DATABASE_URL=postgres://de:de@127.0.0.1:5432/digital_employee?sslmode=disable
 export DE_REDIS_URL=redis://127.0.0.1:6379/0
-make run                 # monolith（方案 A 默认）
-# 或 make compose-up-coarse  # 四进程 coarse
+make run                 # monolith（默认）
 ```
 
 `GET /readyz` 会报告 `postgres` / `redis` 连通性。
@@ -52,9 +51,8 @@ make run                 # monolith（方案 A 默认）
 
 ```bash
 make compose-up-full       # + Vault(:8200) + Envoy(:8088)
-make compose-up-monolith   # ★ 主路径（方案 A）：qzda-app + qzda-skill + gateway:8089
-make compose-up-monolith-workflow  # monolith + qzda-workflow:8103
-make compose-up-coarse     # 四进程 coarse：sys/collab/cap/workflow + FastAPI + gateway:8089
+make compose-up-monolith   # ★ 主路径：qzda-app + qzda-sandbox + gateway:8089
+make compose-up-monolith-workflow  # monolith + 进程内 Temporal worker（DE_WORKFLOW_WORKER=1）
 make compose-up-temporal   # + Temporal(:7233)
 make compose-up-oidc       # + Dex OIDC(:5556)
 make compose-up-authentik  # + Authentik(:9000)
@@ -65,7 +63,7 @@ make compose-up-milvus     # + Milvus
 make compose-up-opa        # + OPA(:8181)
 make compose-up-search     # + OpenSearch(:9200)
 make compose-up-obs        # + Prometheus(:9090) + Grafana(:3000)
-make compose-up-staging    # coarse + oidc + opa + search + obs
+make compose-up-staging    # monolith + oidc + opa + search + obs
 ```
 
 | 变量 | 说明 |
@@ -73,12 +71,12 @@ make compose-up-staging    # coarse + oidc + opa + search + obs
 | `DE_OIDC_ISSUER=http://127.0.0.1:5556/dex` 等 | Dex：历史 `CLIENT_ID=qzda-core`（可用 `qzda-platform`）；`SECRET=qzda-core-secret`；账号 `admin@acme.com` / `password` |
 | Authentik issuer | `http://127.0.0.1:9000/application/o/de/`（discovery 自动解析端点） |
 | `DE_VAULT_ADDR` / `DE_VAULT_TOKEN` | KV v2 Put/Resolve；供应商 test 会 Resolve `credentialRef` |
-| `DE_TEMPORAL_HOST` | Temporal SDK 提交试运行；需 `make worker` |
+| `DE_TEMPORAL_HOST` | Temporal SDK 提交试运行；需 `DE_WORKFLOW_WORKER=1` 由 qzda-app 启动进程内 Temporal worker |
+| `DE_WORKFLOW_WORKER` | `1` 启用 qzda-app 进程内 Temporal worker（需 `DE_TEMPORAL_HOST`） |
 | `DE_KAFKA_BROKERS=127.0.0.1:19092` | 审计双写 Kafka topic `de.audit.v1`（仍写 Redis Stream） |
 | `DE_MILVUS_URI=http://127.0.0.1:19530` | Docker Milvus（`make compose-up-milvus`）；未设置则 RAG 用内存向量 |
 | `DE_OPA_URL=http://127.0.0.1:8181` | 远程 OPA evaluate；失败回退内嵌 baseline |
 | `DE_OPENSEARCH_URL=http://127.0.0.1:9200` | 审计写入/查询 OpenSearch |
-| `DE_POLICY_URL=http://127.0.0.1:8100` | collab/cap 调 qzda-sys `/v1/evaluate`；sys 留空；切开后可改 `:8104` |
 | `DE_SANDBOX_RUN_SECRET` | 控制面与 qzda-sandbox 共享的 RunToken HMAC 密钥 |
 | `DE_ENV` | `demo` \| `development`（默认）\| `staging` \| `production`；见 [环境与数据模式](../../docs/环境与数据模式.md) |
 | `DE_BAN_MOCK_TOKEN=1` | 仅禁用 `mock-*-token`，**不**触发双人审批 |
@@ -87,7 +85,7 @@ make compose-up-staging    # coarse + oidc + opa + search + obs
 ### Staging（硬化预发）
 
 ```bash
-make compose-up-staging   # coarse + Dex + OPA + OpenSearch + obs
+make compose-up-staging   # monolith + Dex + OPA + OpenSearch + obs
 # 默认加载 deploy/.env.staging：BAN_MOCK=1 FORCE_OIDC=1
 ```
 
@@ -95,7 +93,7 @@ make compose-up-staging   # coarse + Dex + OPA + OpenSearch + obs
 
 ```bash
 make compose-up-authentik   # :9000，见 deploy/authentik/README.md
-make compose-up-obs         # Prometheus :9090，Grafana :3000（抓取 :8100–8103/metrics）
+make compose-up-obs         # Prometheus :9090，Grafana :3000（抓取 :8100/metrics + :8093/metrics）
 ```
 
 ### SPIFFE / 沙箱
@@ -126,17 +124,11 @@ make rag   # :8092，healthz 中 backend=milvus
 
 ```bash
 make compose-up-monolith
-# gateway:8089  qzda-app:8100  qzda-skill:8093
-# 可选：make compose-up-monolith-workflow
+# gateway:8089  qzda-app:8100  qzda-sandbox:8093
+# 可选：make compose-up-monolith-workflow   # 进程内 Temporal worker
 ```
 
-**Coarse 四进程（profile `coarse`）**
-
-```bash
-make compose-up-coarse
-# gateway:8089  sys:8100  collab:8101  cap:8102  workflow:8103
-# FastAPI: 8091 / 8092 / 8093
-```
+> Coarse 四进程 / qzda-sys / qzda-collab / qzda-cap / qzda-workflow 已在 M10 折叠到 qzda-app。`compose-up-coarse` 不再可用。
 
 生产/预发：`DE_ENV=staging|production`（双人审批 + Vault 门禁）；另设 `DE_BAN_MOCK_TOKEN=1` 或 `DE_FORCE_OIDC=1`。
 本机联调默认 `DE_ENV=development`（持久化、空库不灌演示 seed；硬删须 PersistDelete）。演示内存：`DE_ENV=demo` / `make run-demo`。

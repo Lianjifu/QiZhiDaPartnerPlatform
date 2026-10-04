@@ -17,7 +17,7 @@ BACKEND="/Users/LIANJIFU/ops/QiZhiDaPartnerPlatform/backend"
 
 probe() {
   echo "=== procs ==="
-  ps aux | grep -E "qzda-app|vite|gateway-proxy-monolith" | grep -v grep | awk '{printf "  %-7s %s\n", $2, substr($0, index($0,$11))}' | head -10
+  ps aux | grep -E "qzda-app|vite|qzda-gateway/main" | grep -v grep | awk '{printf "  %-7s %s\n", $2, substr($0, index($0,$11))}' | head -10
   echo "=== ports ==="
   for p in "${PORTS[@]}"; do
     code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 1 "http://127.0.0.1:${p}/healthz" 2>/dev/null)

@@ -156,10 +156,6 @@ func lastSSEAssistantText(body string) string {
 	return strings.TrimSpace(full.String())
 }
 
-func (s *Server) ownsCollabRuntime() bool {
-	return s == nil || s.Mode == "" || unifiedMode(s.Mode) || s.Mode == ModeCollab
-}
+func (s *Server) ownsCollabRuntime() bool { return true }
 
-func (s *Server) ownsCapRuntime() bool {
-	return s == nil || s.Mode == "" || unifiedMode(s.Mode) || s.Mode == ModeCap
-}
+func (s *Server) ownsCapRuntime() bool { return true }

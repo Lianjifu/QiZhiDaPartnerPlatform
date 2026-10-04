@@ -227,15 +227,11 @@ func (s *Server) deleteSession(r *http.Request) (any, error) {
 	s.Store.Persist("sessions")
 	s.Store.Persist("conversations")
 	s.Store.Persist("messages")
-	if s.Store.CanWrite("memory_records") {
-		s.Store.Persist("memory_records")
-		if len(memDeleted) > 0 {
-			if err := s.Store.PersistDeleteSync("memory_records", memDeleted...); err != nil {
-				log.Printf("persist-delete memory_records: %v", err)
-			}
+	s.Store.Persist("memory_records")
+	if len(memDeleted) > 0 {
+		if err := s.Store.PersistDeleteSync("memory_records", memDeleted...); err != nil {
+			log.Printf("persist-delete memory_records: %v", err)
 		}
-	} else if convID != "" {
-		go s.delegatePurgeConversationMemory(r, sessWS, convID)
 	}
 	if err := s.Store.PersistDeleteSync("sessions", sessID); err != nil {
 		log.Printf("persist-delete sessions %s: %v", sessID, err)
@@ -376,15 +372,11 @@ func (s *Server) deleteConversation(r *http.Request) (any, error) {
 	s.Store.Persist("conversations")
 	s.Store.Persist("messages")
 	s.Store.Persist("sessions")
-	if s.Store.CanWrite("memory_records") {
-		s.Store.Persist("memory_records")
-		if len(memDeleted) > 0 {
-			if err := s.Store.PersistDeleteSync("memory_records", memDeleted...); err != nil {
-				log.Printf("persist-delete memory_records: %v", err)
-			}
+	s.Store.Persist("memory_records")
+	if len(memDeleted) > 0 {
+		if err := s.Store.PersistDeleteSync("memory_records", memDeleted...); err != nil {
+			log.Printf("persist-delete memory_records: %v", err)
 		}
-	} else {
-		go s.delegatePurgeConversationMemory(r, foundWS, cid)
 	}
 	if err := s.Store.PersistDeleteSync("conversations", cid); err != nil {
 		log.Printf("persist-delete conversations %s: %v", cid, err)

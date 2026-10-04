@@ -2,23 +2,21 @@
 
 ## Compose profile 选择
 
-qzda-sandbox 必须**独立部署**,但能在 monolith 与 coarse 两套 profile 下工作:
+qzda-sandbox 必须**独立部署**（不能并入 qzda-app）。M10 后控制面只有 `qzda-app` 单进程，沙箱与 qzda-app 共 docker-compose，由 `qzda-app` 调用。
 
 | Profile | 部署 | Network |
 |---|---|---|
-| monolith | `qzda-sandbox` 与 `qzda-app` 共 docker-compose,8093 ↔ 8100 内部互联 | `qzda_exec_net` 双挂 |
-| coarse | `qzda-sandbox` 独立 service,qzda-collab(8101)/qzda-cap(8102) 双挂到 `qzda_exec_net` | 同上 |
+| monolith（当前默认，唯一形态） | `qzda-sandbox` 与 `qzda-app` 共 docker-compose,8093 ↔ 8100 内部互联 | `qzda_exec_net` 双挂 |
 
 启动:
 
 ```bash
 cd backend
-make compose-up-monolith    # monolith 默认(快速联调)
-make compose-up-coarse      # 四进程 coarse(prod-like)
+make compose-up-monolith    # 默认(快速联调)
 ```
 
 详细规则与不能并入 qzda-app 的原因见
-[`backend/deploy/topology-split.md`](../../../deploy/topology-split.md)(line 11、37)。
+[`backend/deploy/topology-split.md`](../../../deploy/topology-split.md)(line 11)。
 
 ## 资源配额(Compose + cgroup 双层)
 
@@ -138,8 +136,9 @@ docker run --rm -p 8093:8093 -v $PWD/backend/secrets/skill-run-secret:/etc/qzda/
 ## 已知 follow-up(PR4 范围)
 
 - `MIGRATION-de-to-qzda.md` 内容陈旧但仍有 4 处 live 引用 — 需协同更新
-- `backend-contract.yml:75` 检查 `deploy/qzda-sandbox/seccomp.json`,但实际只在
-  `deploy/qzda-skill-runtime/seccomp.json` — workflow path drift
+- ~~`backend-contract.yml:75` 检查 `deploy/qzda-sandbox/seccomp.json`,但实际只在
+  `deploy/qzda-skill-runtime/seccomp.json` — workflow path drift~~ → 已解决
+  (2026-10-04 迁至 `deploy/qzda-sandbox/`)
 - `docs/后端微服务重构方案.md:162` 写 `/v1/skills/execute`,实际是 `/v1/execute`
 - Go fallback 路径(`internal/server/skill_artifacts.go` 等 5 处陈旧绝对路径)待清理
 

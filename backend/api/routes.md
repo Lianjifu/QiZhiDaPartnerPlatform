@@ -19,9 +19,9 @@
 
 | Method | Path |
 |--------|------|
-| GET/POST | `/api/digital-employees` |
-| GET | `/api/digital-employees/overview` |
-| POST | `/api/digital-employees/:id/{lifecycle,release,evaluate,configuration,…}` |
+| GET/POST | `/api/partners` |
+| GET | `/api/partners/overview` |
+| POST | `/api/partners/:id/{lifecycle,release,evaluate,configuration,…}` |
 | GET/POST | `/api/tasks`、`/api/tasks/:id/transition` |
 
 ## 模型 / 渠道（Mock 命名）
@@ -56,8 +56,11 @@
 | GET/POST | `/api/conversations`、`/api/conversations/:id`、`…/stream`、`…/tasks`、`…/messages` |
 | GET/POST | `/api/copilot/conversations`、`/api/copilot/conversations/:id`、`…/messages`、`…/stream`（SSE；Connect：`/connect/de.collab.v1.CollabService/*`） |
 | POST | `/api/copilot/conversations/:id/messages/:mid/feedback`（点赞/点踩 → 自进化候选） |
+| GET/POST | `/api/copilot/conversations/:id/messages/:mid/variants`（多分支枚举）、`/branch-active`（切换活跃变体） |
+| POST | `/api/sessions/bulk-archive`、`/api/sessions/bulk-export`（json/md） |
+| DELETE | `/api/sessions/bulk`（硬删会话与消息） |
 | POST | `/api/actions/:id/approve`、`/api/actions/:id/execute`（双重审批 / 受控执行） |
-| POST | `/api/model-invoke`、`/api/model-invoke/stream`（qzda-cap：按供应商凭据真实 LLM；Copilot SSE 经此调用） |
+| POST | `/api/model-invoke`、`/api/model-invoke/stream`（按供应商凭据真实 LLM；Copilot SSE 经此调用） |
 
 ### Copilot SSE 事件（节选）
 

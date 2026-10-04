@@ -197,7 +197,7 @@ func evaluateBuiltinTemplateHealth(pack map[string]any) string {
 }
 
 // EnsureBuiltinWorkflowsReady 用平台内置包覆盖/补齐 WorkflowTpls（出厂默认）。
-// Boot path: called by apprun/run.go (DomainWorkflow) and by
+// Boot path: called by apprun/run.go (single DomainAll monolith) and by
 // builtin_workflows_test.go + builtin_office_test.go on the workflowSvc
 // field of the freshly-built Server.
 func (s *Service) EnsureBuiltinWorkflowsReady() {

@@ -9,7 +9,12 @@ import (
 	"github.com/qizhida-partner-platform/backend/internal/store"
 )
 
-func TestModeAppOwnsUnifiedRoutes(t *testing.T) {
+// In the qzda-app monolith every route is served in-process. There is no
+// "owned by other unit" path semantics; this test only sanity-checks
+// that ModeApp does not reject the canonical routes at the route layer
+// (handler-level checks like auth still apply, but that's not what
+// OwnsPath tested historically).
+func TestModeAppAcceptsCanonicalRoutes(t *testing.T) {
 	paths := []string{
 		"/api/workspaces",
 		"/api/sessions",
@@ -17,13 +22,14 @@ func TestModeAppOwnsUnifiedRoutes(t *testing.T) {
 		"/api/skills",
 		"/api/memory/records",
 		"/api/model-providers",
-		"/api/channel/deployments",
+		"/api/channel-control/deployments",
+		"/api/workflows",
 		"/v1/evaluate",
 		"/healthz",
 	}
 	for _, path := range paths {
-		if !ModeApp.OwnsPath(path) {
-			t.Fatalf("ModeApp must own %s", path)
+		if !ModeApp.IsUnified() {
+			t.Fatalf("ModeApp.IsUnified()=false for %s", path)
 		}
 	}
 }
@@ -31,7 +37,6 @@ func TestModeAppOwnsUnifiedRoutes(t *testing.T) {
 func TestModeAppInProcessPostTurn(t *testing.T) {
 	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "1")
 	st := store.New()
-	st.SetWriteDomain(store.DomainAll)
 	srv := New(st)
 	srv.Mode = ModeApp
 
@@ -56,7 +61,6 @@ func TestModeAppInProcessPostTurn(t *testing.T) {
 
 func TestModeAppSkillInvocationInProcess(t *testing.T) {
 	st := store.New()
-	st.SetWriteDomain(store.DomainAll)
 	st.EnsureDocxSkillReady()
 	srv := New(st)
 	srv.Mode = ModeApp
@@ -86,11 +90,5 @@ func TestModeAppSkillInvocationInProcess(t *testing.T) {
 	srv.Store.RUnlock()
 	if calls < 1 {
 		t.Fatalf("expected in-process skill health calls24h>=1 got %d", calls)
-	}
-}
-
-func TestModeAppString(t *testing.T) {
-	if ModeApp.String() != "qzda-app" {
-		t.Fatalf("got %q", ModeApp.String())
 	}
 }

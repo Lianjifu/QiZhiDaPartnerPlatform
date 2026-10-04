@@ -30,7 +30,7 @@ func requireSkillWrite(id *auth.Identity) error {
 }
 
 func (s *Server) persistSkills() {
-	if s.Store != nil && !s.Store.CanWrite("skills") {
+	if s.Store == nil {
 		return
 	}
 	s.Store.Persist("skills")
@@ -44,9 +44,7 @@ func (s *Server) persistSkillHealth() {
 		return
 	}
 	for _, coll := range []string{"skill_health", "skill_extra"} {
-		if s.Store.CanWrite(coll) {
-			s.Store.Persist(coll)
-		}
+		s.Store.Persist(coll)
 	}
 }
 
@@ -322,14 +320,10 @@ func (s *Server) recordSkillInvocationWithRequest(r *http.Request, ws string, sk
 	if skill == nil {
 		return
 	}
-	if s.ownsCapRuntime() || (s.Store != nil && s.Store.CanWrite("skill_health")) {
-		s.Store.Lock()
-		s.recordSkillInvocationLocked(ws, skill, durationMs, ok, actor, source)
-		s.Store.Unlock()
-		s.persistSkillHealth()
-		return
-	}
-	go s.delegateSkillInvocation(r, ws, skill, durationMs, ok, actor, source)
+	s.Store.Lock()
+	s.recordSkillInvocationLocked(ws, skill, durationMs, ok, actor, source)
+	s.Store.Unlock()
+	s.persistSkillHealth()
 }
 
 func defaultSkillTrendBuckets() []map[string]any {
@@ -1097,9 +1091,7 @@ func (s *Server) skillUninstall(r *http.Request, id *auth.Identity, ws, skillID 
 	go func() {
 		s.persistSkills()
 		s.persistSkillExtra()
-		if s.Store.CanWrite("employees") {
-			s.Store.Persist("employees")
-		}
+		s.Store.Persist("employees")
 	}()
 	s.durableDeleteSync("skills", skillID)
 	if len(healthDeleted) > 0 {

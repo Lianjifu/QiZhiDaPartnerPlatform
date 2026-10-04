@@ -16,7 +16,7 @@ make certs-rotate     # 叶子证书 TTL=1 天（保留 CA）
 |------|-----------|
 | Gateway | `spiffe://de.local/ns/default/sa/qzda-gateway` |
 | qzda-app（monolith） | `spiffe://de.local/ns/default/sa/qzda-app` |
-| qzda-sys / qzda-collab / qzda-cap（coarse） | `spiffe://de.local/ns/default/sa/<name>` |
+| qzda-sys / qzda-collab / qzda-cap（已折叠） | 历史身份，仅作 SPIFFE 兼容 ID |
 | qzda-platform / policy / audit / … | `spiffe://de.local/ns/default/sa/<name>` |
 
 ## Envoy 校验

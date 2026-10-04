@@ -11,17 +11,6 @@ scrape_configs:
     static_configs:
       - targets: ["host.docker.internal:8100"]
         labels: { service: qzda-app }
-  - job_name: qzda-coarse
-    metrics_path: /metrics
-    static_configs:
-      - targets: ["host.docker.internal:8100"]
-        labels: { service: qzda-sys }
-      - targets: ["host.docker.internal:8101"]
-        labels: { service: qzda-collab }
-      - targets: ["host.docker.internal:8102"]
-        labels: { service: qzda-cap }
-      - targets: ["host.docker.internal:8103"]
-        labels: { service: qzda-workflow }
   # 阶段 3:qzda-sandbox 在 docker 内部以 compose service name 直连,
   # 与 host.docker.internal 类外部入口隔离。隔离网络 qzda_exec_net 上 Prometheus
   # 也可达(由 deploy 网络拓扑保证)。

@@ -25,53 +25,38 @@ import (
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
-// mountConnectRPC registers buf-generated Connect handlers for unified modes.
+// mountConnectRPC registers buf-generated Connect handlers unconditionally.
+// The coarse-split mode gating (sys / collab / cap / workflow) was retired
+// when those four binaries collapsed into qzda-app.
 func (s *Server) mountConnectRPC(mux *http.ServeMux) {
-	mode := s.Mode
-	if mode == "" {
-		mode = ModeAll
-	}
-	s.mountConnectRPCForMode(mux, mode)
-}
+	// M07 ragConnect binding moved to internal/knowledge during the
+	// M07 P2 deep move. The buf-generated RagServiceHandler
+	// interface (qzda.rag.v1.RagService) is unchanged —
+	// knowledge.ragConnect (constructed via knowledge.NewConnect)
+	// satisfies it via knowledge.Service's methods (KnowledgeRetrieve,
+	// KnowledgeRetrieveConnect).
+	p, h := ragv1connect.NewRagServiceHandler(knowledge.NewConnect(s.knowledgeSvc))
+	mux.Handle(p, h)
+	p, h = runtimev1connect.NewRuntimeServiceHandler(&runtimeConnect{s})
+	mux.Handle(p, h)
 
-// mountConnectRPCForMode registers Connect handlers owned by this deployment unit.
-func (s *Server) mountConnectRPCForMode(mux *http.ServeMux, mode ServiceMode) {
-	all := mode.IsUnified()
-	if all || mode == ModeCap {
-		// M07 ragConnect binding moved to internal/knowledge during the
-		// M07 P2 deep move. The buf-generated RagServiceHandler
-		// interface (qzda.rag.v1.RagService) is unchanged —
-		// knowledge.ragConnect (constructed via knowledge.NewConnect)
-		// satisfies it via knowledge.Service's methods (KnowledgeRetrieve,
-		// KnowledgeRetrieveConnect).
-		p, h := ragv1connect.NewRagServiceHandler(knowledge.NewConnect(s.knowledgeSvc))
-		mux.Handle(p, h)
-		p, h = runtimev1connect.NewRuntimeServiceHandler(&runtimeConnect{s})
-		mux.Handle(p, h)
-	}
-	if all || mode == ModeCollab {
-		p, h := collabv1connect.NewCollabServiceHandler(&collabConnect{s})
-		mux.Handle(p, h)
-		// M05 partnerConnect binding moved to internal/partners during
-		// the M05 P2 deep move. The buf-generated PartnerServiceHandler
-		// interface (qzda.partner.v1.PartnerService) is unchanged —
-		// partners.partnerConnect satisfies it via partners.Service's
-		// Deps.ResolveActiveEmployee function field.
-		p, h = partnerv1connect.NewPartnerServiceHandler(partners.NewPartnerConnect(s.partnerSvc))
-		mux.Handle(p, h)
-	}
-	if all || mode == ModePolicy || (mode == ModeSys && sysAbsorbsCrosscutting()) {
-		p, h := policyv1connect.NewPolicyServiceHandler(&policyConnect{s})
-		mux.Handle(p, h)
-	}
-	if all || mode == ModeAudit || (mode == ModeSys && sysAbsorbsCrosscutting()) {
-		p, h := auditv1connect.NewAuditServiceHandler(&auditConnect{s})
-		mux.Handle(p, h)
-	}
-	if all || mode == ModeSys {
-		p, h := platformv1connect.NewPlatformServiceHandler(&platformConnect{s})
-		mux.Handle(p, h)
-	}
+	p, h = collabv1connect.NewCollabServiceHandler(&collabConnect{s})
+	mux.Handle(p, h)
+	// M05 partnerConnect binding moved to internal/partners during
+	// the M05 P2 deep move. The buf-generated PartnerServiceHandler
+	// interface (qzda.partner.v1.PartnerService) is unchanged —
+	// partners.partnerConnect satisfies it via partners.Service's
+	// Deps.ResolveActiveEmployee function field.
+	p, h = partnerv1connect.NewPartnerServiceHandler(partners.NewPartnerConnect(s.partnerSvc))
+	mux.Handle(p, h)
+
+	p, h = policyv1connect.NewPolicyServiceHandler(&policyConnect{s})
+	mux.Handle(p, h)
+	p, h = auditv1connect.NewAuditServiceHandler(&auditConnect{s})
+	mux.Handle(p, h)
+
+	p, h = platformv1connect.NewPlatformServiceHandler(&platformConnect{s})
+	mux.Handle(p, h)
 }
 
 type collabConnect struct{ s *Server }

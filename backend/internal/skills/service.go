@@ -32,7 +32,6 @@ type Deps struct {
 
 	// Mode / actor helpers used by execute + publish handlers.
 	ActorIsAdmin      func(id *auth.Identity) bool
-	OwnsCapRuntime    func() bool
 	ProductionLikeEnv func() bool
 
 	// Audit sink — used by every mutation.

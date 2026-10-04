@@ -281,13 +281,13 @@ flowchart TB
 ## 技术架构
 
 **控制面管可信与编排，执行面跑推理与工具，网关统一入口。**  
-本地 / SME 默认 **monolith**：`qzda-gateway:8089` → `qzda-app:8100` + `qzda-sandbox:8093`（可选 `qzda-workflow:8103`）。
+本地 / SME 默认 **monolith**：`qzda-gateway:8089` → `qzda-app:8100` + `qzda-sandbox:8093`（可选 agent / rag sidecar，按需启动进程内 Temporal worker）。
 
 | 文档 | 用途 |
 |------|------|
 | [`docs/数字伙伴平台-架构文档.md`](docs/数字伙伴平台-架构文档.md) | L0 / L1 / L2 产品与领域架构 |
 | [`docs/后端架构规划.md`](docs/后端架构规划.md) | 服务边界与演进阶段 |
-| [`backend/deploy/topology-split.md`](backend/deploy/topology-split.md) | monolith / coarse 切流 |
+| [`backend/deploy/topology-split.md`](backend/deploy/topology-split.md) | monolith 拓扑说明 |
 | [`docs/环境与数据模式.md`](docs/环境与数据模式.md) | `DE_ENV`、Persist、办公开箱冷启动 |
 
 ### 文档分层
@@ -302,17 +302,17 @@ flowchart TB
 
 | 原则 | 含义 |
 |------|------|
-| **粗粒度部署** | 默认 monolith（`ModeApp` / `DomainAll`）；coarse 四进程可对照规模化 |
+| **粗粒度部署** | 默认 monolith（`qzda-app` 单进程 + 可选 sidecar） |
 | **双栈分工** | Go：身份、策略、审计、资源编排；Python：Agent / RAG / Skill 沙箱 |
 | **网关统一入口** | 浏览器只认 `:8089`；Vite 开发态同源 `/api` 代理到网关 |
 | **工作区硬隔离** | 请求带 `x-workspace-id`；跨工作区引用拒绝 |
-| **执行面不混部** | sandbox 必须独立；agent / rag 按需或 coarse 才启 |
+| **执行面不混部** | sandbox 必须独立；agent / rag 按需 |
 | **能力只引用已发布** | 伙伴装配模型 / 知识 / 技能 / 渠道的已发布版本 |
 | **可观测默认开** | 各服务 `/metrics`（含 `service` label） |
 
 ### 部署架构图
 
-本机 / SME 默认 **Compose monolith**；规模化可切 coarse。浏览器只认网关 `:8089`。
+本机 / SME 默认 **Compose monolith**。浏览器只认网关 `:8089`。
 
 ```mermaid
 flowchart TB
@@ -324,12 +324,8 @@ flowchart TB
     GW["qzda-gateway :8089<br/>Envoy / gateway-proxy"]
   end
 
-  subgraph Control["控制面 · Go"]
-    APP["qzda-app :8100<br/>monolith：sys + collab + cap"]
-    SYS["qzda-sys :8100"]
-    COL["qzda-collab :8101"]
-    CAP["qzda-cap :8102"]
-    WF["qzda-workflow :8103<br/>可选"]
+  subgraph Control["控制面 · Go 单进程"]
+    APP["qzda-app :8100<br/>monolith：sys + collab + cap + workflow"]
   end
 
   subgraph Exec["执行面"]
@@ -348,31 +344,26 @@ flowchart TB
   end
 
   Browser -->|"同源 /api"| GW
-  GW -->|"默认 monolith"| APP
-  GW -->|"coarse"| SYS & COL & CAP & WF
+  GW --> APP
 
   APP --> SK
   APP -.-> AG & RAG
-  APP --> WF
-  CAP --> SK
-  COL -.-> AG
 
-  APP & SYS & COL & CAP --> PG
-  APP & SYS & COL & CAP --> RD
+  APP --> PG
+  APP --> RD
   APP & SK -.->|"/metrics"| PROM
 ```
 
 | 形态 | 组成 | 适用 |
 |------|------|------|
-| **monolith（默认）** | gateway + qzda-app + sandbox（± workflow） | 本地联调 / SME |
-| **coarse** | gateway + sys/collab/cap/workflow + skill（± agent/rag） | 规模化对照 |
-| **staging 拓扑** | coarse + Dex + OPA + OpenSearch + obs | 预发验收 |
+| **monolith（默认）** | gateway + qzda-app + sandbox（± agent / rag） | 本地联调 / SME / 单租户 |
+| **staging 拓扑** | monolith + Dex + OPA + OpenSearch + obs | 预发验收 |
 
 启动：`make compose-up-monolith` 或 LaunchAgent（`scripts/dev-stack/run-stack.sh`）。改 Go 后须 `make build` 再重启栈。细则见 [`backend/deploy/topology-split.md`](backend/deploy/topology-split.md)。
 
 ### 逻辑拓扑
 
-默认 **monolith**；规模化可切 **coarse** 四进程（同一网关入口）。
+默认 **monolith 单进程**；`qzda-app` 内含 sys / collab / cap / workflow 全部域逻辑，Temporal worker 作为可选进程内 goroutine。
 
 ```mermaid
 flowchart TB
@@ -380,41 +371,25 @@ flowchart TB
     FE["frontend/web<br/>React 18 · Vite · TanStack Query · Zustand"]
   end
 
-  GW["qzda-gateway :8089<br/>Envoy monolith / coarse · 或 dev proxy"]
+  GW["qzda-gateway :8089<br/>Envoy · 或 dev proxy"]
 
   FE -->|"HTTPS / SSE · 同源 /api"| GW
 
   subgraph Mono["monolith 默认"]
-    APP["qzda-app :8100<br/>sys + collab + cap"]
-  end
-
-  subgraph Coarse["coarse 四进程"]
-    SYS["qzda-sys :8100<br/>platform · ops · policy · audit"]
-    COL["qzda-collab :8101<br/>collab · employee"]
-    CAP["qzda-cap :8102<br/>model · knowledge · memory · skill · channel"]
-    WFc["qzda-workflow :8103<br/>可选"]
+    APP["qzda-app :8100<br/>sys + collab + cap + workflow<br/>可选 Temporal worker goroutine"]
   end
 
   SKILL["qzda-sandbox :8093<br/>技能沙箱 · 必须独立"]
-  WFm["qzda-workflow :8103<br/>流程 HTTP + Temporal · 可选"]
-  AI["qzda-agent / qzda-rag :8091–8092<br/>coarse 或按需<br/>monolith 默认进程内 Harness"]
+  AI["qzda-agent / qzda-rag :8091–8092<br/>按需"]
 
-  GW -->|"默认"| APP
-  GW -->|"规模化"| SYS
-  GW --> COL
-  GW --> CAP
-  GW --> WFc
-
+  GW --> APP
   APP --> SKILL
-  APP --> WFm
   APP -.-> AI
-  CAP --> SKILL
-  COL -.-> AI
 ```
 
 ### 数据流时序图
 
-专家协作发一条消息时的数据流（**monolith**；`qzda-app` 内含 sys / collab / cap 域逻辑）。高风险写操作可插入人工审核门禁后再执行工具。
+专家协作发一条消息时的数据流（**monolith**；`qzda-app` 单进程内含 sys / collab / cap / workflow 域逻辑）。高风险写操作可插入人工审核门禁后再执行工具。
 
 ```mermaid
 sequenceDiagram
@@ -425,7 +400,7 @@ sequenceDiagram
   participant PG as PostgreSQL / Redis
   participant LLM as 模型供应商
   participant SK as qzda-sandbox
-  participant WF as qzda-workflow
+  participant WF as Temporal worker<br/>(qzda-app 内)
   participant AUD as 审计 / 用量
 
   UI->>GW: HTTPS / SSE · /api · x-workspace-id
@@ -462,20 +437,18 @@ sequenceDiagram
   APP--)AUD: 异步 AuditEvent · UsageMeter
 ```
 
-coarse 模式下，上图 `qzda-app` 内域调用拆到 `qzda-collab` / `qzda-sys`(policy) / `qzda-cap`；网关仍统一入口 `:8089`。完整扇出见 [`docs/后端架构规划.md`](docs/后端架构规划.md) §3.3。
+完整扇出见 [`docs/后端架构规划.md`](docs/后端架构规划.md) §3.3。
 
 ### 部署单元
 
 | 单元 | 端口 | 说明 |
 |------|------|------|
 | **qzda-gateway** | 8089 | 统一 API 入口；健康检查 `/healthz` |
-| **qzda-app** | 8100 | **monolith 默认**：sys + collab + cap |
-| qzda-sys / qzda-collab / qzda-cap | 8100–8102 | coarse：地基 / 协作编排 / 能力五中心 |
-| qzda-workflow | 8103 | 工作流与流程技能发布（可选） |
+| **qzda-app** | 8100 | **monolith 默认**：sys + collab + cap + workflow，可选内嵌 Temporal worker |
 | **qzda-sandbox** | 8093 | 技能沙箱（必须独立） |
-| agent / rag | 8091–8092 | coarse 或按需 |
+| agent / rag | 8091–8092 | 按需（Python sidecar） |
 
-已退役：`qzda-core:8080`、细端口 `qzda-policy:8094` / `qzda-audit:8095`（能力由 qzda-app / qzda-sys 吸收）。
+已退役：`qzda-core:8080`、`qzda-sys:8100` / `qzda-collab:8101` / `qzda-cap:8102` / `qzda-workflow:8103`（能力已折叠到 `qzda-app`），细端口 `qzda-policy:8094` / `qzda-audit:8095`、独立 `qzda-policy:8104` / `qzda-audit:8105`（能力由 qzda-app 吸收）。
 
 ### 技术栈
 
@@ -507,8 +480,7 @@ qizhida-partner-platform/
 │   ├── web/                       # React 18 + Vite 应用（:5173）
 │   └── packages/                  # api · types · ui · utils · hooks
 ├── backend/                       # Go 控制面 + Python 执行面
-│   ├── cmd/                       # qzda-app（默认）· qzda-sys · qzda-collab · qzda-cap
-│   │                              # qzda-workflow · qzda-policy · qzda-audit · …
+│   ├── cmd/                       # qzda-app（默认唯一入口） · qzda-local-llm
 │   ├── builtin/                   # 出厂包（办公开箱）
 │   │   ├── knowledge/office/      # kp.office.* 知识包
 │   │   ├── skills/                # 岗位包 manifest（含 office autoInstall）
@@ -518,10 +490,9 @@ qizhida-partner-platform/
 │   ├── api/                       # routes.md · proto · 契约说明
 │   ├── services/                  # 部署单元：Dockerfile · SERVICE.md · FastAPI
 │   │                              # （qzda-app / qzda-sandbox / qzda-rag …）
-│   ├── deploy/                    # compose · envoy.monolith/coarse · topology-split
+│   ├── deploy/                    # compose · envoy.monolith · topology-split
 │   ├── infra/ · obs/              # 基础依赖与可观测
 │   ├── libs/ · pkg/ · gen/        # 共享库与生成代码
-│   ├── runtimes/                  # 测试辅助（非部署入口）
 │   ├── scripts/                   # purge-demo-seed 等运维脚本
 │   ├── bin/                       # make build 产物（LaunchAgent 读取）
 │   └── Makefile
@@ -584,18 +555,16 @@ bash scripts/dev-stack/ensure-docker-postgres.sh
 | 服务 | 端口 |
 |------|------|
 | qzda-gateway | **8089** |
-| qzda-app（monolith） | 8100 |
+| qzda-app（monolith，默认） | 8100 |
 | qzda-sandbox | 8093 |
 | Vite | 5173 |
-| qzda-workflow（可选） | 8103 |
-| coarse sys/collab/cap | 8100–8102 |
+| qzda-agent-runtime / qzda-rag（按需） | 8091 / 8092 |
 
 ### Compose
 
 ```bash
 cd backend
 make compose-up-monolith    # 推荐
-# make compose-up-coarse    # 四进程对照
 # make compose-up-staging   # 预发拓扑
 curl -sS http://127.0.0.1:8089/healthz
 ```
@@ -662,7 +631,7 @@ cd ../backend && make test && make test-python && make smoke-monolith
 | [`docs/环境与数据模式.md`](docs/环境与数据模式.md) | `DE_ENV`、Postgres、硬删除、岗位包、办公开箱 |
 | [`docs/数字伙伴平台-功能模块文档.md`](docs/数字伙伴平台-功能模块文档.md) | 模块 Tab / 路由 / 成熟度 |
 | [`docs/数字伙伴平台-架构文档.md`](docs/数字伙伴平台-架构文档.md) | L0 / L1 / L2 |
-| [`docs/后端架构规划.md`](docs/后端架构规划.md) · [`docs/后端微服务重构方案.md`](docs/后端微服务重构方案.md) | 后端演进 |
+| [`docs/后端架构规划.md`](docs/后端架构规划.md) · [`docs/后端单进程方案.md`](docs/后端单进程方案.md) | 后端演进 |
 | [`backend/deploy/topology-split.md`](backend/deploy/topology-split.md) | 部署拓扑 |
 | [`backend/README.md`](backend/README.md) | 控制面命令与 `builtin/` |
 | [`docs/视觉设计规范.md`](docs/视觉设计规范.md) | UI 规范 |
@@ -686,7 +655,7 @@ flowchart LR
 
 | 主题 | 内容 |
 |------|------|
-| **联调拓扑** | monolith 默认（qzda-app + skill + gateway）；coarse 可对照；Docker Postgres 16 |
+| **联调拓扑** | monolith 默认（qzda-app + skill + gateway）；Docker Postgres 16 |
 | **产品闭环** | 伙伴上岗 → 专家协作 / 任务 / 流程 → 运营 live-aggregate → 审计 |
 | **办公开箱** | 知识 × 技能 × 流程 + `de-office`；模板库「平台内置 / 个人创建」 |
 | **运行时** | 进程内 Harness；技能沙箱独立；流式 SSE；单人审核主路径 |

@@ -1,5 +1,6 @@
-// Package apprun boots a coarse-grained control-plane process
-// (qzda-sys / collab / cap / workflow, plus optional qzda-policy / qzda-audit).
+// Package apprun boots the qzda-app monolith process. The earlier coarse
+// split (qzda-sys / qzda-collab / qzda-cap / qzda-workflow) was retired;
+// policy + audit are absorbed as in-process handlers.
 package apprun
 
 import (
@@ -24,13 +25,10 @@ type Options struct {
 	Mode server.ServiceMode
 }
 
-// Run blocks serving HTTP for the given coarse-grained unit.
+// Run blocks serving HTTP for the qzda-app monolith.
 func Run(opts Options) error {
 	if opts.Mode == "" {
 		opts.Mode = server.ParseServiceMode(os.Getenv("DE_SERVICE"))
-	}
-	if opts.Mode == server.ModeAll && os.Getenv("DE_ALLOW_MODE_ALL") != "1" {
-		return fmt.Errorf("refusing ModeAll deployment (set DE_SERVICE=app for monolith or sys|collab|cap|workflow); use make compose-up-monolith or compose-up-coarse")
 	}
 	if opts.Addr == "" {
 		opts.Addr = env("DE_LISTEN_ADDR", ":8080")
@@ -40,42 +38,31 @@ func Run(opts Options) error {
 	log.Printf("runtimeenv DE_ENV=%s persist=%v seed=%v", rt, rt.PersistEnabled(), rt.AllowsSeed())
 
 	ctx := context.Background()
-	domain := store.DomainFromMode(opts.Mode.String())
 
 	if rt.IsDemo() {
-		return runDemo(ctx, opts, domain)
+		return runDemo(ctx, opts)
 	}
-	return runDurable(ctx, opts, domain, rt)
+	return runDurable(ctx, opts, rt)
 }
 
-func runDemo(ctx context.Context, opts Options, domain store.Domain) error {
+func runDemo(ctx context.Context, opts Options) error {
 	st := store.NewDemo()
-	st.SetWriteDomain(domain)
-	st.DropUnowned(domain)
-	if domain == store.DomainAll || domain == store.DomainCap {
-		st.EnsureDocxSkillReady()
-		server.New(st).EnsureBuiltinSkillsReady()
-		server.New(st).EnsureBuiltinKnowledgeReady()
-	}
-	if domain == store.DomainAll || domain == store.DomainCap || domain == store.DomainWorkflow {
-		server.New(st).EnsureBuiltinWorkflowsReady()
-	}
-	if domain == store.DomainAll || domain == store.DomainCollab {
-		st.EnsureGeneralEmployee()
-		st.EnsureOfficeEmployee()
-		st.EnsureEmployeesReplyModeDefaults()
-	}
+	st.EnsureDocxSkillReady()
+	server.New(st).EnsureBuiltinSkillsReady()
+	server.New(st).EnsureBuiltinKnowledgeReady()
+	server.New(st).EnsureBuiltinWorkflowsReady()
+	st.EnsureGeneralEmployee()
+	st.EnsureOfficeEmployee()
+	st.EnsureEmployeesReplyModeDefaults()
 	srv := server.New(st)
 	srv.Mode = opts.Mode
-	if opts.Mode == server.ModeCap || opts.Mode == server.ModeCollab || opts.Mode.IsUnified() {
-		srv.StartMemoryMaintenance()
-	}
+	srv.StartMemoryMaintenance()
 	httpServer := &http.Server{
 		Addr:              opts.Addr,
 		Handler:           srv.Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
-	log.Printf("%s listening on %s [mode=%s env=demo memory-only]", opts.Mode.String(), opts.Addr, opts.Mode)
+	log.Printf("qzda-app listening on %s [env=demo memory-only]", opts.Addr)
 	return serveWithGracefulShutdown(httpServer, srv)
 }
 
@@ -84,8 +71,7 @@ func runDemo(ctx context.Context, opts Options, domain store.Domain) error {
 // and srv.Shutdown with a 10s deadline so the heartbeat sweep / visualdiff
 // janitor / memory TTL goroutine exit cleanly instead of being SIGKILLed.
 //
-// Used by runDemo and runDurable. Other cmd entry points (qzda-audit /
-// qzda-policy / qzda-sys) manage their own lifecycle.
+// Used by runDemo and runDurable.
 func serveWithGracefulShutdown(httpServer *http.Server, srv *server.Server) error {
 	errCh := make(chan error, 1)
 	go func() { errCh <- httpServer.ListenAndServe() }()
@@ -113,7 +99,7 @@ func serveWithGracefulShutdown(httpServer *http.Server, srv *server.Server) erro
 	return nil
 }
 
-func runDurable(ctx context.Context, opts Options, domain store.Domain, rt runtimeenv.Mode) error {
+func runDurable(ctx context.Context, opts Options, rt runtimeenv.Mode) error {
 	pg, err := infra.OpenPostgres(ctx)
 	if err != nil {
 		return err
@@ -138,7 +124,6 @@ func runDurable(ctx context.Context, opts Options, domain store.Domain, rt runti
 	}
 
 	st := store.NewEmpty()
-	st.SetWriteDomain(domain)
 	auditSink := &infra.AuditSink{Pool: pg}
 	auditBus := infra.NewAuditBus(rdb)
 	kafkaBus := infra.NewKafkaAuditBusFromEnv()
@@ -202,7 +187,7 @@ func runDurable(ctx context.Context, opts Options, domain store.Domain, rt runti
 	}
 
 	hydrated := 0
-	for _, coll := range store.CollectionsForDomain(domain) {
+	for _, coll := range store.CollectionsForDomain(store.DomainAll) {
 		var items []map[string]any
 		if kernel.Owns(coll) {
 			rows, err := kernel.List(ctx, coll)
@@ -236,38 +221,31 @@ func runDurable(ctx context.Context, opts Options, domain store.Domain, rt runti
 		}
 	}
 	if hydrated > 0 {
-		log.Printf("hydrated %d durable collections from postgres [domain=%s env=%s]", hydrated, domain, rt)
+		log.Printf("hydrated %d durable collections from postgres [env=%s]", hydrated, rt)
 	} else {
-		log.Printf("empty durable store [domain=%s env=%s] — no demonstration seed will be written", domain, rt)
+		log.Printf("empty durable store [env=%s] — no demonstration seed will be written", rt)
 	}
 	// Intentionally NO PersistNow(seed) on empty DB — that polluted production with ACME demo data.
 
-	st.DropUnowned(domain)
-	if domain == store.DomainAll || domain == store.DomainSys {
-		if st.EnsureDefaultWorkspace() {
-			log.Printf("ensured default workspace %s (empty durable store shell)", store.DefaultWorkspaceID)
-			if rt.PersistEnabled() && st.CanWrite("workspaces") {
-				st.Persist("workspaces")
-			}
-		}
-		st.RebuildWorkspaceAccessGrants()
-	}
-	if domain == store.DomainAll || domain == store.DomainCap {
-		st.EnsureDocxSkillReady()
-		server.New(st).EnsureBuiltinSkillsReady()
-		server.New(st).EnsureBuiltinKnowledgeReady()
-		if rt.PersistEnabled() && st.CanWrite("skills") {
-			st.Persist("skills")
+	if st.EnsureDefaultWorkspace() {
+		log.Printf("ensured default workspace %s (empty durable store shell)", store.DefaultWorkspaceID)
+		if rt.PersistEnabled() {
+			st.Persist("workspaces")
 		}
 	}
-	if domain == store.DomainAll || domain == store.DomainCap || domain == store.DomainWorkflow {
-		server.New(st).EnsureBuiltinWorkflowsReady()
+	st.RebuildWorkspaceAccessGrants()
+	st.EnsureDocxSkillReady()
+	server.New(st).EnsureBuiltinSkillsReady()
+	server.New(st).EnsureBuiltinKnowledgeReady()
+	if rt.PersistEnabled() {
+		st.Persist("skills")
 	}
-	if (domain == store.DomainAll || domain == store.DomainCollab) && rt.EnsureGeneralEmployeeAllowed() {
+	server.New(st).EnsureBuiltinWorkflowsReady()
+	if rt.EnsureGeneralEmployeeAllowed() {
 		st.EnsureGeneralEmployee()
 		st.EnsureOfficeEmployee()
 		st.EnsureEmployeesReplyModeDefaults()
-		if rt.PersistEnabled() && st.CanWrite("employees") {
+		if rt.PersistEnabled() {
 			st.Persist("employees")
 		}
 	}
@@ -310,16 +288,14 @@ func runDurable(ctx context.Context, opts Options, domain store.Domain, rt runti
 		srv.RegisterCloseFunc(search.Close)
 	}
 	srv.Search = search
-	if opts.Mode == server.ModeCap || opts.Mode == server.ModeCollab || opts.Mode.IsUnified() {
-		srv.StartMemoryMaintenance()
-	}
+	srv.StartMemoryMaintenance()
 
 	httpServer := &http.Server{
 		Addr:              opts.Addr,
 		Handler:           srv.Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
-	log.Printf("%s listening on %s [mode=%s env=%s]", opts.Mode.String(), opts.Addr, opts.Mode, rt)
+	log.Printf("qzda-app listening on %s [env=%s]", opts.Addr, rt)
 	return serveWithGracefulShutdown(httpServer, srv)
 }
 

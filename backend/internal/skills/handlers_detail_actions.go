@@ -421,9 +421,7 @@ func (s *Service) skillUninstall(r *http.Request, id *auth.Identity, ws, skillID
 	go func() {
 		s.persistSkills()
 		s.persistSkillExtra()
-		if s.Store.CanWrite("employees") {
-			s.Store.Persist("employees")
-		}
+		s.Store.Persist("employees")
 	}()
 	s.DurableDeleteSync("skills", skillID)
 	if len(healthDeleted) > 0 {

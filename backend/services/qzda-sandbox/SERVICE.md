@@ -1,7 +1,7 @@
 # qzda-sandbox
 
-> Python 技能 / MCP 执行沙箱。`port 8093`,**必须独立部署**(monolith 与 coarse 都行,
-> 但不能并入 `qzda-app`)。见 [`backend/deploy/topology-split.md:11`](../../deploy/topology-split.md) 的
+> Python 技能 / MCP 执行沙箱。`port 8093`,**必须独立部署**(不能并入 `qzda-app`)。
+> 见 [`backend/deploy/topology-split.md:11`](../../deploy/topology-split.md) 的
 > 必须独立部署规则。
 
 ## 端点
@@ -46,8 +46,7 @@
 
 ## 网络
 
-- 拥有 `qzda_exec_net`(monolith 下 `qzda-app` 双挂;coarse 下 `qzda-collab` /
-  `qzda-cap` 双挂)。详见 [`backend/deploy/networks.md:6`](../../deploy/networks.md)。
+- 拥有 `qzda_exec_net`（`qzda-app` 双挂以调用）。详见 [`backend/deploy/networks.md:6`](../../deploy/networks.md)。
 - 容器内 `seccomp=unconfined`(gVisor 自己实现 syscall 拦截,重复套用会与 Sentry 冲突)。
 
 ## 现状
