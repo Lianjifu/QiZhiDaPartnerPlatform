@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./docs/images/brand/logo-wordmark.svg" alt="企智搭 · 数字伙伴平台" width="480" />
+</p>
+
 # 企智搭 · 数字伙伴平台 (QiZhiDa · PartnerPlatform)
 
 企业级 **数字伙伴** 编排与治理控制台：把大模型、企业知识、技能/工具与工作流，装配为可上岗的数字伙伴，在受控边界内完成协作、执行与审计。

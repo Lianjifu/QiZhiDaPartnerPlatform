@@ -190,8 +190,11 @@ export function AppLayout() {
         </button>
 
         <NavLink to="/home" className="flex items-center gap-3 text-[var(--text)] font-bold text-[17px]">
-          <div className="grid h-9 w-9 place-items-center rounded-md bg-gradient-to-br from-[var(--brand)] to-[var(--purple)] text-sm font-bold text-white shadow-[0_2px_8px_rgba(79,70,229,0.3)]">
-            DE
+          <div className="grid h-9 w-9 place-items-center rounded-md bg-gradient-to-br from-[var(--brand)] to-[var(--purple)] shadow-[0_2px_8px_rgba(79,70,229,0.3)]">
+            <svg viewBox="0 0 32 32" className="h-5 w-5" aria-hidden="true">
+              <circle cx="15" cy="14" r="6" fill="none" stroke="#fff" strokeWidth="2.6" />
+              <line x1="19.5" y1="18.5" x2="22.5" y2="21.5" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" />
+            </svg>
           </div>
           {!sidebarCollapsed && <span className="hidden sm:inline">{t('app.title')}</span>}
         </NavLink>

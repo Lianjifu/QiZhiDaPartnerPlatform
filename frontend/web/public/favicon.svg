@@ -1,1 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#3b82f6"/><path d="M9 22V10l7 8V10m0 12V18l7 4V10" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="企智搭">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4f46e5"/>
+      <stop offset="1" stop-color="#8b5cf6"/>
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="7" fill="url(#bg)"/>
+  <circle cx="15" cy="14" r="6" fill="none" stroke="#fff" stroke-width="2.6"/>
+  <line x1="19.5" y1="18.5" x2="22.5" y2="21.5" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/>
+</svg>
