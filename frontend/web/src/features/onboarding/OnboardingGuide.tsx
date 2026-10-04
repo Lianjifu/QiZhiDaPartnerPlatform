@@ -264,7 +264,12 @@ function PreviewNavigation({
   return (
     <aside className="hidden w-[112px] shrink-0 flex-col border-r border-[color-mix(in_srgb,var(--brand)_12%,transparent)] bg-white/80 p-2.5 lg:flex lg:w-[132px]">
       <div className="flex items-center gap-1.5 text-[10px] font-semibold text-[var(--brand)]">
-        <span className="grid h-6 w-6 place-items-center rounded-md bg-[var(--brand)] text-[9px] font-bold text-white">DE</span>
+        <span className="flex h-6 w-6 items-center justify-center">
+          <svg viewBox="0 0 32 32" className="h-6 w-6" aria-hidden="true">
+            <path d="M6 8 H14 V13 A2.5 2.5 0 0 1 14 19 V24 H6 Q4 24 4 22 V10 Q4 8 6 8 Z" fill="#4f46e5" />
+            <path d="M26 8 H18 V13 A2.5 2.5 0 0 1 18 19 V24 H26 Q28 24 28 22 V10 Q28 8 26 8 Z" fill="#8b5cf6" />
+          </svg>
+        </span>
         <span className="hidden lg:inline">Digital</span>
       </div>
       <div className="mt-4 space-y-2">

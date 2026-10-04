@@ -63,8 +63,11 @@ export default function LoginPage() {
 
           <div className="relative">
             <div className="mb-6 flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-md bg-white/15 backdrop-blur">
-                <Bot className="h-5 w-5" />
+              <div className="flex h-10 w-10 items-center justify-center">
+                <svg viewBox="0 0 32 32" className="h-10 w-10" aria-hidden="true">
+                  <path d="M6 8 H14 V13 A2.5 2.5 0 0 1 14 19 V24 H6 Q4 24 4 22 V10 Q4 8 6 8 Z" fill="#fff" />
+                  <path d="M26 8 H18 V13 A2.5 2.5 0 0 1 18 19 V24 H26 Q28 24 28 22 V10 Q28 8 26 8 Z" fill="#fff" opacity="0.8" />
+                </svg>
               </div>
               <div>
                 <div className="text-lg font-bold">企业可信企智搭 · 数字伙伴平台</div>
@@ -109,7 +112,12 @@ export default function LoginPage() {
         {/* 右侧表单 */}
         <form className="flex flex-col justify-center p-8 md:p-10" onSubmit={submit}>
           <div className="mb-1 flex items-center gap-2 md:hidden">
-            <div className="grid h-9 w-9 place-items-center rounded-md bg-gradient-to-br from-[var(--brand)] to-[var(--purple)] text-sm font-bold text-white">DE</div>
+            <div className="flex h-9 w-9 items-center justify-center">
+              <svg viewBox="0 0 32 32" className="h-9 w-9" aria-hidden="true">
+                <path d="M6 8 H14 V13 A2.5 2.5 0 0 1 14 19 V24 H6 Q4 24 4 22 V10 Q4 8 6 8 Z" fill="#4f46e5" />
+                <path d="M26 8 H18 V13 A2.5 2.5 0 0 1 18 19 V24 H26 Q28 24 28 22 V10 Q28 8 26 8 Z" fill="#8b5cf6" />
+              </svg>
+            </div>
             <span className="text-base font-bold">企智搭 · 数字伙伴平台</span>
           </div>
 
