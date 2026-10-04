@@ -6,6 +6,7 @@ import { Button, Input, Badge, toast } from '@qzda/web-ui';
 import { useUiStore } from '@/stores/uiStore';
 import { Bot, ShieldCheck, Sun, Moon, Gauge } from 'lucide-react';
 import type { LoginRequest, LoginResponse } from '@qzda/web-types';
+import { BrandLogo } from '@/components/brand';
 import { MfaCodeField } from './components/MfaCodeField';
 import { ExperienceRoleButtons } from './components/ExperienceRoleButtons';
 
@@ -62,16 +63,17 @@ export default function LoginPage() {
           <div className="absolute -bottom-16 -left-8 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
 
           <div className="relative">
-            <div className="mb-6 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center">
-                <svg viewBox="0 0 32 32" className="h-10 w-10" aria-hidden="true">
-                  <path d="M6 8 H14 V13 A2.5 2.5 0 0 1 14 19 V24 H6 Q4 24 4 22 V10 Q4 8 6 8 Z" fill="#fff" />
-                  <path d="M26 8 H18 V13 A2.5 2.5 0 0 1 18 19 V24 H26 Q28 24 28 22 V10 Q28 8 26 8 Z" fill="#fff" opacity="0.8" />
-                </svg>
+            <div className="mb-8 flex items-center gap-3.5">
+              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-[14px] bg-white shadow-[0_8px_24px_rgba(15,23,42,0.12)]">
+                <BrandLogo className="h-8 w-8" />
               </div>
-              <div>
-                <div className="text-lg font-bold">企业可信企智搭 · 数字伙伴平台</div>
-                <div className="text-xs opacity-80">专家团队协同 · 岗位边界清晰</div>
+              <div className="min-w-0">
+                <div className="text-[22px] font-bold leading-none tracking-tight">企智搭</div>
+                <div className="mt-1.5 flex items-center text-[12px] text-white/80">
+                  <span className="font-semibold tracking-[0.22em] text-[#FFC58A]">QIZHIDA</span>
+                  <span className="mx-1.5 text-white/40">·</span>
+                  <span>数字伙伴平台</span>
+                </div>
               </div>
             </div>
 
@@ -113,10 +115,7 @@ export default function LoginPage() {
         <form className="flex flex-col justify-center p-8 md:p-10" onSubmit={submit}>
           <div className="mb-1 flex items-center gap-2 md:hidden">
             <div className="flex h-9 w-9 items-center justify-center">
-              <svg viewBox="0 0 32 32" className="h-9 w-9" aria-hidden="true">
-                <path d="M6 8 H14 V13 A2.5 2.5 0 0 1 14 19 V24 H6 Q4 24 4 22 V10 Q4 8 6 8 Z" fill="#4f46e5" />
-                <path d="M26 8 H18 V13 A2.5 2.5 0 0 1 18 19 V24 H26 Q28 24 28 22 V10 Q28 8 26 8 Z" fill="#8b5cf6" />
-              </svg>
+              <BrandLogo className="h-9 w-9" />
             </div>
             <span className="text-base font-bold">企智搭 · 数字伙伴平台</span>
           </div>

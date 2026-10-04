@@ -11,6 +11,8 @@ type Dict = Record<string, string>;
 
 const zh: Dict = {
   'app.title': '企智搭 · 数字伙伴平台',
+  'app.name': '企智搭',
+  'app.subtitle': '数字伙伴平台',
   'app.shortName': 'QZD',
   'nav.home': '运营总览',
   'nav.copilot': '专家协作',
@@ -179,6 +181,8 @@ const zh: Dict = {
 
 const en: Dict = {
   'app.title': 'QiZhiDa · PartnerPlatform',
+  'app.name': 'QiZhiDa',
+  'app.subtitle': 'PartnerPlatform',
   'app.shortName': 'QZD',
   'nav.home': 'Overview',
   'nav.copilot': 'Workbench',

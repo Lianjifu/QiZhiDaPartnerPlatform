@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 42 42" role="img" aria-label="z-">
+  <mask id="qzd-gap">
+    <rect width="42" height="42" fill="#fff"/>
+    <rect x="10.85" y="-3.15" width="34.3" height="34.3" rx="11.15" fill="#000"/>
+  </mask>
+  <rect x="0" y="14" width="28" height="28" rx="8" fill="#6D28D9" mask="url(#qzd-gap)"/>
+  <rect x="14" y="0" width="28" height="28" rx="8" fill="#FF7A1B"/>
+</svg>

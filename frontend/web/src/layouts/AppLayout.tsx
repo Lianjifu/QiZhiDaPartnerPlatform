@@ -21,6 +21,7 @@ import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { Avatar } from '@qzda/web-ui';
 import { cn } from '@qzda/web-utils';
 import { useApiQuery } from '@/services/query';
+import { BrandLogo } from '@/components/brand';
 import { OnboardingGuide } from '@/features/onboarding/OnboardingGuide';
 import { getRoleNavGroups, navLabelKeyForPath } from '@/features/role-nav/role-nav';
 import { useReauthPrompt, useLogout, SignOutMenuItem } from '@/auth';
@@ -189,14 +190,14 @@ export function AppLayout() {
           <Menu className="h-4 w-4" />
         </button>
 
-        <NavLink to="/home" className="flex items-center gap-3 text-[var(--text)] font-bold text-[17px]">
-          <div className="flex h-9 w-9 items-center justify-center">
-            <svg viewBox="0 0 32 32" className="h-9 w-9" aria-hidden="true">
-              <path d="M6 8 H14 V13 A2.5 2.5 0 0 1 14 19 V24 H6 Q4 24 4 22 V10 Q4 8 6 8 Z" fill="#4f46e5" />
-              <path d="M26 8 H18 V13 A2.5 2.5 0 0 1 18 19 V24 H26 Q28 24 28 22 V10 Q28 8 26 8 Z" fill="#8b5cf6" />
-            </svg>
-          </div>
-          {!sidebarCollapsed && <span className="hidden sm:inline">{t('app.title')}</span>}
+        <NavLink to="/home" className="flex items-center gap-2 text-[var(--text)]">
+          <BrandLogo className="h-7 w-7 shrink-0" />
+          {!sidebarCollapsed && (
+            <span className="hidden leading-[1.15] sm:flex sm:flex-col">
+              <span className="text-[15px] font-bold tracking-tight">{t('app.name')}</span>
+              <span className="text-[10px] font-medium text-[var(--text-muted)]">{t('app.subtitle')}</span>
+            </span>
+          )}
         </NavLink>
 
         <div ref={workspaceMenuRef} className="relative hidden sm:block">

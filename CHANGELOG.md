@@ -5,6 +5,10 @@
 
 ---
 
+## Unreleased — 品牌标识：咬合方块 VI
+
+> 图形标改为紫橙圆角方块层叠咬合；顶栏字标上下排列；登录页白底锁合；README 收录标识资产。
+
 ## Unreleased — 品牌升级:数字工作伙伴平台 → 企智搭 · 数字伙伴平台
 
 > Brand refactor: Digital Work Partner Platform → QiZhiDa · PartnerPlatform (企智搭 · 数字伙伴平台)

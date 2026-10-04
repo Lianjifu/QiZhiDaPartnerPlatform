@@ -1,14 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 120" role="img" aria-label="企智搭 · 数字伙伴平台">
-  <defs>
-    <linearGradient id="rp" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#a78bfa"/>
-      <stop offset="1" stop-color="#7c3aed"/>
-    </linearGradient>
-  </defs>
-  <g transform="translate(20, 32) scale(2)">
-    <path d="M6 8 H14 V13 A2.5 2.5 0 0 1 14 19 V24 H6 Q4 24 4 22 V10 Q4 8 6 8 Z" fill="#4f46e5"/>
-    <path d="M26 8 H18 V13 A2.5 2.5 0 0 1 18 19 V24 H26 Q28 24 28 22 V10 Q28 8 26 8 Z" fill="url(#rp)"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 220" role="img" aria-label="企智搭 · 数字伙伴平台">
+  <g transform="translate(101, 12) scale(1.86)">
+    <mask id="qzd-gap-w">
+      <rect width="42" height="42" fill="#fff"/>
+      <rect x="10.85" y="-3.15" width="34.3" height="34.3" rx="11.15" fill="#000"/>
+    </mask>
+    <rect x="0" y="14" width="28" height="28" rx="8" fill="#6D28D9" mask="url(#qzd-gap-w)"/>
+    <rect x="14" y="0" width="28" height="28" rx="8" fill="#FF7A1B"/>
   </g>
-  <text x="96" y="68" font-family="'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-weight="700" font-size="42" fill="#4f46e5" letter-spacing="-1">企智搭</text>
-  <text x="96" y="96" font-family="'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="16" fill="#64748b" letter-spacing="0.5">数字伙伴平台</text>
+  <text x="140" y="142" text-anchor="middle" font-family="'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-weight="700" font-size="42" fill="#6D28D9">企智搭</text>
+  <text x="140" y="172" text-anchor="middle" font-family="'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-weight="600" font-size="14" fill="#FF7A1B" letter-spacing="6">QIZHIDA</text>
+  <text x="140" y="202" text-anchor="middle" font-family="'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif" font-size="13" fill="#64748b">数字伙伴平台</text>
 </svg>
