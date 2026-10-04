@@ -41,6 +41,8 @@ Thumbs.db
 
 # Local worktrees and agent/brainstorm artifacts
 .worktrees/
+.claude/worktrees/
+frontend/.claude/
 .superpowers/
 .codex/
 .agents/

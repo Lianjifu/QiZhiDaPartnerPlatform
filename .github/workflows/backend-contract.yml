@@ -52,15 +52,8 @@ jobs:
           grep -q 'profiles: \["authentik"\]' deploy/compose.yml
           grep -q 'profiles: \["obs"\]' deploy/compose.yml
           grep -q 'profiles: \["spiffe"\]' deploy/compose.yml
-          grep -q 'profiles: \["split"\]' deploy/compose.yml
-          grep -q 'profiles: \["policy"\]' deploy/compose.yml
-          grep -q 'profiles: \["audit"\]' deploy/compose.yml
+          grep -q 'profiles: \["monolith"\]' deploy/compose.yml
           grep -q 'qzda_exec_net' deploy/compose.yml
-          test -f cmd/qzda-policy/main.go
-          test -f cmd/qzda-audit/main.go
-          test -f cmd/qzda-workflow/main.go
-          test -f deploy/qzda-policy/README.md
-          test -f deploy/qzda-audit/README.md
           test -f deploy/opa/policies/de/authz.rego
           test -f deploy/authentik/README.md
           test -f deploy/obs/prometheus.yml
@@ -70,12 +63,21 @@ jobs:
           grep -q 'DeCoreCopilotStreamErrorRate' deploy/obs/alerts.yml
           grep -q 'DeCoreAuditWriteFailures' deploy/obs/alerts.yml
           test -f deploy/envoy/envoy.spiffe.yaml
-          test -f deploy/envoy/envoy.split.yaml
           test -f deploy/spiffe/README.md
           test -f deploy/qzda-sandbox/seccomp.json
           test -f Dockerfile
-          test -f runtimes/Dockerfile
+          test -f services/qzda-agent-runtime/Dockerfile
+          test -f services/qzda-rag/Dockerfile
+          test -f services/qzda-sandbox/Dockerfile
+          test -f services/qzda-gateway/Dockerfile
           test -f services/qzda-rag/requirements-milvus.txt
+          test -f cmd/qzda-app/main.go
+          test -f services/qzda-app/Dockerfile
+          test ! -f cmd/qzda-sys/main.go
+          test ! -f cmd/qzda-collab/main.go
+          test ! -f cmd/qzda-cap/main.go
+          test ! -f cmd/qzda-workflow/main.go
+          test ! -f deploy/envoy/envoy.split.yaml
           test ! -d go
           test ! -d python
       - name: Error code surface
