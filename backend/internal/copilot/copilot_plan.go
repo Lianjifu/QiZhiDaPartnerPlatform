@@ -1,3 +1,8 @@
+// Package copilot —— Plan→Execute 回合执行器。
+//
+// 职责：用 LLM 生成结构化计划（<<<PLAN>>>{...}<<<END>>> 块），
+// 按步依次执行（retrieve / memory / tool / answer），最后再聚合成最终中文回答。
+// 模型未产出有效 PLAN 块时回退到 heuristicPlan。
 package copilot
 
 import (
@@ -10,10 +15,13 @@ import (
 	"github.com/qizhida-partner-platform/backend/internal/modelprov"
 )
 
+// planMaxSteps 单回合 plan_exec 模式的最大步骤数。
 const planMaxSteps = 6
 
+// planBlockRe 匹配 LLM 输出的 <<<PLAN>>>...<<<END>>> 计划块。
 var planBlockRe = regexp.MustCompile(`(?s)<<<PLAN>>>\s*(\{.*?\})\s*<<<END>>>`)
 
+// planStep 是计划里的一个步骤，Action 取值：retrieve | memory | tool | answer。
 type planStep struct {
 	ID     string `json:"id"`
 	Title  string `json:"title"`
@@ -22,11 +30,14 @@ type planStep struct {
 	Query  string `json:"query"`
 }
 
+// planPayload 是 LLM 一次 PLAN 块反序列化后的完整结构。
 type planPayload struct {
 	Goal  string     `json:"goal"`
 	Steps []planStep `json:"steps"`
 }
 
+// parsePlan 从 LLM 文本里抽取并解析 PLAN 块；空计划 / 解析失败 / 步骤数为 0 都返回 false。
+// 解析成功时还会把每步的 Action 小写化、补 ID、补默认 title，并按 planMaxSteps 截断。
 func parsePlan(text string) (planPayload, bool) {
 	m := planBlockRe.FindStringSubmatch(text)
 	if len(m) != 2 {
@@ -57,6 +68,9 @@ func parsePlan(text string) (planPayload, bool) {
 	return p, true
 }
 
+// heuristicPlan 在 LLM 没产出有效 PLAN 块时给出兜底计划：
+// 默认 3 步（知识检索 → 偏好回忆 → 综合结论），命中"入职/材料/清单/办理"关键词时
+// 切换为分步清单 + 催办要点的变体。
 func heuristicPlan(userMsg string) planPayload {
 	goal := truncateRunes(userMsg, 80)
 	steps := []planStep{
@@ -74,6 +88,7 @@ func heuristicPlan(userMsg string) planPayload {
 	return planPayload{Goal: goal, Steps: steps}
 }
 
+// planPrompt 注入给 planner LLM 的 system prompt：要求只输出 PLAN 块、不超过 6 步。
 func planPrompt() string {
 	return `你是任务规划器。请为用户目标产出简洁可执行计划，只输出计划块，不要回答问题本身：
 <<<PLAN>>>
@@ -186,6 +201,7 @@ func (s *Service) runPlanExecuteTurn(ctx context.Context, in reactTurnInput) rea
 			if toolName == "" {
 				observations = append(observations, fmt.Sprintf("步骤%s「%s」：未指定工具，跳过", st.ID, st.Title))
 				in.Emit("plan", "plan", map[string]any{"status": "step_skipped", "stepId": st.ID})
+				emitTurnTask(in.Emit, "cancelled", fmt.Sprintf("plan_%s", st.ID), st.Title, "skipped", i+1, len(plan.Steps))
 				continue
 			}
 			call := toolCallRequest{Name: toolName, Args: map[string]any{"query": query, "input": query}}
@@ -219,7 +235,7 @@ func (s *Service) runPlanExecuteTurn(ctx context.Context, in reactTurnInput) rea
 					truncateRunes(obs, 280))
 			}
 
-		default: // answer — defer to aggregator
+		default: // answer — defer to aggregator; keep running until final text is ready
 			observations = append(observations, fmt.Sprintf("步骤%s「%s」：待综合回答", st.ID, st.Title))
 			in.Emit("plan", "plan", map[string]any{"status": "step_done", "stepId": st.ID, "toolStatus": "defer"})
 		}
@@ -256,6 +272,12 @@ func (s *Service) runPlanExecuteTurn(ctx context.Context, in reactTurnInput) rea
 	}
 	in.Emit("stage", "aggregate", map[string]any{"status": "ok"})
 	in.Emit("plan", "plan", map[string]any{"status": "completed", "goal": plan.Goal})
+	for i, st := range plan.Steps {
+		if st.Action == "retrieve" || st.Action == "memory" || st.Action == "tool" {
+			continue
+		}
+		emitTurnTask(in.Emit, "completed", fmt.Sprintf("plan_%s", st.ID), st.Title, "done", i+1, len(plan.Steps))
+	}
 
 	if !in.SkipStream {
 		streamOpts := &streamAnswerOpts{

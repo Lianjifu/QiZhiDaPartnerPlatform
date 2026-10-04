@@ -14,12 +14,23 @@ const CopilotShare = lazy(() => import('./features/copilot/components/CopilotSha
 const Tasks = lazy(() => import('./features/tasks/components/TasksPage'));
 const Workspaces = lazy(() => import('./pages/Workspaces'));
 const DigitalPartners = lazy(() => import('./features/partners/components/PartnersPage'));
+const PartnerCreate = lazy(() => import('./features/partners/components/PartnerCreatePage'));
+const PartnerDetail = lazy(() => import('./features/partners/components/PartnerDetailPage'));
 const Workflows = lazy(() => import('./features/workflows/components/WorkflowsPage'));
+const WorkflowStudio = lazy(() => import('./features/workflows/components/WorkflowStudioPage'));
+const WorkflowTemplatePreview = lazy(() => import('./features/workflows/components/WorkflowTemplatePreviewPage'));
 const WorkflowOrchestrationSession = lazy(() => import('./features/workflows/components/WorkflowOrchestrationSessionPage'));
 const Knowledge = lazy(() => import('./features/knowledge/components/KnowledgePage'));
+const KnowledgeUpload = lazy(() => import('./features/knowledge/components/KnowledgeUploadPage'));
+const KnowledgeDoc = lazy(() => import('./features/knowledge/components/KnowledgeDocPage'));
+const KnowledgePackage = lazy(() => import('./features/knowledge/components/KnowledgePackagePage'));
+const KnowledgePackageCreate = lazy(() => import('./features/knowledge/components/KnowledgePackageCreatePage'));
+const KnowledgeSource = lazy(() => import('./features/knowledge/components/KnowledgeSourcePage'));
 const Memory = lazy(() => import('./features/memory/components/MemoryPage'));
 const Skills = lazy(() => import('./features/skills/components/SkillsPage'));
 const Models = lazy(() => import('./features/models/components/ModelsPage'));
+const ModelProviderCreate = lazy(() => import('./features/models/components/ModelProviderCreatePage'));
+const ModelProviderDetail = lazy(() => import('./features/models/components/ModelProviderDetailPage'));
 const Channels = lazy(() => import('./features/channels/components/ChannelsPage'));
 const Settings = lazy(() => import('./features/settings/components/SettingsPage'));
 const AuditCenter = lazy(() => import('./pages/AuditCenter'));
@@ -64,12 +75,23 @@ export default function App() {
             <Route path="/tasks" element={<ProtectedRoute roles={['user', 'admin', 'auditor']}><ErrorBoundary><Tasks /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/workspaces" element={<ProtectedRoute roles={['admin']}><ErrorBoundary><Workspaces /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/partners" element={<ProtectedRoute roles={['user', 'admin', 'auditor']}><ErrorBoundary><DigitalPartners /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/partners/new" element={<ProtectedRoute roles={['user', 'admin']}><ErrorBoundary><PartnerCreate /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/partners/:id" element={<ProtectedRoute roles={['user', 'admin', 'auditor']}><ErrorBoundary><PartnerDetail /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/workflows" element={<ProtectedRoute permission="workflow.read" roles={['user', 'admin', 'auditor']}><ErrorBoundary><Workflows /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/workflows/new" element={<ProtectedRoute permission="workflow.read" roles={['user', 'admin', 'auditor']}><ErrorBoundary><WorkflowStudio /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/workflows/templates/:id" element={<ProtectedRoute permission="workflow.read" roles={['user', 'admin', 'auditor']}><ErrorBoundary><WorkflowTemplatePreview /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/workflows/orchestration" element={<ProtectedRoute permission="workflow.read" roles={['user', 'admin']}><ErrorBoundary><WorkflowOrchestrationSession /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/workflows/orchestration/:sessionId" element={<ProtectedRoute permission="workflow.read" roles={['user', 'admin']}><ErrorBoundary><WorkflowOrchestrationSession /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/knowledge/new" element={<ProtectedRoute roles={['user', 'admin']}><ErrorBoundary><KnowledgeUpload /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/knowledge/sources/new" element={<ProtectedRoute roles={['user', 'admin']}><ErrorBoundary><KnowledgeSource /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/knowledge/docs/:id" element={<ProtectedRoute roles={['user', 'admin', 'auditor']}><ErrorBoundary><KnowledgeDoc /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/knowledge/packages/new" element={<ProtectedRoute roles={['user', 'admin']}><ErrorBoundary><KnowledgePackageCreate /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/knowledge/packages/:id" element={<ProtectedRoute roles={['user', 'admin', 'auditor']}><ErrorBoundary><KnowledgePackage /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/knowledge" element={<ProtectedRoute roles={['user', 'admin', 'auditor']}><ErrorBoundary><Knowledge /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/memory" element={<ProtectedRoute roles={['admin', 'auditor']}><ErrorBoundary><Memory /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/skills" element={<ProtectedRoute roles={['user', 'admin', 'auditor']}><ErrorBoundary><Skills /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/models/providers/new" element={<ProtectedRoute permission="model.read" roles={['admin']}><ErrorBoundary><ModelProviderCreate /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/models/providers/:id" element={<ProtectedRoute permission="model.read" roles={['admin', 'auditor']}><ErrorBoundary><ModelProviderDetail /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/models" element={<ProtectedRoute permission="model.read" roles={['admin', 'auditor']}><ErrorBoundary><Models /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/channels" element={<ProtectedRoute permission="channel.read" roles={['admin']}><ErrorBoundary><Channels /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/governance" element={<ProtectedRoute roles={['admin']}><Navigate to="/settings?tab=access" replace /></ProtectedRoute>} />

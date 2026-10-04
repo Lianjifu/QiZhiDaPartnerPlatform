@@ -1,3 +1,8 @@
+// Package copilot —— 产物段(artifact segment)渲染模块。
+//
+// 职责：把 assistant 回复中的 /api/skill-artifacts/ 链接
+// 渲染成独立的"下载"段（或 inline 卡片），并对噪声行（文件名/下载链接/裸链接）
+// 做去重清理。
 package copilot
 
 import (
@@ -6,16 +11,21 @@ import (
 	"strings"
 )
 
+// skillArtifactPathRE 匹配文本中的 /api/skill-artifacts/<id> 链接。
+// downloadLineRE / displayNameLineRE 匹配常见的"下载链接：""文件名："前缀噪声行。
 var (
 	skillArtifactPathRE = regexp.MustCompile(`/api/skill-artifacts/([^\s)\]"'` + "`" + `<>]+)`)
 	downloadLineRE      = regexp.MustCompile(`^\s*(?:📄\s*)?(?:下载链接|下载|文件名)\s*[:：]`)
 	displayNameLineRE   = regexp.MustCompile(`^\s*(?:📄\s*)?文件名\s*[:：]\s*[` + "`" + `"'《]?([^` + "`" + `"'》\n]+?)[` + "`" + `"'》]?\s*$`)
 )
 
+// hasSkillArtifacts 判断文本中是否包含 /api/skill-artifacts/ 链接。
 func hasSkillArtifacts(text string) bool {
 	return skillArtifactPathRE.MatchString(text)
 }
 
+// stripArtifactNoise 把"文件名：""下载链接："前缀行、裸链接行从 assistant 正文里去掉。
+// 保留正文中其他内容；不命中产物链接时不做处理。
 func stripArtifactNoise(text string) string {
 	text = strings.TrimSpace(text)
 	if text == "" {
@@ -48,6 +58,8 @@ func stripArtifactNoise(text string) string {
 	return merged
 }
 
+// formatArtifactSegmentContent 把 assistant 全文里所有产物链接整理成"下载链接：X / 文件名：Y"的展示行。
+// 多次出现同一行会去重；只识别 .docx / .pptx / .pdf 等以 /api/skill-artifacts/ 为前缀的真实产物。
 func formatArtifactSegmentContent(full string) string {
 	full = strings.TrimSpace(full)
 	if full == "" || !hasSkillArtifacts(full) {
@@ -95,6 +107,8 @@ func artifactSegmentSeparate() bool {
 	return envFlagFalse("DE_COPILOT_ARTIFACT_INLINE")
 }
 
+// artifactSegmentID 产出下载段的 ID：优先复用 firstMessageID 后缀，否则用 idGen，
+// 都不可用时回退到 "msg_artifact" 常量。
 func artifactSegmentID(firstMessageID string, idGen func() string) string {
 	if firstMessageID != "" {
 		return firstMessageID + "_artifact"
@@ -105,6 +119,8 @@ func artifactSegmentID(firstMessageID string, idGen func() string) string {
 	return "msg_artifact"
 }
 
+// appendArtifactSegments 把 assistant 段列表里的"正文/总结/确认"段先清一遍产物噪声，
+// 再把整理好的下载行作为独立的 artifact 段追加到尾部。
 func appendArtifactSegments(segs []AssistantSegment, full, firstMessageID string, idGen func() string) []AssistantSegment {
 	art := formatArtifactSegmentContent(full)
 	for i := range segs {

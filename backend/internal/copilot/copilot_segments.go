@@ -1,3 +1,11 @@
+// Package copilot —— 助手消息段(segment)模型 + 流式切片渲染模块。
+//
+// 职责：把 LLM 的 finalText 切成 AssistantSegment（ack / body / summary / step / artifact），
+// 通过 replyMode（single / segmented / stepwise）+ segmentPolicy（document / conversational）
+// 决定是否切片、用哪种分隔符，以及如何在 SSE 上发 start/delta/done。
+//
+// 常量同时承担"事件标签 + 字符串分隔符 + 分段策略枚举"的多重职责，
+// 任何修改都会影响前端渲染和跨端协议。
 package copilot
 
 import (
@@ -7,6 +15,11 @@ import (
 	"github.com/qizhida-partner-platform/backend/pkg/contract"
 )
 
+// 回复模式：single=单气泡；segmented=分段；stepwise=按计划步骤分段。
+// segmentKind*: 段类型标签，决定前端用什么 UI 渲染。
+// segmentDelimiter: 模型输出中的分段标记。
+// segmentPolicy*: 决定是否自动按双换行切分 / 是否允许 <<<NEXT>>> 提示。
+// segmentLeadInMaxRunes: 切分时"导语段"最长允许的 rune 数。
 const (
 	replyModeSingle    = "single"
 	replyModeSegmented = "segmented"
@@ -26,6 +39,8 @@ const (
 	segmentLeadInMaxRunes = 120
 )
 
+// AssistantSegment 是一次 assistant 回复里的"一段"，可能是一条 ack/正文/总结/计划步骤/下载卡片。
+// Index 由段流式 reconcile 阶段统一重排；ToolCalls/Citations 仅当段自身承担产物信息时填。
 type AssistantSegment struct {
 	ID        string
 	Index     int
@@ -36,12 +51,15 @@ type AssistantSegment struct {
 	Citations []map[string]any
 }
 
+// segmentSplitConfig 描述一次文本切分时的策略：最小段字数、最大段数、是否仅按显式分隔符。
 type segmentSplitConfig struct {
 	MinRunes              int
 	MaxSegments           int
 	ExplicitDelimiterOnly bool
 }
 
+// streamAnswerOpts 是 streamHarnessAnswer 接收的可选配置：
+// PreSegments 用于合并上游 plan/reflect 已下发的段，LiveStream 接管 SSE delta 输出。
 type streamAnswerOpts struct {
 	ReplyMode      string
 	SegmentPolicy  string
@@ -52,6 +70,8 @@ type streamAnswerOpts struct {
 	LiveStream     *liveAnswerStream
 }
 
+// normalizeReplyMode 把任意字符串规范化到 single/segmented/stepwise 三选一，
+// 默认回退到 single。比较时统一做 trim+lower。
 func normalizeReplyMode(v string) string {
 	switch strings.ToLower(strings.TrimSpace(v)) {
 	case replyModeSegmented, replyModeStepwise:
@@ -61,6 +81,8 @@ func normalizeReplyMode(v string) string {
 	}
 }
 
+// resolveReplyMode 决策 replyMode：body.replyMode > DE_COPILOT_REPLY_MODE 环境变量 >
+// 数字伙伴 runtime.replyMode > 默认 segmented。
 func resolveReplyMode(body map[string]any, emp map[string]any) string {
 	if body != nil {
 		if raw := strings.TrimSpace(str(body["replyMode"])); raw != "" {
@@ -83,6 +105,7 @@ func resolveReplyMode(body map[string]any, emp map[string]any) string {
 	return replyModeSegmented
 }
 
+// normalizeSegmentPolicy 把任意字符串规范化为 document / conversational，未知值回退到 document。
 func normalizeSegmentPolicy(v string) string {
 	switch strings.ToLower(strings.TrimSpace(v)) {
 	case segmentPolicyConversational:
@@ -92,6 +115,7 @@ func normalizeSegmentPolicy(v string) string {
 	}
 }
 
+// resolveSegmentPolicy 决策 segmentPolicy：body.segmentPolicy > 数字伙伴 runtime > 默认 document。
 func resolveSegmentPolicy(body map[string]any, emp map[string]any) string {
 	if body != nil {
 		if raw := strings.TrimSpace(str(body["segmentPolicy"])); raw != "" {
@@ -108,10 +132,13 @@ func resolveSegmentPolicy(body map[string]any, emp map[string]any) string {
 	return segmentPolicyDocument
 }
 
+// segmentAckEnabled 报告是否启用"先说一句确认"的 ack 段；由 DE_COPILOT_SEGMENT_ACK 控制。
 func segmentAckEnabled() bool {
 	return envFlagTrue("DE_COPILOT_SEGMENT_ACK")
 }
 
+// defaultSegmentIDGen 返回一个默认的段 ID 生成器（"msg_<时间戳>"）；
+// 优先用 Store.ID，没有时回退到 time.Now 时间戳，保证 ID 唯一。
 func defaultSegmentIDGen(s *Service) func() string {
 	if s != nil && s.Store != nil {
 		return func() string { return s.Store.ID("msg") }
@@ -119,6 +146,9 @@ func defaultSegmentIDGen(s *Service) func() string {
 	return func() string { return "msg_" + time.Now().UTC().Format("150405.000000") }
 }
 
+// splitAssistantSegments 把 assistant 正文切分为多段。
+// 优先按显式 <<<NEXT>>> 分隔符；未命中时若 ExplicitDelimiterOnly=true 则整体返回。
+// 否则按双换行合并到至少 MinRunes 字、最大 MaxSegments 段，余下尾巴粘回末段。
 func splitAssistantSegments(text string, cfg segmentSplitConfig) []string {
 	text = strings.TrimSpace(text)
 	if text == "" {
@@ -180,6 +210,8 @@ func splitAssistantSegments(text string, cfg segmentSplitConfig) []string {
 	return merged
 }
 
+// buildAckSegment 在 segmentAckEnabled 且 userMsg>=80 字 或含附件时，
+// 返回一句"先看一下你的需求"的 ack 段；否则返回 (空段, false)。
 func buildAckSegment(userMsg string, hasAttachments bool) (AssistantSegment, bool) {
 	if !segmentAckEnabled() {
 		return AssistantSegment{}, false
@@ -194,6 +226,8 @@ func buildAckSegment(userMsg string, hasAttachments bool) (AssistantSegment, boo
 	return AssistantSegment{Kind: segmentKindAck, Title: "确认", Content: text}, true
 }
 
+// appendStepSegment 在 sink 切片末尾追加一个段（默认 kind=step）；
+// content 为空或 sink 为 nil 时直接 no-op。
 func appendStepSegment(sink *[]AssistantSegment, idGen func() string, kind, title, content string) {
 	content = strings.TrimSpace(content)
 	if content == "" {
@@ -211,6 +245,9 @@ func appendStepSegment(sink *[]AssistantSegment, idGen func() string, kind, titl
 	})
 }
 
+// buildIntentSegments 把多段正文按策略拼成 AssistantSegment 切片。
+// document 策略或单段：合并为一段 body；conversational 策略下若首段 ≤ segmentLeadInMaxRunes
+// 则拆成"导语 + 主体"两段 body。
 func buildIntentSegments(chunks []string, policy string) []AssistantSegment {
 	if len(chunks) == 0 {
 		return nil
@@ -242,6 +279,9 @@ func buildIntentSegments(chunks []string, policy string) []AssistantSegment {
 	return []AssistantSegment{{Kind: segmentKindBody, Content: joined}}
 }
 
+// buildSegmentsFromTurn 把 LLM finalText + reactTurnResult + 策略转成段列表。
+// 根据 replyMode 分流：stepwise 用 reactOut.StepSegments+summary；segmented 用显式分隔符切分；
+// single 直接返回一段 body（复用 firstMessageID）。产物段在 segmented 模式下追加。
 func buildSegmentsFromTurn(full string, reactOut reactTurnResult, replyMode, segmentPolicy, firstMessageID string, idGen func() string, pre []AssistantSegment) []AssistantSegment {
 	replyMode = normalizeReplyMode(replyMode)
 	if idGen == nil {
@@ -339,6 +379,8 @@ func reconcileSegmentsWithFinalText(
 	return out
 }
 
+// segmentStreamAlreadyDone 判断第 i 段是否已经在流式阶段下发过（ID/Kind/Content 三者相同）。
+// 用于 reconcile 阶段避免重复发 StreamMessageDone。
 func segmentStreamAlreadyDone(streamed []AssistantSegment, i int, seg AssistantSegment, replyMode string) bool {
 	if normalizeReplyMode(replyMode) == replyModeSingle || i >= len(streamed) {
 		return false
@@ -350,6 +392,8 @@ func segmentStreamAlreadyDone(streamed []AssistantSegment, i int, seg AssistantS
 	return prev.Kind == seg.Kind && prev.Content == seg.Content
 }
 
+// emitSegmentStream 在 SSE 上把整段序列发完：先 stage/runtime，再每段走 start/delta*28字符/done。
+// emit 为 nil 或 segments 为空时 no-op。
 func emitSegmentStream(emit reactEmitFunc, segments []AssistantSegment, modelID, corr, replyMode string) {
 	if emit == nil || len(segments) == 0 {
 		return
@@ -376,6 +420,8 @@ func emitSegmentStream(emit reactEmitFunc, segments []AssistantSegment, modelID,
 	}
 }
 
+// streamHarnessAnswer 是 harness 层的"末尾段流式收口"：
+// 若 LiveStream 已启动则 reconcile；否则按 replyMode 分流（single 走普通 delta，否则 emitSegmentStream）。
 func streamHarnessAnswer(emit reactEmitFunc, finalText, modelID string, rt ResolvedTurn, mode string, steps int, opts *streamAnswerOpts) []AssistantSegment {
 	emit("stage", "runtime", map[string]any{
 		"status": "ok", "modelId": coalesce(rt.ModelID, modelID),
@@ -435,6 +481,8 @@ func streamHarnessAnswer(emit reactEmitFunc, finalText, modelID string, rt Resol
 	return segs
 }
 
+// assistantMessagesFromSegments 把 AssistantSegment 列表投影成可落库的消息 map 列表。
+// attachLastMeta=true 时把段级别的 toolCalls/citations 合并到末段消息上。
 func assistantMessagesFromSegments(segments []AssistantSegment, corr, replyMode, now string, shared map[string]any, attachLastMeta bool, toolCalls []map[string]any, citations []map[string]any, indexOffset int) []map[string]any {
 	if len(segments) == 0 {
 		return nil
@@ -471,6 +519,7 @@ func assistantMessagesFromSegments(segments []AssistantSegment, corr, replyMode,
 	return out
 }
 
+// segmentMessageIDs 从段切片中提取所有非空 ID（保持原顺序）。
 func segmentMessageIDs(segments []AssistantSegment) []string {
 	ids := make([]string, 0, len(segments))
 	for _, s := range segments {
@@ -481,6 +530,7 @@ func segmentMessageIDs(segments []AssistantSegment) []string {
 	return ids
 }
 
+// segmentIDsFromMessages 从消息 map 列表中提取所有非空 ID（保持原顺序）。
 func segmentIDsFromMessages(msgs []map[string]any) []string {
 	ids := make([]string, 0, len(msgs))
 	for _, m := range msgs {
@@ -491,6 +541,8 @@ func segmentIDsFromMessages(msgs []map[string]any) []string {
 	return ids
 }
 
+// replayStoredSegments 从已落库的消息中重建段并通过 emitSegmentStream 重放。
+// 用于 history 反查、重新订阅等"只读流式重放"场景。
 func replayStoredSegments(emit reactEmitFunc, msgs []map[string]any, modelID, corr string) {
 	if emit == nil || len(msgs) == 0 {
 		return
@@ -509,6 +561,7 @@ func replayStoredSegments(emit reactEmitFunc, msgs []map[string]any, modelID, co
 	emitSegmentStream(emit, segs, modelIDFromStoredMessage(msgs[len(msgs)-1]), corr, replyMode)
 }
 
+// modelIDFromStoredMessage 从落库消息中提取模型 ID：优先顶层 modelId，其次 metrics.model。
 func modelIDFromStoredMessage(msg map[string]any) string {
 	if msg == nil {
 		return ""
@@ -522,6 +575,8 @@ func modelIDFromStoredMessage(msg map[string]any) string {
 	return ""
 }
 
+// mergeStoredAssistantTurns 把历史加载时按"消息段"拆开存储的 assistant 回合
+// 合并回一段（仅合并相邻且 correlationId 相同的 assistant 消息）。
 func mergeStoredAssistantTurns(stored []map[string]any) []map[string]any {
 	if len(stored) == 0 {
 		return stored
@@ -560,6 +615,8 @@ func mergeStoredAssistantTurns(stored []map[string]any) []map[string]any {
 	return out
 }
 
+// replyModePromptClause 给 LLM system prompt 注入的分段策略说明段：
+// document 模式下要求一段到底；conversational 允许先用 <<<NEXT>>> 拆出极短确认。
 func replyModePromptClause(replyMode, segmentPolicy string) string {
 	switch normalizeReplyMode(replyMode) {
 	case replyModeSegmented, replyModeStepwise:
@@ -576,6 +633,7 @@ func replyModePromptClause(replyMode, segmentPolicy string) string {
 	}
 }
 
+// stepSegmentsSlice 把指针 sink 指向的 step 段切片做一次拷贝返回（避免外部 append 修改原 slice）。
 func stepSegmentsSlice(sink *[]AssistantSegment) []AssistantSegment {
 	if sink == nil {
 		return nil

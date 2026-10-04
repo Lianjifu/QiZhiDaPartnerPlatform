@@ -1,17 +1,14 @@
-// Exported type aliases for the copilot-internal types so external callers
-// (notably internal/server/) can refer to them without duplicating the
-// underlying struct shapes. The lowercase originals are kept because the
-// bulk of the M02 module uses them directly and renaming every call site
-// would balloon the diff. The exported names here are an alias — not a
-// duplicate — so they stay in sync automatically.
+// Package copilot —— 导出类型别名 + 导出包装函数集中文件。
 //
-// Why aliases: server/server.go embeds the same shapes in its struct
-// fields (Server.lastMemoryBudgetReport, Server.testHooks), and
-// server/session_panel.go declares local helpers that take
-// participantTurnResult as a parameter. Both files used to live
-// alongside the originals (in the same package), so the types were
-// automatically visible. After the M02 P2 deep move the originals live in
-// internal/copilot/ and need a stable public surface.
+// 职责：把 internal/copilot 包内部的"小写"类型/函数（ResolvedTurn、MemoryHit、
+// AssistantSegment、CopilotTurnRecord 等）通过 `type X = lowercase` 的别名方式
+// 暴露给 internal/server/ 等外部包消费，避免被调用方重复定义。
+//
+// 同时为 server/handlers_c.go、server/handlers_actions.go、server/session_panel.go 等
+// 仍持有 (s *Server) 的文件提供薄包装函数，让它们不必感知内部 Service。
+//
+// 命名/签名必须与内部包版本保持完全一致；该文件的存在保证了 copilot→server
+// 拆包（M02 P2 deep move）后调用点不再被破坏。
 package copilot
 
 import (
@@ -23,6 +20,7 @@ import (
 	"github.com/qizhida-partner-platform/backend/internal/modelprov"
 )
 
+// 公开别名块（按字母/分组整理）。
 // Public aliases for the lowercase originals.
 type (
 	ReactTurnInput        = reactTurnInput

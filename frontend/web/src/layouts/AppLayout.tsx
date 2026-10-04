@@ -26,6 +26,7 @@ import { OnboardingGuide } from '@/features/onboarding/OnboardingGuide';
 import { getRoleNavGroups, navLabelKeyForPath } from '@/features/role-nav/role-nav';
 import { useReauthPrompt, useLogout, SignOutMenuItem } from '@/auth';
 import { useQueryClient } from '@tanstack/react-query';
+import { preloadRoute } from '@/lib/routePreload';
 import type { Workspace } from '@qzda/web-types';
 
 const NAV_ICONS: Record<string, ComponentType<{ className?: string }>> = {
@@ -311,6 +312,8 @@ export function AppLayout() {
                       key={`${item.to}:${item.i18n}`}
                       to={item.to}
                       onClick={closeMobileDrawer}
+                      onMouseEnter={() => preloadRoute(item.to)}
+                      onFocus={() => preloadRoute(item.to)}
                       className={({ isActive }) =>
                         cn(
                           'group flex items-center gap-3 rounded-md text-[13px] transition-all duration-150',

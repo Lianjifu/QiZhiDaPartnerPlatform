@@ -1,6 +1,6 @@
 /** MessageBubble — single message unit. Sub-components extracted to satisfy gates. */
 import { useMemo, useState, type Dispatch, type SetStateAction } from 'react';
-import { AlertCircle, CheckCircle2, Code, Copy, Download, Pencil, RotateCcw, ShieldAlert, Square, ThumbsDown, ThumbsUp, Trash2, Wrench } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Code, Copy, Download, Pencil, RotateCcw, ShieldAlert, Square, ThumbsDown, ThumbsUp, Wrench } from 'lucide-react';
 import { Avatar, Badge } from '@qzda/web-ui';
 import { cn } from '@qzda/web-utils';
 import { DigitalPartnerAvatar } from '@/features/partners/components/DigitalPartnerAvatar';
@@ -27,7 +27,7 @@ export function CopilotPageMessageBubble({
   expandedApproval = {}, setExpandedApproval = (() => undefined) as any,
   onApprove = () => undefined, onContinueRun, onExecuteAuthorized, onCitation = () => undefined,
   onRetry = () => undefined, onCopy = () => undefined, onRegenerate = () => undefined,
-  onDelete = () => undefined, onRetryMessage = () => undefined, onFeedback = () => undefined,
+  onRetryMessage = () => undefined, onFeedback = () => undefined,
   onApproveSigner = () => undefined, onRequestReject = () => undefined, onEdit = () => undefined,
   hoverMsgId = null, setHoverMsgId = (() => undefined) as any, copiedId = null,
   agentName, expertRole, expert, onOpenContext = () => undefined,
@@ -51,7 +51,6 @@ export function CopilotPageMessageBubble({
   onCopy?: (m: ChatMessageEx) => void;
   onEdit?: (m: ChatMessageEx) => void;
   onRegenerate?: (mid: string) => void;
-  onDelete?: (mid: string) => void;
   onRetryMessage?: (mid: string) => void;
   onFeedback?: (mid: string, kind: FeedbackKind) => void;
   onApproveSigner?: (mid: string, signerIndex: number) => void;
@@ -122,10 +121,8 @@ export function CopilotPageMessageBubble({
   return (
     <div
       ref={messageRef}
-      className={cn('copilot-message group relative', isUser ? 'copilot-message--user flex justify-end' : isTool ? 'copilot-message--tool flex gap-3' : 'copilot-message--assistant flex gap-3', selectedContextMessageId === m.id && 'is-context-selected')}
+      className={cn('copilot-message relative', isUser ? 'copilot-message--user flex justify-end' : isTool ? 'copilot-message--tool flex gap-3' : 'copilot-message--assistant flex gap-3', selectedContextMessageId === m.id && 'is-context-selected')}
       data-message-status={m.status}
-      onMouseEnter={() => setHoverMsgId(m.id)}
-      onMouseLeave={() => setHoverMsgId(null)}
     >
       {!isUser ? (
         <div className="shrink-0 pt-0.5">
@@ -407,14 +404,6 @@ export function CopilotPageMessageBubble({
                   onClick={() => onFeedback(m.id, m.feedback?.kind === 'dislike' ? null : 'dislike')}
                 >
                   <ThumbsDown className="h-3 w-3" />
-                </button>
-                <button
-                  onClick={() => onDelete(m.id)}
-                  className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] hover:bg-[var(--bg-hover)] hover:text-[var(--danger)]"
-                  title="删除"
-                  aria-label="删除消息"
-                >
-                  <Trash2 className="h-3 w-3" />
                 </button>
               </>
             ) : null}

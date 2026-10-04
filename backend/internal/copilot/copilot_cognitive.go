@@ -1,3 +1,15 @@
+// Package copilot —— 认知框架(Cognitive Framework)模块。
+//
+// 职责：在每次用户输入时判断是否启用认知框架（逻辑 / 问题解决 / 创意决策），
+// 选定主/辅框架、决定运行模式（quick/standard/deep）、推导阶段序列，
+// 并以 system prompt block + SSE thought event 两种形式把决策结果注入到对话流中。
+//
+// 关键决策点：
+//   - decideCognitiveFramework  —— 总入口，按用户消息长度/关键词/数字伙伴偏好产出 cognitiveDecision
+//   - routeCognitiveFrameworks  —— 在 logic/problem/creative 三个候选上打分排序
+//   - buildCognitiveDigestBlock —— 把决策渲染成 system prompt 里的中文骨架段
+//   - emitCognitiveThoughts/Finalize —— 把决策和阶段序列转成 SSE thought 事件
+//   - ensureEmployeeCognitiveSkills —— 给数字伙伴注入三件套基础认知技能（防漏挂）
 package copilot
 
 import (
@@ -42,6 +54,15 @@ var cognitiveFrameworkLabel = map[string]string{
 	cognitiveCreative: "创意决策分析",
 }
 
+// cognitiveDecision 是一次"该不该上框架、上哪个"的决策结果。
+//
+// 字段语义：
+//   - Bypass / BypassReason  —— true 时跳过框架；reason 取值见 humanCognitiveBypass
+//   - Primary / Secondary    —— 主/辅框架 ID（logic/problem/creative 之一）
+//   - Mode                   —— 推理深度：quick（≤1 阶段）/ standard / deep（多阶段）
+//   - Phases                 —— 给当前模式选出的阶段序列（理解→计划→执行→反思 的细化）
+//   - Reasons                —— 决策原因（user_force:/signal:/dept_pref: 等），用于 thought 详情回显
+//   - DigestText/DigestTokensEst —— 框架摘要文本 + 估算 token 数，会拼进 system prompt
 type cognitiveDecision struct {
 	Bypass          bool
 	BypassReason    string
@@ -116,6 +137,19 @@ func employeeCognitiveEnabled(emp map[string]any) bool {
 	return enabled
 }
 
+// decideCognitiveFramework 是认知框架决策的总入口。
+//
+// 决策路径（按顺序短路）：
+//  1. 数字伙伴 capabilities.cognitive.enabled = false       → bypass / cognitive_disabled
+//  2. 用户消息为空                                          → bypass / empty
+//  3. 用户显式要求（"直接答"/"不要分析"等关键字）          → bypass / user_opt_out
+//  4. 短闲聊（≤8 字且无问号）                              → bypass / short_chitchat
+//  5. 翻译/润色/纯文档生成类任务                            → bypass / simple_or_artifact
+//  6. 其余 → routeCognitiveFrameworks 打分得到 primary / secondary
+//
+// Mode 选择依据：harnessMode=plan_exec/multi_agent 或 policyLevel=P0 → deep；
+// harnessMode=direct 或消息 <40 字 → quick；其余 → standard。
+// quick 模式或 MaxFrameworks<2 时 secondary 被裁掉。
 func decideCognitiveFramework(userMsg, harnessMode, policyLevel string, emp map[string]any) cognitiveDecision {
 	enabled, maxFW, _ := employeeCognitiveConfig(emp)
 	d := cognitiveDecision{
@@ -184,6 +218,14 @@ func decideCognitiveFramework(userMsg, harnessMode, policyLevel string, emp map[
 	return d
 }
 
+// isCognitiveBypassTask 判断是否属于"明显不需要认知框架"的简单任务。
+//
+// 命中规则：
+//   - 翻译/润色/转写（"翻译成" / "polish this" / 短句以"翻译"/"润色"开头）
+//   - 短消息里有 ppt/docx/pdf + 生成/制作/导出 等组合词，且无 analyze 意图
+//
+// 第二个规则专门为"生成 PPT / Word / PDF"这类纯文档生成任务设计——
+// 用户只要产出文件、不需要分析过程，框架会浪费 token。
 func isCognitiveBypassTask(msg, lower string, runes int) bool {
 	for _, k := range []string{"翻译成", "翻译为", "translate to", "translate into", "改写为", "润色一下", "polish this"} {
 		if strings.Contains(lower, k) || strings.Contains(msg, k) {
@@ -216,6 +258,17 @@ func cognitiveHasAnalyzeIntent(msg, lower string) bool {
 	return false
 }
 
+// routeCognitiveFrameworks 在三个候选框架（logic/problem/creative）上打分并选出主/辅。
+//
+// 打分流程：
+//  1. 先扫"用户强指定"（"用问题解决"等显式短语）——一旦命中直接返回，confidence=0.9
+//  2. 按三组关键词分别计算命中数（creativeHit / problemHit / logicHit）
+//  3. 若有分析意图但三组都没命中 → logic 软加分（soft_analyze）
+//  4. 数字伙伴 department/role 命中预设偏好的（运维→problem、产品→creative 等）→ 该框架 +1
+//  5. 按命中数降序排；首名为 primary，命中数接近首名（差 ≤1 且 ≥2）的次名为 secondary
+//  6. 三组全 0 → 兜底返回 logic + confidence=0.55
+//
+// 置信度：0.58 + 命中数×0.06（封顶 0.92）。
 func routeCognitiveFrameworks(msg, lower string, emp map[string]any) (primary, secondary string, reasons []string, conf float64) {
 	// Explicit opt-in / force framework
 	forceHits := []struct {
@@ -399,6 +452,15 @@ func estimateCognitiveDigestTokens(text string) int {
 	return (n*10 + 15) / 16
 }
 
+// buildCognitiveDigestBlock 把 cognitiveDecision 渲染成中文骨架段，作为 system prompt 的注入块。
+//
+// 渲染结构：
+//   1. "【认知框架·主】{标签}（{模式}）" —— 告诉 LLM 当前用哪个主框架
+//   2. 主框架摘要（从 references/digest.md 读，加载后由 cognitiveDigestCache 缓存）
+//   3. 若有辅框架 + 非 quick 模式 → 追加"【认知框架·辅】"块
+//   4. 若 deep 模式 → 追加"可 skill.open《xxx》"提示（建议按需展开，不要同时打开多份）
+//
+// 输出按 4000 rune 截断（≈2500 token），避免框架摘要本身爆 LLM 上下文。
 func buildCognitiveDigestBlock(d cognitiveDecision) string {
 	if d.Bypass || d.Primary == "" {
 		return ""

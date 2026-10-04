@@ -7,7 +7,7 @@ import { buildTurnSummary } from './build-turn-summary';
 import { groupTurnPhases } from './group-turn-phases';
 import { phaseLabel } from './phase-labels';
 import type { TurnMeta, TurnPhaseBlock } from './types';
-import { TurnTaskList, dedupeTurnTasks } from './turn-task-list';
+import { TurnTaskList, settleTurnTasks } from './turn-task-list';
 
 type Props = {
   message: ChatMessageEx;
@@ -66,17 +66,19 @@ function PhaseSection({ block, streaming }: { block: TurnPhaseBlock; streaming?:
 export function TurnThoughtPanel({ message, streaming, showNarrative = true }: Props) {
   const thinking = (message.thinking ?? message.thinkingSummary ?? '').trim();
   const steps = message.reasoningSteps ?? [];
-  const tasks = dedupeTurnTasks(message.turnTasks ?? message.turnMeta?.tasks ?? []);
+  const tasks = settleTurnTasks(message.turnTasks ?? message.turnMeta?.tasks ?? [], {
+    streaming,
+    messageStatus: message.status,
+  });
   const phases = useMemo(
     () => groupTurnPhases(steps, tasks, message.cognitive, streaming, message.turnMeta as TurnMeta | undefined),
     [steps, tasks, message.cognitive, streaming, message.turnMeta],
   );
   const hasContent = thinking.length > 0 || steps.length > 0 || phases.length > 0 || tasks.length > 0;
-  const [expanded, setExpanded] = useState(Boolean(streaming));
+  const [expanded, setExpanded] = useState(true);
 
   useEffect(() => {
     if (streaming) setExpanded(true);
-    else setExpanded(false);
   }, [streaming, message.id]);
 
   if (!showNarrative) return null;

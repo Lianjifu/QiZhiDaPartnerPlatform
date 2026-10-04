@@ -77,6 +77,27 @@ func TestTurnNarrativeCollector_UpsertsTasksByID(t *testing.T) {
 	if str(tasks[0]["detail"]) != "success" {
 		t.Fatalf("detail should persist, got %v", tasks[0]["detail"])
 	}
+	if str(tasks[1]["id"]) != "plan_4" || str(tasks[1]["status"]) != "done" {
+		t.Fatalf("open task should settle on snapshot, got %v", tasks[1])
+	}
+}
+
+func TestTurnNarrativeCollector_SnapshotSettlesOpenTasks(t *testing.T) {
+	c := newTurnNarrativeCollector()
+	c.Record(contract.StreamTask, "task", map[string]any{
+		"taskId": "plan_mem", "title": "回顾偏好", "action": "completed", "detail": "success",
+	})
+	c.Record(contract.StreamTask, "task", map[string]any{
+		"taskId": "plan_ans", "title": "梳理可交付能力清单", "action": "started", "detail": "answer",
+	})
+	meta := c.Snapshot(cognitiveDecision{Enabled: true}, modePlanExec, 800)
+	tasks, ok := meta["tasks"].([]map[string]any)
+	if !ok || len(tasks) != 2 {
+		t.Fatalf("tasks=%v", meta["tasks"])
+	}
+	if str(tasks[1]["status"]) != "done" {
+		t.Fatalf("answer step still %v after turn snapshot", tasks[1]["status"])
+	}
 }
 
 func TestEmitThoughtPhase_Dedup(t *testing.T) {

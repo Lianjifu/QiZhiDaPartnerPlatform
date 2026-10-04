@@ -18,19 +18,19 @@ import (
 // and converts the server-side type into tasks.RuntimeMemoryInput at
 // the Deps wire site, so the cross-package contract stays one-way.
 type RuntimeMemoryInput struct {
-	WorkspaceID       string
-	OwnerID           string
-	OwnerName         string
+	WorkspaceID      string
+	OwnerID          string
+	OwnerName        string
 	DigitalPartnerID string
-	Title             string
-	Content           string
-	SourceType        string
-	SourceID          string
-	CorrelationID     string
-	Layer             string // short_term | working
-	Scope             string
-	Classification    string
-	Confidence        float64
+	Title            string
+	Content          string
+	SourceType       string
+	SourceID         string
+	CorrelationID    string
+	Layer            string // short_term | working
+	Scope            string
+	Classification   string
+	Confidence       float64
 }
 
 // str returns the string form of `v` if it is a string, otherwise "".
@@ -211,6 +211,19 @@ func EnsureTaskShape(task map[string]any) {
 	}
 	if _, ok := task["progress"].(map[string]any); !ok {
 		task["progress"] = map[string]any{"done": 0, "total": 1}
+	}
+	if _, ok := task["comments"].([]map[string]any); !ok {
+		if raw, ok := task["comments"].([]any); ok {
+			evs := make([]map[string]any, 0, len(raw))
+			for _, item := range raw {
+				if m, ok := item.(map[string]any); ok {
+					evs = append(evs, m)
+				}
+			}
+			task["comments"] = evs
+		} else {
+			task["comments"] = []map[string]any{}
+		}
 	}
 	if str(task["lifecycleStage"]) == "" {
 		task["lifecycleStage"] = MapStatusToStage(str(task["status"]))

@@ -1,12 +1,11 @@
-// Package-private metric counters used by the M02 copilot module. Mirror
-// the legacy helpers in internal/server/metrics.go (copilotRateLimited,
-// IncCopilotCognitive, etc.). Kept here as independent atomics so the
-// copilot package never imports server/; server/ continues to publish its
-// own duplicates to /api/metrics so dashboards keep their numbers.
+// copilot 包的进程级指标计数器（atomic.Uint64），对应 server/ 已有的同名指标。
+// 保留独立副本的目的是让 copilot 包不反向依赖 internal/server/，
+// 同时 server/ 仍向 /api/metrics 推送自己的版本（双写），dashboard 看到的数字保持一致。
 package copilot
 
 import "sync/atomic"
 
+// copilot 模块的进程内指标计数器（与 server/metrics.go 重复统计）。
 var (
 	copilotRateLimited          atomic.Uint64
 	copilotCognitiveBypass      atomic.Uint64

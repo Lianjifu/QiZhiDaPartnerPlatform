@@ -10,10 +10,10 @@
  * 仅调整了 KB_TYPE_OPTIONS 来源（来自 KnowledgeShared）以去除跨文件 import。
  */
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ChevronRight, Download, FileText, Hash, Pencil, Search, ShieldCheck, Sparkles, Trash2, TrendingUp, Upload,
 } from 'lucide-react';
-import type { KnowledgePackage } from '@qzda/web-types';
 import { Badge, Button, Input } from '@qzda/web-ui';
 import { ConfirmDialog, EmptyState, Modal } from '@/components/shared';
 import { cn } from '@qzda/web-utils';
@@ -28,22 +28,11 @@ export function KnowledgeModals({ c }: { c: KnowledgeController }) {
   return (
     <>
       <DocDetailModal c={c} />
-      <NewKnowledgePackageModal
-        open={c.activeModal === 'newPackage'}
-        onClose={() => c.setActiveModal(null)}
-        onSubmit={(form) => c.createPackageMutation.mutate(form)}
-      />
       <ConnectSourceModal
         open={c.activeModal === 'connectSource'}
         onClose={() => c.setActiveModal(null)}
         onSubmit={c.connectSource}
         connecting={c.sourceMutation.isPending || c.sourceSyncMutation.isPending}
-      />
-      <UploadDocModal
-        open={c.activeModal === 'upload'}
-        onClose={() => c.setActiveModal(null)}
-        onSubmit={c.handleUploadDoc}
-        uploading={c.uploadMutation.isPending}
       />
       <CitationAgentsModal
         open={c.activeModal === 'citationAgents'}
@@ -82,6 +71,7 @@ export function KnowledgeModals({ c }: { c: KnowledgeController }) {
 }
 
 function DocDetailModal({ c }: { c: KnowledgeController }) {
+  const navigate = useNavigate();
   const detail = c.docDetail;
   return (
     <Modal
@@ -170,7 +160,11 @@ function DocDetailModal({ c }: { c: KnowledgeController }) {
                 <span className="font-mono text-[11px] font-semibold text-[var(--text)]">{detail.citeCount ?? 0} 次</span>
               </div>
               <p className="mt-2 text-[11px] leading-5 text-[var(--text-secondary)]">版本变更前请确认智能体与工作流影响范围。</p>
-              <button type="button" className="knowledge-doc-impact__action" onClick={() => { c.setShowDetails(false); c.setWorkspace('governance'); }}>
+              <button type="button" className="knowledge-doc-impact__action" onClick={() => {
+                c.setShowDetails(false);
+                const pkgId = detail.packageId as string | undefined;
+                navigate(pkgId ? `/knowledge/packages/${encodeURIComponent(pkgId)}?step=versions` : '/knowledge');
+              }}>
                 查看引用治理 <ChevronRight className="h-3.5 w-3.5" />
               </button>
             </section>
@@ -199,59 +193,16 @@ function DocDetailModal({ c }: { c: KnowledgeController }) {
                 </ul>
               </section>
             )}
-            <button type="button" className="knowledge-doc-nav" onClick={() => { c.setShowDetails(false); c.setWorkspace('retrieval'); }}>
+            <button type="button" className="knowledge-doc-nav" onClick={() => {
+              c.setShowDetails(false);
+              if (c.docPreviewId) navigate(`/knowledge/docs/${encodeURIComponent(c.docPreviewId)}?step=retrieval`);
+            }}>
               <span className="flex items-center gap-1.5"><Search className="h-3.5 w-3.5 text-[var(--brand)]" />前往检索与评测</span>
               <ChevronRight className="h-3.5 w-3.5 text-[var(--brand)]" />
             </button>
           </aside>
         </div>
       )}
-    </Modal>
-  );
-}
-
-function NewKnowledgePackageModal({ open, onClose, onSubmit }: {
-  open: boolean;
-  onClose: () => void;
-  onSubmit: (form: { name: string; description: string; domain: string; classification: KnowledgePackage['classification'] }) => void;
-}) {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [domain, setDomain] = useState('SRE');
-  const [classification, setClassification] = useState<KnowledgePackage['classification']>('internal');
-  return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title="新建知识包"
-      description="知识包是供智能体和工作流引用的版本化知识能力。创建后需经过加工、评测和发布才可被绑定。"
-      size="md"
-      footer={<>
-        <Button variant="ghost" onClick={onClose}>取消</Button>
-        <Button disabled={!name.trim()} onClick={() => onSubmit({ name: name.trim(), description: description.trim(), domain, classification })}>创建知识包</Button>
-      </>}
-    >
-      <div className="space-y-3">
-        <Field label="知识包名称" required>
-          <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="例如：生产故障处置知识包" />
-        </Field>
-        <Field label="业务域">
-          <Input value={domain} onChange={(event) => setDomain(event.target.value)} placeholder="例如：SRE、安全、财务" />
-        </Field>
-        <Field label="说明">
-          <Input value={description} onChange={(event) => setDescription(event.target.value)} placeholder="说明适用范围、主要来源与使用边界" />
-        </Field>
-        <Field label="数据分级">
-          <select value={classification} onChange={(event) => setClassification(event.target.value as KnowledgePackage['classification'])} className="h-9 w-full rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-2 text-xs text-[var(--text)]">
-            <option value="internal">内部</option>
-            <option value="confidential">机密</option>
-            <option value="restricted">受限</option>
-          </select>
-        </Field>
-        <div className="rounded-lg border border-[var(--brand)]/20 bg-[var(--brand-light)] p-3 text-[11px] text-[var(--text-secondary)]">
-          <ShieldCheck className="mr-1 inline h-3.5 w-3.5 text-[var(--brand)]" />发布前将检查加工索引、检索评测和引用影响；本地环境为 Mock 流程演示。
-        </div>
-      </div>
     </Modal>
   );
 }
@@ -281,7 +232,7 @@ async function readUploadFileContent(file: File): Promise<string> {
   ].join('\n');
 }
 
-function UploadDocModal({ open, onClose, onSubmit, uploading = false }: {
+export function UploadDocModal({ open, onClose, onSubmit, uploading = false }: {
   open: boolean;
   onClose: () => void;
   onSubmit: (form: { title: string; source: string; tags: string; content: string; fileName?: string }) => void;
@@ -396,7 +347,7 @@ function UploadDocModal({ open, onClose, onSubmit, uploading = false }: {
         </div>
         <div className="knowledge-upload-hint">
           <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--brand)]" />
-          <span>上传后将执行敏感内容检测，并进入接入加工队列。Markdown / 纯文本正文会随请求一并提交，可在详情中直接阅读。</span>
+          <span>上传后将执行敏感内容检测，并进入加工队列。Markdown / 纯文本正文会随请求一并提交，可在详情中直接阅读。</span>
         </div>
       </div>
     </Modal>

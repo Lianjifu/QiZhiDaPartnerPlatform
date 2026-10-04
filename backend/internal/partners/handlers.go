@@ -55,6 +55,12 @@ func (s *Service) digitalEmployeeRoute(r *http.Request) (any, error) {
 	if action == "" && r.Method == http.MethodGet {
 		return s.Deps.EmployeeWithRuntimeLocked(emp), nil
 	}
+	if action == "" && r.Method == http.MethodDelete {
+		if id.Role == "auditor" {
+			return nil, apperr.Forbidden(apperr.RoleForbidden, "无权写入数字伙伴")
+		}
+		return s.deleteUnreleasedEmployeeLocked(id.Name, eid, emp)
+	}
 	if action == "evidence" && r.Method == http.MethodGet {
 		return s.Deps.RealEmployeeEvidenceLocked(emp, 20), nil
 	}
@@ -330,6 +336,40 @@ func (s *Service) digitalEmployeeRoute(r *http.Request) (any, error) {
 		s.Deps.PersistEmployeesLocked()
 	}
 	return emp, nil
+}
+
+func (s *Service) deleteUnreleasedEmployeeLocked(actorName, eid string, emp map[string]any) (any, error) {
+	rel, _ := emp["release"].(map[string]any)
+	if str(emp["lifecycle"]) == "active" || str(rel["status"]) == "released" {
+		return nil, apperr.Conflict(apperr.DigitalPartnerPublish, "已上岗的数字伙伴不可删除")
+	}
+	kept := make([]map[string]any, 0, len(s.Store.Employees))
+	for _, item := range s.Store.Employees {
+		if str(item["id"]) != eid {
+			kept = append(kept, item)
+		}
+	}
+	s.Store.Employees = kept
+	versions := make([]map[string]any, 0, len(s.Store.ConfigVersions))
+	for _, item := range s.Store.ConfigVersions {
+		if str(item["partnerId"]) != eid && str(item["employeeId"]) != eid {
+			versions = append(versions, item)
+		}
+	}
+	s.Store.ConfigVersions = versions
+	for key, draft := range s.Store.ConfigDrafts {
+		if str(draft["partnerId"]) == eid || str(draft["employeeId"]) == eid {
+			delete(s.Store.ConfigDrafts, key)
+		}
+	}
+	s.Store.AppendAudit(str(emp["workspaceId"]), actorName, "删除数字伙伴", str(emp["name"]), "success", "")
+	if s.Deps.PersistEmployeesLocked != nil {
+		s.Deps.PersistEmployeesLocked()
+	}
+	if s.Deps.AfterWriteLocked != nil {
+		s.Deps.AfterWriteLocked("config_versions")
+	}
+	return map[string]any{"id": eid, "status": "deleted"}, nil
 }
 
 // applyEmployeeConfig merges a draft configuration body into the live

@@ -356,4 +356,12 @@ describe('digital employee control plane', () => {
     };
     await expect(mockHandler(`/api/partners/${employee.id}/configuration`, { method: 'POST', headers: admin, body: configuration })).rejects.toThrow('E_DIGITAL_EMPLOYEE_BOUNDARY_CAPABILITY_INVALID');
   });
+
+  it('deletes unreleased partners and blocks deleting released ones', async () => {
+    const draft = await mockHandler('/api/partners', { method: 'POST', headers: admin, body: { name: '待删档案', role: '草稿', department: '信息技术部' } }) as { id: string };
+    const deleted = await mockHandler(`/api/partners/${draft.id}`, { method: 'DELETE', headers: admin }) as { id: string; status: string };
+    expect(deleted).toMatchObject({ id: draft.id, status: 'deleted' });
+    await expect(mockHandler(`/api/partners/${draft.id}`, { method: 'GET', headers: admin })).rejects.toThrow('E_DIGITAL_EMPLOYEE_NOT_FOUND');
+    await expect(mockHandler('/api/partners/de-sre', { method: 'DELETE', headers: admin })).rejects.toThrow('E_DIGITAL_PARTNER_PUBLISH_FORBIDDEN');
+  });
 });

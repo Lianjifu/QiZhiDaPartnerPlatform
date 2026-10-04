@@ -42,14 +42,21 @@ export function ModelsTabProviders({ c: _c, description, canWrite, providers, po
           {providers.map((provider) => {
             const referenced = providerReferencedByPublishedPolicies(provider, policies);
             return (
-              <div key={provider.id} className="de-employee-card rounded-xl bg-[var(--surface-1)] p-3.5 text-left">
+              <div
+                key={provider.id}
+                role="link"
+                tabIndex={0}
+                className="de-employee-card cursor-pointer rounded-xl bg-[var(--surface-1)] p-3.5 text-left"
+                onClick={() => onSelect(provider.id)}
+                onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelect(provider.id); } }}
+              >
                 <div className="flex items-start justify-between gap-2">
-                  <button type="button" onClick={() => onSelect(provider.id)} className="min-w-0 flex-1 text-left">
+                  <div className="min-w-0 flex-1 text-left">
                     <div className="truncate text-sm font-semibold text-[var(--text)]">{provider.name}</div>
                     <div className="mt-1 text-[11px] text-[var(--text-muted)]">
                       {protocolLabel(provider.protocol)} · {TIER_LABEL[provider.tier]} · {provider.cloudRegion}
                     </div>
-                  </button>
+                  </div>
                   <div className="flex shrink-0 items-center gap-1">
                     <Badge tone={providerStatusTone(provider.status)}>{providerStatusLabel(provider.status)}</Badge>
                     {canWrite && (
@@ -59,14 +66,14 @@ export function ModelsTabProviders({ c: _c, description, canWrite, providers, po
                         aria-label={`删除 ${provider.name}`}
                         disabled={referenced}
                         className="grid h-7 w-7 place-items-center rounded-md text-[var(--text-muted)] transition-colors hover:bg-[var(--danger-bg)] hover:text-[var(--danger)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--text-muted)]"
-                        onClick={() => onDelete(provider)}
+                        onClick={(event) => { event.stopPropagation(); onDelete(provider); }}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     )}
                   </div>
                 </div>
-                <button type="button" onClick={() => onSelect(provider.id)} className="mt-2 w-full text-left">
+                <div className="mt-2 w-full text-left">
                   <div className="truncate font-mono text-[10px] text-[var(--text-muted)]">{provider.baseUrl ?? '未配置 Endpoint'}</div>
                   <div className="mt-1.5 text-[11px] leading-5 text-[var(--text-secondary)]">
                     {provider.models.map((model) => model.name).join(' · ') || '未配置模型'}
@@ -75,7 +82,7 @@ export function ModelsTabProviders({ c: _c, description, canWrite, providers, po
                     <FileKey2 className="h-3 w-3" />{provider.credentialMasked} · {provider.lastVerifiedAt ? '已验证' : '待验证'}
                     {referenced ? ' · 路由引用中' : ''}
                   </div>
-                </button>
+                </div>
               </div>
             );
           })}

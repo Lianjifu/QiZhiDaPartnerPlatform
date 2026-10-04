@@ -2,15 +2,16 @@
  * 数字伙伴目录卡片（catalog grid 中使用）：
  *
  *  - 名称、岗位、生命周期、风险、上岗门禁、标签、能力按钮
- *  - 「发起协作」直接跳转 `/copilot?employeeId=...`；「班组调度」复用 catalog 详情面板
+ *  - 「发起协作」直接跳转 `/copilot?employeeId=...`；「班组调度」打开详情页班组分区
  */
 import { useNavigate } from 'react-router-dom';
 import type { DigitalPartner } from '@qzda/web-types';
 import { Badge } from '@qzda/web-ui';
 import { ArrowUpRight, MessageSquare, UsersRound } from 'lucide-react';
-import { isDepartmentHead } from '@/features/partners/lib/partners';
+import { isDepartmentHead, partnerDetailPath } from '@/features/partners/lib/partners';
 import { EmployeeAvatar, employeeTags, gateLabel, lifecycleMeta, riskMeta } from './PartnersShared';
 import { employeePrimaryLabel, employeeSecondaryLabel } from '@/features/partners/lib/partners';
+import { DeleteUnreleasedPartnerButton } from './PartnersDelete';
 
 export function EmployeeCard({ employee, onSelect }: { employee: DigitalPartner; onSelect: () => void }) {
   const navigate = useNavigate();
@@ -42,10 +43,17 @@ export function EmployeeCard({ employee, onSelect }: { employee: DigitalPartner;
         <p className="mt-2 text-[11px] text-[var(--text-secondary)]">{head ? '可调度本部门专家，并可发起跨部门协办。' : gate}</p>
         {tags.length > 0 && <div className="mt-2 flex flex-wrap gap-1">{tags.map((tag) => <span key={tag} className="max-w-[110px] truncate rounded px-2 py-0.5 text-[10px] text-[var(--text-muted)]" style={{ boxShadow: 'var(--saas-ring)' }}>{tag}</span>)}</div>}
       </button>
-      {employee.lifecycle === 'active' && (
+      {employee.lifecycle === 'active' ? (
         <div className="mt-3 flex justify-end gap-2 pt-3" style={{ boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--brand) 14%, transparent)' }}>
-          {head && <button type="button" className="de-employee-btn" onClick={(event) => { event.stopPropagation(); onSelect(); }}><UsersRound className="h-3.5 w-3.5" />班组调度</button>}
+          {head && <button type="button" className="de-employee-btn" onClick={(event) => { event.stopPropagation(); navigate(partnerDetailPath(employee.id, 'team')); }}><UsersRound className="h-3.5 w-3.5" />班组调度</button>}
           <button type="button" className="de-employee-btn de-employee-btn--primary" onClick={(event) => { event.stopPropagation(); navigate(`/copilot?employeeId=${employee.id}`); }}><MessageSquare className="h-3.5 w-3.5" />发起协作</button>
+        </div>
+      ) : (
+        <div className="mt-3 flex justify-end gap-2 pt-3" style={{ boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--brand) 14%, transparent)' }}>
+          <span onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+            <DeleteUnreleasedPartnerButton employee={employee} />
+          </span>
+          <button type="button" className="de-employee-btn de-employee-btn--primary" onClick={(event) => { event.stopPropagation(); navigate(`/partners/new?id=${employee.id}&step=role`); }}>继续配置</button>
         </div>
       )}
     </article>

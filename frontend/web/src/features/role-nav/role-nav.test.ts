@@ -84,7 +84,11 @@ describe('role-nav IA', () => {
     expect(defaultSkillsTab('auditor')).toBe('governance');
     expect(visibleSkillsTabs('user')).toEqual(['workspace', 'workflowSkills']);
     expect(defaultWorkflowTab('auditor')).toBe('versions');
+    expect(defaultWorkflowTab('user')).toBe('templates');
+    expect(defaultWorkflowTab('admin')).toBe('templates');
     expect(visibleWorkflowTabs('auditor')).toEqual(['versions', 'history', 'templates']);
+    expect(visibleWorkflowTabs('admin')).toEqual(['templates', 'canvas', 'publishSkill', 'history', 'versions']);
+    expect(visibleWorkflowTabs('user')).toEqual(['templates', 'canvas', 'publishSkill', 'history', 'versions']);
   });
 
   it('rewrites cross-workspace permission errors', () => {

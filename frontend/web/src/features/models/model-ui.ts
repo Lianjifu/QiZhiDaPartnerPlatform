@@ -4,9 +4,9 @@ import { resolveAppRole } from '@/features/role-nav/role-nav';
 export type ModelWorkspaceTab = 'access' | 'routing' | 'governance' | 'audit';
 export type RoutingPolicyLevel = Exclude<ModelLevel, 'audit'>;
 
-/** 管理员管接入/路由/治理；审计员只读模型审计。 */
+/** 管理员管接入/治理；路由策略在供应商接入向导与详情中维护；审计员只读模型审计。 */
 export function visibleModelTabs(role?: Role | null): ModelWorkspaceTab[] {
-  return resolveAppRole(role) === 'auditor' ? ['audit'] : ['access', 'routing', 'governance'];
+  return resolveAppRole(role) === 'auditor' ? ['audit'] : ['access', 'governance'];
 }
 
 export function defaultModelTab(role?: Role | null): ModelWorkspaceTab {
@@ -101,8 +101,8 @@ export function governanceDrillEligibility(policies: RoutingPolicyDraft[]) {
     guidance: drillable.length > 0
       ? `可对 ${drillable.length} 条已发布路由执行 sandbox 降级演练`
       : published.length === 0
-        ? '暂无已发布路由；请先到「模型路由」完成校验并发布'
-        : '已发布路由均无降级链；请到「模型路由」配置备选后重新校验发布',
+        ? '暂无已发布路由；请先接入供应商并配置路由策略'
+        : '已发布路由均无降级链；请到供应商详情或接入向导补齐备选后重新校验发布',
   };
 }
 

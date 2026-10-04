@@ -1,3 +1,8 @@
+// Package copilot —— 多智能体(multi-agent)协作模块。
+//
+// 职责：以 Supervisor（主数字伙伴）+ 多个 Specialist（其他岗位）并行协作的形式
+// 处理跨领域问题。每个 specialist 在独立的 participantContext 中跑自己的 ReAct，
+// supervisor 拿到所有意见后用主模型统一汇总。
 package copilot
 
 import (
@@ -11,8 +16,10 @@ import (
 	"github.com/qizhida-partner-platform/backend/internal/modelprov"
 )
 
+// multiAgentMaxSpecialists 单回合最多调度的子专家数量。
 const multiAgentMaxSpecialists = 3
 
+// specialistRef 是选中子专家的轻量引用，用于 picker 输出和 SSE emit。
 type specialistRef struct {
 	ID         string
 	Name       string
@@ -22,6 +29,8 @@ type specialistRef struct {
 	Task       string
 }
 
+// listActiveSpecialists 取出当前 workspace 下 lifecycle=active/published 的员工；
+// excludeID 通常是 supervisor 自己的 id，用于避免"自己选自己"。
 func (s *Service) listActiveSpecialists(ws, excludeID string) []map[string]any {
 	s.Store.RLock()
 	defer s.Store.RUnlock()
@@ -47,6 +56,8 @@ func (s *Service) listActiveSpecialists(ws, excludeID string) []map[string]any {
 	return out
 }
 
+// scoreSpecialist 基于岗位关键词 × 用户关键词的命中数给候选员工打分。
+// 命中"运维/人事/质检/财务/法务"等预设组（4 分/命中）累计；返回 0 表示该员工与此问题无关。
 func scoreSpecialist(emp map[string]any, userMsg string) int {
 	lower := strings.ToLower(userMsg)
 	hay := strings.ToLower(strings.Join([]string{
@@ -79,6 +90,8 @@ func scoreSpecialist(emp map[string]any, userMsg string) int {
 	return score
 }
 
+// pickSpecialists 从候选员工里按 score 降序挑前 max 个，转成 specialistRef。
+// 0 分的员工直接淘汰；score 相同按出现顺序保留。
 func pickSpecialists(cands []map[string]any, userMsg string, max int) []specialistRef {
 	type scored struct {
 		emp   map[string]any
@@ -118,6 +131,8 @@ func pickSpecialists(cands []map[string]any, userMsg string, max int) []speciali
 	return out
 }
 
+// specialistSystemPrompt 给子专家拼一份"只输出本岗位视角的简要意见"的 system prompt，
+// 强制不输出 TOOL/PLAN 标记，避免污染 supervisor 聚合 prompt。
 func specialistSystemPrompt(emp map[string]any) string {
 	name := coalesce(str(emp["name"]), "数字伙伴")
 	role := coalesce(str(emp["role"]), str(emp["title"]))
@@ -407,6 +422,8 @@ func (s *Service) runMultiAgentTurn(ctx context.Context, in reactTurnInput) reac
 	}
 }
 
+// specialistMaps 把 specialistRef 切片投影成 []map[string]any，
+// 用于 SSE emit 和 runMultiAgentTurn 返回结果中的 agents 字段。
 func specialistMaps(picks []specialistRef) []map[string]any {
 	out := make([]map[string]any, 0, len(picks))
 	for _, sp := range picks {
@@ -417,14 +434,8 @@ func specialistMaps(picks []specialistRef) []map[string]any {
 	return out
 }
 
-// dispatchParticipants runs the per-participant turn for every entry in
-// pcs in parallel via agentos.Engine (bounded concurrency, per-task
-// timeout, panic recovery, parent-ctx cancellation). The slice order
-// matches pcs.
-//
-// Extracted from runMultiAgentTurn so tests can drive the dispatch path
-// directly with controlled panic injection (runMultiAgentTurn fans out
-// shared supervisor retrieves that the tests don't need).
+// dispatchParticipants 通过 agentos.Engine 并行执行每个 participant 的回合，
+// 30s 单任务超时、panic 隔离、跟随父 ctx 取消。返回顺序与输入 pcs 保持一致。
 func (s *Service) dispatchParticipants(ctx context.Context, pcs []participantContext) []participantTurnResult {
 	tasks := make([]agentos.Task, len(pcs))
 	for i := range pcs {

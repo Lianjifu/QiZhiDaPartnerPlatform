@@ -1,3 +1,14 @@
+// Package copilot —— 对话上下文装配模块。
+//
+// 职责：
+//   - 把"存储里的历史消息"投影成 LLM 可消费的 []modelprov.ChatMessage（窗口化 + 工具摘要折叠）
+//   - 把 RAG 命中转成 citations（带 tier/score/quote hash 等可审计字段）
+//   - 召回跨会话记忆（retrieveMemoryForTurnLocked）并落"memory.budget"报表
+//   - 给数字伙伴拼 system prompt（人格 + 记忆 + RAG + 推理强度）
+//   - 维护"memory.recall 工具"在已预注入记忆时的禁用策略
+//
+// 该模块是 SSE 流的事实"上游"：system prompt / 记忆 / RAG 都在这里定型，
+// 下游 runReactTurn/runPlanExecuteTurn 只负责把这些输入跑完。
 package copilot
 
 import (
@@ -222,6 +233,14 @@ func knowledgeToolCallFromHits(ragHits any, durationMs int) map[string]any {
 	}
 }
 
+// memoryHit 是注入到 system prompt 的"一条记忆"的最终形状。
+//
+// 字段语义：
+//   - ID/Source —— 至少有一个不为空：用于审计追溯（system prompt 行尾括号里打印）
+//   - Title     —— 记忆标题，可在 prompt 里以"- {title}：{content}"展示
+//   - Content   —— 已按 copilotMemoryMaxRunes 截断后的正文
+//   - Layer     —— short_term / working / long_term，决定排序权重
+//   - Score     —— 来自 BM25+ MMR 综合分；空查询走兜底时给个 0.3~0.5 的基础分
 type memoryHit struct {
 	ID      string
 	Title   string
@@ -252,8 +271,23 @@ func memoryProvenanceMaps(hits []memoryHit) []map[string]any {
 	return out
 }
 
-// retrieveMemoryForTurnLocked requires Store.RLock (or Lock) held.
-// Skips short_term from the current conversation (already covered by history).
+// retrieveMemoryForTurnLocked 是跨会话记忆召回的主入口。
+//
+// 前置条件：调用方须持 Store.RLock 或 Store.Lock（与 ingestRuntimeMemoryLocked
+// 在并发写入上互斥，避免读到半结构化的 m）。
+//
+// 召回流程：
+//  1. 过滤：workspace 一致 + status=active + 未过期 + MemoryCanRead 通过 +
+//     layer ∈ {short_term, working, long_term}
+//  2. DE-id 严格隔离：memDE 非空且 ≠ deID 直接 skip（修复了旧逻辑"DE-less
+//     记录漏给所有专家"的越权 bug）
+//  3. short_term 的同会话切片按 excludeSourceID 去重，避免与 Messages 双写
+//  4. short_term user 范围只保留 owner 一致，避免跨用户泄漏
+//  5. 召回策略分两路：
+//     - 无 query tokens → 按 layer 排序取 working/long_term（跨会话兜底）
+//     - 有 query tokens → memret.Score（BM25 + MMR）→ membudget.Select 受 token 预算约束
+//  6. 每次都通过 recordMemoryBudgetReport 留痕——空召回也要写一条零报表，
+//     让 SSE 端能稳定拿到 memory.budget 事件、便于排查"为什么不显示记忆"
 func (s *Service) retrieveMemoryForTurnLocked(ws, ownerID, deID, excludeSourceID, query string, viewer *auth.Identity) []memoryHit {
 	now := time.Now().UTC()
 	var pool []memRecord

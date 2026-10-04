@@ -135,7 +135,7 @@ export function useCopilotController(): CopilotController {
     ? activeSession : undefined;
   const activeEmployeeId = activeSession?.digitalPartnerId ?? undefined;
   const activeEmployee = s.employees.find((item) => item.id === activeEmployeeId) ?? null;
-  const hasBoundExpert = Boolean(activeEmployee);
+  const hasBoundExpert = Boolean(activeEmployee || activeSession?.digitalPartnerId);
   const employeeBoundModel = activeEmployee?.capabilities?.model ?? null;
   const availableTools = useMemo(() => buildExpertTools(activeEmployee), [activeEmployee]);
   const sendModelId = resolveSendModelId({
@@ -160,7 +160,7 @@ export function useCopilotController(): CopilotController {
     && !/^s_/.test(conversationFetchId ?? '')
     && !s.chat.isConversationDeleted(conversationFetchId)
     && sessionInWorkspace(activeSession ?? serverSession, s.currentWorkspaceId);
-  const { isError: conversationMissing } = useApiQuery<any>(
+  const { data: activeConversation, isError: conversationMissing } = useApiQuery<any>(
     ['conversation', conversationFetchId, s.currentWorkspaceId],
     `/api/conversations/${conversationFetchId ?? '__none__'}`,
     undefined,
@@ -369,11 +369,13 @@ export function useCopilotController(): CopilotController {
     activity: Activity, briefcase: BriefcaseBusiness, search: Search, wrench: Wrench,
   }), []);
 
-  const expertName = hasBoundExpert ? employeePrimaryLabel(activeEmployee!) : (s.currentModel?.label ?? '助手');
-  const expertMeta = hasBoundExpert ? employeeSecondaryLabel(activeEmployee!) : null;
-  const expertDescription = hasBoundExpert
-    ? (activeEmployee!.description ?? '选择在岗数字伙伴后开始专家协作。')
-    : '未绑定数字伙伴，将以通用助手直接调用已选模型。可点选专家后改绑。';
+  const expertName = activeEmployee
+    ? employeePrimaryLabel(activeEmployee)
+    : (activeSession?.digitalPartnerName || (hasBoundExpert ? '岗位专家' : '助手'));
+  const expertMeta = activeEmployee ? employeeSecondaryLabel(activeEmployee) : null;
+  const expertDescription = activeEmployee
+    ? (activeEmployee.description ?? '选择在岗数字伙伴后开始专家协作。')
+    : '请先选择一位在岗数字伙伴，再开始对话。';
   const expertSuggestions = useMemo(
     () => (activeEmployee ? buildExpertSuggestions(activeEmployee) : []),
     [activeEmployee],
@@ -398,7 +400,8 @@ export function useCopilotController(): CopilotController {
   useCopilotEffects({
     s, isAdmin, canMutate,
     activeSession, currentSession, activeEmployee, employeeBoundModel, availableTools,
-    conversationFetchId, onDutyEmployees, sendModelId,
+    conversationFetchId, activeConversation, conversationMissing,
+    onDutyEmployees, sendModelId,
     enabledToolKeySig: availableTools.map((t) => t.key).join('|'),
     isGenerating,
   });

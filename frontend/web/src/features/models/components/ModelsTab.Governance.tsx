@@ -57,7 +57,7 @@ export function ModelsTabGovernance({ canWrite, snapshot, models, policies, desc
         </div>
         <div>
           <div className="font-semibold text-[var(--text)]">边界</div>
-          <p className="mt-1">用量指标供运营预警，非财务结算；演练仅 sandbox/canary，不切生产流量。策略改动请到「模型路由」。</p>
+          <p className="mt-1">用量指标供运营预警，非财务结算；演练仅 sandbox/canary，不切生产流量。策略改动请到供应商接入向导或详情。</p>
         </div>
       </div>
 
@@ -162,7 +162,7 @@ export function ModelsTabGovernance({ canWrite, snapshot, models, policies, desc
             <div className="flex flex-wrap gap-2">
               {!eligibility.ready && (
                 <button type="button" className="de-employee-btn" onClick={onGoRouting}>
-                  <Route className="h-3.5 w-3.5" />去模型路由
+                  <Route className="h-3.5 w-3.5" />去配置路由
                 </button>
               )}
               <button
@@ -226,7 +226,7 @@ export function ModelsTabGovernance({ canWrite, snapshot, models, policies, desc
           {eligibility.total === 0 && (
             <div className="mt-3 rounded-lg border border-dashed border-[var(--border)] px-3 py-3 text-[11px] text-[var(--text-muted)]">
               还没有已发布路由。可先创建草稿并完成「校验 → 发布」，P0/P1 建议配置降级链以便演练。
-              <button type="button" className="ml-2 text-[var(--brand)] underline-offset-2 hover:underline" onClick={onGoRouting}>前往模型路由</button>
+              <button type="button" className="ml-2 text-[var(--brand)] underline-offset-2 hover:underline" onClick={onGoRouting}>去配置路由策略</button>
             </div>
           )}
         </div>

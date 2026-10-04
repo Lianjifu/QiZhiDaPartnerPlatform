@@ -1,9 +1,14 @@
+// Package copilot —— 回合叙事中的"思维过程"thought 文案生成模块。
+//
+// 把路由 / 工具选择 / 工具结果等阶段事件翻译成对用户友好的中文 thought 标题 + 详情。
+// 标题用于前端四阶段进度条，详情用于 hover 显示原因。
 package copilot
 
 import (
 	"strings"
 )
 
+// thoughtUnderstandTask 产出"理解任务"阶段的 thought 标题（截断到 48 rune）。
 func thoughtUnderstandTask(userMsg string) (title, detail string) {
 	msg := strings.TrimSpace(userMsg)
 	if msg == "" {
@@ -12,6 +17,7 @@ func thoughtUnderstandTask(userMsg string) (title, detail string) {
 	return "理解任务：" + truncateRunes(msg, 48), ""
 }
 
+// thoughtForRouteMode 根据路由 mode + 内部 reason 生成"为什么走这条路"的 thought。
 func thoughtForRouteMode(mode, reason string) (title, detail string) {
 	switch mode {
 	case modePlanExec:
@@ -25,6 +31,7 @@ func thoughtForRouteMode(mode, reason string) (title, detail string) {
 	}
 }
 
+// humanRouteReason 把 classifyCopilotMode 的内部 reason 翻译成对用户友好的中文短语。
 func humanRouteReason(reason string) string {
 	switch strings.TrimSpace(reason) {
 	case "reflect_requested":
@@ -41,6 +48,8 @@ func humanRouteReason(reason string) string {
 	}
 }
 
+// thoughtForToolChoice 根据工具名生成"为什么要调它"的 thought：docx/pptx/xlsx/pdf 等按文档类型
+// 给出具体话术，未命中预置类型时退到通用"调用能力：X"。
 func thoughtForToolChoice(toolName string) (title, detail string) {
 	name := strings.TrimSpace(toolName)
 	if name == "" {
@@ -63,6 +72,7 @@ func thoughtForToolChoice(toolName string) (title, detail string) {
 	}
 }
 
+// thoughtForToolResult 把工具调用状态（success / denied / failed）翻译成 thought 标题。
 func thoughtForToolResult(status, toolName string) (title, detail string) {
 	name := strings.TrimSpace(toolName)
 	if name == "" {

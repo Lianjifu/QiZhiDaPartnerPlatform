@@ -16,6 +16,17 @@ export const MENTION_CATEGORIES: MentionCategory[] = [
   { kind: 'member', key: '@member', label: '成员', desc: '协作同事' },
 ];
 
+export function formatMentionToken(kind: MentionKind, item: { key?: string; name: string }): string {
+  const raw = String(item.key ?? item.name).trim();
+  if (kind === 'skill') {
+    if (/^(skill|tool|workflow):/i.test(raw)) return `@${raw}`;
+    return `@skill:${item.name}`;
+  }
+  if (kind === 'expert') return `@expert:${item.name}`;
+  if (kind === 'doc') return `@doc:${raw}`;
+  return `@member:${item.name}`;
+}
+
 /** 匹配句首或空白后的未完成 `@token`（不含已闭合的完整提及）。 */
 export function mentionTriggerMatch(draft: string): { start: number; query: string } | null {
   const m = /(^|[\s\u3000])@([^\s@]*)$/u.exec(draft);

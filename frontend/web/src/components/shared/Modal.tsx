@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@qzda/web-utils';
 import { Button } from '@qzda/web-ui';
@@ -60,29 +61,35 @@ export function Modal({
     return () => document.removeEventListener('keydown', onKey);
   }, [open, onClose, closeOnEscape]);
 
-  if (!open) return null;
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
 
-  return (
-    <div className={cn('fixed inset-0 z-[200] flex items-center justify-center p-4', overlayClassName)}>
-      {/* 遮罩 */}
+  if (!open || typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div className={cn('fixed inset-0 z-[400] flex items-center justify-center p-4', overlayClassName)} role="presentation">
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-[fadeIn_0.15s_ease]"
         onClick={() => closeOnBackdrop && onClose()}
       />
-      {/* 弹窗本体 */}
       <div
+        role="dialog"
+        aria-modal="true"
         className={cn(
-          'relative flex w-full max-h-[min(92vh,920px)] flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-1)] shadow-[0_20px_60px_rgba(15,23,42,0.16)] animate-[scaleIn_0.18s_ease]',
+          'relative z-[1] flex w-full max-h-[min(92vh,920px)] flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-1)] shadow-[0_20px_60px_rgba(15,23,42,0.16)] animate-[scaleIn_0.18s_ease]',
           SIZE_CLASS[size],
           panelClassName,
         )}
       >
-        {/* Header */}
         {(title || description) && (
-          <div className="app-glass flex shrink-0 items-start justify-between gap-3 border-b px-6 py-4">
+          <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[var(--border)] px-6 py-4">
             <div className="min-w-0">
               {title && <h3 className="text-[15px] font-semibold text-[var(--text)]">{title}</h3>}
-              {description && <p className="mt-1 text-[13px] text-[var(--text-muted)]">{description}</p>}
+              {description && <p className="mt-1 text-[13px] leading-5 text-[var(--text-muted)]">{description}</p>}
             </div>
             <button
               type="button"
@@ -93,16 +100,17 @@ export function Modal({
             </button>
           </div>
         )}
-        {/* Body */}
-        <div className={cn('min-h-0 flex-1 overflow-y-auto px-6 py-5', bodyClassName)}>{children}</div>
-        {/* Footer */}
+        {children != null && children !== false && (
+          <div className={cn('min-h-0 flex-1 overflow-y-auto px-6 py-5', bodyClassName)}>{children}</div>
+        )}
         {footer && (
-          <div className="app-glass flex shrink-0 items-center justify-end gap-2 border-t px-6 py-3.5">
+          <div className="flex shrink-0 items-center justify-end gap-2 border-t border-[var(--border)] px-6 py-3.5">
             {footer}
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

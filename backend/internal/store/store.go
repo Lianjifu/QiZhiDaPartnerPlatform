@@ -39,6 +39,8 @@ type Store struct {
 	ConfigVersions    []map[string]any
 	ConfigDrafts      map[string]map[string]any
 	Tasks             []map[string]any
+	ScheduledTasks    []map[string]any
+	ScheduledRuns     []map[string]any
 
 	ModelProviders  []map[string]any
 	RoutingPolicies []map[string]any
@@ -59,18 +61,19 @@ type Store struct {
 	SlashCommands  []map[string]any
 	Actions        map[string]map[string]any
 
-	Workflows              []map[string]any
-	WorkflowSkills         []map[string]any
-	WorkflowRuns           []map[string]any
-	WorkflowVersions       map[string][]map[string]any
-	WorkflowGens           []map[string]any
-	WorkflowTpls           []map[string]any
-	Skills                 []map[string]any
-	SkillCatalog           []map[string]any
-	SkillGovernance        map[string]any
-	SkillHealth            []map[string]any
-	SkillIntegrations      []map[string]any
-	SkillExtra             map[string]any // policies, runtimes, permissions, versions, bindings, incidents, events
+	Workflows             []map[string]any
+	WorkflowSkills        []map[string]any
+	WorkflowRuns          []map[string]any
+	WorkflowVersions      map[string][]map[string]any
+	WorkflowGens          []map[string]any
+	OrchestrationSessions []map[string]any
+	WorkflowTpls          []map[string]any
+	Skills                []map[string]any
+	SkillCatalog          []map[string]any
+	SkillGovernance       map[string]any
+	SkillHealth           []map[string]any
+	SkillIntegrations     []map[string]any
+	SkillExtra            map[string]any // policies, runtimes, permissions, versions, bindings, incidents, events
 	// W2-D1 · workspace publisher keypairs (per-workspace Ed25519 trust anchor).
 	// Flatted shape: each (workspaceId, keyId) is one entry; multiple keys
 	// per workspace represent rotation history (`status="rotated"` /
@@ -448,6 +451,31 @@ func (s *Store) seed() {
 		controlledTask("task-1", "w1", "T-1001", "排查缓存延迟", "P1", "in_progress", "running", "u2", "de-1", "alert"),
 		controlledTask("task-2", "w1", "T-1002", "复核发布申请", "P2", "review", "human_action", "u1", "de-2", "manual"),
 	}
+	s.ScheduledTasks = []map[string]any{
+		{
+			"id": "sch-1", "workspaceId": "w1", "code": "SCH-1001", "title": "每日缓存巡检",
+			"description": "工作日 09:00 触发数字伙伴巡检 Redis 命中率。",
+			"cadence":     "daily", "hour": 9, "minute": 0, "timezone": "Asia/Shanghai",
+			"nextRunAt": "2099-01-01T01:00:00Z", "enabled": true, "status": "active",
+			"digitalPartnerId": "de-1", "digitalPartnerName": "SRE 故障处置专员",
+			"owner": "平台管理员", "createdBy": "u1", "runCount": 12, "failCount": 0,
+			"lastRunAt": "2026-07-22T01:00:00Z", "lastStatus": "success",
+			"createdAt": "2026-07-01T00:00:00Z", "updatedAt": "2026-07-22T01:00:00Z",
+		},
+		{
+			"id": "sch-2", "workspaceId": "w1", "code": "SCH-1002", "title": "每周容量盘点",
+			"description": "每周一 10:00 汇总集群容量并创建团队协助待办。",
+			"cadence":     "weekly", "hour": 10, "minute": 0, "weekday": 1, "timezone": "Asia/Shanghai",
+			"nextRunAt": "2099-01-06T02:00:00Z", "enabled": true, "status": "active",
+			"digitalPartnerId": "de-2", "digitalPartnerName": "变更协同专员",
+			"owner": "平台管理员", "createdBy": "u1", "runCount": 4, "failCount": 1,
+			"lastRunAt": "2026-07-21T02:00:00Z", "lastStatus": "success",
+			"createdAt": "2026-06-02T00:00:00Z", "updatedAt": "2026-07-21T02:00:00Z",
+		},
+	}
+	s.ScheduledRuns = []map[string]any{
+		{"id": "schr-1", "scheduleId": "sch-1", "workspaceId": "w1", "startedAt": "2026-07-22T01:00:00Z", "finishedAt": "2026-07-22T01:00:08Z", "status": "success", "message": "已创建团队协助 T-1001", "taskId": "task-1", "taskCode": "T-1001"},
+	}
 
 	s.ModelProviders = []map[string]any{
 		{"id": "mp-1", "workspaceId": "w1", "name": "Azure OpenAI CN", "tier": "official", "protocol": "azure_openai", "baseUrl": "https://example.openai.azure.com", "cloudRegion": "cn-east", "dataResidency": "cn", "status": "active", "credentialRef": "vault://model-providers/mp-1/credential", "credentialMasked": "••••abcd", "lastVerifiedAt": "2026-07-20T00:00:00Z", "lastProbeLatencyMs": 420, "models": []map[string]any{
@@ -553,12 +581,13 @@ func (s *Store) seed() {
 			"id": "wfv-1", "workflowId": "wf1", "version": "1.2.0", "label": "v1.2.0",
 			"status": "published", "desc": "当前已发布版本", "time": "2026-07-19 12:00",
 			"createdAt": "2026-07-19T12:00:00Z", "publishedAt": "2026-07-19T12:00:00Z",
-			"nodes": []map[string]any{{"id": "n1", "kind": "trigger", "label": "开始", "type": "start"}, {"id": "n2", "kind": "execute", "label": "处置动作", "type": "action"}},
-			"edges": []map[string]any{{"id": "e1", "source": "n1", "target": "n2"}},
+			"nodes":     []map[string]any{{"id": "n1", "kind": "trigger", "label": "开始", "type": "start"}, {"id": "n2", "kind": "execute", "label": "处置动作", "type": "action"}},
+			"edges":     []map[string]any{{"id": "e1", "source": "n1", "target": "n2"}},
 			"nodeCount": 2, "edgeCount": 1, "evidenceMode": "recorded",
 		},
 	}
 	s.WorkflowGens = []map[string]any{}
+	s.OrchestrationSessions = []map[string]any{}
 	s.WorkflowTpls = []map[string]any{} // 出厂包由 EnsureBuiltinWorkflowsReady 从 builtin/workflows 装载
 	s.WorkflowSkills = []map[string]any{
 		{
@@ -576,7 +605,7 @@ func (s *Store) seed() {
 			"name": "docx", "kind": "skill", "description": "根据文本内容生成 Word（.docx）文档并返回下载链接",
 			"lifecycleStatus": "enabled", "status": "installed", "runtime": "docx-local", "version": "1.0.0",
 			"riskLevel": "low", "rating": 4.8, "installCount": 96, "cacheable": true, "source": "builtin", "signed": true,
-			"publisher": "企业能力商店",
+			"publisher":   "企业能力商店",
 			"environment": "production", "classification": "internal", "lastVerifiedAt": "刚刚",
 		},
 		{
@@ -638,7 +667,7 @@ func (s *Store) seed() {
 			{"id": "cap-wf1-docx", "workspaceId": "w1", "targetType": "workflow", "targetId": "wf1", "targetName": "故障自愈", "capabilityKind": "skill", "capabilityId": "sk-docx", "pinnedVersion": "1.0.0", "status": "active", "createdBy": "系统", "createdAt": "2026-07-19T09:45:00Z", "auditId": "audit-cap-2"},
 		},
 		"incidents": []map[string]any{},
-		"events": []map[string]any{},
+		"events":    []map[string]any{},
 	}
 	s.MemoryRecords = []map[string]any{
 		{

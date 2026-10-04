@@ -4,14 +4,16 @@ import type { ControlledTask, TaskAuditEvent, TaskLifecycleStage } from '@qzda/w
 import { Badge, Input } from '@qzda/web-ui';
 import { useApiMutation, useApiQuery } from '@/services/query';
 import { conversationHref, employeeLabel, getPrimaryAction, getStageMeta, nextStepLabel, riskLabel, sourceLabel, dispatchKindLabel, assistStatusLabel, normalizeControlledTask } from './task-ui';
+import { TasksCollabThread } from './TasksCollabThread';
 import { roleCanMutate } from '@/features/role-nav/role-nav';
 import { useAuthStore } from '@/stores/authStore';
 
-type Tab = 'overview' | 'execution' | 'governance' | 'audit';
+type Tab = 'overview' | 'collab' | 'execution' | 'governance' | 'audit';
 type Props = { task: ControlledTask; onPendingChange: (pending: boolean) => void };
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'overview', label: '概览' },
+  { key: 'collab', label: '协作' },
   { key: 'execution', label: '执行' },
   { key: 'governance', label: '治理' },
   { key: 'audit', label: '审计' },
@@ -113,6 +115,7 @@ export function TaskLifecycleDrawer({ task: summary, onPendingChange }: Props) {
       {auditError && <QueryError message="无法加载审计记录" error={auditError} onRetry={() => refetchAudit()} />}
       {actionError && <div className="task-drawer-error" role="alert"><AlertCircle size={15} />{actionError}<button type="button" onClick={() => retryAction?.()} disabled={pending || !retryAction}>重试</button></div>}
       {tab === 'overview' && <Overview task={task} />}
+      {tab === 'collab' && <TasksCollabThread taskId={task.id} canMutate={canMutate} />}
       {tab === 'execution' && <Execution task={task} />}
       {tab === 'governance' && <Governance task={task} pending={pending} canManage={isAdmin} canMutate={canMutate} onApprove={() => setConfirming('approve')} onReject={() => setConfirming('reject')} onTakeover={() => setConfirming('takeover')} onRetry={() => requestRetry('治理页请求重试')} />}
       {tab === 'audit' && <Audit events={auditEvents} />}

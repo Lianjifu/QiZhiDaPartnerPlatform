@@ -135,7 +135,7 @@ export function WorkflowsTabRuns({ c }: Props) {
           <div className="wf-history__stat is-bad"><strong>{failedCount}</strong><span>失败</span></div>
           <div className="wf-history__stat is-run"><strong>{runningCount}</strong><span>运行中</span></div>
           <div className="wf-history__stat"><strong>{recordedCount}</strong><span>有快照</span></div>
-          <Button size="sm" variant="ghost" onClick={() => c.setTab('canvas')}>返回编排</Button>
+          <Button size="sm" variant="ghost" onClick={() => c.goStudio('canvas')}>返回编排</Button>
         </div>
       </header>
       <div className="wf-history__layout">
@@ -173,7 +173,7 @@ export function WorkflowsTabRuns({ c }: Props) {
               </div>
             </>
           ) : (
-            <div className="wf-history__empty"><strong>{isLoading ? '正在加载运行记录…' : '没有符合条件的运行记录'}</strong>{!isLoading && (<><span>可调整筛选，或回到画布发起一次沙箱试运行。</span><Button size="sm" variant="secondary" onClick={() => c.setTab('canvas')}>返回编排</Button></>)}</div>
+            <div className="wf-history__empty"><strong>{isLoading ? '正在加载运行记录…' : '没有符合条件的运行记录'}</strong>{!isLoading && (<><span>可调整筛选，或回到画布发起一次沙箱试运行。</span><Button size="sm" variant="secondary" onClick={() => c.goStudio('canvas')}>返回编排</Button></>)}</div>
           )}
         </section>
         <aside className="wf-history__panel wf-history__replay" aria-label="运行回放">{renderReplayBody()}</aside>

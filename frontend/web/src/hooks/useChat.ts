@@ -34,7 +34,7 @@ import {
   toHumanThoughtStep,
 } from '@/features/copilot/lib/human-thought';
 import { parseTurnMeta } from '@/features/copilot/turn-narrative/build-turn-summary';
-import { dedupeTurnTasks, mergeTurnTasks } from '@/features/copilot/turn-narrative/turn-task-list';
+import { dedupeTurnTasks, mergeTurnTasks, settleTurnTasks } from '@/features/copilot/turn-narrative/turn-task-list';
 import {
   isArtifactSegmentEvent,
   mergeArtifactBlockIntoContent,
@@ -1649,10 +1649,13 @@ export function useChat(agentMeta?: { name: string }) {
             cognitive: isHost ? cognitive : base.cognitive,
             turnMeta: isHost ? turnMeta : base.turnMeta,
             turnTasks: isHost
-              ? dedupeTurnTasks([
-                  ...turnTasks,
-                  ...(((turnMeta?.tasks as ChatMessageEx['turnTasks']) ?? [])),
-                ])
+              ? settleTurnTasks(
+                  dedupeTurnTasks([
+                    ...turnTasks,
+                    ...(((turnMeta?.tasks as ChatMessageEx['turnTasks']) ?? [])),
+                  ]),
+                  { streaming: false, messageStatus: 'succeeded' },
+                )
               : base.turnTasks,
             progressHint: undefined,
             metrics: isHost ? metrics : base.metrics,

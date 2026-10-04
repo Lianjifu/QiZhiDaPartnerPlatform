@@ -1,16 +1,15 @@
 /**
  * AI 辅助编排会话页（独立全屏）。
- * M06 P1 拆分原因：原 pages/WorkflowOrchestrationSession.tsx 单文件 1057L
- * 按计划拆为 Page + Canvas + RunPanel 三个组件。
+ * 创建会话 → 生成草稿示例 → 写入隔离草稿供画布装配。
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ReactFlowProvider } from 'reactflow';
-import { AlertTriangle, BookPlus, ChevronDown, ChevronUp, FileText, Loader2, RefreshCw, Send, Sparkles, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Sparkles, X } from 'lucide-react';
 import { Badge, Button } from '@qzda/web-ui';
-import { cn } from '@qzda/web-utils';
 import type { WorkflowNodeKind } from '@qzda/web-types';
-import { useApiMutation, useApiQuery } from '@/services/query';
+import { getApiClient } from '@qzda/web-api';
+import { useApiQuery } from '@/services/query';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useAuthStore } from '@/stores/authStore';
 import { WorkflowOrchestratorCanvas } from './WorkflowOrchestratorCanvas';
@@ -92,25 +91,7 @@ type TemplateCandidate = {
   rationale: string;
 };
 
-type OrchestrationSession = {
-  id: string;
-  title: string;
-  goal: string;
-  createdAt: string;
-  updatedAt: string;
-  status: 'draft' | 'generating' | 'review_required' | 'applied' | 'closed';
-  constraints: SessionConstraints;
-  documents: SessionDocument[];
-  messages: SessionMessage[];
-  candidates: SessionCandidate[];
-  templateCandidates?: TemplateCandidate[];
-  selectedCandidateId?: string;
-  workflowRevisionId?: string;
-};
-
-type StreamPayload = { chunk?: string; done?: boolean; error?: string };
-
-type KnowledgeDocLite = { id: string; title: string; summary: string; tags: string[] };
+type KnowledgeDocLite = { id: string; title: string; summary: string; tags?: string[] };
 
 export const DEFAULT_GOAL = '由数字伙伴研判处置路径，经双重审批后执行受控恢复，写入审计并通知值班负责人';
 
@@ -118,6 +99,58 @@ export function dependencyTypeLabel(type: 'tool' | 'mcp' | 'agent') {
   if (type === 'tool') return 'Tool';
   if (type === 'mcp') return 'MCP';
   return '数字伙伴';
+}
+
+const ORCH = '/api/workflows/orchestration-sessions';
+
+function toUiCandidate(raw: any, constraints: SessionConstraints): SessionCandidate {
+  const wf = raw?.workflow ?? raw;
+  const nodes = Array.isArray(wf?.nodes) ? wf.nodes : Array.isArray(raw?.nodes) ? raw.nodes : [];
+  const edges = Array.isArray(wf?.edges) ? wf.edges : Array.isArray(raw?.edges) ? raw.edges : [];
+  const summary = Array.isArray(raw?.changeSummary) ? raw.changeSummary.join('；') : String(raw?.summary ?? '');
+  return {
+    id: String(raw?.id ?? ''),
+    label: String(raw?.label ?? '示例'),
+    summary,
+    createdAt: String(raw?.createdAt ?? new Date().toISOString()),
+    nodes: nodes.map((n: any) => ({
+      id: String(n.id),
+      kind: n.kind,
+      label: String(n.label ?? n.kind),
+      description: n.description,
+      position: n.position ?? { x: 80, y: 120 },
+      sourceRef: n.sourceRef ? { docId: n.sourceRef.documentId ?? n.sourceRef.docId, heading: n.sourceRef.heading } : undefined,
+    })),
+    edges: edges.map((e: any, i: number) => ({ id: String(e.id ?? `e${i}`), source: String(e.source), target: String(e.target) })),
+    risk: (raw?.risk ?? raw?.risks?.[0]?.level ?? constraints.riskLevel) as SessionConstraints['riskLevel'],
+    constraints: raw?.constraints ?? constraints,
+    warnings: Array.isArray(raw?.warnings) ? raw.warnings : [],
+    citations: raw?.citations,
+  };
+}
+
+function adoptPayload(raw: any, fallback: SessionConstraints) {
+  const session = raw?.session ?? raw;
+  const constraints = session?.constraints ?? fallback;
+  const candidates = Array.isArray(session?.candidates) ? session.candidates.map((c: any) => toUiCandidate(c, constraints)) : [];
+  const tplRaw = session?.templateCandidates ?? (session?.templateCandidate ? [session.templateCandidate] : []);
+  return {
+    session,
+    goal: String(session?.goal ?? ''),
+    constraints,
+    documents: (Array.isArray(session?.documents) ? session.documents : []) as SessionDocument[],
+    messages: (Array.isArray(session?.messages) ? session.messages : []) as SessionMessage[],
+    candidates,
+    templateCandidates: tplRaw.map((t: any) => ({
+      id: String(t.id),
+      templateId: String(t.templateId ?? t.id),
+      name: String(t.name ?? '模版候选'),
+      description: String(t.description ?? ''),
+      matchScore: Number(t.matchScore ?? 0.8),
+      rationale: String(t.rationale ?? t.description ?? ''),
+    })) as TemplateCandidate[],
+    selectedCandidateId: session?.activeCandidateId ?? session?.selectedCandidateId ?? candidates[0]?.id,
+  };
 }
 
 export default function WorkflowOrchestrationSessionPage() {
@@ -143,64 +176,133 @@ function WorkflowOrchestrationSession() {
   const [goal, setGoal] = useState(DEFAULT_GOAL);
   const [constraints, setConstraints] = useState<SessionConstraints>({ riskLevel: 'L2', requireApproval: true, requireAudit: true, requireRollback: true });
   const [splitPercent, setSplitPercent] = useState(45);
-  const [depositedIds, setDepositedIds] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
   const createInflightRef = useRef<string | null>(null);
 
-  const { data: remoteSession } = useApiQuery<OrchestrationSession>(
+  const { data: remoteSession } = useApiQuery<any>(
     ['orchestration-session', sessionId ?? 'new'],
-    `/api/orchestration-sessions/${sessionId ?? 'new'}`,
+    `${ORCH}/${sessionId ?? 'new'}`,
     undefined,
     { enabled: Boolean(sessionId) },
   );
-  const { data: knowledgeDocsData } = useApiQuery<KnowledgeDocLite[]>(['orchestration-kb', currentWorkspaceId], '/api/knowledge/docs');
-  const knowledgeDocs = knowledgeDocsData ?? [];
+  const { data: knowledgeDocsData } = useApiQuery<KnowledgeDocLite[] | { items?: KnowledgeDocLite[] }>(['orchestration-kb', currentWorkspaceId], '/api/knowledge/docs');
+  const knowledgeDocs = Array.isArray(knowledgeDocsData) ? knowledgeDocsData : knowledgeDocsData?.items ?? [];
+
+  const applyUi = useCallback((raw: any) => {
+    const ui = adoptPayload(raw, { riskLevel: 'L2', requireApproval: true, requireAudit: true, requireRollback: true });
+    setDraftDocuments(ui.documents);
+    setMessages2(ui.messages);
+    setCandidates(ui.candidates);
+    setTemplateCandidates(ui.templateCandidates);
+    setSelectedCandidateId(ui.selectedCandidateId);
+    if (ui.goal) setGoal(ui.goal);
+    setConstraints(ui.constraints);
+    return ui;
+  }, []);
 
   useEffect(() => {
     if (!remoteSession) return;
-    setGoal(remoteSession.goal);
-    setConstraints(remoteSession.constraints);
-    setMessages2(remoteSession.messages);
-    setCandidates(remoteSession.candidates);
-    setTemplateCandidates(remoteSession.templateCandidates ?? []);
-    setSelectedCandidateId(remoteSession.selectedCandidateId);
-    setDraftDocuments(remoteSession.documents);
-  }, [remoteSession]);
+    applyUi(remoteSession);
+  }, [remoteSession, applyUi]);
 
-  const adoptSession = useCallback((s: OrchestrationSession) => {
-    setDraftDocuments(s.documents);
-    setMessages2(s.messages);
-    setCandidates(s.candidates);
-    setTemplateCandidates(s.templateCandidates ?? []);
-    setSelectedCandidateId(s.selectedCandidateId);
-    setGoal(s.goal);
-    setConstraints(s.constraints);
-  }, []);
+  const ensureSession = useCallback(async () => {
+    if (sessionId) return sessionId;
+    if (createInflightRef.current && createInflightRef.current !== 'pending') return createInflightRef.current;
+    createInflightRef.current = 'pending';
+    const created = await getApiClient().request<any>(ORCH, {
+      method: 'POST',
+      body: { title: 'AI 辅助编排会话', goal, workspaceId: currentWorkspaceId, model: '企业默认模型', constraints },
+    });
+    createInflightRef.current = created.id;
+    applyUi(created);
+    navigate(`/workflows/orchestration/${created.id}`, { replace: true });
+    return created.id as string;
+  }, [applyUi, constraints, currentWorkspaceId, goal, navigate, sessionId]);
 
-  const generateApi = useApiMutation<OrchestrationSession, { goal: string; constraints: SessionConstraints; documents: SessionDocument[] }>(
-    '/api/orchestration-sessions/generate',
-    {
-      onSuccess: (s) => {
-        adoptSession(s);
-        createInflightRef.current = null;
-      },
-      onError: () => { createInflightRef.current = null; },
-    },
-  );
+  const onGenerate = useCallback(async (note?: string) => {
+    if (!canWrite) return;
+    const text = (note ?? goal).trim();
+    if (!text) return;
+    setBusy(true);
+    try {
+      const id = await ensureSession();
+      if (text !== goal) setGoal(text);
+      await getApiClient().request(`${ORCH}/${id}`, { method: 'PATCH', body: { goal: text, constraints } }).catch(() => undefined);
+      const generated = await getApiClient().request<any>(`${ORCH}/${id}/generate`, {
+        method: 'POST',
+        body: { skipClarification: true, note: text },
+      });
+      const ui = applyUi(generated);
+      const extra = generated?.candidate ? toUiCandidate(generated.candidate, ui.constraints) : null;
+      if (extra) {
+        setSelectedCandidateId(extra.id);
+        setCandidates((prev) => prev.some((c) => c.id === extra.id) ? prev : [extra, ...prev]);
+      }
+    } catch (err) {
+      setMessages2((prev) => [...prev, { id: `err_${Date.now()}`, role: 'system', content: err instanceof Error ? err.message : '生成失败', createdAt: new Date().toISOString(), kind: 'generate' }]);
+    } finally {
+      setBusy(false);
+    }
+  }, [applyUi, canWrite, ensureSession, goal]);
 
-  const onSend = useCallback((text: string, attachments?: SessionDocument[]) => {
-    if (!text.trim()) return;
-    createInflightRef.current = text;
-    generateApi.mutate({ goal: text, constraints, documents: attachments ?? draftDocuments });
-  }, [constraints, draftDocuments, generateApi]);
+  const onSend = useCallback(async (text: string) => {
+    if (!text.trim() || !canWrite) return;
+    setBusy(true);
+    try {
+      const id = await ensureSession();
+      applyUi(await getApiClient().request<any>(`${ORCH}/${id}/messages`, { method: 'POST', body: { content: text, mode: 'clarify' } }));
+    } catch (err) {
+      setMessages2((prev) => [...prev, { id: `err_${Date.now()}`, role: 'system', content: err instanceof Error ? err.message : '发送失败', createdAt: new Date().toISOString(), kind: 'chat' }]);
+    } finally {
+      setBusy(false);
+    }
+  }, [applyUi, canWrite, ensureSession]);
 
   const onReopen = useCallback(() => {
     createInflightRef.current = null;
-  }, []);
+    navigate('/workflows/orchestration', { replace: true });
+    setCandidates([]);
+    setMessages2([]);
+    setSelectedCandidateId(undefined);
+    setDraftDocuments([]);
+    setGoal(DEFAULT_GOAL);
+  }, [navigate]);
 
   const onApplyCandidate = useCallback(async (candidate: SessionCandidate) => {
     setSelectedCandidateId(candidate.id);
-    setMessages2((prev) => [...prev, { id: `m_${Date.now()}`, role: 'system', content: `已选中版本「${candidate.label}」`, createdAt: new Date().toISOString(), kind: 'template' }]);
-  }, []);
+    const id = sessionId ?? createInflightRef.current;
+    if (!id || id === 'pending') return;
+    await getApiClient().request(`${ORCH}/${id}/candidates/${candidate.id}/activate`, { method: 'POST', body: {} }).catch(() => undefined);
+  }, [sessionId]);
+
+  const onCommitToCanvas = useCallback(async () => {
+    if (!canWrite) return;
+    const id = sessionId ?? createInflightRef.current;
+    const candidate = candidates.find((c) => c.id === selectedCandidateId) ?? candidates[0];
+    if (!id || id === 'pending' || !candidate) return;
+    setBusy(true);
+    try {
+      const applied = await getApiClient().request<any>(`${ORCH}/${id}/apply`, { method: 'POST', body: { candidateId: candidate.id } });
+      const wf = applied?.candidate?.workflow ?? applied?.candidate ?? candidate;
+      navigate('/workflows/new', {
+        state: {
+          orchDraft: {
+            revisionId: applied.revisionId ?? applied.appliedRevisionId,
+            nodes: (wf.nodes ?? candidate.nodes).map((n: any) => ({
+              id: n.id, type: 'custom', position: n.position ?? { x: 80, y: 120 },
+              data: { kind: n.kind, label: n.label, desc: n.description },
+            })),
+            edges: (wf.edges ?? candidate.edges).map((e: any) => ({ id: e.id, source: e.source, target: e.target })),
+            label: candidate.label,
+          },
+        },
+      });
+    } catch (err) {
+      setMessages2((prev) => [...prev, { id: `err_${Date.now()}`, role: 'system', content: err instanceof Error ? err.message : '写入草稿失败', createdAt: new Date().toISOString(), kind: 'generate' }]);
+    } finally {
+      setBusy(false);
+    }
+  }, [canWrite, candidates, navigate, selectedCandidateId, sessionId]);
 
   const onUpdateMessage = useCallback((id: string, content: string) => {
     setMessages2((prev) => prev.map((m) => (m.id === id ? { ...m, content } : m)));
@@ -212,8 +314,7 @@ function WorkflowOrchestrationSession() {
     const startPercent = splitPercent;
     const totalWidth = (e.currentTarget.parentElement?.getBoundingClientRect().width ?? window.innerWidth);
     const onMove = (ev: PointerEvent) => {
-      const delta = ((ev.clientX - startX) / totalWidth) * 100;
-      const next = Math.max(20, Math.min(80, startPercent + delta));
+      const next = Math.max(20, Math.min(80, startPercent + ((ev.clientX - startX) / totalWidth) * 100));
       setSplitPercent(next);
     };
     const onUp = () => {
@@ -224,52 +325,70 @@ function WorkflowOrchestrationSession() {
     window.addEventListener('pointerup', onUp);
   }, [splitPercent]);
 
-  const onUploadDoc = useCallback((doc: SessionDocument) => {
+  const onUploadDoc = useCallback(async (doc: SessionDocument) => {
     setDraftDocuments((prev) => [...prev, doc]);
-  }, []);
+    if (!canWrite) return;
+    const id = await ensureSession();
+    const uploaded = await getApiClient().request<any>(`${ORCH}/${id}/documents`, {
+      method: 'POST',
+      body: { fileName: doc.fileName || `${doc.title}.md`, content: doc.content || `# ${doc.title}\n` },
+    });
+    applyUi(uploaded);
+  }, [applyUi, canWrite, ensureSession]);
 
   const onRemoveDoc = useCallback((docId: string) => {
     setDraftDocuments((prev) => prev.filter((d) => d.id !== docId));
   }, []);
 
-  const onPickKnowledgeDoc = useCallback((doc: KnowledgeDocLite) => {
-    setDraftDocuments((prev) => [...prev, {
-      id: `kd_${Date.now()}`, fileName: doc.title, title: doc.title, contentHash: 'remote',
-      charCount: 0, summary: doc.summary, headings: [], knowledgeDocId: doc.id, source: 'knowledge', createdAt: new Date().toISOString(),
-    }]);
-  }, []);
+  const onPickKnowledgeDoc = useCallback(async (doc: KnowledgeDocLite) => {
+    if (!canWrite) return;
+    const id = await ensureSession();
+    applyUi(await getApiClient().request<any>(`${ORCH}/${id}/documents`, { method: 'POST', body: { knowledgeDocId: doc.id } }));
+  }, [applyUi, canWrite, ensureSession]);
 
   const onCiteKnowledgeDoc = useCallback((docId: string) => {
     setMessages2((prev) => [...prev, { id: `cite_${Date.now()}`, role: 'system', content: `已引用知识文档 ${docId}`, createdAt: new Date().toISOString(), kind: 'retrieve' }]);
   }, []);
 
-  const onRetrieveRunbook = useCallback((query: string) => {
-    setMessages2((prev) => [...prev, { id: `rb_${Date.now()}`, role: 'system', content: `Runbook 检索：${query}`, createdAt: new Date().toISOString(), kind: 'retrieve' }]);
-  }, []);
+  const onRetrieveRunbook = useCallback(async (query: string) => {
+    if (!query.trim()) return;
+    const id = await ensureSession();
+    applyUi(await getApiClient().request<any>(`${ORCH}/${id}/retrieve-runbook`, { method: 'POST', body: { query } }));
+  }, [applyUi, ensureSession]);
 
-  const onDepositKnowledge = useCallback((doc: SessionDocument) => {
-    setDepositedIds((prev) => [...prev, doc.id]);
-    setDraftDocuments((prev) => prev.map((d) => d.id === doc.id ? { ...d, depositedKnowledgeDocId: `dep_${d.id}` } : d));
-  }, []);
+  const onDepositKnowledge = useCallback(async (doc: SessionDocument) => {
+    const id = sessionId ?? createInflightRef.current;
+    if (!id || id === 'pending') return;
+    applyUi(await getApiClient().request<any>(`${ORCH}/${id}/documents/${doc.id}/deposit-knowledge`, { method: 'POST', body: {} }));
+  }, [applyUi, sessionId]);
 
-  const onDepositTemplate = useCallback((tpl: TemplateCandidate) => {
-    setMessages2((prev) => [...prev, { id: `tpl_${Date.now()}`, role: 'system', content: `已沉淀模版候选「${tpl.name}」`, createdAt: new Date().toISOString(), kind: 'template' }]);
-  }, []);
+  const onDepositTemplate = useCallback(async (tpl: TemplateCandidate) => {
+    const id = sessionId ?? createInflightRef.current;
+    if (!id || id === 'pending') return;
+    applyUi(await getApiClient().request<any>(`${ORCH}/${id}/propose-template`, { method: 'POST', body: { name: tpl.name, description: tpl.rationale } }));
+  }, [applyUi, sessionId]);
 
   return (
-    <div className="wf-orch-session flex flex-col h-screen min-h-0" data-testid="wf-orch-session">
-      <header className="wf-orch-session__header flex items-center justify-between border-b border-[var(--border)] px-4 py-2">
-        <div className="flex items-center gap-2">
-          <Link to="/workflows" className="text-xs text-[var(--text-muted)]">← 返回工作流</Link>
-          <h1 className="text-base font-semibold">AI 辅助编排会话</h1>
+    <div className="wf-orch-session flex h-full min-h-0 flex-col" data-testid="wf-orch-session">
+      <header className="wf-orch-session__header flex shrink-0 items-center justify-between gap-3 px-4 py-2.5">
+        <div className="flex min-w-0 items-center gap-2">
+          <Link to="/workflows/new" className="wf-orch-session__back inline-flex items-center gap-1 text-xs">
+            <ArrowLeft className="h-3.5 w-3.5" />返回流程编排
+          </Link>
+          <div className="wf-orch-session__icon grid h-8 w-8 shrink-0 place-items-center rounded-lg">
+            <Sparkles className="h-4 w-4" />
+          </div>
+          <h1 className="truncate text-sm font-semibold text-[var(--text)]">AI 辅助编排会话</h1>
           <Badge tone="info">{sessionId ?? 'new'}</Badge>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={onReopen}>重新打开</Button>
-          <Button variant="outline" onClick={() => navigate('/workflows')}>关闭</Button>
+        <div className="flex shrink-0 items-center gap-2">
+          <Button size="sm" onClick={() => onGenerate()} disabled={!canWrite || busy || !goal.trim()}>{busy ? '生成中…' : '一键生成示例'}</Button>
+          <Button size="sm" variant="outline" onClick={onCommitToCanvas} disabled={!canWrite || busy || candidates.length === 0}>写入隔离草稿</Button>
+          <Button size="sm" variant="outline" onClick={onReopen}><RotateCcw className="h-3.5 w-3.5" />重新打开</Button>
+          <Button size="sm" variant="outline" onClick={() => navigate('/workflows/new')}><X className="h-3.5 w-3.5" />关闭</Button>
         </div>
       </header>
-      <div className="wf-orch-session__body grid grid-cols-12 flex-1 min-h-0 overflow-hidden" style={{ gridTemplateColumns: `${splitPercent}% 8px 1fr` }}>
+      <div className="wf-orch-session__body grid min-h-0 flex-1 overflow-hidden" style={{ gridTemplateColumns: `${splitPercent}% 10px minmax(0, 1fr)` }}>
         <div className="wf-orch-session__left h-full min-h-0 overflow-hidden">
           <WorkflowOrchestratorRunPanel
             goal={goal}
@@ -292,6 +411,9 @@ function WorkflowOrchestrationSession() {
             onUpdateMessage={onUpdateMessage}
             onApplyCandidate={onApplyCandidate}
             onDepositTemplate={onDepositTemplate}
+            onGenerate={onGenerate}
+            onCommitToCanvas={onCommitToCanvas}
+            generating={busy}
             canWrite={canWrite}
             userRole={userRole}
           />
@@ -312,7 +434,7 @@ function WorkflowOrchestrationSession() {
           />
         </div>
       </div>
-      <footer className="border-t border-[var(--border)] px-4 py-2 text-xs text-[var(--text-muted)]">
+      <footer className="wf-orch-session__footer shrink-0 px-4 py-2 text-[11px] leading-5 text-[var(--text-muted)]">
         画布预览仅用于示例编排，确认后将以隔离草稿形式写入工作流编辑器，供数字伙伴装配。
       </footer>
     </div>

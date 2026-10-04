@@ -4,12 +4,14 @@
  * 内容包括：访问与保留策略 / 智能体影响范围 / 已发布知识包绑定 / 审计注记；
  * 治理卡片 + 消费者绑定表 + 政策行均在此文件，与原 pages/Knowledge.tsx 一致。
  */
+import { Link } from 'react-router-dom';
 import { ChevronRight, Link2, ShieldAlert, ShieldCheck, Users } from 'lucide-react';
 import { Badge } from '@qzda/web-ui';
 import { EmptyState } from '@/components/shared';
 import type { KnowledgeController } from './useKnowledgeController';
 
-export function KnowledgeTabGovernance({ c }: { c: KnowledgeController }) {
+export function KnowledgeTabGovernance({ c, packageId }: { c: KnowledgeController; packageId?: string }) {
+  const bindings = packageId ? c.consumerBindings.filter((item) => item.packageId === packageId) : c.consumerBindings;
   return (
     <main className="de-employee-shell knowledge-workspace overflow-hidden rounded-xl bg-[var(--surface-1)] p-3 md:p-4">
       <div className="knowledge-workspace-heading">
@@ -95,7 +97,7 @@ export function KnowledgeTabGovernance({ c }: { c: KnowledgeController }) {
             <Link2 className="h-3.5 w-3.5 text-[var(--brand)]" />
             已发布知识包引用
           </div>
-          <Badge tone="neutral">{c.consumerBindings.length} 个运行时绑定</Badge>
+          <Badge tone="neutral">{bindings.length} 个运行时绑定</Badge>
         </div>
         <div className="mt-3 overflow-x-auto">
           <div className="min-w-[720px] divide-y divide-[var(--border)] text-xs">
@@ -106,7 +108,7 @@ export function KnowledgeTabGovernance({ c }: { c: KnowledgeController }) {
               <span>无结果策略</span>
               <span>检索配置</span>
             </div>
-            {c.consumerBindings.map((binding) => (
+            {bindings.map((binding) => (
               <div key={binding.id} className="grid grid-cols-[1.2fr_.9fr_.8fr_.8fr_.9fr] gap-3 px-2 py-3">
                 <span>
                   <strong className="block">{binding.packageName}</strong>
@@ -144,7 +146,7 @@ export function KnowledgeTabGovernance({ c }: { c: KnowledgeController }) {
             ? `${c.knowledgeAudit[0].time} · ${c.knowledgeAudit[0].action} · ${c.knowledgeAudit[0].target}`
             : c.governanceNotice}
         </span>
-        <button type="button" onClick={() => c.setWorkspace('assets')}>返回内容资产</button>
+        <Link to="/knowledge">返回知识中心</Link>
       </div>
     </main>
   );

@@ -1,98 +1,214 @@
 /**
- * WorkflowsTab.Skills — 发布为流程技能视图。
- * 此处要求画布已保存、来源版本已对齐、运行前校验已通过、模板依赖就绪，
- * 全部条件满足才允许调用 publish-as-skill。
+ * 发布为流程技能：门禁核对 + 技能档案 + 已发布清单。
+ * 画布已保存、来源版本对齐、运行前校验通过、模板依赖就绪后才可发布。
  */
 import { useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowUpRight, Check, GitBranch, Save, ShieldCheck, Sparkles, Workflow } from 'lucide-react';
 import { Badge, Button } from '@qzda/web-ui';
-import { Check, X, Sparkles, ShieldCheck } from 'lucide-react';
+import { cn } from '@qzda/web-utils';
 import { useT } from '@/i18n';
 import type { WorkflowsController } from './useWorkflowsController';
+import { formatWorkflowVersionLabel } from './WorkflowsShared';
+
+const RISK_LABEL: Record<string, string> = {
+  low: '低风险',
+  mid: '中等风险',
+  high: '高风险 · 需治理发布',
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  draft: '草稿',
+  published: '已发布',
+  deprecated: '已停用',
+};
 
 export function WorkflowsTabSkills({ c }: { c: WorkflowsController }) {
   const { t } = useT();
   useEffect(() => {
     if (!c.skillSourceVersion && c.activeVersion) c.setSkillSourceVersion(c.activeVersion);
   }, [c]);
-  return (
-    <div className="wf-publish-tab flex h-full min-h-0 flex-col gap-3" data-testid="wf-publish">
-      <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold">{t('module.workflows.publishSkill.title')}</h2>
-        <Badge tone="info">已发布 {c.publishedSkillCount} · 草稿 {c.draftSkillCount}</Badge>
-      </div>
-      <div className="wf-publish-tab__grid flex-1 grid grid-cols-2 gap-3 min-h-0">
-        <section className="wf-publish-tab__form h-full overflow-y-auto rounded-md border border-[var(--border)] bg-[var(--surface-1)] p-3 space-y-2">
-          <FormRow label="技能名称">
-            <input className="wf-input w-full" value={c.skillName} onChange={(e) => c.setSkillName(e.target.value)} disabled={!c.canWrite} />
-          </FormRow>
-          <FormRow label="技能说明">
-            <textarea className="wf-textarea w-full" rows={3} value={c.skillDesc} onChange={(e) => c.setSkillDesc(e.target.value)} disabled={!c.canWrite} />
-          </FormRow>
-          <FormRow label="风险等级">
-            <select className="wf-input w-full" value={c.skillRiskLevel} onChange={(e) => c.setSkillRiskLevel(e.target.value as any)} disabled={!c.canWrite}>
-              <option value="low">低风险</option>
-              <option value="mid">中等风险</option>
-              <option value="high">高风险（需治理发布）</option>
-            </select>
-          </FormRow>
-          <FormRow label="来源版本">
-            <select className="wf-input w-full" value={c.skillSourceVersion} onChange={(e) => c.setSkillSourceVersion(e.target.value)} disabled={!c.canWrite}>
-              {c.versions.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}
-            </select>
-          </FormRow>
-          <div className="flex items-center gap-2 pt-2">
-            <Button onClick={() => c.publishSkill()} disabled={!c.canPublishSkill}><Sparkles className="h-4 w-4" />发布为流程技能</Button>
-            {c.skillGateHint && <span className="text-xs text-amber-500">{c.skillGateHint}</span>}
-          </div>
-        </section>
-        <section className="wf-publish-tab__gates h-full overflow-y-auto rounded-md border border-[var(--border)] bg-[var(--surface-1)] p-3 space-y-2">
-          <div className="flex items-center gap-2"><ShieldCheck className="h-4 w-4" /><strong>技能发布门禁</strong></div>
-          <ol className="space-y-2">
-            {c.skillGateSteps.map((step) => (
-              <li key={step.key} className="flex items-start gap-2 rounded border border-[var(--border)] p-2 text-xs">
-                {step.ok ? <Check className="h-4 w-4 text-emerald-500 mt-0.5" /> : <X className="h-4 w-4 text-rose-500 mt-0.5" />}
-                <div>
-                  <div className="font-medium">{step.title}</div>
-                  <div className="text-[var(--text-muted)]">{step.detail}</div>
-                </div>
-              </li>
-            ))}
-          </ol>
-          <p className="text-xs text-[var(--text-muted)]">调用需审批：高风险技能提交为草稿后，将由管理员在 /skills?tab=workflowSkills 治理发布。</p>
-        </section>
-      </div>
-      <ExistingSkills c={c} />
-    </div>
-  );
-}
 
-function FormRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <div className="mb-1 text-[10px] uppercase tracking-wider text-[var(--text-muted)]">{label}</div>
-      {children}
-    </div>
-  );
-}
+  const passed = c.skillGateSteps.filter((step) => step.ok).length;
+  const source = c.versions.find((item) => item.id === c.skillSourceVersion);
+  const nameOk = Boolean(c.skillName.trim());
 
-function ExistingSkills({ c }: { c: WorkflowsController }) {
-  if (c.workflowSkills.length === 0) return null;
   return (
-    <section className="space-y-1">
-      <div className="text-sm font-semibold">已发布技能</div>
-      <div className="grid grid-cols-2 gap-2">
-        {c.workflowSkills.map((skill) => (
-          <div key={skill.id} className="rounded border border-[var(--border)] bg-[var(--surface-1)] p-2 text-xs">
-            <div className="flex items-center gap-2">
-              <strong>{skill.name}</strong>
-              <Badge tone={skill.status === 'published' ? 'success' : 'warn'}>{skill.status}</Badge>
-              <Badge tone="info">{skill.riskLevel}</Badge>
+    <div className="wf-publish" data-testid="wf-publish">
+      <section className="wf-publish__hero">
+        <div className="wf-publish__hero-main">
+          <div className="wf-publish__eyebrow"><Sparkles className="h-3.5 w-3.5" />流程技能</div>
+          <h2 className="wf-publish__title">{t('module.workflows.publishSkill.title')}</h2>
+          <p className="wf-publish__lead">
+            把当前编排草稿发布为可装配的流程技能。发布后由数字伙伴在能力装配中引用，本页不直接发起专家协作上岗。
+            高风险技能会先落为草稿，由管理员在技能治理中确认。
+          </p>
+        </div>
+        <div className="wf-publish__hero-meta">
+          <div className="wf-publish__stat"><strong>{passed}/{c.skillGateSteps.length}</strong><span>门禁通过</span></div>
+          <div className="wf-publish__stat is-pub"><strong>{c.publishedSkillCount}</strong><span>已发布</span></div>
+          <div className="wf-publish__stat"><strong>{c.draftSkillCount}</strong><span>待治理</span></div>
+        </div>
+      </section>
+
+      <div className="wf-publish__grid">
+        <section className="wf-publish__panel">
+          <header className="wf-publish__panel-head">
+            <div>
+              <h3>技能档案</h3>
+              <p>名称与说明会展示给数字伙伴装配页；来源版本决定调用哪一份编排。</p>
             </div>
-            <p className="text-[var(--text-muted)] mt-0.5">{skill.description}</p>
-            <p className="text-[10px] text-[var(--text-muted)]">workflowId: {skill.sourceWorkflowId} · vars.workflowId 必传</p>
+            {c.workflowId ? <span className="wf-publish__meta-chip">流程 <code>{c.workflowId}</code></span> : <span className="wf-publish__meta-chip">尚未绑定流程 ID</span>}
+          </header>
+          <div className="wf-publish__panel-body">
+            <div className="wf-publish__fields">
+              <label className="wf-publish__field wf-publish__field--full">
+                <span>技能名称</span>
+                <input value={c.skillName} onChange={(event) => c.setSkillName(event.target.value)} disabled={!c.canWrite} placeholder="例如：生产故障处置流程技能" />
+              </label>
+              <label className="wf-publish__field wf-publish__field--full">
+                <span>技能说明</span>
+                <textarea rows={3} value={c.skillDesc} onChange={(event) => c.setSkillDesc(event.target.value)} disabled={!c.canWrite} placeholder="说明适用场景、边界与数字伙伴如何调用" />
+              </label>
+              <label className="wf-publish__field">
+                <span>风险等级</span>
+                <select value={c.skillRiskLevel} onChange={(event) => c.setSkillRiskLevel(event.target.value as typeof c.skillRiskLevel)} disabled={!c.canWrite}>
+                  <option value="low">低风险 · 可直接发布</option>
+                  <option value="mid">中等风险 · 调用需审批</option>
+                  <option value="high">高风险 · 需治理发布</option>
+                </select>
+              </label>
+              <label className="wf-publish__field">
+                <span>来源版本</span>
+                <select value={c.skillSourceVersion} onChange={(event) => c.setSkillSourceVersion(event.target.value)} disabled={!c.canWrite || c.versions.length === 0}>
+                  {c.versions.length === 0 && <option value="">暂无版本，请先保存草稿</option>}
+                  {c.versions.map((version) => (
+                    <option key={version.id} value={version.id}>{formatWorkflowVersionLabel(version)}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="wf-publish__preview">
+              <div className="wf-publish__preview-label">装配预览</div>
+              <div className="wf-publish__preview-name">{c.skillName.trim() || '未命名流程技能'}</div>
+              <p className="wf-publish__preview-desc">{c.skillDesc.trim() || '补充说明后，数字伙伴装配时可以看到这段描述。'}</p>
+              <div className="wf-publish__preview-tags">
+                <Badge tone={c.skillRiskLevel === 'high' ? 'warn' : 'info'}>{RISK_LABEL[c.skillRiskLevel] ?? c.skillRiskLevel}</Badge>
+                <Badge tone="neutral">{source ? formatWorkflowVersionLabel(source) : (c.skillSourceVersion || '未选版本')}</Badge>
+                <Badge tone="neutral">{c.nodes.length} 节点 · {c.edges.length} 连线</Badge>
+                {c.skillRiskLevel !== 'low' && <Badge tone="warn">调用需审批</Badge>}
+              </div>
+            </div>
+
+            <div className="wf-publish__actions">
+              <Button onClick={() => c.publishSkill()} disabled={!c.canPublishSkill || !nameOk} loading={c.publishAsSkillApi.isPending}>
+                <Sparkles className="h-3.5 w-3.5" />发布为流程技能
+              </Button>
+              <Button variant="outline" onClick={c.runWorkflow} disabled={!c.canExecute || c.isDirty}>运行前校验</Button>
+              <Link to="/skills?tab=workflowSkills" className="wf-publish__ghost">
+                技能治理 <ArrowUpRight className="h-3.5 w-3.5" />
+              </Link>
+              {c.skillGateHint && <p className="wf-publish__actions-note">{c.skillGateHint}</p>}
+              {!nameOk && <p className="wf-publish__actions-note">请填写技能名称后再发布。</p>}
+            </div>
           </div>
-        ))}
+        </section>
+
+        <section className="wf-publish__panel">
+          <header className="wf-publish__panel-head">
+            <div>
+              <h3>技能发布门禁</h3>
+              <p>四项全部通过后才允许发布。未通过项可从本页直接回到对应步骤。</p>
+            </div>
+            <ShieldCheck className="h-4 w-4 text-[var(--brand)]" />
+          </header>
+          <div className="wf-publish__panel-body">
+            <ol className="wf-publish__gate-list">
+              {c.skillGateSteps.map((step, index) => (
+                <li key={step.key} className={cn('wf-publish__gate', step.ok ? 'is-ok' : 'is-bad')}>
+                  <span className="wf-publish__gate-index" aria-hidden>{step.ok ? <Check className="h-3.5 w-3.5" /> : String(index + 1).padStart(2, '0')}</span>
+                  <div className="wf-publish__gate-copy">
+                    <strong>{step.title}</strong>
+                    <span>{step.detail}</span>
+                  </div>
+                  {!step.ok && (
+                    <GateAction stepKey={step.key} c={c} />
+                  )}
+                </li>
+              ))}
+            </ol>
+            <p className="wf-publish__footnote">
+              调用时须传 <code>vars.workflowId</code>。高风险技能提交为草稿后，由管理员在技能中心治理发布。
+            </p>
+          </div>
+        </section>
       </div>
-    </section>
+
+      <section className="wf-publish__panel">
+        <header className="wf-publish__list-head">
+          <div>
+            <h3>本流程已生成的技能</h3>
+            <p>同一编排可以发布多个技能版本，停用与上架请到技能治理。</p>
+          </div>
+          <Badge tone="info">{c.workflowSkills.length} 条</Badge>
+        </header>
+        {c.workflowSkills.length === 0 ? (
+          <div className="wf-publish__empty">
+            <Workflow className="h-6 w-6" />
+            <strong>还没有流程技能</strong>
+            <span>通过门禁后发布，数字伙伴即可在能力装配中引用。</span>
+          </div>
+        ) : (
+          <div>
+            {c.workflowSkills.map((skill) => (
+              <article key={skill.id} className="wf-publish__skill-row">
+                <div>
+                  <div className="wf-publish__skill-title">
+                    {skill.name}
+                    <Badge tone={skill.status === 'published' ? 'success' : skill.status === 'deprecated' ? 'neutral' : 'warn'}>{STATUS_LABEL[skill.status] ?? skill.status}</Badge>
+                  </div>
+                  <p className="wf-publish__skill-meta">
+                    {skill.description || '未填写说明'}
+                    <br />
+                    来源 <code>{skill.sourceWorkflowId}</code> · 版本 <code>{skill.sourceVersionId}</code> · 调用须传 <code>vars.workflowId</code>
+                  </p>
+                </div>
+                <div className="wf-publish__skill-tags">
+                  <Badge tone={skill.riskLevel === 'high' ? 'warn' : 'info'}>{RISK_LABEL[skill.riskLevel] ?? skill.riskLevel}</Badge>
+                  {skill.approvalRequired && <Badge tone="warn">调用需审批</Badge>}
+                  {skill.rollbackSupported && <Badge tone="neutral">支持回滚</Badge>}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
   );
+}
+
+function GateAction({ stepKey, c }: { stepKey: string; c: WorkflowsController }) {
+  if (stepKey === 'draft') {
+    return (
+      <Button size="sm" variant="outline" onClick={c.saveCanvas} disabled={!c.canWrite || !c.isDirty}>
+        <Save className="h-3.5 w-3.5" />保存
+      </Button>
+    );
+  }
+  if (stepKey === 'version') {
+    return (
+      <Button size="sm" variant="outline" onClick={() => c.goStudio('versions')}>
+        <GitBranch className="h-3.5 w-3.5" />版本
+      </Button>
+    );
+  }
+  if (stepKey === 'validate') {
+    return (
+      <Button size="sm" variant="outline" onClick={c.runWorkflow} disabled={!c.canExecute || c.isDirty}>
+        校验
+      </Button>
+    );
+  }
+  return null;
 }

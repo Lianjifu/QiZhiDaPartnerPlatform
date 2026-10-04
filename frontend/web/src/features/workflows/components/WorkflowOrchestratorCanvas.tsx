@@ -5,7 +5,7 @@
 import { useMemo } from 'react';
 import { Background, Controls, Handle, MiniMap, Position, ReactFlow, MarkerType } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { Bell, Cpu, Database, FileText, GitBranch, PlayCircle, RefreshCw, RotateCcw, ShieldCheck, Webhook, Wrench } from 'lucide-react';
+import { Bell, Cpu, Database, FileText, GitBranch, PlayCircle, RefreshCw, RotateCcw, ShieldCheck, Sparkles, Webhook, Wrench } from 'lucide-react';
 import { cn } from '@qzda/web-utils';
 import type { WorkflowNodeKind } from '@qzda/web-types';
 
@@ -96,14 +96,14 @@ export function WorkflowOrchestratorCanvas({
   );
 
   return (
-    <div className="wf-orch-canvas flex flex-col h-full" data-testid="wf-orch-canvas">
-      <div className="wf-orch-canvas__tabs flex items-center gap-1 border-b border-[var(--border)] px-2 py-1">
+    <div className="wf-orch-canvas flex h-full min-h-0 flex-col" data-testid="wf-orch-canvas">
+      <div className="wf-orch-canvas__tabs flex shrink-0 items-center gap-1.5 px-3 py-2">
         <span className="text-xs text-[var(--text-muted)]">候选版本：</span>
         {candidates.map((c) => (
           <button
             key={c.id}
             type="button"
-            className={`wf-tab text-xs ${selectedCandidateId === c.id ? 'is-active' : ''}`}
+            className={`wf-tab text-xs ${selectedCandidateId === c.id || selected?.id === c.id ? 'is-active' : ''}`}
             onClick={() => onSelectCandidate(c.id)}
           >
             {c.label} · {c.risk}
@@ -111,7 +111,7 @@ export function WorkflowOrchestratorCanvas({
         ))}
         {!candidates.length && <span className="text-xs text-[var(--text-muted)]">尚无候选，发送目标生成</span>}
       </div>
-      <div className="wf-orch-canvas__graph flex-1 min-h-0">
+      <div className="wf-orch-canvas__graph relative min-h-0 flex-1">
         {selected ? (
           <ReactFlow nodes={rfNodes} edges={rfEdges} nodeTypes={previewNodeTypes} fitView>
             <Background gap={16} />
@@ -119,18 +119,21 @@ export function WorkflowOrchestratorCanvas({
             <Controls />
           </ReactFlow>
         ) : (
-          <div className="flex h-full items-center justify-center text-xs text-[var(--text-muted)]">画布预览仅用于示例编排，请先在左侧发送目标</div>
+          <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center text-xs text-[var(--text-muted)]">
+            <Sparkles className="h-6 w-6 text-[var(--brand)]" />
+            <p>画布预览仅用于示例编排，请先在左侧发送目标</p>
+          </div>
         )}
       </div>
-      <div className="wf-orch-canvas__detail border-t border-[var(--border)] px-2 py-1 text-xs">
+      <div className="wf-orch-canvas__detail shrink-0 px-3 py-2 text-xs">
         {selected ? (
           <>
-              <div><span className="text-[var(--text-muted)]">版本：</span>{selected.label}</div>
-              <div className="text-[var(--text-muted)]">{selected.summary}</div>
-              {selected.warnings.length > 0 && <div className="text-amber-500">警告 {selected.warnings.length} 项</div>}
-              {selected.citations?.length ? <div className="text-emerald-500">已引用 {selected.citations.length} 处文档章节</div> : null}
-            </>
-          ) : null}
+            <div><span className="text-[var(--text-muted)]">版本：</span>{selected.label}</div>
+            <div className="text-[var(--text-muted)]">{selected.summary}</div>
+            {selected.warnings.length > 0 && <div className="text-amber-500">警告 {selected.warnings.length} 项</div>}
+            {selected.citations?.length ? <div className="text-emerald-500">已引用 {selected.citations.length} 处文档章节</div> : null}
+          </>
+        ) : null}
       </div>
     </div>
   );

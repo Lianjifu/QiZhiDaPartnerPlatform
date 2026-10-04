@@ -1,6 +1,8 @@
 /**
  * CopilotPage.ContextAside — right context drawer (overview/evidence/tasks/etc).
  */
+import { X } from 'lucide-react';
+import { cn } from '@qzda/web-utils';
 import { useCopilotContext } from '@/features/copilot/components/useCopilotController';
 import { ContextDrawerPanel as CopilotPageContextPanel } from '@/features/copilot/components/CopilotPage.ContextPanel';
 import { ExpertContextPanel } from '@/features/copilot/components/ExpertContextPanel';
@@ -8,8 +10,8 @@ import { ExpertContextPanel } from '@/features/copilot/components/ExpertContextP
 export function CopilotPageContextAside() {
   const ctrl = useCopilotContext();
   const { detailsOpen, contextTab, visibleContextTabs, currentSession,
-    activeEmployee, sendModelId, availableTools,
-    closeContext, setContextTab, openContext, jumpToMessage,
+    activeEmployee,
+    closeContext, setContextTab, jumpToMessage,
     openCitation, contextMessages, selectedContextMessage,
     selectedDocumentArtifact, sessionExpertContext, messageExpertContext,
     sessionMode,
@@ -18,27 +20,43 @@ export function CopilotPageContextAside() {
   const handoffActive = ctrl.s.handoffActive;
   const handoffOwner = ctrl.s.handoffOwner;
   const riskLevel = ctrl.s.riskLevel;
-  const nextAction = '请查看会话总结';
 
   if (!detailsOpen) return null;
 
   return (
-    <aside className="copilot-context" aria-label="上下文抽屉">
-      <div className="copilot-context__tabs" role="tablist">
+    <aside
+      id="copilot-context"
+      className="copilot-agent-details"
+      aria-label="会话上下文"
+      data-open="true"
+    >
+      <div className="copilot-agent-details__tabs" role="tablist">
         {visibleContextTabs.map((t) => (
           <button
             key={t.tab}
             type="button"
             role="tab"
             aria-selected={contextTab === t.tab}
-            className={contextTab === t.tab ? 'is-active' : ''}
+            className={cn('copilot-agent-details__tab', contextTab === t.tab && 'is-active')}
             onClick={() => setContextTab(t.tab)}
           >
-            {t.label}{typeof t.count === 'number' ? ` (${t.count})` : ''}
+            {t.label}
+            {typeof t.count === 'number' ? (
+              <span className="copilot-agent-details__tab-count">{t.count}</span>
+            ) : null}
           </button>
         ))}
+        <button
+          type="button"
+          className="copilot-details-close"
+          onClick={closeContext}
+          aria-label="关闭上下文"
+          title="关闭"
+        >
+          <X className="h-4 w-4" />
+        </button>
       </div>
-      <div className="copilot-context__body">
+      <div className="copilot-agent-details__body">
         {contextTab === 'overview' && currentSession && (
           <ExpertContextPanel
             employee={activeEmployee}
@@ -50,7 +68,6 @@ export function CopilotPageContextAside() {
             riskLevel={riskLevel}
             handoffActive={handoffActive}
             handoffOwner={handoffOwner}
-            nextAction={nextAction}
             summaryCounts={{
               linkedTasks: sessionExpertContext.citations.length,
               pendingApprovals: sessionExpertContext.pendingApprovals,
@@ -72,13 +89,10 @@ export function CopilotPageContextAside() {
           />
         )}
         {contextTab === 'admin' && (
-          <div className="copilot-context__admin">
-            <p className="text-[var(--text-muted)] text-xs">管理员运行控制台（路由/模型/审计）由 ModelCenter / AuditPage 管理。</p>
+          <div className="p-4 text-[12px] text-[var(--text-muted)]">
+            管理员运行控制由模型中心与审计页管理。
           </div>
         )}
-      </div>
-      <div className="copilot-context__foot">
-        <button type="button" className="copilot-context__close" onClick={closeContext}>关闭</button>
       </div>
     </aside>
   );

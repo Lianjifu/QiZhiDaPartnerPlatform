@@ -4,79 +4,16 @@
  * 原 ModelsPage.tsx 中的 Modal wrapper 集中到本文件；
  * 具体内容由 ModelsModals.{ProviderForm,ProviderDetail,Policy,Drill,Confirm} 提供。
  */
-import { toast } from '@qzda/web-ui';
 import { Modal } from '@/components/shared';
 import { routingLevelPurpose } from '@/features/models/model-ui';
-import { ModelsModalsProviderForm } from './ModelsModals.ProviderForm';
-import { ModelsModalsProviderDetail } from './ModelsModals.ProviderDetail';
 import { ModelsModalsCreatePolicy, ModelsModalsPolicyDetail } from './ModelsModals.Policy';
 import { ModelsModalsFailoverDrill } from './ModelsModals.Drill';
 import { ModelsModalsConfirm } from './ModelsModals.Confirm';
 import type { ModelsController } from './useModelsController';
 
 export function ModelsModals({ c }: { c: ModelsController }) {
-  const activeProvider = c.activeProvider;
   return (
     <>
-      <Modal
-        open={c.providerModal === 'new'}
-        onClose={() => c.setProviderModal(null)}
-        title="接入供应商"
-        description="按主流大模型协议填写连接信息；凭据仅提交时写入服务端引用，成功后不回显。"
-        size="lg"
-      >
-        <ModelsModalsProviderForm
-          canWrite={c.canWrite}
-          workspaceId={c.currentWorkspaceId}
-          creating={c.createProvider.isPending}
-          onCancel={() => c.setProviderModal(null)}
-          onSubmit={(payload) => c.createProvider.mutate(payload, {
-            onSuccess: (provider) => {
-              toast.success('供应商已接入，正在验证连通性…');
-              c.setProviderModal(null);
-              c.testProvider.mutate(
-                { id: provider.id, reason: '接入后自动连通性验证' },
-                {
-                  onSuccess: (result) => toast.success(result.providerStatus === 'active' ? '连通性验证通过，供应商已可用' : '连通性验证通过'),
-                  onError: c.reportError,
-                },
-              );
-            },
-            onError: c.reportError,
-          })}
-        />
-      </Modal>
-      <Modal
-        open={Boolean(activeProvider)}
-        onClose={() => c.setProviderModal(null)}
-        title={activeProvider?.name ?? '模型配置'}
-        description="查看与编辑分开：查看态只读并验证已保存配置；编辑态修改后保存才会生效。"
-        size="lg"
-      >
-        {activeProvider && (
-          <ModelsModalsProviderDetail
-            key={activeProvider.id}
-            provider={activeProvider}
-            impact={c.activeImpact}
-            canWrite={c.canWrite}
-            workspaceId={c.currentWorkspaceId}
-            onClose={() => c.setProviderModal(null)}
-            onSave={(payload) => c.updateProvider.mutate({ id: activeProvider.id, ...payload }, { onSuccess: () => toast.success('供应商资料已更新'), onError: c.reportError })}
-            onTest={() => c.testProvider.mutate({ id: activeProvider.id, reason: '人工连通性验证' }, {
-              onSuccess: (result) => toast.success(result.providerStatus === 'active' ? '验证通过，供应商已可用' : '供应商连通性验证通过'),
-              onError: c.reportError,
-            })}
-            onDisable={() => c.disableProvider.mutate({ id: activeProvider.id, reason: '停止新流量' }, { onSuccess: () => toast.success('供应商已停止新流量'), onError: c.reportError })}
-            onDelete={() => c.setDeleteProvider(activeProvider)}
-            onOpenPolicy={(policyId) => {
-              c.setProviderModal(null);
-              c.setWorkspace('routing');
-              c.setPolicyDrawer(policyId);
-              c.setPolicyDetailTab('validate');
-            }}
-          />
-        )}
-      </Modal>
       <Modal
         open={c.createPolicyOpen}
         onClose={() => { c.setCreatePolicyOpen(false); c.setCreatePolicyPayload(null); }}

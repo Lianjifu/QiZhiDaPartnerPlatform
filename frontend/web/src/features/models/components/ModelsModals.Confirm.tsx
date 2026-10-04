@@ -226,7 +226,7 @@ function DeleteProviderConfirm({ c }: { c: ModelsController }) {
         );
       }}
       title={`删除供应商「${c.deleteProvider?.name ?? ''}」？`}
-      description="删除后凭据引用一并清理。若仍被已发布路由引用，请先到「模型路由」取消发布或替换模型。"
+      description="删除后凭据引用一并清理。若仍被已发布路由引用，请先取消发布或替换模型后再删除。"
       confirmText="删除"
       tone="danger"
     />

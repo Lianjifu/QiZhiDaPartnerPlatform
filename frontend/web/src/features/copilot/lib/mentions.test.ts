@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   filterByQuery,
+  formatMentionToken,
   mentionTriggerMatch,
   mergeMentionedTools,
   parseCapabilityMentions,
@@ -21,7 +22,14 @@ describe('mentionTriggerMatch', () => {
   });
 });
 
-describe('replaceMentionTrigger', () => {
+describe('formatMentionToken', () => {
+  it('prefixes skill keys and other kinds', () => {
+    expect(formatMentionToken('skill', { key: 'skill:docx', name: 'docx' })).toBe('@skill:docx');
+    expect(formatMentionToken('expert', { key: 'e1', name: '人事经理' })).toBe('@expert:人事经理');
+    expect(formatMentionToken('doc', { key: '手册', name: '手册' })).toBe('@doc:手册');
+  });
+});
+
   it('replaces leading @ with a skill token', () => {
     expect(replaceMentionTrigger('@', '@skill:政策问答')).toBe('@skill:政策问答 ');
   });

@@ -5,7 +5,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { ReactFlow, Background, Controls, MiniMap, ReactFlowProvider, type NodeMouseHandler } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { AlertTriangle, Box, Pencil, Bug, Eye, Search, ShieldCheck, Sparkles, Undo as UndoIcon, Redo as RedoIcon, Save, FileJson, Trash2, RefreshCw, History as HistoryIcon, ChevronRight } from 'lucide-react';
+import { AlertTriangle, Box, Pencil, Bug, Eye, Search, ShieldCheck, Undo as UndoIcon, Redo as RedoIcon, Save, FileJson, Trash2, RefreshCw, History as HistoryIcon, ChevronRight } from 'lucide-react';
 import { Badge, Button } from '@qzda/web-ui';
 import { cn } from '@qzda/web-utils';
 import { Drawer } from '@/components/shared';
@@ -51,9 +51,6 @@ export function WorkflowsTabEditor({ c }: Props) {
             <Box className="h-3.5 w-3.5" />
             {c.nodeLibraryOpen ? '收起节点库' : '节点库'}
           </Button>
-          <Button size="sm" variant="ghost" onClick={c.openAIGenerator} disabled={!c.canWrite}>
-            <Sparkles className="h-3.5 w-3.5" />AI 辅助
-          </Button>
         </div>
         <div className="flex flex-wrap items-center gap-1.5 md:ml-auto">
           <Button size="sm" variant={c.isDirty ? 'primary' : 'secondary'} onClick={c.saveCanvas} disabled={!c.canWrite || !c.isDirty}>
@@ -71,7 +68,7 @@ export function WorkflowsTabEditor({ c }: Props) {
       </div>
 
       <div className="shrink-0 border-b border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2 text-[11px] leading-5 text-[var(--text-muted)]">
-        本页用于编排受控处置流程草稿。版本治理请点「当前版本」进入抽屉 / 版本中心；完成后请到「发布技能」发布为流程技能，供数字伙伴能力装配；本页不直接发起专家协作上岗。
+        本页用于编排受控处置流程草稿。可用顶部「AI 编排」生成示例草稿；版本治理请点「当前版本」；完成后到「发布技能」供数字伙伴能力装配。本页不直接发起专家协作上岗。
         {c.structureIssues.filter((item) => item.severity === 'failed').length > 0 && (
           <span className="ml-2 text-amber-500">结构门禁：{c.structureIssues.filter((i) => i.severity === 'failed').map((i) => i.message).join('；')}</span>
         )}
@@ -217,7 +214,7 @@ export function WorkflowsTabEditor({ c }: Props) {
           ))}
         </div>
         <div className="mt-4 flex gap-2">
-          <Button size="sm" variant="outline" className="flex-1" onClick={() => { c.setVersionMenuOpen(false); c.setTab('versions'); }}>打开版本中心</Button>
+          <Button size="sm" variant="outline" className="flex-1" onClick={() => { c.setVersionMenuOpen(false); c.goStudio('versions'); }}>打开版本中心</Button>
           <Button size="sm" variant="outline" className="flex-1" onClick={() => c.setRollbackTargetId(c.activeVersion)} disabled={!c.canWrite}>回滚并生成新草稿</Button>
         </div>
       </Drawer>

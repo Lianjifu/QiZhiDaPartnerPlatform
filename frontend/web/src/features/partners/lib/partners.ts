@@ -27,6 +27,17 @@ export function employeeSecondaryLabel(employee: Pick<SortableEmployee, 'name' |
   return `${employee.department} · ${employee.name}`;
 }
 
+/** 专家详情页路径；`tab` 对应详情分区。 */
+export function partnerDetailPath(id: string, tab?: string) {
+  const base = `/partners/${encodeURIComponent(id)}`;
+  return tab ? `${base}?tab=${encodeURIComponent(tab)}` : base;
+}
+
+/** 未上岗（未发布）的数字伙伴可删除；已上岗或已发布不可删。 */
+export function partnerCanDelete(employee: { lifecycle: string; release?: { status?: string } }) {
+  return employee.release?.status !== 'released' && employee.lifecycle !== 'active';
+}
+
 /** 岗位配置完整性判定所需字段。 */
 export type RoleSetupEmployee = {
   owner?: string;

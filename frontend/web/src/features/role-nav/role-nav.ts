@@ -128,14 +128,14 @@ export function rolePageCopy(
   const r = resolveAppRole(role);
   const table = {
     tasks: {
-      user: { title: '我的待办', subtitle: '优先处理待你判断与双重审批的协同事项。' },
-      admin: { title: '任务中心', subtitle: '优先处理需要判断、双重审批与风险处置的数字伙伴协同任务。' },
-      auditor: { title: '任务核查', subtitle: '只读核查待审批、风险与异常任务证据，不参与处置执行。' },
+      user: { title: '我的待办', subtitle: '查看你的定时作业，并处理待你确认的团队协助。' },
+      admin: { title: '任务中心', subtitle: '用定时任务调度数字伙伴，用团队协助推进审批、协办与风险处置。' },
+      auditor: { title: '任务核查', subtitle: '只读核查定时作业与协助证据，不参与执行。' },
     },
     knowledge: {
-      user: { title: '知识检索', subtitle: '查找并引用工作区知识资产，供专家协作使用。' },
-      admin: { title: '知识中心', subtitle: '统一管理企业知识资产、接入加工、检索评测、图谱关联与引用治理。' },
-      auditor: { title: '知识引用', subtitle: '只读核查知识版本与引用证据，不修改资产或加工链路。' },
+      user: { title: '知识检索', subtitle: '查找已发布的知识包与内容，供专家协作引用。' },
+      admin: { title: '知识中心', subtitle: '以知识包交付内容：上传纳管、加工评测、版本发布后供数字伙伴装配。' },
+      auditor: { title: '知识引用', subtitle: '只读核查知识包版本与引用证据，不修改资产或加工链路。' },
     },
     skills: {
       user: { title: '技能清单', subtitle: '查看已启用、可供数字伙伴调用的技能与工具。' },
@@ -179,12 +179,12 @@ export function rolePageCopy(
 export type WorkflowTab = 'templates' | 'canvas' | 'publishSkill' | 'history' | 'versions';
 
 export function defaultWorkflowTab(role: Role | undefined | null): WorkflowTab {
-  return resolveAppRole(role) === 'auditor' ? 'versions' : 'canvas';
+  return resolveAppRole(role) === 'auditor' ? 'versions' : 'templates';
 }
 
 export function visibleWorkflowTabs(role: Role | undefined | null): WorkflowTab[] {
   if (resolveAppRole(role) === 'auditor') return ['versions', 'history', 'templates'];
-  return ['templates', 'canvas', 'publishSkill', 'history'];
+  return ['templates', 'canvas', 'publishSkill', 'history', 'versions'];
 }
 
 export type KnowledgeTab = 'assets' | 'processing' | 'retrieval' | 'graph' | 'governance';

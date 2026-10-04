@@ -1,21 +1,48 @@
 /**
- * 知识中心 · 加工任务 tab（M07 P1 拆分）。
- *
- * 复用 ProcessingWorkbench（M07 既有组件），本文件只负责把 controller 翻译成
- * ProcessingWorkbench 期望的 props + pipeline 跳转回调。
+ * 知识中心 · 加工任务（挂在文档 / 知识包详情分段上）。
  */
 import { ProcessingWorkbench } from './ProcessingWorkbench';
 import type { KnowledgeController } from './useKnowledgeController';
+import type { KnowledgeProcessingJob } from '@qzda/web-types';
 
-export function KnowledgeTabJobs({ c }: { c: KnowledgeController }) {
+export function KnowledgeTabJobs({
+  c,
+  packageId,
+  jobs: jobsOverride,
+  onGoEval,
+  onConnectSource,
+}: {
+  c: KnowledgeController;
+  packageId?: string;
+  jobs?: KnowledgeProcessingJob[];
+  onGoEval?: () => void;
+  onConnectSource?: () => void;
+}) {
+  const jobs = jobsOverride
+    ?? (packageId
+      ? c.filteredProcessingJobs.filter((job) => job.packageId === packageId)
+      : c.filteredProcessingJobs);
+  const pendingPackages = packageId
+    ? c.knowledgePackages.filter((item) => item.id === packageId && item.status !== 'published')
+    : [];
+  const activeJobCount = jobs.filter((item) => item.status === 'running' || item.status === 'queued').length;
+  const failedJobCount = jobs.filter((item) => item.status === 'failed').length;
+
   return (
     <ProcessingWorkbench
+      scoped
       sources={c.sourceConnections}
-      jobs={c.filteredProcessingJobs}
-      pendingPackages={c.pendingReviewPackages}
+      jobs={jobs}
+      pendingPackages={pendingPackages}
       pipelineStages={c.pipelineStages.map((stage) => ({
         ...stage,
-        onClick: () => c.focusPipelineTarget(stage.target),
+        onClick: () => {
+          if (stage.target === 'retrieval' && onGoEval) {
+            onGoEval();
+            return;
+          }
+          c.focusPipelineTarget(stage.target);
+        },
       }))}
       jobStatusFilter={c.jobStatusFilter}
       canWrite={c.canWrite}
@@ -26,17 +53,18 @@ export function KnowledgeTabJobs({ c }: { c: KnowledgeController }) {
       sourceDocumentTotal={c.sourceDocumentTotal}
       healthySourceCount={c.healthySourceCount}
       attentionSourceCount={c.attentionSourceCount}
-      activeJobCount={c.activeJobCount}
-      failedJobCount={c.failedJobCount}
+      activeJobCount={activeJobCount}
+      failedJobCount={failedJobCount}
       onFilterChange={c.setJobStatusFilter}
-      onConnectSource={() => c.setActiveModal('connectSource')}
+      onConnectSource={onConnectSource}
       onSyncSource={c.syncSource}
       onReindex={() => c.setReindexConfirm(true)}
       onProcessPending={() => {
-        if (c.pendingReviewPackages[0]) c.processPackageMutation.mutate({ id: c.pendingReviewPackages[0].id, strategy: 'semantic' });
+        const target = packageId ?? c.pendingReviewPackages[0]?.id;
+        if (target) c.processPackageMutation.mutate({ id: target, strategy: 'semantic' });
       }}
       onRetryJob={(id) => c.retryJobMutation.mutate({ id })}
-      onOpenPackages={() => { c.setWorkspace('assets'); c.setAssetsView('packages'); }}
+      onOpenPackages={onGoEval}
       sourcesRef={c.sourcesSectionRef}
       jobsRef={c.jobsSectionRef}
     />

@@ -1,3 +1,15 @@
+// Package copilot —— 工具注册表(tool registry)+ 解析 + 授权 + 执行模块。
+//
+// 职责：
+//   - 决定当前回合对每个数字伙伴可启用哪些工具（buildToolRegistry）
+//   - 从 LLM 输出里解析 <<<TOOL>>> 或 XML 风格工具调用块（parseToolCall / parseXMLToolCall）
+//   - 校验工具可执行性（authorizeToolCall）+ 路由到具体执行器（runCopilotTool）
+//   - 把执行结果包装成可落库的 toolCall 记录（toolCallToPersist）
+//
+// 关键约束：
+//   - 平台禁止旁路生成 office 产物（docx/pptx/pdf 必须由 skill 脚本产出）
+//   - 工具审批是 per-action（skill.open vs skill.run/write），不是全局
+//   - 未知 / 未挂执行器的 tool 返回 status=unavailable（不伪造 success）
 package copilot
 
 import (
@@ -11,6 +23,7 @@ import (
 	"github.com/qizhida-partner-platform/backend/internal/auth"
 )
 
+// 工具执行模式的内部枚举值（与 ToolMode* 导出别名一一对应）。
 const (
 	toolModeExecute   = "execute"
 	toolModeRecommend = "recommend"
@@ -18,6 +31,7 @@ const (
 	toolModeProhibit  = "prohibited"
 )
 
+// ToolMode* 是 toolMode* 常量的导出别名，供 internal/server/ 等外部调用方引用。
 // Exported aliases for the tool-mode string constants. External callers
 // (notably internal/server/builtin_skills.go which assembles the registered
 // tool catalog, and internal/server/session_governance.go which checks
@@ -29,6 +43,7 @@ const (
 	ToolModeProhibit  = toolModeProhibit
 )
 
+// registeredTool 是 Copilot Harness 注册表里的一条可执行能力。
 // registeredTool is one executable capability in the Copilot Harness registry.
 type registeredTool struct {
 	Key              string
@@ -40,11 +55,14 @@ type registeredTool struct {
 	Description      string
 }
 
+// toolCallRequest 是一次工具调用的最小请求体（name + args）。
 type toolCallRequest struct {
 	Name string         `json:"name"`
 	Args map[string]any `json:"args"`
 }
 
+// toolExecResult 是单次工具执行的统一结果封装。
+// Status: success | failed | denied | unavailable；Hits 用来挂 RAG 命中；Permission 用于授权状态。
 type toolExecResult struct {
 	Status     string // success | failed | denied
 	DurationMs int
@@ -55,6 +73,8 @@ type toolExecResult struct {
 	SandboxID  string
 }
 
+// toolRunContext 把一次工具执行需要的"周边上下文"打包传给具体执行器。
+// 包含会话身份（WorkspaceID/OwnerID/CorrelationID）、Viewer、SessionMode/RiskLevel 授权依据。
 type toolRunContext struct {
 	Request         *http.Request
 	WorkspaceID     string
@@ -68,17 +88,21 @@ type toolRunContext struct {
 	RiskLevel       string
 }
 
+// toolCallBlockRE / xmlToolCallBlockRE 预编译的工具调用块匹配正则。
+// toolCallBlockRe 匹配 <<<TOOL>>>...<<<END>>>；xmlToolCallBlockRe 匹配 <name>{...}</name> 风格。
 var (
-	toolCallBlockRe  = regexp.MustCompile(`(?s)<<<TOOL>>>\s*(\{.*?\})\s*<<<END>>>`)
+	toolCallBlockRe   = regexp.MustCompile(`(?s)<<<TOOL>>>\s*(\{.*?\})\s*<<<END>>>`)
 	xmlToolCallBlockRe = regexp.MustCompile(`(?s)<([a-zA-Z][\w.:-]*)>\s*(\{.*?\})\s*</[a-zA-Z][\w.:-]*>`)
 )
 
+// slugToolName 把工具名做 slug 化：trimSpace + lowercase + 空格转 -
 func slugToolName(name string) string {
 	s := strings.ToLower(strings.TrimSpace(name))
 	s = strings.ReplaceAll(s, " ", "-")
 	return s
 }
 
+// capabilityMode 查员工 boundaryPolicy 里 (capabilityType, capabilityName) 对应的模式字符串。
 func capabilityMode(emp map[string]any, kind, name string) string {
 	bp, _ := emp["boundaryPolicy"].(map[string]any)
 	if bp == nil {
@@ -103,6 +127,8 @@ func capabilityMode(emp map[string]any, kind, name string) string {
 	return ""
 }
 
+// enabledToolSet 把 enabledTools 列表转成 set（含 key 多种变体：原名 / 去 builtin: 前缀 / slug）。
+// buildToolRegistry 内部用，主要是为了在会话只勾选部分工具时高效判 membership。
 func enabledToolSet(enabled []string) map[string]struct{} {
 	out := map[string]struct{}{}
 	for _, k := range enabled {
@@ -120,7 +146,7 @@ func enabledToolSet(enabled []string) map[string]struct{} {
 	return out
 }
 
-// buildToolRegistry intersects employee capabilities, boundary modes, and session enabledTools.
+// buildToolRegistry 把"员工能力 + 边界策略 + 会话已勾选工具"三路求交集，产出最终可执行工具列表。
 func buildToolRegistry(emp map[string]any, enabledTools []string) []registeredTool {
 	enabled := enabledToolSet(enabledTools)
 	enableAllNonApproval := len(enabledTools) == 0
@@ -232,6 +258,7 @@ func buildToolRegistry(emp map[string]any, enabledTools []string) []registeredTo
 	return out
 }
 
+// registryLookup 按 name 在注册表里查工具；支持 Key / Name / slug / 去 builtin: 前缀四种匹配。
 func registryLookup(reg []registeredTool, name string) *registeredTool {
 	name = strings.TrimSpace(name)
 	slug := slugToolName(name)
@@ -247,6 +274,8 @@ func registryLookup(reg []registeredTool, name string) *registeredTool {
 	return nil
 }
 
+// toolRegistryPrompt 把当前会话可用的工具列表渲染成给 LLM 的 system prompt 片段。
+// 包含通用 ReAct 规则、Skill Harness 原语说明、docx/pptx/pdf 工具专属约束、产物协议约束等。
 func toolRegistryPrompt(reg []registeredTool) string {
 	var enabled []registeredTool
 	for _, t := range reg {
@@ -321,6 +350,7 @@ func toolRegistryPrompt(reg []registeredTool) string {
 	return b.String()
 }
 
+// parseToolCall 是工具调用解析的总入口：先尝试 <<<TOOL>>> 块，再 fallback 到 XML 风格。
 func parseToolCall(text string) (toolCallRequest, bool) {
 	text = strings.TrimSpace(text)
 	if text == "" {
@@ -335,6 +365,7 @@ func parseToolCall(text string) (toolCallRequest, bool) {
 	return toolCallRequest{}, false
 }
 
+// parseCanonicalToolCall 解析 <<<TOOL>>>{...}<<<END>>> 块为 toolCallRequest；name 为空或 JSON 失败时返回 false。
 func parseCanonicalToolCall(text string) (toolCallRequest, bool) {
 	m := toolCallBlockRe.FindStringSubmatch(text)
 	if len(m) != 2 {
@@ -354,6 +385,8 @@ func parseCanonicalToolCall(text string) (toolCallRequest, bool) {
 	return call, true
 }
 
+// parseXMLToolCall 解析 <name>{...}</name> 风格的工具调用；标签必须命中"已知工具标签白名单"
+// 或包含 pptx/docx 子串，避免误把普通 XML/HTML 当工具调用。
 func parseXMLToolCall(text string) (toolCallRequest, bool) {
 	m := xmlToolCallBlockRe.FindStringSubmatch(text)
 	if len(m) != 3 {
@@ -406,6 +439,7 @@ func parseXMLToolCall(text string) (toolCallRequest, bool) {
 	return toolCallRequest{Name: name, Args: args}, true
 }
 
+// normalizeParsedToolCall 把模型常见的别名（skill.read / writefile / skill:pptx）映射回注册表里的标准名。
 // normalizeParsedToolCall maps common model aliases to registered tool names.
 func normalizeParsedToolCall(call toolCallRequest) toolCallRequest {
 	if call.Args == nil {
@@ -435,6 +469,8 @@ func normalizeParsedToolCall(call toolCallRequest) toolCallRequest {
 	return call
 }
 
+// looksLikeLeakedToolMarkup 检查文本里是否残留 <<<TOOL>>> 或 XML 工具块。
+// 用于回合收尾时识别"模型没正确封装"的情况，避免把工具标记直接漏给前端。
 func looksLikeLeakedToolMarkup(text string) bool {
 	text = strings.TrimSpace(text)
 	if text == "" {
@@ -447,12 +483,15 @@ func looksLikeLeakedToolMarkup(text string) bool {
 	return ok
 }
 
+// stripToolCallMarkers 把 <<<TOOL>>> 块和 XML 工具块从文本里全部剥离，并 trim 空白。
 func stripToolCallMarkers(text string) string {
 	text = toolCallBlockRe.ReplaceAllString(text, "")
 	text = xmlToolCallBlockRe.ReplaceAllString(text, "")
 	return strings.TrimSpace(text)
 }
 
+// authorizeToolCall 在执行前校验：工具是否注册、是否被禁止、是否本会话启用、是否需要审批。
+// 拒答时返回 (工具, denied 状态结果)；通过时返回 (工具, nil)。
 func authorizeToolCall(reg []registeredTool, call toolCallRequest) (*registeredTool, *toolExecResult) {
 	t := registryLookup(reg, call.Name)
 	if t == nil {
@@ -479,6 +518,8 @@ func authorizeToolCall(reg []registeredTool, call toolCallRequest) (*registeredT
 	return t, nil
 }
 
+// runCopilotTool 是工具执行分发器：按 builtin/runtime/pilotdeck/cmdb/skill/workflow/tool
+// 等类型路由到 Deps 上对应的执行器；未挂执行器的 tool 走 status=unavailable（不伪造）。
 func (s *Service) runCopilotTool(ctx toolRunContext, t *registeredTool, call toolCallRequest) toolExecResult {
 	if s.testHooks != nil && s.testHooks.runCopilotToolOverride != nil {
 		return s.testHooks.runCopilotToolOverride(ctx, t, call)
@@ -595,6 +636,7 @@ func (s *Service) runCopilotTool(ctx toolRunContext, t *registeredTool, call too
 	}
 }
 
+// mapStr 把任意 v 强转 map[string]any 再取 key；非 map 类型返回空串。
 func mapStr(v any, key string) string {
 	m, ok := v.(map[string]any)
 	if !ok {
@@ -603,6 +645,8 @@ func mapStr(v any, key string) string {
 	return str(m[key])
 }
 
+// findWorkspaceSkill 在 workspace 的 Skill 注册表里按 (id / name / slug / docx 别名) 找匹配项。
+// 用于把 toolCall 名字映射回 Store.Skills 里的具体 skill 元数据。
 func (s *Service) findWorkspaceSkill(ws, skillID, toolName string) map[string]any {
 	s.Store.RLock()
 	defer s.Store.RUnlock()
@@ -625,6 +669,7 @@ func (s *Service) findWorkspaceSkill(ws, skillID, toolName string) map[string]an
 	return nil
 }
 
+// enabledToolKeys 从注册表里取出所有 Enabled=true 的 Key 列表（用于 SSE emit "enabledTools"）。
 func enabledToolKeys(reg []registeredTool) []string {
 	var out []string
 	for _, t := range reg {
@@ -635,6 +680,8 @@ func enabledToolKeys(reg []registeredTool) []string {
 	return out
 }
 
+// toolCallToPersist 把一次工具调用及其结果打包成可落库的 map 结构。
+// 字段：id/name/args/status/durationMs/permission/sandboxId/error/result（result 截到 500 rune）。
 func toolCallToPersist(id, name string, args map[string]any, res toolExecResult) map[string]any {
 	status := res.Status
 	if status == "" {

@@ -37,6 +37,7 @@ import (
 	"github.com/qizhida-partner-platform/backend/internal/store"
 )
 
+// ResolvedTurn 是一次 copilot 回合实际命中的"模型元数据"（provider + model + 协议）。
 // ResolvedTurn is the concrete provider + model used for one Copilot turn.
 // Mirrors the legacy `resolvedTurn` struct from internal/server/model_invoke.go;
 // moved here so model_invoke.go can import copilot for the type and the
@@ -52,6 +53,7 @@ type ResolvedTurn struct {
 	Request      modelprov.ChatRequest
 }
 
+// StreamLLMForCopilotFn 是 copilot 模块对 LLM 流式调用依赖的函数类型契约。
 // StreamLLMForCopilotFn is the function-type the M02 copilot module expects
 // its StreamLLMForCopilot dependency to satisfy. The function is implemented
 // in internal/models/handlers_invoke.go (a method on *models.Service bound at
@@ -64,6 +66,7 @@ type ResolvedTurn struct {
 // method-count gymnastics.
 type StreamLLMForCopilotFn func(ctx context.Context, r *http.Request, ws, modelID string, messages []modelprov.ChatMessage, system string, onDelta func(text, resolvedModelID string) error) (reply string, resolved ResolvedTurn, err error)
 
+// runtimeMemoryInput 是 ingestRuntimeMemoryLocked 的入参结构体（覆盖范围、来源、置信度等）。
 // runtimeMemoryInput is the input shape used by ingestRuntimeMemoryLocked
 // (moved from internal/server/handlers_memory.go so copilot can pass it
 // through without an import cycle).
@@ -82,6 +85,7 @@ type runtimeMemoryInput struct {
 	Confidence        float64
 }
 
+// participantCtxInput 是构造 participantContext 时的输入载体（身份/消息/工具/会话模式等）。
 // participantCtxInput is the dispatch-side carrier for building a
 // participantContext.
 type participantCtxInput struct {
@@ -99,6 +103,7 @@ type participantCtxInput struct {
 	RiskLevelHint   string
 }
 
+// participantContext 是 runParticipantTurn 用的"子专家执行上下文"（含独立身份/记忆/模型/工具）。
 // participantContext is the per-specialist execution context.
 type participantContext struct {
 	WorkspaceID     string
@@ -120,6 +125,7 @@ type participantContext struct {
 	Emit            reactEmitFunc
 }
 
+// participantTurnResult 是 runParticipantTurn 的返回结果（文本/状态/时长/硬性拒答原因）。
 // participantTurnResult is what runParticipantTurn returns.
 type participantTurnResult struct {
 	ParticipantID string
@@ -132,6 +138,7 @@ type participantTurnResult struct {
 	ToolCalls     []map[string]any
 }
 
+// serviceTestHooks 把"测试用的可替换钩子"集中在一个结构体里（覆盖 runCopilotTool / runPlanExecute）。
 // serviceTestHooks groups the optional override hooks used by copilot unit
 // tests. Mirrors the legacy serverTestHooks type but scoped to the M02
 // module — only runCopilotToolOverride and runPlanExecuteOverride are used
@@ -142,6 +149,7 @@ type serviceTestHooks struct {
 	runPlanExecuteOverride func(in reactTurnInput) reactTurnResult
 }
 
+// Deps 是 M02 copilot 模块对 server/ 的"函数字段依赖"集合。
 // Deps groups the cross-package Server methods the M02 copilot module
 // depends on. Server.New() builds a *Service and passes function values
 // bound to its own *Server methods.
@@ -262,6 +270,7 @@ type Service struct {
 	evolveCandidateActionFn  func(r *http.Request) (any, error)
 }
 
+// NewService 用给定的 Store + Deps 构造一个生产可用的 Service。
 // NewService builds a Service. store is required for the M02 module to do
 // real work; deps may be partial for tests that exercise only the SSE /
 // turn state machine (no LLM/RAG calls).
@@ -272,6 +281,7 @@ func NewService(store *store.Store, deps Deps) *Service {
 	}
 }
 
+// New 是 NewService 的零 Deps 便捷别名，供 copilot 内部不接 server/ 依赖的测试使用。
 // New is a thin alias for NewService with zero-value Deps. Used by
 // copilot-internal tests that exercise logic without wiring server-side
 // dependencies (rate limiting, model routing, etc.).
@@ -279,6 +289,7 @@ func New(store *store.Store) *Service {
 	return NewService(store, Deps{})
 }
 
+// CopH 返回 8 个标准 M02 路由的 Handler facade。
 // CopH returns the Handler facade for the canonical 8 routes. Kept as
 // a Service method so copilot-internal tests can route M02 HTTP paths
 // through the Handler without instantiating a *server.Server. Production
@@ -302,6 +313,7 @@ func (s *Service) CopH() *Handler {
 	}
 }
 
+// SetTestHooks 给 Service 挂上测试用的可替换钩子（panic 注入 / 假 LLM 响应等）。
 // SetTestHooks wires the optional override hooks onto the Service.
 // Production callers leave this alone; tests call it once after
 // NewService() to swap in panics / fake LLM responses / etc.
@@ -316,6 +328,7 @@ func (s *Service) SetTestHooks(hooks *serviceTestHooks) {
 // exercise only the SSE/turn state machine. Production callers always
 // wire deps via NewService, so nil here means "test mode".
 
+// depWorkspaceID 从 Request 里取出当前请求归属的工作区 ID；Deps 未注入时返回空串。
 func (s *Service) depWorkspaceID(r *http.Request) string {
 	if s == nil || s.Deps.WorkspaceIDFn == nil {
 		return ""

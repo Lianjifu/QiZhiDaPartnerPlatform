@@ -1,5 +1,5 @@
 /**
- * useCopilotActions — user-action handlers (send, slash, attachments, share, etc).
+ * useCopilotActions — send, slash, partner picker, run-mode.
  */
 import { useCallback, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from '@qzda/web-ui';
 import { getApiClient } from '@qzda/web-api';
 import type { DigitalPartner } from '@qzda/web-types';
+import { employeePrimaryLabel } from '@/features/partners/lib/partners';
 import {
   approvalToolKeys, buildExpertTools, defaultEnabledToolKeys, isWriteExecutionIntent, toolsForExecuteMode,
 } from '@/features/copilot/lib/expert-tools';
@@ -15,10 +16,9 @@ import {
   type SlashUiAction,
 } from '@/features/copilot/lib/slash-commands';
 import {
-  filterByQuery, mergeMentionedTools, replaceMentionTrigger, shouldShowMentionMenu,
+  mergeMentionedTools, replaceMentionTrigger, shouldShowMentionMenu,
 } from '@/features/copilot/lib/mentions';
 import { DEFAULT_REPLY_MODE, mapRunModeToDispatch } from '@/features/copilot/lib/composer-mode';
-import { escapeHtml } from '@/features/copilot/components/CopilotPage.helpers';
 import type { CopilotState } from '@/features/copilot/components/useCopilotState';
 
 export interface UseCopilotActionsParams {
@@ -42,11 +42,6 @@ export interface CopilotActions {
   handleReasoningChange: (effort: 'off' | 'standard' | 'deep') => void;
   handleSend: () => void;
   applySlashAction: (action: SlashUiAction) => Promise<void>;
-  handleExport: (format: 'markdown' | 'json') => void;
-  printAuditRecord: () => void;
-  toggleArchive: () => void;
-  shareSession: () => void;
-  copyShareUrl: () => Promise<void>;
   filteredExperts: DigitalPartner[];
   slashFiltered: ReturnType<typeof filterSlashCommands>;
 }
@@ -81,8 +76,8 @@ export function useCopilotActions({
       s.chat.persistSession({
         ...active,
         digitalPartnerId: employee.id,
-        digitalPartnerName: employee.name,
-        agent: employee.name,
+        digitalPartnerName: employeePrimaryLabel(employee),
+        agent: employeePrimaryLabel(employee),
         agentKey: employee.capabilities.agentId,
       });
       s.setExpertPickerOpen(false);
@@ -92,7 +87,7 @@ export function useCopilotActions({
     }
     void s.chat.newSession({
       digitalPartnerId: employee.id,
-      digitalPartnerName: employee.name,
+      digitalPartnerName: employeePrimaryLabel(employee),
       agentKey: employee.capabilities.agentId,
       modelId: sendModelId,
       enabledTools: s.enabledTools.length ? s.enabledTools : defaultEnabledToolKeys(availableTools),
@@ -108,21 +103,14 @@ export function useCopilotActions({
 
   const openNewSessionPicker = () => {
     if (!canMutate) return;
-    if (onDutyEmployees.length === 0) {
-      void s.chat.newSession({
-        modelId: sendModelId,
-        enabledTools: s.enabledTools.length ? s.enabledTools : defaultEnabledToolKeys(availableTools),
-      }).then((id) => {
-        if (id) navigate(`/copilot/${id}`);
-      }).catch((err) => {
-        toast.error(err instanceof Error ? err.message : '创建会话失败，请重试');
-      });
-      return;
-    }
     s.setExpertPickerMode('new');
     s.setExpertPickerOpen(true);
     s.setExpertPickerQuery('');
-    s.setRebindBlockedReason(null);
+    s.setRebindBlockedReason(
+      onDutyEmployees.length === 0
+        ? '当前工作区暂无在岗数字伙伴，请先到「数字伙伴」完成上岗。'
+        : null,
+    );
   };
 
   const openRebindExpertPicker = () => {
@@ -164,8 +152,14 @@ export function useCopilotActions({
       void applySlashAction(planSlashSend(slash));
       return;
     }
+    if (!activeSession?.digitalPartnerId) {
+      toast.error('请先选择数字伙伴后再开始对话。');
+      if (activeSession) openRebindExpertPicker();
+      else openNewSessionPicker();
+      return;
+    }
     if (!sendModelId) {
-      window.alert('当前工作区没有可用模型。请先在「模型中心」接入并探测供应商，或为数字伙伴装配可用模型。');
+      toast.error('当前工作区没有可用模型。请先在「模型中心」接入并探测供应商，或为数字伙伴装配可用模型。');
       return;
     }
     const draft = s.chat.state.draftInput.trim();
@@ -284,9 +278,8 @@ export function useCopilotActions({
         s.chat.setDraft('');
         break;
       case 'export':
-        handleExport(action.format);
         s.chat.setDraft('');
-        s.chat.appendLocalAssistant('已导出当前会话为 Markdown，请查看浏览器下载。');
+        s.chat.appendLocalAssistant('会话页已不再提供导出下载，请在会话内直接查阅。');
         break;
       case 'clear_session':
         s.chat.clearActiveMessages(); s.chat.setDraft('');
@@ -372,69 +365,6 @@ export function useCopilotActions({
     s.setShowSlash(false);
   };
 
-  const handleExport = (format: 'markdown' | 'json') => {
-    if (!currentSession) return;
-    const data = s.chat.exportSessionAs(currentSession.id, format);
-    if (!data) return;
-    const blob = new Blob([data], { type: format === 'json' ? 'application/json' : 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${currentSession.title || 'session'}-${currentSession.id}.${format === 'json' ? 'json' : 'md'}`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const printAuditRecord = () => {
-    if (!currentSession) return;
-    const auditData = s.chat.exportSessionAs(currentSession.id, 'audit');
-    if (!auditData) return;
-    const printWindow = window.open('', '_blank', 'noopener,noreferrer');
-    if (!printWindow) return;
-    const title = escapeHtml(currentSession.title || '数字伙伴会话审计记录');
-    const exportedAt = new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'medium' }).format(new Date());
-    printWindow.document.write(`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8" /><title>${title} · 审计记录</title><style>
-      @page { size: A4; margin: 18mm; }
-      * { box-sizing: border-box; }
-      body { color: #0f172a; font: 12px/1.6 -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; }
-      h1 { margin: 0; font-size: 20px; } h2 { margin: 24px 0 8px; font-size: 14px; }
-      .meta { margin-top: 8px; color: #64748b; } .rule { height: 3px; margin: 16px 0; background: #4f46e5; }
-      pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; padding: 14px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; color: #334155; font: 10px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; }
-      .footer { margin-top: 16px; color: #64748b; font-size: 10px; }
-    </style></head><body>
-      <h1>${title}</h1><div class="meta">会话 ID：${escapeHtml(currentSession.id)} · 导出时间：${exportedAt}</div>
-      <div class="rule"></div><h2>审计明细</h2><pre>${escapeHtml(auditData)}</pre>
-      <div class="footer">由企智搭 · 数字伙伴平台生成。请在系统打印对话框中选择"另存为 PDF"。</div>
-    </body></html>`);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
-  };
-
-  const toggleArchive = () => {
-    if (!currentSession) return;
-    const archived = currentSession.lifecycle === 'archived';
-    s.chat.archiveSession(currentSession.id, !archived);
-  };
-
-  const shareSession = () => {
-    if (!currentSession) return;
-    if (currentSession.shareToken) {
-      s.setShareDialog({ open: true, token: currentSession.shareToken });
-      return;
-    }
-    void s.chat.shareSession(currentSession.id).then((token) => {
-      s.setShareDialog({ open: true, token: token ?? undefined });
-      if (!token) toast.error('创建分享失败');
-    });
-  };
-
-  const copyShareUrl = async () => {
-    if (!s.shareDialog.token) return;
-    const url = `${window.location.origin}/copilot/share/${s.shareDialog.token}`;
-    try { await navigator.clipboard.writeText(url); } catch {}
-  };
-
   const filteredExperts = useMemo(() => {
     const q = s.expertPickerQuery.trim().toLowerCase();
     return onDutyEmployees.filter((item) => !q || [item.name, item.role, item.department].join(' ').toLowerCase().includes(q));
@@ -454,11 +384,6 @@ export function useCopilotActions({
     handleReasoningChange,
     handleSend,
     applySlashAction,
-    handleExport,
-    printAuditRecord,
-    toggleArchive,
-    shareSession,
-    copyShareUrl,
     filteredExperts,
     slashFiltered,
   };

@@ -75,3 +75,14 @@ describe('task domain', () => {
       .toThrow('风险或失败任务仅允许重试或人工接管');
   });
 });
+
+describe('scheduled task mock API', () => {
+  it('creates a scheduled job through the mock API', async () => {
+    await mockHandler('/api/mock/reset', { method: 'POST' });
+    const created = await mockHandler('/api/scheduled-tasks', { method: 'POST', body: { title: '演示巡检', cadence: 'daily', hour: 8, minute: 0 } }) as { title: string; cadence: string };
+    expect(created.title).toBe('演示巡检');
+    expect(created.cadence).toBe('daily');
+    const listed = await mockHandler('/api/scheduled-tasks', {}) as Array<{ title: string }>;
+    expect(listed.some((item) => item.title === '演示巡检')).toBe(true);
+  });
+});

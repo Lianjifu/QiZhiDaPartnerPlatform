@@ -1,3 +1,15 @@
+// Package copilot —— 回合叙事(turn narrative)收集器。
+//
+// 职责：把一次 copilot 回合期间 SSE 流上发出的 thought / task 事件
+// 收集成结构化的"叙事面板"快照，给前端展示 4 阶段（理解/计划/执行/反思）
+// 的进度、任务列表、汇总文本。
+//
+// 数据流：
+//   SSE emit → turnNarrativeCollector.Record(typ, _, extra)
+//   回合结束 → .Snapshot(cog, harnessMode, durationMs) → map[string]any 给 turnMeta
+//
+// 同时维护一个全局 thoughtDedupLast 表，避免"同一阶段 + 同一标题在 2s 内重复推送"
+// （并发 wecom webhook + 重试触发的常见噪声源）。
 package copilot
 
 import (
@@ -23,7 +35,12 @@ var turnPhaseLabels = map[string]string{
 	turnPhaseReflect:    "质量复核",
 }
 
-// turnNarrativeCollector accumulates thought/task events for turnMeta snapshots.
+// turnNarrativeCollector 累积一次 copilot 回合的 thought / task 事件，
+// 回合结束时被 Snapshot() 序列化成给前端的 turnMeta 块。
+//
+// 4 个 phase bucket（understand / plan / execute / reflect）初始为 pending，
+// 任一 phase 收到 thought 事件后置为 done 并累加 stepCount；
+// task 事件单独切片，去重按 taskId 合并（同一任务多次状态变更只保留最新）。
 type turnNarrativeCollector struct {
 	phases    map[string]*turnPhaseBucket
 	tasks     []map[string]any
@@ -48,6 +65,11 @@ func newTurnNarrativeCollector() *turnNarrativeCollector {
 	}
 }
 
+// Record 是收集器的入口：每条 SSE thought/task 事件被 emit 出来的同时也会调到这。
+//
+// 关键行为：
+//   - thought 事件 → 按 phase 增 stepCount 并标 done；phase 缺失时按 kind/title 推断
+//   - task 事件 → 按 taskId 去重合并；多次"started → completed"只保留最终状态
 func (c *turnNarrativeCollector) Record(typ, _ string, extra map[string]any) {
 	if c == nil || extra == nil {
 		return
@@ -174,7 +196,23 @@ func (c *turnNarrativeCollector) Snapshot(cog cognitiveDecision, harnessMode str
 		"summary":   summary,
 	}
 	if len(c.tasks) > 0 {
-		out["tasks"] = c.tasks
+		out["tasks"] = finalizeTurnTasks(c.tasks)
+	}
+	return out
+}
+
+func finalizeTurnTasks(tasks []map[string]any) []map[string]any {
+	out := make([]map[string]any, 0, len(tasks))
+	for _, t := range tasks {
+		item := make(map[string]any, len(t)+1)
+		for k, v := range t {
+			item[k] = v
+		}
+		switch str(item["status"]) {
+		case "pending", "running", "":
+			item["status"] = "done"
+		}
+		out = append(out, item)
 	}
 	return out
 }

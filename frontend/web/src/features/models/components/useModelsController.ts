@@ -27,7 +27,7 @@ import type { LastDrillResult } from './ModelsShared';
 
 export type ModelsController = ReturnType<typeof useModelsController>;
 
-export function useModelsController() {
+export function useModelsController(options?: { providerId?: string }) {
   const { user } = useAuthStore();
   const currentWorkspaceId = useWorkspaceStore((state) => state.currentWorkspaceId ?? 'w1');
   const canWrite = Boolean(user?.permissions.includes('model.write'));
@@ -64,8 +64,10 @@ export function useModelsController() {
   const auditQuery = useApiQuery<ModelAuditEvent[]>(['model-audit', scopeKey], '/api/model-audit', undefined, modelQueryOpts);
   const providers = useMemo(() => normalizeModelProviders(providersQuery.data), [providersQuery.data]);
   const policies = useMemo(() => normalizeRoutingPolicies(policiesQuery.data), [policiesQuery.data]);
-  const activeProvider = providerModal && providerModal !== 'new' ? providers.find((item) => item.id === providerModal) : undefined;
-  const impactQuery = useApiQuery<ProviderImpact>(['model-provider-impact', scopeKey, activeProvider?.id], `/api/model-providers/${activeProvider?.id ?? '__none__'}/impact`, undefined, { enabled: Boolean(activeProvider) });
+  const focusedProviderId = options?.providerId
+    ?? (providerModal && providerModal !== 'new' ? providerModal : undefined);
+  const activeProvider = focusedProviderId ? providers.find((item) => item.id === focusedProviderId) : undefined;
+  const impactQuery = useApiQuery<ProviderImpact>(['model-provider-impact', scopeKey, focusedProviderId], `/api/model-providers/${focusedProviderId ?? '__none__'}/impact`, undefined, { enabled: Boolean(focusedProviderId) });
   const activeImpact = useMemo(() => normalizeProviderImpact(impactQuery.data), [impactQuery.data]);
   const versionsQuery = useApiQuery<RoutingPolicyVersion[]>(['model-policy-versions', scopeKey, policyDrawer], `/api/model-routing/policies/${policyDrawer ?? '__none__'}/versions`, undefined, { enabled: Boolean(policyDrawer) });
 
@@ -131,10 +133,9 @@ export function useModelsController() {
     setSearchParams(next, { replace: true });
   }, [visibleTabs, workspace, refetchControlPlane, searchParams, setSearchParams]);
   const openPolicyFromGovernance = useCallback((policyId: string) => {
-    setWorkspace('routing');
     setPolicyDrawer(policyId);
     setPolicyDetailTab('draft');
-  }, [setWorkspace]);
+  }, []);
 
   // 自动修正非法 tab
   useEffect(() => {
@@ -168,6 +169,7 @@ export function useModelsController() {
     providers, policies, models, governance: governanceQuery.data,
     auditEvents, filteredAudit, auditActions, auditSuccessCount, auditFailedCount,
     queryState, routingSummary, drillEligibility, budgetTone, refetchControlPlane, reportError,
+    providersLoading: providersQuery.isLoading,
     // modal / drawer 状态与 setter
     providerModal, setProviderModal,
     activeProvider, activeImpact, impactQuery,

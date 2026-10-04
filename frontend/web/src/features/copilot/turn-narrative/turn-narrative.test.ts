@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { inferPhaseFromStep } from './infer-phase';
 import { groupTurnPhases } from './group-turn-phases';
-import { dedupeTurnTasks, mergeTurnTasks } from './turn-task-list';
+import { dedupeTurnTasks, mergeTurnTasks, settleTurnTasks } from './turn-task-list';
 import type { ReasoningStep } from '@/hooks/types';
 
 describe('inferPhaseFromStep', () => {
@@ -61,5 +61,24 @@ describe('dedupeTurnTasks', () => {
     tasks = mergeTurnTasks(tasks, { taskId: 'plan_3', title: '生成 PPT', action: 'completed', detail: 'ok' });
     expect(tasks).toHaveLength(1);
     expect(tasks[0]?.status).toBe('done');
+  });
+
+  it('settleTurnTasks closes running items after the turn ends', () => {
+    const settled = settleTurnTasks(
+      [
+        { id: 'plan_1', title: '回顾偏好', status: 'done', detail: 'success' },
+        { id: 'plan_2', title: '梳理可交付能力清单', status: 'running', detail: 'answer' },
+      ],
+      { streaming: false, messageStatus: 'succeeded' },
+    );
+    expect(settled[1]?.status).toBe('done');
+  });
+
+  it('settleTurnTasks keeps running while streaming', () => {
+    const settled = settleTurnTasks(
+      [{ id: 'plan_2', title: '梳理可交付能力清单', status: 'running' }],
+      { streaming: true, messageStatus: 'streaming' },
+    );
+    expect(settled[0]?.status).toBe('running');
   });
 });

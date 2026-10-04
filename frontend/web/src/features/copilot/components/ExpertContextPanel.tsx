@@ -5,18 +5,16 @@
 import { useMemo, useState } from 'react';
 import {
   AlertCircle, AlertTriangle, Brain, BriefcaseBusiness, CheckCircle2, ChevronDown, ChevronRight,
-  Clock, Database, Download, Search, Shield, Wrench,
+  Clock, Database, Search, Shield, Wrench,
 } from 'lucide-react';
-import { Badge, toast } from '@qzda/web-ui';
+import { Badge } from '@qzda/web-ui';
 import { cn } from '@qzda/web-utils';
 import type { Citation } from '@/hooks/types';
 import type { DigitalPartner } from '@qzda/web-types';
 import type { RunMode } from '../lib/composer-mode';
 import {
-  buildExpertEvidencePack,
   deriveExpertJobContract,
   deriveTurnProgress,
-  formatEvidencePackMarkdown,
   type ExpertContextOverview,
 } from '../lib/expert-context';
 import { TurnTaskList } from '../turn-narrative/turn-task-list';
@@ -50,37 +48,11 @@ export function ExpertContextPanel(props: {
 }) {
   const {
     employee, overview, sessionOverview, messageOverview, scope,
-    runMode, riskLevel, handoffActive, handoffOwner, nextAction, summaryCounts,
+    handoffActive, handoffOwner, summaryCounts,
     onOpenTab, onCitation, onJumpMessage, onPickExpert, turnProgress = [],
   } = props;
   const contract = useMemo(() => deriveExpertJobContract(employee), [employee]);
   const [showCompare, setShowCompare] = useState(false);
-
-  const exportPack = async () => {
-    const pack = buildExpertEvidencePack({
-      scope,
-      employee,
-      runMode,
-      riskLevel,
-      overview,
-      sessionOverview,
-      messageOverview: messageOverview ?? undefined,
-    });
-    const markdown = formatEvidencePackMarkdown(pack);
-    try {
-      await navigator.clipboard.writeText(markdown);
-      toast.success('证据包已复制到剪贴板（Markdown）');
-    } catch {
-      const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `expert-evidence-${Date.now()}.md`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success('证据包已下载');
-    }
-  };
 
   const metricPills = [
     { tab: 'approvals' as const, label: '待审', value: summaryCounts.pendingApprovals, tone: 'warn' as const },
@@ -97,14 +69,10 @@ export function ExpertContextPanel(props: {
       {/* 轻量工具条：不再重复模式/风险（头部已有） */}
       <div className="copilot-ecx-toolbar">
         <div className="copilot-ecx-toolbar__main">
-          {nextAction ? (
-            <p className="copilot-ecx-toolbar__next">{nextAction}</p>
-          ) : (
-            <p className="copilot-ecx-toolbar__hint">
-              {scope === 'message' ? '当前按单条消息展示依据' : '会话级依据与岗位契约'}
-              {handoffActive && handoffOwner ? ` · 已由 ${handoffOwner} 接管` : ''}
-            </p>
-          )}
+          <p className="copilot-ecx-toolbar__hint">
+            {scope === 'message' ? '当前按单条消息展示依据' : '会话级依据与岗位契约'}
+            {handoffActive && handoffOwner ? ` · 已由 ${handoffOwner} 接管` : ''}
+          </p>
           {metricPills.length > 0 ? (
             <div className="copilot-ecx-pills">
               {metricPills.map((item) => (
@@ -121,10 +89,6 @@ export function ExpertContextPanel(props: {
             </div>
           ) : null}
         </div>
-        <button type="button" className="copilot-ecx-toolbar__export" onClick={() => void exportPack()} title="导出证据包">
-          <Download className="h-3.5 w-3.5" />
-          <span>导出</span>
-        </button>
       </div>
 
       <div className="copilot-ecx-stack">

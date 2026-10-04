@@ -1,3 +1,10 @@
+// Package copilot —— 反思(reflect)节点。
+//
+// 在主回合产出 finalText 之后，按 shouldReflect 判定是否需要进入反思轮次，
+// 最长 reflectMaxRounds 轮；每轮给 LLM 一段"自我批评 + 修订"prompt，
+// 解析出 critique / revised 两个段，再把 revised 替换回去。
+//
+// 触发原因透传给前端 SSE（reason 字段），便于 UI 显示"为什么 AI 又改了一次"。
 package copilot
 
 import (
@@ -10,6 +17,16 @@ import (
 
 const reflectMaxRounds = 2
 
+// shouldReflect 决定要不要进入反思轮。
+//
+// 触发条件（任一命中即 true）：
+//   - reflectHint 非空（用户在前端显式点了"让 AI 再想想"）
+//   - finalText 为空或 <8 字
+//   - 任一工具调用 status=failed
+//   - 有工具被 deny 且回复里出现"无法"
+//   - deep 模式下认知结构不达标（缺"行动/结论/推荐"等关键词）
+//
+// 返回的 reason 会透传给 SSE event，方便前端显示为什么 AI 又改了一版。
 func shouldReflect(result reactTurnResult, reflectHint string) (bool, string) {
 	if strings.TrimSpace(reflectHint) != "" {
 		return true, "user_feedback"
@@ -105,7 +122,18 @@ func parseReflectOutput(text string) (critique, revised string) {
 	return critique, revised
 }
 
-// applyReflection optionally revises the answer up to reflectMaxRounds.
+// applyReflection 把反思循环挂到主回合之后，最多 reflectMaxRounds 轮。
+//
+// 每轮流程：
+//  1. emit "reflect running" SSE
+//  2. 用 buildCritiquePrompt 拼自我批评 + 修订 prompt
+//  3. 调 StreamLLMForCopilotFn 拿回应
+//  4. parseReflectOutput 切分 【批评】/【修订回答】 两段
+//  5. emit "reflect ok" + thought 事件
+//  6. revised 为空或与上一版相同 → break（修订收敛）
+//  7. 再次跑 shouldReflect(, "") 决定是否继续（仅在有用户反馈时多轮）
+//
+// 把修订后的 current.Text 回填给上层（copilot_stream 的 finalize）做最终段流式。
 func (s *Service) applyReflection(ctx context.Context, in reactTurnInput, result reactTurnResult, reflectHint string) reactTurnResult {
 	result.Cognitive = in.Cognitive
 	ok, reason := shouldReflect(result, reflectHint)

@@ -4,7 +4,7 @@
  */
 import { useState } from 'react';
 import { Badge, Button } from '@qzda/web-ui';
-import { AlertTriangle, BookPlus, ChevronDown, ChevronUp, FileText, Loader2, RefreshCw, Send, Sparkles, Trash2, Upload } from 'lucide-react';
+import { BookPlus, ChevronDown, ChevronUp, FileText, Loader2, RefreshCw, Send, Sparkles, Trash2, Upload } from 'lucide-react';
 import type { Role } from '@qzda/web-types';
 import { cn } from '@qzda/web-utils';
 import type { WorkflowNodeKind } from '@qzda/web-types';
@@ -78,7 +78,7 @@ type TemplateCandidate = {
   rationale: string;
 };
 
-type KnowledgeDocLite = { id: string; title: string; summary: string; tags: string[] };
+type KnowledgeDocLite = { id: string; title: string; summary: string; tags?: string[] };
 
 const EXAMPLE_PROMPTS = [
   '由数字伙伴研判处置路径，经双重审批后执行受控恢复，写入审计并通知值班负责人',
@@ -90,7 +90,7 @@ export function WorkflowOrchestratorRunPanel({
   goal, onGoal, constraints, onConstraints,
   documents, onUploadDoc, onRemoveDoc, onPickKnowledgeDoc, onCiteKnowledgeDoc, onRetrieveRunbook, onDepositKnowledge,
   knowledgeDocs, messages, candidates, templateCandidates, selectedCandidateId,
-  onSend, onUpdateMessage, onApplyCandidate, onDepositTemplate, canWrite, userRole,
+  onSend, onUpdateMessage, onApplyCandidate, onDepositTemplate, onGenerate, onCommitToCanvas, generating, canWrite, userRole,
 }: {
   goal: string;
   onGoal: (v: string) => void;
@@ -112,6 +112,9 @@ export function WorkflowOrchestratorRunPanel({
   onUpdateMessage: (id: string, content: string) => void;
   onApplyCandidate: (c: SessionCandidate) => Promise<void> | void;
   onDepositTemplate: (tpl: TemplateCandidate) => void;
+  onGenerate: (note?: string) => void;
+  onCommitToCanvas: () => void;
+  generating?: boolean;
   canWrite: boolean;
   userRole: Role | undefined | null;
 }) {
@@ -126,61 +129,67 @@ export function WorkflowOrchestratorRunPanel({
     setComposer('');
   };
 
-  const filteredKb = knowledgeDocs.filter((k) => !kbSearch || k.title.includes(kbSearch) || k.tags.some((t) => t.includes(kbSearch)));
+  const filteredKb = knowledgeDocs.filter((k) => !kbSearch || k.title.includes(kbSearch) || (k.tags ?? []).some((t) => t.includes(kbSearch)));
 
   return (
-    <div className="wf-orch-run-panel flex flex-col h-full">
-      <header className="border-b border-[var(--border)] px-2 py-1.5">
-        <h2 className="text-sm font-semibold">AI 辅助编排会话</h2>
-        <p className="text-xs text-[var(--text-muted)]">澄清完全可选：你写多写少都可以，模型会按需追问</p>
+    <div className="wf-orch-run-panel flex h-full min-h-0 flex-col">
+      <header className="wf-orch-run-panel__head shrink-0 px-4 py-3">
+        <h2 className="text-sm font-semibold text-[var(--text)]">AI 辅助编排会话</h2>
+        <p className="mt-0.5 text-xs leading-5 text-[var(--text-muted)]">澄清完全可选：你写多写少都可以，模型会按需追问</p>
       </header>
 
-      <section className="border-b border-[var(--border)] px-2 py-1.5 space-y-1">
-        <div className="text-xs text-[var(--text-muted)]">业务目标</div>
-        <textarea
-          rows={3}
-          className="wf-textarea w-full"
-          value={goal}
-          onChange={(e) => onGoal(e.target.value)}
-          disabled={!canWrite}
-        />
-        <div className="flex flex-wrap gap-1">
-          {EXAMPLE_PROMPTS.map((ex) => (
-            <button key={ex} type="button" className="wf-chip" onClick={() => onGoal(ex)}>一键生成示例</button>
-          ))}
-        </div>
-        <div className="grid grid-cols-2 gap-1 pt-1">
-          <CheckRow label="要求双重审批" value={constraints.requireApproval} onChange={(v) => onConstraints({ ...constraints, requireApproval: v })} />
-          <CheckRow label="要求审计留痕" value={constraints.requireAudit} onChange={(v) => onConstraints({ ...constraints, requireAudit: v })} />
-          <CheckRow label="要求补偿回滚" value={constraints.requireRollback} onChange={(v) => onConstraints({ ...constraints, requireRollback: v })} />
-          <RiskRow value={constraints.riskLevel} onChange={(v) => onConstraints({ ...constraints, riskLevel: v })} />
-        </div>
-      </section>
-
-      <section className="border-b border-[var(--border)] px-2 py-1.5">
-        <div className="flex items-center justify-between">
-          <div className="text-xs text-[var(--text-muted)]">关联文档（{documents.length}）</div>
-          <button type="button" onClick={() => setShowDocs((s) => !s)} className="text-xs">{showDocs ? <ChevronUp className="h-3 w-3 inline" /> : <ChevronDown className="h-3 w-3 inline" />}</button>
-        </div>
-        {showDocs && (
-          <div className="mt-1 space-y-1">
-            {documents.map((doc) => (
-              <div key={doc.id} className={cn('rounded border border-[var(--border)] p-1.5 text-xs', doc.depositedKnowledgeDocId && 'is-deposited')}>
-                <div className="flex items-center gap-1">
-                  <FileText className="h-3.5 w-3.5" />
-                  <strong className="truncate">{doc.title}</strong>
-                  {doc.source === 'knowledge' && <Badge tone="info">引用知识文档</Badge>}
-                  {doc.depositedKnowledgeDocId && <Badge tone="success">已沉淀知识中心</Badge>}
-                  <button type="button" className="ml-auto" onClick={() => onRemoveDoc(doc.id)}><Trash2 className="h-3 w-3" /></button>
-                </div>
-                <p className="text-[var(--text-muted)] line-clamp-2">{doc.summary}</p>
-                <div className="flex items-center gap-1 pt-0.5">
-                  <button type="button" className="wf-chip" onClick={() => onDepositKnowledge(doc)}><BookPlus className="h-3 w-3 inline mr-0.5" />沉淀知识中心</button>
-                  <button type="button" className="wf-chip" onClick={() => onCiteKnowledgeDoc(doc.id)}>引用知识文档</button>
-                </div>
-              </div>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <section className="wf-orch-run-panel__section space-y-2 px-4 py-3">
+          <div className="text-[11px] font-medium text-[var(--text-muted)]">业务目标</div>
+          <textarea
+            rows={3}
+            className="wf-textarea w-full"
+            value={goal}
+            onChange={(e) => onGoal(e.target.value)}
+            disabled={!canWrite}
+          />
+          <div className="flex flex-wrap gap-1.5">
+            {EXAMPLE_PROMPTS.map((ex) => (
+              <button key={ex} type="button" className="wf-chip" onClick={() => { onGoal(ex); onGenerate(ex); }}>一键生成示例</button>
             ))}
-            <div className="flex items-center gap-1">
+          </div>
+          <div className="flex flex-wrap gap-2 pt-1">
+            <Button size="sm" onClick={() => onGenerate()} disabled={!canWrite || generating || !goal.trim()}>
+              {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}生成草稿示例
+            </Button>
+            <Button size="sm" variant="outline" onClick={onCommitToCanvas} disabled={!canWrite || generating || candidates.length === 0}>写入隔离草稿</Button>
+          </div>
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <CheckRow label="要求双重审批" value={constraints.requireApproval} onChange={(v) => onConstraints({ ...constraints, requireApproval: v })} />
+            <CheckRow label="要求审计留痕" value={constraints.requireAudit} onChange={(v) => onConstraints({ ...constraints, requireAudit: v })} />
+            <CheckRow label="要求补偿回滚" value={constraints.requireRollback} onChange={(v) => onConstraints({ ...constraints, requireRollback: v })} />
+            <RiskRow value={constraints.riskLevel} onChange={(v) => onConstraints({ ...constraints, riskLevel: v })} />
+          </div>
+        </section>
+
+        <section className="wf-orch-run-panel__section px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="text-[11px] font-medium text-[var(--text-muted)]">关联文档（{documents.length}）</div>
+            <button type="button" onClick={() => setShowDocs((s) => !s)} className="wf-btn-ghost h-7 px-2 text-xs">{showDocs ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}</button>
+          </div>
+          {showDocs && (
+            <div className="mt-2 space-y-2">
+              {documents.map((doc) => (
+                <div key={doc.id} className={cn('wf-orch-doc rounded-lg p-2.5 text-xs', doc.depositedKnowledgeDocId && 'is-deposited')}>
+                  <div className="flex items-center gap-1.5">
+                    <FileText className="h-3.5 w-3.5 shrink-0 text-[var(--brand)]" />
+                    <strong className="truncate">{doc.title}</strong>
+                    {doc.source === 'knowledge' && <Badge tone="info">引用知识文档</Badge>}
+                    {doc.depositedKnowledgeDocId && <Badge tone="success">已沉淀知识中心</Badge>}
+                    <button type="button" className="wf-btn-ghost ml-auto h-7 w-7 px-0" onClick={() => onRemoveDoc(doc.id)} aria-label="移除文档"><Trash2 className="h-3.5 w-3.5" /></button>
+                  </div>
+                  {doc.summary ? <p className="mt-1 line-clamp-2 text-[var(--text-muted)]">{doc.summary}</p> : null}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-2">
+                    <button type="button" className="wf-chip" onClick={() => onDepositKnowledge(doc)}><BookPlus className="h-3 w-3" />沉淀知识中心</button>
+                    <button type="button" className="wf-chip" onClick={() => onCiteKnowledgeDoc(doc.id)}>引用知识文档</button>
+                  </div>
+                </div>
+              ))}
               <label className="wf-btn-ghost cursor-pointer">
                 <Upload className="h-3.5 w-3.5" />上传 MD
                 <input
@@ -202,75 +211,75 @@ export function WorkflowOrchestratorRunPanel({
                 />
               </label>
             </div>
-          </div>
-        )}
-      </section>
+          )}
+        </section>
 
-      <section className="border-b border-[var(--border)] px-2 py-1.5 space-y-1">
-        <div className="text-xs text-[var(--text-muted)]">引用知识文档 · Runbook 检索</div>
-        <input className="wf-input w-full" placeholder="搜索知识库" value={kbSearch} onChange={(e) => setKbSearch(e.target.value)} />
-        <div className="grid grid-cols-2 gap-1 max-h-32 overflow-y-auto">
-          {filteredKb.slice(0, 8).map((k) => (
-            <button key={k.id} type="button" className="wf-chip" onClick={() => onPickKnowledgeDoc(k)}>{k.title}</button>
+        <section className="wf-orch-run-panel__section space-y-2 px-4 py-3">
+          <div className="text-[11px] font-medium text-[var(--text-muted)]">引用知识文档 · Runbook 检索</div>
+          <input className="wf-input w-full" placeholder="搜索知识库" value={kbSearch} onChange={(e) => setKbSearch(e.target.value)} />
+          <div className="grid max-h-32 grid-cols-2 gap-1.5 overflow-y-auto">
+            {filteredKb.slice(0, 8).map((k) => (
+              <button key={k.id} type="button" className="wf-chip h-auto min-h-7 whitespace-normal py-1 text-left" onClick={() => onPickKnowledgeDoc(k)}>{k.title}</button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <input className="wf-input w-full" placeholder="Runbook 检索关键词" value={runbookQuery} onChange={(e) => setRunbookQuery(e.target.value)} />
+            <Button size="sm" variant="outline" onClick={() => onRetrieveRunbook(runbookQuery)}><RefreshCw className="h-3.5 w-3.5" />检索</Button>
+          </div>
+        </section>
+
+        <section className="space-y-2 px-4 py-3">
+          {messages.map((m) => (
+            <MessageBubble key={m.id} m={m} onUpdate={onUpdateMessage} />
           ))}
-        </div>
-        <div className="flex items-center gap-1">
-          <input className="wf-input w-full" placeholder="Runbook 检索关键词" value={runbookQuery} onChange={(e) => setRunbookQuery(e.target.value)} />
-          <Button size="sm" variant="outline" onClick={() => onRetrieveRunbook(runbookQuery)}><RefreshCw className="h-3.5 w-3.5" />检索</Button>
-        </div>
-      </section>
-
-      <section className="flex-1 overflow-y-auto px-2 py-2 space-y-2">
-        {messages.map((m) => (
-          <MessageBubble key={m.id} m={m} onUpdate={onUpdateMessage} />
-        ))}
-        {candidates.length > 0 && (
-          <div className="space-y-1">
-            <div className="text-xs text-[var(--text-muted)]">候选版本</div>
-            {candidates.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                className={cn('wf-candidate w-full rounded border p-1.5 text-left text-xs', selectedCandidateId === c.id && 'is-active')}
-                onClick={() => onApplyCandidate(c)}
-              >
-                <div className="flex items-center gap-1">
-                  <strong>{c.label}</strong>
-                  <Badge tone={c.risk === 'L1' ? 'success' : c.risk === 'L2' ? 'info' : 'warn'}>{c.risk}</Badge>
+          {candidates.length > 0 && (
+            <div className="space-y-1.5">
+              <div className="text-[11px] font-medium text-[var(--text-muted)]">候选版本</div>
+              {candidates.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  className={cn('wf-candidate w-full rounded-lg p-2.5 text-left text-xs', selectedCandidateId === c.id && 'is-active')}
+                  onClick={() => onApplyCandidate(c)}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <strong>{c.label}</strong>
+                    <Badge tone={c.risk === 'L1' ? 'success' : c.risk === 'L2' ? 'info' : 'warn'}>{c.risk}</Badge>
+                  </div>
+                  <p className="mt-1 text-[var(--text-muted)]">{c.summary}</p>
+                  {c.warnings.length > 0 && <div className="mt-1 text-amber-500">{c.warnings.length} 项警告</div>}
+                </button>
+              ))}
+            </div>
+          )}
+          {templateCandidates.length > 0 && (
+            <div className="space-y-1.5">
+              <div className="text-[11px] font-medium text-[var(--text-muted)]">沉淀模版候选</div>
+              {templateCandidates.map((t) => (
+                <div key={t.id} className="wf-orch-doc rounded-lg p-2.5 text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <strong>{t.name}</strong>
+                    <Badge tone="info">{Math.round(t.matchScore * 100)}% 匹配</Badge>
+                  </div>
+                  <p className="mt-1 text-[var(--text-muted)]">{t.rationale}</p>
+                  <Button size="sm" variant="outline" className="mt-2" onClick={() => onDepositTemplate(t)}>沉淀模版候选</Button>
                 </div>
-                <p className="text-[var(--text-muted)]">{c.summary}</p>
-                {c.warnings.length > 0 && <div className="text-amber-500">{c.warnings.length} 项警告</div>}
-              </button>
-            ))}
-          </div>
-        )}
-        {templateCandidates.length > 0 && (
-          <div className="space-y-1">
-            <div className="text-xs text-[var(--text-muted)]">沉淀模版候选</div>
-            {templateCandidates.map((t) => (
-              <div key={t.id} className="rounded border border-[var(--border)] p-1.5 text-xs">
-                <div className="flex items-center gap-1">
-                  <strong>{t.name}</strong>
-                  <Badge tone="info">{Math.round(t.matchScore * 100)}% 匹配</Badge>
-                </div>
-                <p className="text-[var(--text-muted)]">{t.rationale}</p>
-                <Button size="sm" variant="outline" onClick={() => onDepositTemplate(t)}>沉淀模版候选</Button>
-              </div>
-            ))}
-          </div>
-        )}
-        {!messages.length && !candidates.length && (
-          <div className="text-xs text-[var(--text-muted)] py-4 text-center">
-            <Sparkles className="h-5 w-5 mx-auto mb-1" />输入业务目标，模型将生成隔离草稿供数字伙伴装配
-          </div>
-        )}
-      </section>
+              ))}
+            </div>
+          )}
+          {!messages.length && !candidates.length && (
+            <div className="px-2 py-6 text-center text-xs text-[var(--text-muted)]">
+              <Sparkles className="mx-auto mb-2 h-5 w-5 text-[var(--brand)]" />输入业务目标，模型将生成隔离草稿供数字伙伴装配
+            </div>
+          )}
+        </section>
+      </div>
 
-      <footer className="border-t border-[var(--border)] p-2">
-        <div className="flex items-end gap-1">
+      <footer className="wf-orch-run-panel__composer shrink-0 p-3">
+        <div className="flex items-end gap-2">
           <textarea
-            rows={2}
-            className="wf-textarea w-full"
+            rows={1}
+            className="wf-textarea wf-orch-composer w-full"
             placeholder="补充澄清或继续对话…"
             value={composer}
             onChange={(e) => setComposer(e.target.value)}
@@ -281,7 +290,7 @@ export function WorkflowOrchestratorRunPanel({
             <Send className="h-3.5 w-3.5" />发送
           </Button>
         </div>
-        <div className="text-[10px] text-[var(--text-muted)] pt-1">⌘/Ctrl + Enter 快速发送 · 角色 {userRole ?? 'user'}</div>
+        <div className="pt-1.5 text-[10px] text-[var(--text-muted)]">⌘/Ctrl + Enter 快速发送 · 角色 {userRole ?? 'user'}</div>
       </footer>
     </div>
   );
@@ -289,8 +298,8 @@ export function WorkflowOrchestratorRunPanel({
 
 function CheckRow({ label, value, onChange }: { label: string; value: boolean; onChange: (v: boolean) => void }) {
   return (
-    <label className="flex items-center gap-1 text-xs">
-      <input type="checkbox" checked={value} onChange={(e) => onChange(e.target.checked)} />
+    <label className="flex items-center gap-2 text-xs text-[var(--text)]">
+      <input type="checkbox" className="wf-orch-check" checked={value} onChange={(e) => onChange(e.target.checked)} />
       {label}
     </label>
   );
@@ -298,7 +307,7 @@ function CheckRow({ label, value, onChange }: { label: string; value: boolean; o
 
 function RiskRow({ value, onChange }: { value: 'L1' | 'L2' | 'L3'; onChange: (v: 'L1' | 'L2' | 'L3') => void }) {
   return (
-    <label className="flex items-center gap-1 text-xs">
+    <label className="flex items-center gap-2 text-xs">
       <span className="text-[10px] text-[var(--text-muted)]">风险</span>
       <select className="wf-input" value={value} onChange={(e) => onChange(e.target.value as 'L1' | 'L2' | 'L3')}>
         <option value="L1">L1</option><option value="L2">L2</option><option value="L3">L3</option>

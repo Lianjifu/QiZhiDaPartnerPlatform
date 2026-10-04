@@ -47,7 +47,7 @@ export function MemoryTabCandidates({ items, records, employeeMap, canReview, on
                   </div>
                   <div className="memory-record__actions">
                     {item.status === 'approved' && item.knowledgePackageId && (
-                      <button type="button" className="memory-action memory-action--primary" onClick={() => navigate(`/knowledge?package=${item.knowledgePackageId}&view=packages`)}>
+                      <button type="button" className="memory-action memory-action--primary" onClick={() => navigate(`/knowledge/packages/${item.knowledgePackageId}`)}>
                         <ExternalLink className="h-3.5 w-3.5" />打开草稿
                       </button>
                     )}

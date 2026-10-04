@@ -23,16 +23,18 @@ type Props = {
   canWrite: boolean;
   workspaceId: string;
   creating?: boolean;
+  embedded?: boolean;
   onCancel: () => void;
   onSubmit: (payload: Record<string, unknown>) => void;
 };
 
-export function ModelsModalsProviderForm({ canWrite, workspaceId, creating, onCancel, onSubmit }: Props) {
+export function ModelsModalsProviderForm({ canWrite, workspaceId, creating, embedded, onCancel, onSubmit }: Props) {
   const [draft, setDraft] = useState<ProviderConnectDraft>(() => createProviderConnectDraft('openai_compatible'));
   const sessionCredentialRef = useRef('');
   const [credentialVerified, setCredentialVerified] = useState(false);
   const [discovered, setDiscovered] = useState<Array<{ id: string; name: string }>>([]);
   const [discoverHint, setDiscoverHint] = useState<string | null>(null);
+  const [attempted, setAttempted] = useState(false);
   const [probeResult, setProbeResult] = useState<null | {
     ok: boolean;
     title: string;
@@ -136,7 +138,7 @@ export function ModelsModalsProviderForm({ canWrite, workspaceId, creating, onCa
             }}
             placeholder="https://your-api-endpoint.com/v1"
           />
-          <p className="mt-1.5 rounded-lg bg-[var(--warning-bg)] px-2.5 py-1.5 text-[11px] leading-5 text-[var(--warning)]">
+          <p className="mt-1.5 text-[11px] leading-5 text-[var(--text-muted)]">
             填写兼容该协议的服务器端点；OpenAI 兼容地址通常以 /v1 结尾。
           </p>
         </Field>
@@ -306,14 +308,14 @@ export function ModelsModalsProviderForm({ canWrite, workspaceId, creating, onCa
         </div>
       )}
 
-      {issues.length > 0 && (
+      {attempted && issues.length > 0 && (
         <div className="rounded-lg bg-[var(--danger-bg)] px-3 py-2 text-[11px] leading-5 text-[var(--danger)]">
           {issues.map((issue) => <div key={issue}>• {issue}</div>)}
         </div>
       )}
 
       <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--border)] pt-3">
-        <Button size="sm" variant="ghost" onClick={onCancel}>取消</Button>
+        {!embedded && <Button size="sm" variant="ghost" onClick={onCancel}>取消</Button>}
         <Button
           size="sm"
           variant="secondary"
@@ -357,16 +359,18 @@ export function ModelsModalsProviderForm({ canWrite, workspaceId, creating, onCa
         </Button>
         <Button
           size="sm"
-          disabled={!canWrite || issues.length > 0 || creating}
+          disabled={!canWrite || creating}
           loading={creating}
           onClick={() => {
+            setAttempted(true);
+            if (issues.length > 0) return;
             onSubmit(providerConnectToPayload(draft, workspaceId, { sessionCredential: sessionCredentialRef.current }));
             sessionCredentialRef.current = '';
             setCredentialVerified(false);
             patch('apiKey', '');
           }}
         >
-          创建受管接入
+          {embedded ? '创建并进入路由策略' : '创建受管接入'}
         </Button>
       </div>
     </div>

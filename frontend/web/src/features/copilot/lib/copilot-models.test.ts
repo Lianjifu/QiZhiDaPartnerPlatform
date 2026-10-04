@@ -75,4 +75,15 @@ describe('buildCopilotModelOptions', () => {
       }),
     ).toBe('mdl-gpt4');
   });
+
+  it('falls back to employee bound model when catalog is empty', () => {
+    expect(
+      resolveSendModelId({
+        runModelId: '',
+        runKey: '',
+        employeeBoundModel: 'deepseek-v4-flash',
+        options: [],
+      }),
+    ).toBe('deepseek-v4-flash');
+  });
 });

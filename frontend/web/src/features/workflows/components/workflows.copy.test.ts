@@ -21,6 +21,8 @@ const workflowFiles = [
   'WorkflowsTab.Settings.tsx',
   'WorkflowsTab.Skills.tsx',
   'WorkflowsShared.tsx',
+  'WorkflowTemplatePreviewPage.tsx',
+  'WorkflowStudioPage.tsx',
 ];
 const orchestrationFiles = [
   'WorkflowOrchestrationSessionPage.tsx',
@@ -67,18 +69,20 @@ describe('workflows orchestration copy', () => {
     expect(workflowsSource).toContain('TPL_PAGE_SIZE');
     expect(workflowsSource).toContain('wf-tpl-pager');
     expect(workflowsSource).toContain('pagedFlat');
-    expect(workflowsSource).toContain('全部部门统一列表');
+    expect(workflowsSource).toContain('共 {totalCount} 个模板');
     expect(workflowsSource).not.toContain('pagedGroups');
+    expect(workflowsSource).not.toContain('wf-tpl-origin');
+    expect(workflowsSource).toContain('wf-tpl-toolbar__row');
+    expect(workflowsSource).toContain('aria-label="部门"');
+    expect(workflowsSource).not.toContain('wf-tpl-toolbar__depts');
   });
 
-  it('splits workflow templates into platform builtin and personal origins', () => {
-    expect(workflowsSource).toContain('平台内置');
-    expect(workflowsSource).toContain('个人创建');
-    expect(workflowsSource).toContain('templateOriginFilter');
+  it('keeps a unified template catalog with personal save/delete helpers', () => {
     expect(workflowsSource).toContain('saveAsPersonalTemplate');
     expect(workflowsSource).toContain('isPersonalTemplate');
     expect(workflowsSource).toContain('办公通用');
     expect(workflowsSource).toContain('knowledgePackageIds');
+    expect(workflowsSource).not.toContain('templateOriginFilter');
   });
 
   it('aligns workflow mock draft terminology with platform lexicon', () => {
@@ -96,11 +100,40 @@ describe('workflows orchestration copy', () => {
 });
 
 describe('workflow template library gates', () => {
+  it('opens a dedicated studio page for canvas, runs, skill publish, and versions', () => {
+    expect(appSource).toContain('/workflows/new');
+    expect(workflowsSource).toContain('新建工作流程');
+    expect(workflowsSource).toContain('page-workflow-studio');
+    expect(workflowsSource).toContain('goStudio');
+    expect(workflowsSource).toContain("goStudio('history')");
+    expect(workflowsSource).toContain("key: 'history'");
+    expect(workflowsSource).toContain('收起步骤');
+    expect(workflowsSource).toContain('is-rail-collapsed');
+  });
+
+  it('opens template orchestration on a dedicated read-only page', () => {
+    expect(appSource).toContain('/workflows/templates/:id');
+    expect(workflowsSource).toContain('wf-tpl-preview');
+    expect(workflowsSource).toContain('nodesDraggable={false}');
+    expect(workflowsSource).toContain('navigate(`/workflows/templates/${encodeURIComponent(t.id)}`)');
+    expect(workflowsSource).toContain('navigate(`/workflows/new?use=${encodeURIComponent(template.id)}`)');
+    expect(workflowsSource).toContain('wf-template-versions');
+    expect(workflowsSource).toContain('查看编排');
+    expect(workflowsSource).not.toContain('c.openUpgradeDiff(t)');
+    expect(workflowsSource).not.toContain('c.setUseTemplate(t)');
+  });
+
   it('states digital-employee consumption positioning on the template page', () => {
     expect(workflowsSource).toContain('发布为流程技能');
     expect(workflowsSource).toContain('创建隔离草稿');
-    expect(workflowsSource).toContain('平台认证模板');
+    expect(workflowsSource).toContain('使用模板');
+    expect(workflowsSource).toContain('wf-tpl-drawer');
+    expect(workflowsSource).toContain('wf-use-template');
     expect(workflowsSource).toContain('IT 高级库');
+    expect(workflowsSource).toContain('wf-context-menu');
+    expect(workflowsSource).toContain('createPortal');
+    expect(workflowsSource).toContain('复制节点');
+    expect(workflowsSource).not.toContain('启用/禁用删除');
   });
 
   it('blocks trial run and publish when template dependencies are unauthorized', () => {
@@ -125,6 +158,8 @@ describe('workflow AI assisted drafting', () => {
     expect(appSource).toContain('/workflows/orchestration');
     expect(appSource).toContain('/workflows/orchestration/:sessionId');
     expect(workflowsSource).toContain("navigate('/workflows/orchestration')");
+    expect(workflowsSource).not.toContain("onClick={() => c.openAIGenerator()}");
+    expect(orchestrationSource).toContain('返回流程编排');
     expect(orchestrationSource).toContain('AI 辅助编排会话');
     expect(orchestrationSource).toContain('createInflightRef');
     expect(orchestrationSource).toContain('重新打开');

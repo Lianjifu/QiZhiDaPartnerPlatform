@@ -22,16 +22,26 @@ type CreatePolicyFormProps = {
   workspaceId: string;
   models: ModelProvider['models'];
   onSubmit: (payload: Record<string, unknown>) => void;
+  preferredModelIds?: string[];
 };
 
-export function ModelsModalsCreatePolicy({ canWrite, workspaceId, models, onSubmit }: CreatePolicyFormProps) {
+export function ModelsModalsCreatePolicy({ canWrite, workspaceId, models, onSubmit, preferredModelIds }: CreatePolicyFormProps) {
   const available = models.filter((model) => model.status === 'available');
+  const preferred = preferredModelIds?.length
+    ? available.filter((model) => preferredModelIds.includes(model.id))
+    : available;
+  const pool = preferred.length ? preferred : available;
+  const preferredId = pool[0]?.id ?? '';
   const [level, setLevel] = useState<RoutingPolicyLevel>('P3');
-  const [primaryModelId, setPrimary] = useState(available[0]?.id ?? '');
+  const [primaryModelId, setPrimary] = useState(preferredId);
   const [fallbackModelIds, setFallbacks] = useState<string[]>([]);
   const [dataScope, setDataScope] = useState<'internal' | 'restricted'>('internal');
   const [egressAllowed, setEgress] = useState(false);
   const [budgetLimitUsd, setBudget] = useState('200');
+
+  useEffect(() => {
+    if (!primaryModelId && preferredId) setPrimary(preferredId);
+  }, [primaryModelId, preferredId]);
 
   return (
     <div className="space-y-4">

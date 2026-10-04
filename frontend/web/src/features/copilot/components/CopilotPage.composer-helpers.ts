@@ -45,14 +45,18 @@ export function buildComposerHandlers(
       const trigger = v.match(/(?:^|[\s　])@([^\s@]*)$/u);
       const q = trigger?.[1] ?? '';
       s.setShowMention(true); s.setShowSlash(false); s.setMentionQuery(q);
-      s.setMentionPane((prev: any) => {
-        if (prev !== 'root') return prev;
-        if (/^(skill|tool|workflow)/i.test(q)) return 'skill';
-        if (/^expert/i.test(q)) return 'expert';
-        if (/^doc/i.test(q)) return 'doc';
-        if (/^member/i.test(q)) return 'member';
-        return prev;
-      });
+      if (!q) {
+        s.setMentionPane('root');
+      } else {
+        s.setMentionPane((prev: 'root' | MentionKind) => {
+          if (prev !== 'root') return prev;
+          if (/^(skill|tool|workflow)/i.test(q)) return 'skill';
+          if (/^expert/i.test(q)) return 'expert';
+          if (/^doc/i.test(q)) return 'doc';
+          if (/^member/i.test(q)) return 'member';
+          return prev;
+        });
+      }
       return;
     }
     s.setShowSlash(v.startsWith('/') && v.length > 1 && !v.includes(' '));
@@ -128,6 +132,24 @@ export function buildComposerHandlers(
   };
 
   const onTextareaKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (s.showMention || s.showSlash) {
+      if (e.key === 'Enter' || e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Tab') {
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        s.setShowSlash(false);
+        s.setShowMention(false);
+        s.setMentionPane('root');
+        s.setMentionQuery('');
+        return;
+      }
+      if (e.key === 'Backspace' && s.showMention && s.mentionPane !== 'root' && !s.mentionQuery) {
+        e.preventDefault();
+        s.setMentionPane('root');
+        return;
+      }
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       actions.handleSend();

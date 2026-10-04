@@ -139,7 +139,7 @@ export default function HomePage() {
     : [
         { title: '数字伙伴', desc: '岗位与能力装配', to: '/partners', icon: Bot, tone: 'brand' },
         { title: '专家协作', desc: '研判与受控执行', to: '/copilot', icon: MessageSquare, tone: 'info' },
-        { title: '知识记忆', desc: '检索与跨会话', to: '/knowledge', icon: BookOpen, tone: 'success' },
+        { title: '知识中心', desc: '知识包与内容交付', to: '/knowledge', icon: BookOpen, tone: 'success' },
         { title: '任务 SLA', desc: '派工与处置闭环', to: '/tasks', icon: ListChecks, tone: 'warn' },
       ];
 

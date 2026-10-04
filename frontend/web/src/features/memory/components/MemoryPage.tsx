@@ -240,7 +240,7 @@ export default function MemoryPage() {
                     onSuccess: (item) => {
                       if (action === 'approve' && item.knowledgePackageId) {
                         toast.success(`已创建知识包草稿：${item.knowledgePackageId}`);
-                        navigate(`/knowledge?package=${item.knowledgePackageId}&view=packages`);
+                        navigate(`/knowledge/packages/${item.knowledgePackageId}`);
                       } else {
                         toast.success(action === 'approve' ? '已创建知识包草稿' : '候选已拒绝');
                       }

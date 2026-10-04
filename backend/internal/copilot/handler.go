@@ -42,6 +42,7 @@ import (
 	"strings"
 )
 
+// Handler 是 7 个 JSON 路由 + 1 个 SSE 流 + 1 个内部钩子的函数字段集合。
 // Handler holds the 7 JSON M02 HTTP handlers + 1 SSE stream + 1
 // internal hook. The underlying logic lives on *server.Server —
 // Phase 2 keeps the business logic in internal/server/copilot_*.go
@@ -72,6 +73,7 @@ type Handler struct {
 	EvolveCandidateAction func(r *http.Request) (any, error)
 }
 
+// ServeHTTP 把 M02 路由分派到对应的 Handler 字段（用于 copilot 内部 C1-C9 集成测试）。
 // ServeHTTP dispatches the M02 routes used by copilot's own integration
 // tests (C1-C9). The server's main route table delegates to these
 // fields directly in production; ServeHTTP exists so copilot-internal

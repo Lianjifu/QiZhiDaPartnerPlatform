@@ -75,7 +75,7 @@ export function MemoryTabOverview({
               转知识 {selectedEmployee.memoryPolicy.knowledgePromotion === 'approval_required' ? '需审核' : '关闭'}
             </span>
           </div>
-          <Link to={`/partners?employeeId=${selectedEmployee.id}`} className="memory-text-link">
+          <Link to={`/partners/${selectedEmployee.id}?tab=memory`} className="memory-text-link">
             打开岗位契约 <ExternalLink className="h-3 w-3" />
           </Link>
         </div>

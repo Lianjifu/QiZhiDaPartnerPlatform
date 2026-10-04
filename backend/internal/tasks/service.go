@@ -67,9 +67,9 @@ type Deps struct {
 	// Metrics — called after successful mutations. Nil-safe.
 	IncTaskCreated    func()
 	IncTaskTransition func()
-	IncTaskApprove   func(approved bool)
-	IncTaskTakeover  func()
-	IncTaskRetry     func()
+	IncTaskApprove    func(approved bool)
+	IncTaskTakeover   func()
+	IncTaskRetry      func()
 
 	// Working-memory side effect — TaskRoute "transition" completed/review
 	// + the legacy start/review/complete catch-all. IngestRuntimeMemoryLocked
@@ -127,4 +127,16 @@ func (s *Service) TaskRoute(r *http.Request) (any, error) {
 // (M02 → M03 cross-module entry point)
 func (s *Service) ConversationCreateTask(r *http.Request) (any, error) {
 	return s.conversationCreateTask(r)
+}
+
+func (s *Service) ListScheduledTasks(r *http.Request) (any, error) {
+	return s.listScheduledTasks(r)
+}
+
+func (s *Service) CreateScheduledTask(r *http.Request) (any, error) {
+	return s.createScheduledTask(r)
+}
+
+func (s *Service) ScheduledTaskRoute(r *http.Request) (any, error) {
+	return s.scheduledTaskRoute(r)
 }

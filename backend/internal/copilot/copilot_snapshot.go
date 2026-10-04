@@ -1,3 +1,8 @@
+// Package copilot —— 回合上下文快照(context snapshot)模块。
+//
+// 职责：每个 copilot 回合结束时把 system prompt / 历史消息 / RAG hits / 工具注册表 / SSE events
+// 落盘成一份"快照"，供 /replay 端点只读重建（不重新调 LLM / 工具）。
+// 存储层先看 Kernel（外部 durable backend），没有时回落到 Store.ContextSnapshots 内存环形缓冲。
 package copilot
 
 import (
@@ -11,11 +16,14 @@ import (
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
+// turnEventRecorder 收集一次回合的 SSE 事件并按需压缩 delta 流，给回放端点提供"只读重建"。
 type turnEventRecorder struct {
 	events   []map[string]any
 	deltaBuf strings.Builder
 }
 
+// Add 往记录器追加一条 SSE 事件：delta 单独累加到 deltaBuf（400 rune 截断），
+// 其他事件按白名单字段（status/decision/modelId/...）压平写入 events。
 func (r *turnEventRecorder) Add(typ, stage string, extra map[string]any) {
 	if r == nil {
 		return
@@ -49,6 +57,8 @@ func (r *turnEventRecorder) Add(typ, stage string, extra map[string]any) {
 	r.events = append(r.events, ev)
 }
 
+// Events 返回记录器累积的事件切片（拷贝），并在末尾追加一条汇总的 delta 事件，
+// 供 replayStoredSegments / snapshotEvents 一类调用方直接消费。
 func (r *turnEventRecorder) Events() []map[string]any {
 	if r == nil {
 		return nil
@@ -63,6 +73,10 @@ func (r *turnEventRecorder) Events() []map[string]any {
 	return out
 }
 
+// persistContextSnapshot 落盘一份上下文快照：
+// 1. 同 ID / (corr, conversationId) 已存在则覆盖；
+// 2. 否则头插并裁剪超过 2000 条的尾部；
+// 3. 同步落 store + 触发 durable backend 删除越界项（按需）。
 func (s *Service) persistContextSnapshot(rec map[string]any) {
 	if rec == nil {
 		return
@@ -99,10 +113,13 @@ func (s *Service) persistContextSnapshot(rec map[string]any) {
 	}
 }
 
+// lookupContextSnapshot 是带 background ctx 的便捷重载，给不需要 cancel 的调用方使用。
 func (s *Service) lookupContextSnapshot(ws, conversationID, correlationID string) map[string]any {
 	return s.lookupContextSnapshotCtx(context.Background(), ws, conversationID, correlationID)
 }
 
+// lookupContextSnapshotCtx 是快照查找的"主干"实现：
+// 优先走外部 Kernel，失败时再扫描 Store.ContextSnapshots，按 (corr, ws, conversationId) 三元组匹配。
 func (s *Service) lookupContextSnapshotCtx(ctx context.Context, ws, conversationID, correlationID string) map[string]any {
 	correlationID = strings.TrimSpace(correlationID)
 	if correlationID == "" {
@@ -135,6 +152,8 @@ func (s *Service) lookupContextSnapshotCtx(ctx context.Context, ws, conversation
 	return nil
 }
 
+// replayCopilotTurn 处理 POST /api/copilot/conversations/:cid/turns/:corr/replay：
+// 只读重建快照 + SSE 事件流，禁止再触发 LLM / Runtime / 工具。
 func (s *Service) replayCopilotTurn(r *http.Request) (any, error) {
 	// 只读：从已落盘 snapshot/events 重建，禁止再调 Runtime / LLM / 工具。
 	id := identityFrom(r.Context())
@@ -170,6 +189,7 @@ func (s *Service) replayCopilotTurn(r *http.Request) (any, error) {
 	}, nil
 }
 
+// snapshotEvents 把快照记录里的 events 字段（any）规范化为 []map[string]any。
 func snapshotEvents(rec map[string]any) []map[string]any {
 	if rec == nil {
 		return nil
@@ -177,6 +197,8 @@ func snapshotEvents(rec map[string]any) []map[string]any {
 	return mapsFromAny(rec["events"])
 }
 
+// correlationIDFromReplayPath 从 /api/copilot/conversations/:cid/turns/:corr/replay
+// 这类路径里抽出 :corr 段；找不到时返回空串。
 func correlationIDFromReplayPath(path string) string {
 	parts := strings.Split(strings.Trim(path, "/"), "/")
 	for i, p := range parts {
@@ -187,6 +209,8 @@ func correlationIDFromReplayPath(path string) string {
 	return ""
 }
 
+// buildContextSnapshotRecord 把"上层构造的 in map"转成一份可持久化的快照记录；
+// 默认值（channel、builtAt、runtimeMode）在这里统一填好，避免落盘记录里缺字段。
 func buildContextSnapshotRecord(in map[string]any) map[string]any {
 	now := time.Now().UTC().Format(time.RFC3339)
 	rec := map[string]any{

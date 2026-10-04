@@ -35,6 +35,8 @@ export interface UseCopilotEffectsParams {
   employeeBoundModel: string | null;
   availableTools: ReturnType<typeof buildExpertTools>;
   conversationFetchId: string | undefined;
+  activeConversation?: { id?: string; messages?: ChatMessageEx[] } | null;
+  conversationMissing: boolean;
   onDutyEmployees: DigitalPartner[];
   sendModelId: string | undefined;
   enabledToolKeySig: string;
@@ -240,9 +242,43 @@ export function useCopilotEffects(p: UseCopilotEffectsParams) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- p.s itself is now stable via useMemo; p.activeSession identity changes each useChat render.
   }, [p.activeSession?.id, p.enabledToolKeySig, p.s.enabledTools, p.s.setEnabledTools, p.availableTools]);
 
-  // Cleanup invalid digitalPartnerId
+  // Hydrate the active conversation timeline from the server
   useEffect(() => {
-    if (!p.s.employeesData || !p.activeSession?.digitalPartnerId || p.activeEmployee) return;
+    const conv = p.activeConversation;
+    if (p.conversationMissing || !conv || !p.s.chat.state.activeId || !p.conversationFetchId) return;
+    if (conv.id !== p.conversationFetchId && conv.id !== p.s.chat.state.activeId) return;
+    const active = p.s.chat.state.sessions[p.s.chat.state.activeId];
+    const activeConv = active?.conversationId ?? p.s.chat.state.activeId;
+    if (activeConv && conv.id !== activeConv && conv.id !== p.s.chat.state.activeId) return;
+    const summary = p.s.sessionHistory.find((item: SessionItem) => item.id === p.s.chat.state.activeId)
+      ?? p.s.sessionHistory.find((item: SessionItem) => item.conversationId === conv.id);
+    if (!summary) return;
+    if (!sessionInWorkspace(summary, currentWorkspaceId)) return;
+
+    const localMessages = p.s.chat.state.sessions[p.s.chat.state.activeId]?.messages ?? [];
+    const serverMessages = (conv.messages ?? []) as ChatMessageEx[];
+    const resolved = resolveHydratedMessages({
+      typing: p.s.chat.state.typing,
+      localMessages,
+      serverMessages,
+    });
+    if (!resolved.applied) return;
+
+    p.s.chat.syncSession(
+      {
+        ...toChatSession(summary),
+        messages: resolved.messages,
+        preview: summary.preview || toChatSession(summary).preview,
+      },
+      { preserveGovernance: true },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- localMessages/typing 经门禁读取，不以 sessions 为 deps
+  }, [p.activeConversation, p.conversationMissing, p.s.chat.state.activeId, p.s.chat.state.typing, p.s.chat.syncSession, p.conversationFetchId, p.s.sessionHistory, currentWorkspaceId]);
+
+  // Cleanup invalid digitalPartnerId only after a non-empty partner catalog loaded
+  useEffect(() => {
+    if (!Array.isArray(p.s.employeesData) || p.s.employeesData.length === 0) return;
+    if (!p.activeSession?.digitalPartnerId || p.activeEmployee) return;
     p.s.chat.syncSession({
       ...p.activeSession,
       digitalPartnerId: undefined,

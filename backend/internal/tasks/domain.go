@@ -192,40 +192,41 @@ func BuildControlledTask(idGen func(string) string, ws string, body map[string]a
 	}
 
 	item := map[string]any{
-		"id":                  idGen("task"),
-		"workspaceId":         ws,
-		"code":                coalesce(str(body["code"]), ""),
-		"title":               title,
-		"description":         str(body["description"]),
-		"priority":            priority,
-		"status":              status,
-		"lifecycleStage":      stage,
-		"ownerId":             actor.ID,
-		"ownerName":           actor.Name,
-		"createdBy":           actor.ID,
-		"assignee":            coalesce(str(body["assignee"]), actor.Name),
+		"id":                 idGen("task"),
+		"workspaceId":        ws,
+		"code":               coalesce(str(body["code"]), ""),
+		"title":              title,
+		"description":        str(body["description"]),
+		"priority":           priority,
+		"status":             status,
+		"lifecycleStage":     stage,
+		"ownerId":            actor.ID,
+		"ownerName":          actor.Name,
+		"createdBy":          actor.ID,
+		"assignee":           coalesce(str(body["assignee"]), actor.Name),
 		"digitalPartnerId":   body["digitalPartnerId"],
 		"digitalPartnerName": body["digitalPartnerName"],
-		"agentId":             body["agentId"],
-		"source":              source,
-		"dispatchKind":        nilIfEmpty(dispatchKind),
-		"coordinatorId":       body["coordinatorId"],
-		"coordinatorName":     body["coordinatorName"],
-		"collaboratorIds":     body["collaboratorIds"],
-		"collaboratorNames":   body["collaboratorNames"],
-		"assistStatus":        nilIfEmpty(assistStatus),
-		"progress":            progress,
-		"tags":                tags,
-		"sla":                 map[string]any{"remainingMin": slaRemaining, "risk": "none", "escalated": false},
-		"execution":           exec,
-		"governance":          gov,
-		"links":               links,
-		"auditEvents":         []map[string]any{},
-		"version":             0,
-		"environment":         coalesce(str(body["environment"]), "sandbox"),
-		"classification":      coalesce(str(body["classification"]), "internal"),
-		"createdAt":           now,
-		"updatedAt":           now,
+		"agentId":            body["agentId"],
+		"source":             source,
+		"dispatchKind":       nilIfEmpty(dispatchKind),
+		"coordinatorId":      body["coordinatorId"],
+		"coordinatorName":    body["coordinatorName"],
+		"collaboratorIds":    body["collaboratorIds"],
+		"collaboratorNames":  body["collaboratorNames"],
+		"assistStatus":       nilIfEmpty(assistStatus),
+		"progress":           progress,
+		"tags":               tags,
+		"sla":                map[string]any{"remainingMin": slaRemaining, "risk": "none", "escalated": false},
+		"execution":          exec,
+		"governance":         gov,
+		"links":              links,
+		"auditEvents":        []map[string]any{},
+		"comments":           []map[string]any{},
+		"version":            0,
+		"environment":        coalesce(str(body["environment"]), "sandbox"),
+		"classification":     coalesce(str(body["classification"]), "internal"),
+		"createdAt":          now,
+		"updatedAt":          now,
 	}
 	if item["code"] == "" {
 		item["code"] = "TSK-PENDING"
@@ -281,7 +282,7 @@ func ApplyLifecycleTransition(task map[string]any, target string, actor *auth.Id
 
 // ApplyTaskApprove records the approval decision on the task and (for
 // dispatchKind=assist) advances the lifecycle to StagePending so the
-//协办 can start. Always appends an audit event. Caller MUST hold
+// 协办 can start. Always appends an audit event. Caller MUST hold
 // s.Store.Lock().
 func ApplyTaskApprove(task map[string]any, approved bool, reason string, actor *auth.Identity) {
 	EnsureTaskShape(task)

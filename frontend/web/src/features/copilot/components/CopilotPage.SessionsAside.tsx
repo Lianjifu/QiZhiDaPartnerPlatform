@@ -35,13 +35,14 @@ export function CopilotPageSessionsAside() {
         <div className="copilot-sessions__title-row">
           <h2>{pageCopy.title}</h2>
           <span className="copilot-sessions__count" title="当前工作区可见会话数">{filteredSessions.length}</span>
+          {canMutate ? (
+            <Button size="sm" className="copilot-sessions__new" onClick={actions.openNewSessionPicker}>
+              <Plus className="h-3.5 w-3.5" />新会话
+            </Button>
+          ) : null}
         </div>
-        {canMutate ? (
-          <Button size="sm" className="copilot-sessions__new" onClick={actions.openNewSessionPicker}>
-            <Plus className="h-3.5 w-3.5" />新会话
-          </Button>
-        ) : (
-          <p className="px-1 text-[10px] leading-4 text-[var(--text-muted)]">{pageCopy.subtitle}</p>
+        {canMutate ? null : (
+          <p className="px-3 py-1.5 text-[10px] leading-4 text-[var(--text-muted)]">{pageCopy.subtitle}</p>
         )}
         <div className="copilot-sessions__search">
           <Search className="h-3.5 w-3.5" />

@@ -158,6 +158,11 @@ func (s *Service) GenerateWorkflow(r *http.Request) (any, error) {
 	return s.generateWorkflow(r)
 }
 
+// OrchestrationRoute → /api/workflows/orchestration-sessions
+func (s *Service) OrchestrationRoute(r *http.Request) (any, error) {
+	return s.orchestrationRoute(r)
+}
+
 // ListWorkflowSkillsAligned → GET /api/workflow-skills
 func (s *Service) ListWorkflowSkillsAligned(r *http.Request) (any, error) {
 	return s.listWorkflowSkillsAligned(r)

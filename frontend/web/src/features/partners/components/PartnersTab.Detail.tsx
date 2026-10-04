@@ -37,7 +37,7 @@ import {
 } from 'lucide-react';
 
 /** `ContextualEmployeeDetail` — 上岗发布 / 运行管理详情。 */
-export function ContextualEmployeeDetail({ employee, context, onClose, onGoToModule }: { employee: DigitalPartner; context: 'release' | 'operations'; onClose: () => void; onGoToModule?: (tab: ModuleTab) => void }) {
+export function ContextualEmployeeDetail({ employee, context, onClose, onGoToModule, layout = 'modal' }: { employee: DigitalPartner; context: 'release' | 'operations'; onClose: () => void; onGoToModule?: (tab: ModuleTab) => void; layout?: 'modal' | 'inline' }) {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const isAdmin = user?.role === 'admin';
@@ -48,18 +48,22 @@ export function ContextualEmployeeDetail({ employee, context, onClose, onGoToMod
   const { data: evidence = [] } = useApiQuery<Array<{ id: string; time: string; actor: string; action: string; target: string; result: string }>>(['digital-employee', employee.id, 'evidence'], `/api/partners/${employee.id}/evidence`);
 
   const evaluate = useApiMutation<DigitalPartner, Record<string, never>>(() => `/api/partners/${employee.id}/evaluate`, {
+    invalidateKeys: [['digital-employees'], ['digital-employee', employee.id]],
     onSuccess: (result) => setMessage(result.evaluation.status === 'passed' ? '评测已通过，可作为上岗门禁依据。' : '评测未通过，请按门禁缺失项补齐后复测。'),
     onError: (err) => setMessage(err instanceof Error ? err.message : '评测失败'),
   });
   const release = useApiMutation<DigitalPartner, Record<string, never>>(() => `/api/partners/${employee.id}/release`, {
+    invalidateKeys: [['digital-employees'], ['digital-employee', employee.id]],
     onSuccess: () => setMessage('已完成上岗，员工可进入运行协作。'),
     onError: (err) => setMessage(err instanceof Error ? err.message : '上岗失败'),
   });
   const withdraw = useApiMutation<DigitalPartner, Record<string, never>>(() => `/api/partners/${employee.id}/release/withdraw`, {
+    invalidateKeys: [['digital-employees'], ['digital-employee', employee.id]],
     onSuccess: () => setMessage('已撤回历史申请，可在补齐后重新申请上岗。'),
     onError: (err) => setMessage(err instanceof Error ? err.message : '撤回失败'),
   });
   const reject = useApiMutation<DigitalPartner, { reason: string }>(() => `/api/partners/${employee.id}/release/reject`, {
+    invalidateKeys: [['digital-employees'], ['digital-employee', employee.id]],
     onSuccess: () => { setMessage('已驳回历史申请。'); setRejectReason(''); },
     onError: (err) => setMessage(err instanceof Error ? err.message : '驳回失败'),
   });
@@ -96,7 +100,7 @@ export function ContextualEmployeeDetail({ employee, context, onClose, onGoToMod
       {employee.release.status === 'pending_approval' && isAdmin && !selfRequested && (
         <Button size="sm" variant="secondary" loading={reject.isPending} onClick={() => reject.mutate({ reason: rejectReason || '未满足上岗门禁或需补充配置' })}>驳回</Button>
       )}
-      <Button size="sm" variant="ghost" onClick={onClose}>关闭</Button>
+      {layout !== 'inline' && <Button size="sm" variant="ghost" onClick={onClose}>关闭</Button>}
     </>
   );
 
@@ -110,10 +114,8 @@ export function ContextualEmployeeDetail({ employee, context, onClose, onGoToMod
     </>
   );
 
-  return (
-    <>
-      <Modal open onClose={onClose} title={`${meta.title} · ${employee.name}`} description={`${employee.department} · 岗位版本 ${employee.version} · ${meta.description}`} size="xl" footer={context === 'release' ? releaseActions : operationsActions}>
-        <div className="space-y-5">
+  const panel = (
+          <div className="space-y-5">
           <section className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] px-5 py-4">
             <div className="flex flex-wrap items-start justify-between gap-5">
               <div className="flex min-w-0 items-center gap-3">
@@ -159,7 +161,7 @@ export function ContextualEmployeeDetail({ employee, context, onClose, onGoToMod
                     </div>
                     <p className="mt-2 text-xs text-[var(--text-secondary)]">{gate.detail}</p>
                     {!gate.passed && gate.fixTab && onGoToModule && (
-                      <button type="button" className="mt-2 text-[11px] font-medium text-[var(--brand)]" onClick={() => { onClose(); onGoToModule(gate.fixTab!); }}>
+                      <button type="button" className="mt-2 text-[11px] font-medium text-[var(--brand)]" onClick={() => { if (layout !== 'inline') onClose(); onGoToModule(gate.fixTab!); }}>
                         前往{gate.fixTab === 'roleSetup' ? '岗位配置' : '能力装配'} →
                       </button>
                     )}
@@ -248,7 +250,20 @@ export function ContextualEmployeeDetail({ employee, context, onClose, onGoToMod
               : <p className="text-xs text-[var(--text-muted)]">暂无证据记录。</p>}
           </section>
         </div>
-      </Modal>
+  );
+
+  return (
+    <>
+      {layout === 'inline' ? (
+        <div className="space-y-4">
+          {panel}
+          <div className="flex flex-wrap justify-end gap-2">{context === 'release' ? releaseActions : operationsActions}</div>
+        </div>
+      ) : (
+        <Modal open onClose={onClose} title={`${meta.title} · ${employee.name}`} description={`${employee.department} · 岗位版本 ${employee.version} · ${meta.description}`} size="xl" footer={context === 'release' ? releaseActions : operationsActions}>
+          {panel}
+        </Modal>
+      )}
       {disposeLifecycle && (
         <OperationsDisposeModal
           employee={employee}

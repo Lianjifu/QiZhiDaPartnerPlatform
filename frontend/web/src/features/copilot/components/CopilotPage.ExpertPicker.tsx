@@ -23,10 +23,10 @@ export function ExpertPickerModal(props: ExpertPickerModalProps) {
     <Modal
       open={open}
       onClose={onClose}
-      title={mode === 'rebind' ? '改绑专家' : '选择在岗数字伙伴'}
+      title={mode === 'rebind' ? '改绑数字伙伴' : '选择数字伙伴'}
       width={520}
     >
-      <p className="text-xs text-[var(--text-muted)] mb-2">{mode === 'rebind' ? '改绑专家后，会话上下文与历史记录保留。' : '新会话将以所选专家为主协作人。'}</p>
+      <p className="text-xs text-[var(--text-muted)] mb-2">{mode === 'rebind' ? '改绑后，会话上下文与历史记录保留。' : '开始对话前必须选择一位在岗数字伙伴作为主协作人。'}</p>
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--bg)] px-2">
           <Search className="h-4 w-4 text-[var(--text-muted)]" />
@@ -45,7 +45,7 @@ export function ExpertPickerModal(props: ExpertPickerModalProps) {
         <div className="max-h-[420px] overflow-y-auto">
           {experts.length === 0 ? (
             <div className="py-8 text-center text-[var(--text-muted)] text-xs">
-              暂无可用专家
+              暂无在岗数字伙伴，请先完成上岗
             </div>
           ) : experts.map((e) => (
             <button

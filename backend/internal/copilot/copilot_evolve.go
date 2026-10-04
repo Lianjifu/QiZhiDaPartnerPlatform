@@ -1,3 +1,11 @@
+// Package copilot —— 自进化(self-evolve)模块。
+//
+// 职责：每个 copilot 回合结束后，基于本回合的痕迹（成功工具、反思轮次、用户反馈、
+// 短期记忆堆积）产出若干 EvolveCandidate 供 admin / auditor 审批。
+//
+// 安全约束：自进化绝不静默修改已发布产物（routing_policies / skill / long_term 记忆），
+// 所有变更先落 candidate → 等管理员审批 → 再写入；只有 dream compress（working 层聚合）
+// 是 runtime policy 允许直接落地的。
 package copilot
 
 import (
@@ -16,6 +24,8 @@ const (
 	evolveKindDream         = "dream"
 )
 
+// 自进化候选的状态机取值；pending_review 与 pending_countersign 之间的转换
+// 用于实现 skill_patch / routing_hint 这类高风险候选的"双签"审批流。
 const (
 	evolveStatusPending            = "pending_review"
 	evolveStatusPendingCountersign = "pending_countersign"
@@ -24,12 +34,17 @@ const (
 	evolveStatusApplied            = "applied" // dream compress applied under policy (working only)
 )
 
+// evolveNeedsDualSign 决定某类候选是否需要 admin + auditor 两次签字才生效。
+// 命中条件：skill_patch / routing_hint（涉及生产变更）。
 func evolveNeedsDualSign(kind string) bool {
 	return kind == evolveKindSkillPatch || kind == evolveKindRoutingHint
 }
 
+// dreamShortTermThreshold 一个会话触发 dream compress 所需的最小短期记忆条数。
 const dreamShortTermThreshold = 3
 
+// evolveTurnInput 是 runPostTurnEvolutionLocked 的入参，
+// 涵盖了一回合中可用于判断"是否需要生成自进化候选"的所有上下文。
 type evolveTurnInput struct {
 	WorkspaceID       string
 	OwnerID           string
@@ -47,6 +62,8 @@ type evolveTurnInput struct {
 	Emit              func(event, stage string, data map[string]any)
 }
 
+// looksLikePreferenceStatement 判断用户消息是否包含"以后""下次""默认""不要"等
+// 偏好型表述，是触发 memory_promote 候选的前置信号。
 func looksLikePreferenceStatement(msg string) bool {
 	needles := []string{
 		"记住", "以后请", "下次请", "偏好", "习惯", "不要再", "请默认",
@@ -61,6 +78,8 @@ func looksLikePreferenceStatement(msg string) bool {
 	return false
 }
 
+// toolSuccessNames 从工具调用列表里挑出所有状态为 success 的 name，去重保持出现顺序。
+// 供自进化判断"是否产生了可固化的工具轨迹"使用。
 func toolSuccessNames(toolCalls []map[string]any) []string {
 	var names []string
 	seen := map[string]bool{}
@@ -79,10 +98,14 @@ func toolSuccessNames(toolCalls []map[string]any) []string {
 	return names
 }
 
+// appendEvolveCandidateLocked 把新候选以 LIFO 方式插到 Store.EvolveCands 头部。
+// 调用方必须持 Store.Lock，避免与并发读 / 审批写撞 race。
 func (s *Service) appendEvolveCandidateLocked(cand map[string]any) {
 	s.Store.EvolveCands = append([]map[string]any{cand}, s.Store.EvolveCands...)
 }
 
+// hasPendingEvolveLocked 判断是否存在 fingerprint 命中且状态为 pending 的同 kind 候选，
+// 用于防止自进化在同一回合内重复产出同一条 candidate。
 func (s *Service) hasPendingEvolveLocked(ws, kind, fingerprint string) bool {
 	for _, c := range s.Store.EvolveCands {
 		if str(c["workspaceId"]) != ws || str(c["kind"]) != kind {
@@ -354,6 +377,8 @@ func (s *Service) createFeedbackEvolveCandidateLocked(ws, ownerID, ownerName, ci
 	return cand
 }
 
+// listEvolveCandidates 返回当前 workspace 下所有自进化候选（不区分状态）。
+// 处理 HTTP GET /api/evolve/candidates，前端在审计页展示。
 func (s *Service) listEvolveCandidates(r *http.Request) (any, error) {
 	ws := s.Deps.WorkspaceIDFn(r)
 	s.Store.RLock()
@@ -370,6 +395,8 @@ func (s *Service) listEvolveCandidates(r *http.Request) (any, error) {
 	return out, nil
 }
 
+// evolveDreamRun 手动触发 dream compress：可指定单个会话或扫所有满足阈值阈的会话。
+// 命中 memory governance（admin/auditor）才能调用，避免滥用 working 层写权限。
 func (s *Service) evolveDreamRun(r *http.Request) (any, error) {
 	id, err := s.Deps.RequireMemoryGovernanceFn(r, "执行 Dream 压缩")
 	if err != nil {
@@ -422,6 +449,7 @@ func (s *Service) evolveDreamRun(r *http.Request) (any, error) {
 	return map[string]any{"applied": applied, "candidates": cands}, nil
 }
 
+// persistEvolve 异步持久化自进化候选 + 触发的记忆落盘；通常由审批/写入路径 spawn。
 func (s *Service) persistEvolve() {
 	s.Store.Persist("evolve_candidates")
 	if s.Deps.PersistMemorySyncFn != nil {
@@ -429,6 +457,9 @@ func (s *Service) persistEvolve() {
 	}
 }
 
+// evolveCandidateAction 处理 POST /api/evolve/candidates/:id/:action（approve/reject）。
+// 关键流程：先用 RLock peek 状态避免长期持锁；高危候选 (skill_patch / routing_hint)
+// 需要 admin 首签 + auditor（或另一 admin）会签才能 apply。
 func (s *Service) evolveCandidateAction(r *http.Request) (any, error) {
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	// /api/evolve/candidates/:id/:action
@@ -577,6 +608,11 @@ func (s *Service) evolveCandidateAction(r *http.Request) (any, error) {
 	return cand, nil
 }
 
+// applyEvolveCandidateLocked 真正把通过审批的候选写入生产数据：
+//   memory_promote → ingestRuntimeMemoryLocked (working/long_term)
+//   skill_patch    → SkillExtra.evolveDrafts (draft 状态，绝不 installed)
+//   routing_hint   → 新建 status=draft 的 routing_policies（不覆盖已有）
+//   dream          → 已落库，无需再 apply
 func (s *Service) applyEvolveCandidateLocked(ws, actorID, actorName string, cand map[string]any) (map[string]any, error) {
 	kind := str(cand["kind"])
 	payload, _ := cand["payload"].(map[string]any)
@@ -654,6 +690,8 @@ func (s *Service) applyEvolveCandidateLocked(ws, actorID, actorName string, cand
 	}
 }
 
+// copilotMessageFeedback 处理 POST /api/copilot/conversations/:cid/messages/:mid/feedback。
+// 写 message.feedback 字段，like/dislike 同时落自进化 candidate；none 清空反馈。
 func (s *Service) copilotMessageFeedback(r *http.Request) (any, error) {
 	id := identityFrom(r.Context())
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
@@ -725,6 +763,8 @@ func (s *Service) copilotMessageFeedback(r *http.Request) (any, error) {
 }
 
 
+// appendAudit 把记忆/自进化相关的审计行转交给 Deps.AppendMemoryAuditLockedFn，
+// nil 时静默跳过（测试模式或 Deps 未注入）。
 func (s *Service) appendAudit(ws, actor, action, target, result, corr string) {
 	if s == nil || s.Deps.AppendMemoryAuditLockedFn == nil {
 		return

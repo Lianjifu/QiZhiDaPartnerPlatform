@@ -18,6 +18,8 @@ import type {
   DeliveryPolicyDraft,
   DeliveryPolicyVersion,
   ControlledTask,
+  ScheduledTask,
+  ScheduledTaskRun,
   Conversation,
   KnowledgeAuditEvent,
   KnowledgeConsumerBinding,
@@ -61,6 +63,7 @@ import type {
   AccessGrant, AccessReview, SeparationOfDutyRule, ReleaseApproval, Role, Permission, User, TemporaryAuthorization, ZeroTrustAction, ZeroTrustDecision, ZeroTrustEvaluation, ZeroTrustEvent, ZeroTrustPolicy, ZeroTrustResource,
 } from '@qzda/web-types';
 import { sleep } from '@qzda/web-utils';
+import { createScheduleDomain, mockScheduledTasks } from './schedule-domain';
 import {
   buildHomeExtraLive,
   normalizeEmployeeCapabilities,
@@ -401,6 +404,7 @@ function controlledTask(seed: TaskSeed): ControlledTask {
       : fromAlert
         ? { alertCode: 'ALT-REDIS-NOISE' }
         : {},
+    comments: [],
     auditEvents: [],
     version: 1,
   };
@@ -493,6 +497,7 @@ export function createTaskDomain(seed: TaskSeed[] = mockTasks) {
       if (input.execution?.currentStep) task.execution.currentStep = input.execution.currentStep;
       else if (input.source === 'conversation') task.execution.currentStep = '待专家确认';
       tasks.unshift(task);
+      task.comments = [];
       return cloneTask(write(task, '创建任务', meta, 'success'));
     },
     transition: (id: string, target: Task['status'] | ControlledTask['lifecycleStage'], meta: TaskActor = {}) => {
@@ -541,6 +546,14 @@ export function createTaskDomain(seed: TaskSeed[] = mockTasks) {
       return cloneTask(write(task, '重试任务', meta, 'info'));
     },
     audit: (id: string) => cloneTask(find(id).auditEvents),
+    comments: (id: string) => cloneTask(find(id).comments ?? []),
+    comment: (id: string, body: string, meta: TaskActor = {}) => {
+      const task = find(id);
+      const entry = { id: mockId('cmt'), at: new Date().toISOString(), actor: meta.actor ?? '当前用户', body };
+      task.comments = [...(task.comments ?? []), entry];
+      write(task, '团队留言', { ...meta, reason: body }, 'info');
+      return cloneTask(entry);
+    },
     reset: () => {
       tasks = initial.map(cloneTask);
       return { ok: true };
@@ -2827,6 +2840,7 @@ const mockDomain = {
   actions: new Map<string, { id: string; conversationId: string; status: 'pending' | 'approved' | 'executed' | 'rejected'; taskId?: string; approvedSignerIndexes?: number[] }>(),
 };
 const taskDomain = createTaskDomain(mockTasks);
+const scheduleDomain = createScheduleDomain(mockScheduledTasks);
 
 function mockId(prefix: string) {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
@@ -3325,6 +3339,28 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
     return { ok: true, messageId: mid, feedback: fb, evolveCandidate };
   }
 
+  if (path === '/api/scheduled-tasks' && method === 'GET') {
+    return scheduleDomain.list().filter((item) => !item.workspaceId || item.workspaceId === currentWorkspaceId);
+  }
+  if (path === '/api/scheduled-tasks' && method === 'POST') {
+    const body = (opts.body ?? {}) as Partial<ScheduledTask> & Pick<ScheduledTask, 'title'>;
+    if (!String(body.title ?? '').trim()) throw new Error('定时任务标题必填');
+    return scheduleDomain.create({ ...body, workspaceId: currentWorkspaceId, createdBy: identity?.id, owner: identity?.name ?? body.owner });
+  }
+  const scheduleRoute = path.match(/^\/api\/scheduled-tasks\/([^/]+)(?:\/(pause|resume|run|runs))?$/);
+  if (scheduleRoute) {
+    const [, id, action] = scheduleRoute;
+    if (action === 'runs' && method === 'GET') return scheduleDomain.runs(id);
+    if (!action && method === 'GET') return scheduleDomain.get(id);
+    if (!action && method === 'PATCH') return scheduleDomain.patch(id, (opts.body ?? {}) as Partial<ScheduledTask>);
+    if (!action && method === 'DELETE') return scheduleDomain.remove(id);
+    if (action === 'pause' && method === 'POST') return scheduleDomain.patch(id, { enabled: false });
+    if (action === 'resume' && method === 'POST') return scheduleDomain.patch(id, { enabled: true });
+    if (action === 'run' && method === 'POST') {
+      return scheduleDomain.run(id, (title) => taskDomain.create({ title, source: 'workflow', tags: ['定时任务'] }, { actor: identity?.name }));
+    }
+  }
+
   // 任务：所有写操作都经由受控任务领域，保证版本、审计和通知一致。
   const canReadTask = (task: ControlledTask) => !identity || isAdministrator || task.ownerId === identity.id || task.createdBy === identity.id || task.assignee === identity.name;
   const canChangeTask = (task: ControlledTask) => !identity || isAdministrator || task.ownerId === identity.id || task.createdBy === identity.id || task.assignee === identity.name;
@@ -3336,13 +3372,20 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
     appendTaskDomainEvent(task);
     return task;
   }
-  const taskRoute = path.match(/^\/api\/tasks\/([^/]+)(?:\/(transition|approve|takeover|retry|audit))?$/);
+  const taskRoute = path.match(/^\/api\/tasks\/([^/]+)(?:\/(transition|approve|takeover|retry|audit|comments))?$/);
   if (taskRoute) {
     const [, id, action] = taskRoute;
     const existing = taskDomain.get(id);
     if (!existing || !inCurrentWorkspace(existing) || !canReadTask(existing)) throw new Error('E_TASK_SCOPE: 无权访问该任务');
     if (!action && method === 'GET') return existing;
     if (action === 'audit' && method === 'GET') return taskDomain.audit(id);
+    if (action === 'comments' && method === 'GET') return taskDomain.comments(id);
+    if (action === 'comments' && method === 'POST') {
+      if (!canChangeTask(existing)) throw new Error('E_TASK_OWNER_SCOPE');
+      const text = String((opts.body as { body?: string } | undefined)?.body ?? '').trim();
+      if (!text) throw new Error('留言内容必填');
+      return taskDomain.comment(id, text, { actor: identity?.name });
+    }
     const body = (opts.body ?? {}) as TaskActor & { status?: Task['status']; stage?: ControlledTask['lifecycleStage']; approved?: boolean };
     let task: ControlledTask | undefined;
     if (action === 'transition' && method === 'POST') { if (!canChangeTask(existing)) throw new Error('E_TASK_OWNER_SCOPE'); task = taskDomain.transition(id, body.stage ?? body.status ?? 'pending', { ...body, actor: identity?.name ?? body.actor }); }
@@ -3528,6 +3571,18 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
     if (action === 'evidence' && method === 'GET') return digitalPartnerEvidence(employee);
     if (!identity || identity.role === 'auditor') throw new Error('E_DIGITAL_EMPLOYEE_WRITE_FORBIDDEN');
     const body = (opts.body ?? {}) as any;
+    if (!action && method === 'DELETE') {
+      if (employee.release.status === 'released' || employee.lifecycle === 'active') {
+        throw new Error('E_DIGITAL_PARTNER_PUBLISH_FORBIDDEN: 已上岗的数字伙伴不可删除');
+      }
+      const index = mockDigitalPartners.findIndex((item) => item.id === employee.id);
+      if (index >= 0) mockDigitalPartners.splice(index, 1);
+      for (let i = mockDigitalPartnerConfigurationVersions.length - 1; i >= 0; i -= 1) {
+        if (mockDigitalPartnerConfigurationVersions[i].employeeId === employee.id) mockDigitalPartnerConfigurationVersions.splice(i, 1);
+      }
+      workspaceAudit(currentWorkspaceId, '删除数字伙伴', `${employee.role} · ${employee.name}`);
+      return { id: employee.id, status: 'deleted' };
+    }
     if (!action && method === 'PATCH') {
       const profile = ['name', 'role', 'department', 'description', 'owner', 'escalationOwner', 'serviceObject', 'risk', 'environment'];
       profile.forEach((key) => { if (body[key] !== undefined) (employee as any)[key] = body[key]; });
@@ -6122,6 +6177,7 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
   }
   if (path === '/api/mock/reset' && opts.method === 'POST') {
     taskDomain.reset();
+    scheduleDomain.reset();
     mockDomain.audits.splice(0, mockDomain.audits.length, ...mockAuditStream);
     mockDomain.messages.splice(0, mockDomain.messages.length, ...mockMessageStream);
     mockDomain.actions.clear();

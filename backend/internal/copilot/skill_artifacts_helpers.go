@@ -1,10 +1,10 @@
-// Package-private docx/pptx/skill-artifact helpers used by the M02
-// copilot enrichment path. Mirrors the legacy helpers from
-// internal/server/skill_artifacts.go — duplicated here so copilot never
-// imports server/. The original implementations in server/ continue to
-// exist for the server-side callers (skill_artifacts_office.go etc.).
+// docx/pptx/xlsx + skill 产物相关的辅助函数镜像（与 internal/server/skill_artifacts.go 同名）。
+// 镜像的目的是让 copilot 包不反向依赖 server/。
+// 名字/签名必须与 server/ 原版 1:1 一致，改一边必须同步另一边。
+//
+// 覆盖范围：docx/pptx/xlsx 标题归一化、本地构建脚本查找、产物存储/下载名生成、
+// preview 检查、CSV/OOXML 校验、产物 TTL 清理、HTTP 头辅助等。
 package copilot
-
 
 import (
 	"archive/zip"
@@ -25,6 +25,7 @@ import (
 	"github.com/qizhida-partner-platform/backend/pkg/response"
 )
 
+// docx/pptx/xlsx 产物相关正则：前置名 / 后缀 / 产物 ID 前缀 / 多空格折叠。
 var (
 	reSkillDocxPrefix    = regexp.MustCompile(`(?i)^skill[_-]?docx[_-]*`)
 	reDocxSuffix         = regexp.MustCompile(`(?i)(_docx|\.docx)$`)
@@ -34,6 +35,7 @@ var (
 	reDocxPlaceholderKV  = regexp.MustCompile(`(?i)^\s*title\s*=\s*.+\s*,\s*content\s*=`)
 )
 
+// looksLikeCodeAsDocxBody 识别 python-docx / shell 脚本被误当成 docx 正文的情况。
 // looksLikeCodeAsDocxBody detects python-docx scripts mistaken for document body.
 func looksLikeCodeAsDocxBody(content string) bool {
 	s := strings.TrimSpace(content)
@@ -72,6 +74,7 @@ func looksLikeCodeAsDocxBody(content string) bool {
 	return codeLines >= 2
 }
 
+// looksLikeDocxPlaceholderBody 识别 LLM 的"title=content=..."占位摘要被误当 docx 正文的情况。
 // looksLikeDocxPlaceholderBody detects LLM summary / title=content= strings mistaken for document body.
 func looksLikeDocxPlaceholderBody(content string) bool {
 	s := strings.TrimSpace(content)
@@ -100,6 +103,7 @@ func looksLikeDocxPlaceholderBody(content string) bool {
 	return false
 }
 
+// looksLikeStructuredDocxBody 通过中文编号标记 + 换行密度识别"看上去像正式 docx 章节"的正文。
 func looksLikeStructuredDocxBody(s string) bool {
 	for _, marker := range []string{
 		"一、", "二、", "三、", "（一）", "##", "###",
@@ -112,6 +116,7 @@ func looksLikeStructuredDocxBody(s string) bool {
 	return strings.Count(s, "\n") >= 4
 }
 
+// sanitizeDocxBody 把明显无效的 docx 正文（脚本 / 占位摘要 / 追问）截成空串。
 func sanitizeDocxBody(content string) string {
 	if looksLikeCodeAsDocxBody(content) || looksLikeDocxPlaceholderBody(content) || looksLikeClarificationSpeech(content) {
 		return ""
@@ -119,6 +124,7 @@ func sanitizeDocxBody(content string) string {
 	return strings.TrimSpace(content)
 }
 
+// docxToolSucceeded 扫描工具调用列表，找出最近一次"docx 类工具成功"的记录。
 // docxToolSucceeded reports whether a docx-class tool completed successfully this turn.
 func docxToolSucceeded(toolCalls []map[string]any) bool {
 	for i := len(toolCalls) - 1; i >= 0; i-- {
@@ -135,6 +141,7 @@ func docxToolSucceeded(toolCalls []map[string]any) bool {
 	return false
 }
 
+// docxPreviewText 从 docx preview payload 里把 blocks 拼成纯文本预览。
 func docxPreviewText(payload map[string]any) string {
 	raw, ok := payload["blocks"].([]any)
 	if !ok {
@@ -149,14 +156,17 @@ func docxPreviewText(payload map[string]any) string {
 	return strings.TrimSpace(b.String())
 }
 
+// docxPreviewLooksLikeCode 判断 docx preview 文本是否包含脚本 / python-docx 痕迹。
 func docxPreviewLooksLikeCode(payload map[string]any) bool {
 	return looksLikeCodeAsDocxBody(docxPreviewText(payload))
 }
 
+// docxPreviewLooksLikePlaceholder 判断 docx preview 文本是否像 LLM 摘要/占位。
 func docxPreviewLooksLikePlaceholder(payload map[string]any) bool {
 	return looksLikeDocxPlaceholderBody(docxPreviewText(payload))
 }
 
+// docxPreviewSubstantiallyShorterThan 判断 docx preview 与 body 长度差异是否严重（用于触发替换）。
 func docxPreviewSubstantiallyShorterThan(payload map[string]any, body string) bool {
 	preview := docxPreviewText(payload)
 	if preview == "" || body == "" {
@@ -169,6 +179,7 @@ func docxPreviewSubstantiallyShorterThan(payload map[string]any, body string) bo
 	return br >= 200 && pr < br/3
 }
 
+// skillArtifactDir 返回本地 skill 产物落盘目录；DE_SANDBOX_ARTIFACT_DIR 可覆盖默认值。
 func skillArtifactDir() string {
 	if v := strings.TrimSpace(os.Getenv("DE_SANDBOX_ARTIFACT_DIR")); v != "" {
 		return v
@@ -176,17 +187,20 @@ func skillArtifactDir() string {
 	return "/tmp/qzda-stack/artifacts"
 }
 
+// isDocxSkillName 判断工具名是否属于 docx / Word 文档生成技能。
 func isDocxSkillName(name string) bool {
 	n := strings.ToLower(strings.TrimSpace(name))
 	return n == "docx" || n == "word" || strings.Contains(n, "docx") || n == "文档生成" || n == "word文档"
 }
 
+// isPptxSkillName 判断工具名是否属于 pptx / 演示文稿生成技能。
 func isPptxSkillName(name string) bool {
 	n := strings.ToLower(strings.TrimSpace(name))
 	return n == "pptx" || n == "ppt" || strings.Contains(n, "pptx") ||
 		strings.Contains(n, "幻灯") || n == "演示文稿" || n == "ppt生成"
 }
 
+// normalizeDocxTitle 把 LLM / 工具产物名里的噪声（skill_docx 前缀、hex id、下划线等）压成短可读中文标题。
 // normalizeDocxTitle turns LLM / tool noise into a short readable Chinese title.
 func normalizeDocxTitle(raw string) string {
 	s := strings.TrimSpace(raw)
@@ -212,6 +226,7 @@ func normalizeDocxTitle(raw string) string {
 	return strings.TrimSpace(s)
 }
 
+// docxDownloadBasename 生成面向用户的 .docx 下载文件名（中文+英文+数字+少量符号），统一以 .docx 结尾。
 // docxDownloadBasename is the user-facing download name, e.g. 招聘岗位模板.docx
 func docxDownloadBasename(title string) string {
 	title = normalizeDocxTitle(title)
@@ -240,6 +255,7 @@ func docxDownloadBasename(title string) string {
 	return base + ".docx"
 }
 
+// docxStorageName 在下载名前加一段 12 字符 hex id 避免盘上冲突。
 // docxStorageName keeps a short id prefix to avoid collisions on disk.
 func docxStorageName(downloadBasename string) string {
 	base := filepath.Base(downloadBasename)
@@ -253,6 +269,7 @@ func docxStorageName(downloadBasename string) string {
 	return id + "-" + base
 }
 
+// docxDisplayNameFromStorage 把"id-标题.docx"形式的存储名还原成"标题.docx"作为 UI 显示 / 下载名。
 // docxDisplayNameFromStorage strips the collision id for Content-Disposition / UI.
 func docxDisplayNameFromStorage(storage string) string {
 	name := filepath.Base(strings.TrimSpace(storage))
@@ -265,6 +282,7 @@ func docxDisplayNameFromStorage(storage string) string {
 	return docxDownloadBasename(name)
 }
 
+// skillArtifactStorageName 把 URL/查询串里的产物名做 basename + URL decode + trim 引号清洗。
 func skillArtifactStorageName(raw string) string {
 	name := filepath.Base(strings.TrimSpace(raw))
 	name = strings.Trim(name, "`\"'")
@@ -274,10 +292,12 @@ func skillArtifactStorageName(raw string) string {
 	return name
 }
 
+// skillArtifactFilePath 给定 storageName，返回本地工件目录里的完整文件路径。
 func skillArtifactFilePath(storageName string) string {
 	return filepath.Join(skillArtifactDir(), skillArtifactStorageName(storageName))
 }
 
+// skillArtifactExists 检查 storageName 对应的本地产物文件是否存在（且是常规文件）。
 func skillArtifactExists(storageName string) bool {
 	storageName = skillArtifactStorageName(storageName)
 	if storageName == "" {
@@ -287,6 +307,7 @@ func skillArtifactExists(storageName string) bool {
 	return err == nil && !st.IsDir()
 }
 
+// fetchSkillArtifactFromRuntime 从 sandbox runtime 服务（DE_SANDBOX_RUNTIME_URL）拉产物到本地缓存目录。
 func fetchSkillArtifactFromRuntime(storageName string) error {
 	storageName = skillArtifactStorageName(storageName)
 	if storageName == "" {
@@ -320,7 +341,10 @@ func fetchSkillArtifactFromRuntime(storageName string) error {
 	return nil
 }
 
-// ensureDocxArtifactOnDisk guarantees a .docx exists in the local artifact dir.
+// ensureDocxArtifactOnDisk 保证 .docx 一定存在本地产物目录：
+// 1) 已有产物且正文有效 → 直接复用；
+// 2) 已有产物但正文是占位/脚本/明显不足 → 替换；
+// 3) 否则 fetch 自 runtime / 走本地生成脚本。
 func ensureDocxArtifactOnDisk(title, content, preferredStorage string) (storageName, downloadPath string, err error) {
 	preferredStorage = skillArtifactStorageName(preferredStorage)
 	body := sanitizeDocxBody(content)
@@ -352,6 +376,7 @@ func ensureDocxArtifactOnDisk(title, content, preferredStorage string) (storageN
 	return generateDocxArtifactLocal(title, content)
 }
 
+// replaceSkillArtifactPath 在 output 文本里把 oldStorage 对应的 /api/skill-artifacts/ 链接替换成 newStorage。
 func replaceSkillArtifactPath(output, oldStorage, newStorage string) string {
 	if oldStorage == "" || newStorage == "" || oldStorage == newStorage {
 		return output
@@ -364,7 +389,8 @@ func replaceSkillArtifactPath(output, oldStorage, newStorage string) string {
 	return strings.ReplaceAll(out, encOld, encNew)
 }
 
-// ensureSkillArtifactsInOutput syncs .docx artifacts already referenced in assistant output (no new generation).
+// ensureSkillArtifactsInOutput 在 assistant 回复已含 .docx 链接但本地产物缺失/无效时，
+// 用给定 title+content 触发本地重新生成并把链接指向新的 storageName。
 func ensureSkillArtifactsInOutput(output, title, content string) string {
 	if strings.TrimSpace(output) == "" {
 		return output
@@ -410,6 +436,7 @@ func ensureSkillArtifactsInOutput(output, title, content string) string {
 	return output
 }
 
+// docxBodyFromToolCalls 从 docx 工具调用的 args 里挑出最后一条"看起来像正文"的参数（content/input/command）。
 func docxBodyFromToolCalls(toolCalls []map[string]any) string {
 	for i := len(toolCalls) - 1; i >= 0; i-- {
 		tc := toolCalls[i]
@@ -428,6 +455,7 @@ func docxBodyFromToolCalls(toolCalls []map[string]any) string {
 	return ""
 }
 
+// extractDocxBodyFromAssistantText 从 assistant 全文里去掉"已生成 Word..."等通知行，挑出真正像 docx 章节的正文。
 func extractDocxBodyFromAssistantText(full string) string {
 	lines := strings.Split(stripArtifactNoise(full), "\n")
 	out := make([]string, 0, len(lines))
@@ -454,7 +482,8 @@ func extractDocxBodyFromAssistantText(full string) string {
 	return body
 }
 
-// resolveDocxBodyForTurn picks the best docx body from assistant reply vs tool args.
+// resolveDocxBodyForTurn 在 assistant 正文 / 工具 args / skill 输出 / 用户原始消息之间挑最佳 docx 正文。
+// 优先级：assistant 文段（>toolArgs+50 rune 视为更可信） > tool args > skill output > user message。
 func resolveDocxBodyForTurn(full string, toolCalls []map[string]any, userMessage string) string {
 	if body := extractDocxBodyFromAssistantText(full); body != "" {
 		toolBody := docxBodyFromToolCalls(toolCalls)
@@ -475,6 +504,7 @@ func resolveDocxBodyForTurn(full string, toolCalls []map[string]any, userMessage
 	return ""
 }
 
+// resolveDocxBodyFromExecution 在 Skill Turn 执行上下文里挑 docx 正文（剔除脚本路径/文件名等误判）。
 func resolveDocxBodyFromExecution(args map[string]any, userMessage, output string, plan map[string]any) string {
 	if args != nil {
 		path := coalesce(str(args["path"]), str(args["filename"]))
@@ -512,6 +542,7 @@ func resolveDocxBodyFromExecution(args map[string]any, userMessage, output strin
 	return user
 }
 
+// extractDocxBodyFromSkillOutput 从 skill 输出里"—— 步骤 N"之后的部分挑出 docx 正文。
 func extractDocxBodyFromSkillOutput(output string) string {
 	lines := strings.Split(output, "\n")
 	var body []string
@@ -541,6 +572,7 @@ func extractDocxBodyFromSkillOutput(output string) string {
 	return strings.TrimSpace(strings.Join(body, "\n"))
 }
 
+// findGenerateDocxScript 在三个常见相对路径里定位 generate_docx.py；找不到时返回错误。
 func findGenerateDocxScript() (string, error) {
 	candidates := []string{
 		filepath.Join("..", "..", "services", "qzda-sandbox", "scripts", "generate_docx.py"),
@@ -555,6 +587,7 @@ func findGenerateDocxScript() (string, error) {
 	return "", fmt.Errorf("找不到 generate_docx.py")
 }
 
+// findGeneratePptxScript 在三个常见相对路径里定位 generate_pptx.py；找不到时返回错误。
 func findGeneratePptxScript() (string, error) {
 	candidates := []string{
 		filepath.Join("..", "..", "services", "qzda-sandbox", "scripts", "generate_pptx.py"),
@@ -569,6 +602,7 @@ func findGeneratePptxScript() (string, error) {
 	return "", fmt.Errorf("找不到 generate_pptx.py")
 }
 
+// normalizePptxTitle 把 LLM / 工具产物名压成短可读中文标题，统一回退到"演示文稿"。
 func normalizePptxTitle(raw string) string {
 	s := strings.TrimSpace(raw)
 	s = strings.Trim(s, "《》「」『』\"'`")
@@ -586,6 +620,7 @@ func normalizePptxTitle(raw string) string {
 	return strings.TrimSpace(s)
 }
 
+// pptxDownloadBasename 生成面向用户的 .pptx 下载文件名（中文+英文+数字+少量符号）。
 func pptxDownloadBasename(title string) string {
 	title = normalizePptxTitle(title)
 	var b strings.Builder
@@ -606,6 +641,7 @@ func pptxDownloadBasename(title string) string {
 	return out + ".pptx"
 }
 
+// pptxStorageName 在下载名前加 12 字符 hex id 避免盘上冲突，并加 .pptx 后缀。
 func pptxStorageName(downloadName string) string {
 	base := strings.TrimSuffix(downloadName, filepath.Ext(downloadName))
 	id := fmt.Sprintf("%x", time.Now().UnixNano())
@@ -615,8 +651,10 @@ func pptxStorageName(downloadName string) string {
 	return id + "-" + base + ".pptx"
 }
 
+// reSkillXlsxPrefix 匹配 skill_xlsx / skill-xlsx- 等 xlsx 技能名前缀。
 var reSkillXlsxPrefix = regexp.MustCompile(`(?i)^skill[_-]?xlsx[_-]*`)
 
+// normalizeXlsxTitle 把 xlsx 标题压成短可读中文名，统一回退到"数据明细"。
 func normalizeXlsxTitle(raw string) string {
 	s := strings.TrimSpace(raw)
 	s = strings.Trim(s, "《》「」『》\"'`")
@@ -634,6 +672,7 @@ func normalizeXlsxTitle(raw string) string {
 	return strings.TrimSpace(s)
 }
 
+// xlsxDownloadBasename 生成面向用户的 .xlsx 下载文件名，统一以 .xlsx 结尾。
 func xlsxDownloadBasename(title string) string {
 	title = normalizeXlsxTitle(title)
 	var b strings.Builder
@@ -654,6 +693,7 @@ func xlsxDownloadBasename(title string) string {
 	return out + ".xlsx"
 }
 
+// xlsxStorageName 在下载名前加 12 字符 hex id 避免盘上冲突，并加 .xlsx 后缀。
 func xlsxStorageName(downloadName string) string {
 	base := strings.TrimSuffix(downloadName, filepath.Ext(downloadName))
 	id := fmt.Sprintf("%x", time.Now().UnixNano())
@@ -663,6 +703,7 @@ func xlsxStorageName(downloadName string) string {
 	return id + "-" + base + ".xlsx"
 }
 
+// xlsxDisplayNameFromStorage 把"id-标题.xlsx"形式的存储名还原成"标题.xlsx"作为 UI 显示 / 下载名。
 func xlsxDisplayNameFromStorage(storage string) string {
 	name := filepath.Base(strings.TrimSpace(storage))
 	if reArtifactIDPref.MatchString(name) {
@@ -674,6 +715,7 @@ func xlsxDisplayNameFromStorage(storage string) string {
 	return xlsxDownloadBasename(name)
 }
 
+// findGenerateXlsxScript 在多个常见相对路径（包含 cwd + 几种相对位置）里定位 spreadsheet.sh。
 func findGenerateXlsxScript() (string, error) {
 	candidates := []string{
 		filepath.Join("..", "..", "..", "services", "qzda-sandbox", "builtin", "skills", "spreadsheets", "scripts", "spreadsheet.sh"),
@@ -695,7 +737,7 @@ func findGenerateXlsxScript() (string, error) {
 	return "", fmt.Errorf("找不到 spreadsheet.sh")
 }
 
-// generateXlsxArtifactLocal builds an .xlsx via the spreadsheet skill CLI (markdown table → xlsx).
+// generateXlsxArtifactLocal 用 spreadsheet.sh 把 markdown 表 + 标题转成 .xlsx 落到本地工件目录。
 func generateXlsxArtifactLocal(title, content string) (storageName, downloadPath string, err error) {
 	cleanupSkillArtifactsTTL(7*24*time.Hour, 400)
 	dir := skillArtifactDir()
@@ -738,7 +780,7 @@ func generateXlsxArtifactLocal(title, content string) (storageName, downloadPath
 	return storageName, downloadPath, nil
 }
 
-// previewXlsxArtifact shells out to spreadsheet.sh inspect to get a JSON preview.
+// previewXlsxArtifact 调用 spreadsheet.sh inspect 拿到 xlsx preview payload（含 blocks/filename 等）。
 func previewXlsxArtifact(storageName string) (map[string]any, error) {
 	storageName = skillArtifactStorageName(storageName)
 	if storageName == "" || !strings.HasSuffix(strings.ToLower(storageName), ".xlsx") {
@@ -779,6 +821,7 @@ func previewXlsxArtifact(storageName string) (map[string]any, error) {
 	return payload, nil
 }
 
+// findGeneratePptxProdScript 在多个常见相对路径里定位 generate_pptx_prod.sh（PptxGenJS 高级布局脚本）。
 func findGeneratePptxProdScript() (string, error) {
 	candidates := []string{
 		filepath.Join("..", "..", "services", "qzda-sandbox", "scripts", "generate_pptx_prod.sh"),
@@ -801,6 +844,8 @@ func findGeneratePptxProdScript() (string, error) {
 	return "", fmt.Errorf("找不到 generate_pptx_prod.sh")
 }
 
+// generatePptxArtifactLocal 把大纲 + 标题转成 .pptx：先试 PptxGenJS prod 脚本，再 fallback 到 python 脚本。
+// 两次都用 validatePptxOOXML / validatePptxOOXMLLoose 做基本结构校验。
 func generatePptxArtifactLocal(title, content string) (storageName, downloadPath string, err error) {
 	cleanupSkillArtifactsTTL(7*24*time.Hour, 400)
 	dir := skillArtifactDir()
@@ -857,6 +902,7 @@ func generatePptxArtifactLocal(title, content string) (storageName, downloadPath
 	return storageName, downloadPath, nil
 }
 
+// formatPptxToolOutput 渲染 PPT 工具产物给 assistant 看的标准化回执：标题 + 文件名 + 下载链接。
 func formatPptxToolOutput(displayTitle, storageName, downloadPath string, localFallback bool) string {
 	downloadName := strings.TrimPrefix(storageName, "")
 	if i := strings.Index(storageName, "-"); i > 0 && i < len(storageName)-1 {
@@ -873,6 +919,7 @@ func formatPptxToolOutput(displayTitle, storageName, downloadPath string, localF
 	)
 }
 
+// looksLikePptxGenerateRequest 判断用户消息是否同时含有 PPT 相关词 + 生成动作词。
 func looksLikePptxGenerateRequest(msg string) bool {
 	m := strings.ToLower(strings.TrimSpace(msg))
 	if m == "" {
@@ -883,6 +930,7 @@ func looksLikePptxGenerateRequest(msg string) bool {
 	return hasPPT && hasGen
 }
 
+// inferPptxTitleFromMessage 从用户消息里启发式抽 PPT 标题（书名号/引号/生成 + 短词/季度考评）。
 func inferPptxTitleFromMessage(msg string) string {
 	msg = strings.TrimSpace(msg)
 	if msg == "" {
@@ -912,6 +960,7 @@ func inferPptxTitleFromMessage(msg string) string {
 	return ""
 }
 
+// defaultPptxOutlineForMessage 当 LLM 没给大纲时产出多章节的 PPT 大纲模板（季度考评版 + 通用版）。
 func defaultPptxOutlineForMessage(title, userMsg string) string {
 	t := coalesce(normalizePptxTitle(title), "演示文稿")
 	if strings.Contains(userMsg, "季度考评") || strings.Contains(userMsg, "季度考核") {
@@ -973,11 +1022,13 @@ func defaultPptxOutlineForMessage(title, userMsg string) string {
 本节用一段话收束全文：核心结论、需要管理层支持的关键决策项、以及下一周期内的跟踪重点。`, t)
 }
 
+// hasPptxArtifactText 判断文本里是否同时含 ".pptx" 关键字 + /api/skill-artifacts/ 链接。
 func hasPptxArtifactText(text string) bool {
 	low := strings.ToLower(text)
 	return strings.Contains(low, ".pptx") && strings.Contains(text, "/api/skill-artifacts/")
 }
 
+// pptxRelatedToolAttempted 判断回合里是否调过 PPT 相关工具（pptx 技能 / write_file / bash 等）。
 func pptxRelatedToolAttempted(toolCalls []map[string]any) bool {
 	for _, tc := range toolCalls {
 		name := strings.ToLower(str(tc["name"]))
@@ -993,6 +1044,7 @@ func pptxRelatedToolAttempted(toolCalls []map[string]any) bool {
 	return false
 }
 
+// loadDocxPreviewPayload 调 generate_docx.py --preview-json 拿到 docx 内部结构 + 元信息。
 func loadDocxPreviewPayload(storageName string) (map[string]any, error) {
 	storageName = skillArtifactStorageName(storageName)
 	if storageName == "" {
@@ -1020,6 +1072,7 @@ func loadDocxPreviewPayload(storageName string) (map[string]any, error) {
 	return payload, nil
 }
 
+// previewDocxArtifact 在 loadDocxPreviewPayload 基础上叠加 docx 专属的占位/脚本检查。
 func previewDocxArtifact(storageName string) (map[string]any, error) {
 	payload, err := loadDocxPreviewPayload(storageName)
 	if err != nil {
@@ -1032,20 +1085,26 @@ func previewDocxArtifact(storageName string) (map[string]any, error) {
 	return payload, nil
 }
 
-var pptxSlideTextRE = regexp.MustCompile(`(?s)<a:t[^>]*>([^<]*)</a:t>`)
-var pptxParaRE = regexp.MustCompile(`(?s)<a:p\b[^>]*>(.*?)</a:p>`)
-var pptxBuCharRE = regexp.MustCompile(`(?i)<a:buChar\b`)
+// pptx 内部 XML 解析用的三个正则：取 <a:t> 文本、<a:p> 段落、是否带项目符号样式。
+var (
+	pptxSlideTextRE = regexp.MustCompile(`(?s)<a:t[^>]*>([^<]*)</a:t>`)
+	pptxParaRE      = regexp.MustCompile(`(?s)<a:p\b[^>]*>(.*?)</a:p>`)
+	pptxBuCharRE    = regexp.MustCompile(`(?i)<a:buChar\b`)
+)
 
+// inferTitleFromPptxStorage 从 PPT 存储名里去掉 hex id 拿到"近似标题"。
 func inferTitleFromPptxStorage(storageName string) string {
 	base := strings.TrimSuffix(filepath.Base(storageName), filepath.Ext(storageName))
 	base = reArtifactIDPref.ReplaceAllString(base, "")
 	return strings.TrimSpace(base)
 }
 
+// generateDocxArtifactLocal 是无指定 storageName 的便捷重载，自动分配 docxStorageName。
 func generateDocxArtifactLocal(title, content string) (storageName, downloadPath string, err error) {
 	return generateDocxArtifactLocalNamed(title, content, "")
 }
 
+// generateDocxArtifactLocalNamed 用 generate_docx.py 生成 docx；preferredStorage 非空时复用同一存储名（用于重建）。
 func generateDocxArtifactLocalNamed(title, content, preferredStorage string) (storageName, downloadPath string, err error) {
 	content = sanitizeDocxBody(content)
 	if content == "" {
@@ -1091,6 +1150,7 @@ func generateDocxArtifactLocalNamed(title, content, preferredStorage string) (st
 	return storageName, downloadPath, nil
 }
 
+// asciiFallbackFilename 把任意文件名转成 ASCII 友好的下载名（中文 / 标点降级为 _）。
 func asciiFallbackFilename(name string) string {
 	ext := filepath.Ext(name)
 	base := strings.TrimSuffix(name, ext)
@@ -1113,6 +1173,7 @@ func asciiFallbackFilename(name string) string {
 	return out + ext
 }
 
+// contentDispositionAttachment 渲染符合 RFC 5987 的 Content-Disposition：同时给 ASCII + UTF-8 两份文件名。
 func contentDispositionAttachment(name string) string {
 	// Prefer clean download basename (no storage id / skill_docx noise).
 	display := name
@@ -1135,11 +1196,13 @@ func contentDispositionAttachment(name string) string {
 	)
 }
 
+// writeJSON 是产物预览/下载端点的 JSON 响应统一封装：先写 CSP 头再走 response.OK。
 func writeJSON(w http.ResponseWriter, payload any) {
 	writePreviewSandboxHeaders(w)
 	response.OK(w, payload)
 }
 
+// formatDocxToolOutput 渲染 Word 工具产物给 assistant 看的标准化回执：标题 + 文件名 + 下载链接。
 func formatDocxToolOutput(displayTitle, storageName, downloadPath string, localFallback bool) string {
 	downloadName := docxDisplayNameFromStorage(storageName)
 	title := normalizeDocxTitle(displayTitle)
@@ -1153,7 +1216,7 @@ func formatDocxToolOutput(displayTitle, storageName, downloadPath string, localF
 	)
 }
 
-// inferDocxTitleFromMessage extracts a short document title from user intent.
+// inferDocxTitleFromMessage 从用户消息启发式抽出 Word 文档标题（书名号/引号/招聘岗位/岗位说明）。
 func inferDocxTitleFromMessage(msg string) string {
 	msg = strings.TrimSpace(msg)
 	if msg == "" {
@@ -1181,12 +1244,14 @@ func inferDocxTitleFromMessage(msg string) string {
 	return ""
 }
 
+// isSpreadsheetSkillName 判断工具名是否属于 xlsx / spreadsheets 类电子表格技能。
 func isSpreadsheetSkillName(name string) bool {
 	n := strings.ToLower(strings.TrimSpace(name))
 	return n == "xlsx" || n == "spreadsheets" || n == "spreadsheet" ||
 		n == "excel" || strings.Contains(n, "spreadsheet") || n == "表格生成"
 }
 
+// inferXlsxTitleFromMessage 从用户消息启发式抽 xlsx 标题（书名号/引号 + 预算/考勤/花名册 等关键词）。
 func inferXlsxTitleFromMessage(msg string) string {
 	msg = strings.TrimSpace(msg)
 	if msg == "" {
@@ -1216,6 +1281,7 @@ func inferXlsxTitleFromMessage(msg string) string {
 	return ""
 }
 
+// defaultDocxOutlineForMessage 当 LLM 没给正文时产出多章节 Word 大纲（招聘 / 岗位说明 / 通用三套模板）。
 // defaultDocxOutlineForMessage produces a structured Word outline when the model did not
 // supply content. Mirrors defaultPptxOutlineForMessage so Word tasks without explicit
 // body still generate multi-section documents instead of 1-page stubs.
@@ -1282,6 +1348,7 @@ func defaultDocxOutlineForMessage(title, userMsg string) string {
 本节说明文档的解释权、生效日期、版本变更记录与配套文档引用，确保读者在文档迭代过程中能找到最新版本。`, t)
 }
 
+// defaultXlsxOutlineForMessage 当 LLM 没给表内容时产出 markdown 表格骨架（预算 / 考勤 / 通用三套）。
 // defaultXlsxOutlineForMessage produces a structured Excel outline (markdown table seed)
 // when the model did not supply content. The spreadsheet skill consumes markdown tables.
 func defaultXlsxOutlineForMessage(title, userMsg string) string {
@@ -1331,6 +1398,7 @@ func defaultXlsxOutlineForMessage(title, userMsg string) string {
 - 责任人：`, t)
 }
 
+// validatePptxOOXML 严格校验 pptx：必须含 [Content_Types].xml + presentation/slide/theme/master/layout 等核心 part。
 // validatePptxOOXML ensures PowerPoint-critical parts exist (strict: our python generator layout).
 // Mirrors server.validatePptxOOXML (skill_artifacts_office.go:209).
 func validatePptxOOXML(path string) error {
@@ -1365,6 +1433,7 @@ func validatePptxOOXML(path string) error {
 	return nil
 }
 
+// validatePptxOOXMLLoose 宽松校验 pptx：接受 PptxGenJS 包（theme/master 名字可能不固定）。
 // validatePptxOOXMLLoose accepts PptxGenJS packages (theme/master names may vary).
 // Mirrors server.validatePptxOOXMLLoose (skill_artifacts_office.go:242).
 func validatePptxOOXMLLoose(path string) error {
@@ -1402,6 +1471,7 @@ func validatePptxOOXMLLoose(path string) error {
 	return nil
 }
 
+// writePreviewSandboxHeaders 给产物预览端点统一写 CSP / X-Frame / X-Content-Type 等安全头。
 // writePreviewSandboxHeaders sets the standard preview-sandbox CSP /
 // X-Frame-Options / Cache-Control headers in one call. Mirrors
 // server.writePreviewSandboxHeaders (preview_sandbox.go:45).
@@ -1413,6 +1483,7 @@ func writePreviewSandboxHeaders(w http.ResponseWriter) {
 	}
 }
 
+// previewSandboxHeaders 返回预览端点应设置的安全 headers 集合；可注入额外 CSP 覆盖默认。
 // previewSandboxHeaders returns the headers that every artifact endpoint
 // should set. Mirrors server.previewSandboxHeaders (preview_sandbox.go:26).
 func previewSandboxHeaders(extraCSP ...string) http.Header {

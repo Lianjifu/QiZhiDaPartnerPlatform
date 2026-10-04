@@ -1,3 +1,10 @@
+// Package copilot —— copilot 回合(copilotTurn)的内存状态机。
+//
+// 状态值：running → done / cancelled / failed。
+//
+// 存放在进程级 sync.Map（copilotTurnStates）里，按 correlationId 索引。
+// 给 HTTP 端点（status / replay / cancel）提供查询与终态翻转能力，
+// 同时被 SSE 流的取消逻辑（cancelStreamByCorrelation）复用。
 package copilot
 
 import (
@@ -13,6 +20,14 @@ const (
 	turnStatusFailed    = "failed"
 )
 
+// copilotTurnRecord 是 correlationId 维度的回合状态记录。
+//
+// 生命周期：
+//   - registerCopilotTurn     → status=running
+//   - finishCopilotTurn       → status=done | failed
+//   - markCopilotTurnCancelled→ status=cancelled（可被后续 register 继承，见 registerCopilotTurn）
+//
+// 同时缓存 clientMsgId 给幂等去重（同一客户端消息重投时直接 replay）。
 type copilotTurnRecord struct {
 	ConversationID string
 	CorrelationID  string
@@ -24,6 +39,11 @@ type copilotTurnRecord struct {
 
 var copilotTurnStates sync.Map // correlationId -> *copilotTurnRecord
 
+// registerCopilotTurn 把一个 correlationId 标记为 running。
+//
+// 继承语义：如果该 corr 之前已被 markCopilotTurnCancelled（用户先点取消、
+// 后端又收到消息），新记录会直接以 cancelled 状态落盘，FinishedAt 也保留
+// 原取消时刻——避免 UI 上"刚显示已取消又被 running 覆盖"的闪动。
 func registerCopilotTurn(cid, corr, clientMsgID string) {
 	if corr == "" {
 		return

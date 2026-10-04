@@ -20,62 +20,91 @@ import { EvidenceResultList } from './ChunkEvidence';
 import { EvalCard, MetricCell, PIPELINE } from './KnowledgeShared';
 import type { KnowledgeController } from './useKnowledgeController';
 
-export function KnowledgeTabEval({ c }: { c: KnowledgeController }) {
-  if (c.workspace === 'graph') {
-    return (
-      <main className="de-employee-shell knowledge-workspace overflow-hidden rounded-xl bg-[var(--surface-1)] p-3 md:p-4">
-        <div className="knowledge-workspace-heading">
-          <div>
-            <div className="text-sm font-semibold">图谱与关联</div>
-            <p>从原始文档中抽取实体与关系，为影响分析和混合召回提供可回溯的业务上下文。</p>
+export function KnowledgeTabEval({
+  c,
+  mode,
+  sourceDocIds,
+  packageId,
+  embedded,
+}: {
+  c: KnowledgeController;
+  mode?: 'graph' | 'retrieval';
+  sourceDocIds?: string[];
+  packageId?: string;
+  embedded?: boolean;
+}) {
+  const view = mode ?? (c.workspace === 'graph' ? 'graph' : 'retrieval');
+  const allowed = sourceDocIds?.length ? new Set(sourceDocIds) : null;
+  const entities = allowed ? c.graphEntities.filter((item) => allowed.has(item.sourceDocId)) : c.graphEntities;
+  const entityIds = new Set(entities.map((item) => item.id));
+  const relations = allowed ? c.graphRelations.filter((item) => allowed.has(item.sourceDocId) || (entityIds.has(item.fromId) && entityIds.has(item.toId))) : c.graphRelations;
+  if (view === 'graph') {
+    const canvas = (
+      <>
+        {!embedded && (
+          <div className="knowledge-workspace-heading">
+            <div>
+              <div className="text-sm font-semibold">图谱与关联</div>
+              <p>从原始文档中抽取实体与关系，为影响分析和混合召回提供可回溯的业务上下文。</p>
+            </div>
+            <Badge tone="brand">证据溯源已启用</Badge>
           </div>
-          <Badge tone="brand">证据溯源已启用</Badge>
-        </div>
+        )}
         <KnowledgeGraphCanvas
-          entities={c.graphEntities}
-          relations={c.graphRelations}
+          entities={entities}
+          relations={relations}
           selectedEntityId={c.selectedGraphEntityId}
           onSelect={(id) => {
             c.setSelectedGraphEntityId(id);
-            const entity = c.graphEntities.find((item) => item.id === id);
+            const entity = entities.find((item) => item.id === id);
             if (entity) c.setGovernanceNotice(`实体「${entity.name}」来自文档 ${entity.sourceDocId} · ${entity.sourceVersion}。`);
           }}
         />
+      </>
+    );
+    if (embedded) return canvas;
+    return (
+      <main className="de-employee-shell knowledge-workspace overflow-hidden rounded-xl bg-[var(--surface-1)] p-3 md:p-4">
+        {canvas}
       </main>
     );
   }
 
-  return <RetrievalWorkspace c={c} />;
+  return <RetrievalWorkspace c={c} packageId={packageId} embedded={embedded} />;
 }
 
-function RetrievalWorkspace({ c }: { c: KnowledgeController }) {
+function RetrievalWorkspace({ c, packageId, embedded }: { c: KnowledgeController; packageId?: string; embedded?: boolean }) {
   const searchResults = c.retrieveResults;
   const hasQuery = Boolean(c.testQuery.trim());
   const visibleChunks = hasQuery ? searchResults : c.topChunks.slice(0, 4);
+  const kb = packageId ?? 'all';
+  const run = () => c.testQuery.trim() && c.retrieveMutation.mutate({ query: c.testQuery, kb });
 
-  return (
-    <main className="de-employee-shell knowledge-workspace overflow-hidden rounded-xl bg-[var(--surface-1)] p-3 md:p-4">
-      <div className="knowledge-workspace-heading">
-        <div>
-          <div className="text-sm font-semibold">检索验证台</div>
-          <p>验证数字伙伴在真实问题下的证据覆盖、相关度与响应性能。</p>
+  const body = (
+    <>
+      {!embedded && (
+        <div className="knowledge-workspace-heading">
+          <div>
+            <div className="text-sm font-semibold">检索验证台</div>
+            <p>验证数字伙伴在真实问题下的证据覆盖、相关度与响应性能。</p>
+          </div>
+          <Badge tone="success"><CheckCircle2 className="mr-1 h-3 w-3" />检索服务可用</Badge>
         </div>
-        <Badge tone="success"><CheckCircle2 className="mr-1 h-3 w-3" />检索服务可用</Badge>
-      </div>
+      )}
 
-      <div className="knowledge-retrieval-query mt-4">
+      <div className="knowledge-retrieval-query mt-1">
         <Search className="h-4 w-4 shrink-0 text-[var(--brand)]" />
         <Input
           placeholder="输入业务问题，例如：Redis OOM 如何安全处置？"
           value={c.testQuery}
           onChange={(event) => c.setTestQuery(event.target.value)}
-          onKeyDown={(event) => event.key === 'Enter' && c.testQuery.trim() && c.retrieveMutation.mutate({ query: c.testQuery, kb: 'all' })}
+          onKeyDown={(event) => event.key === 'Enter' && run()}
           className="border-0 bg-transparent text-sm shadow-none focus-visible:ring-0"
         />
         <Button
           size="sm"
           disabled={!c.testQuery.trim() || c.retrieveMutation.isPending}
-          onClick={() => c.retrieveMutation.mutate({ query: c.testQuery, kb: 'all' })}
+          onClick={() => run()}
         >
           {c.retrieveMutation.isPending ? '验证中…' : '执行验证'}
         </Button>
@@ -124,14 +153,19 @@ function RetrievalWorkspace({ c }: { c: KnowledgeController }) {
         ))}
       </div>
 
-      <EvaluationGate c={c} />
-    </main>
+      <EvaluationGate c={c} packageId={packageId} />
+    </>
   );
+  if (embedded) return body;
+  return <main className="de-employee-shell knowledge-workspace overflow-hidden rounded-xl bg-[var(--surface-1)] p-3 md:p-4">{body}</main>;
 }
 
-function EvaluationGate({ c }: { c: KnowledgeController }) {
-  const targetPackage = c.knowledgePackages.find((item) => item.status === 'published') ?? c.knowledgePackages[0];
+function EvaluationGate({ c, packageId }: { c: KnowledgeController; packageId?: string }) {
+  const targetPackage = packageId
+    ? c.knowledgePackages.find((item) => item.id === packageId)
+    : (c.knowledgePackages.find((item) => item.status === 'published') ?? c.knowledgePackages[0]);
   const profile = c.retrievalProfiles.find((item) => item.packageId === targetPackage?.id);
+  const rows = packageId ? c.evaluations.filter((item) => item.packageId === packageId) : c.evaluations.slice(0, 2);
 
   return (
     <section className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3 md:p-4">
@@ -158,7 +192,7 @@ function EvaluationGate({ c }: { c: KnowledgeController }) {
         )}
       </div>
       <div className="mt-3 grid gap-3 lg:grid-cols-2">
-        {c.evaluations.slice(0, 2).map((item) => {
+        {rows.slice(0, 2).map((item) => {
           const pkg = c.knowledgePackages.find((record) => record.id === item.packageId);
           return (
             <article key={item.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface-1)] p-3">

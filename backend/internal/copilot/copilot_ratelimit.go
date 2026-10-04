@@ -1,3 +1,16 @@
+// Package copilot —— copilot 回合的两类进程级限流。
+//
+// 1. 全局限流器 copilotRateLimiter（令牌桶算法）：
+//    按 ws+userID 维度配额，默认 30 req/min（可由 DE_COPILOT_RPM 调整），
+//    超额时让 allowCopilotTurn 返回 false 并把计数器 IncCopilotRateLimited 上报。
+//
+// 2. 流式取消表 streamCancels（sync.Map）：
+//    把每个 SSE 流的 ctx.CancelFunc 按 correlationId 登记，
+//    cancelStreamByCorrelation 让 POST /cancel 端点能跨 goroutine 终止正在跑的回合。
+//
+// 3. 幂等表 streamIdempot + Store.CopilotIdempotency：
+//    同一 (cid, clientMsgID) 在窗口内重投时直接返回历史 assistant 消息，
+//    避免并发 wecom webhook 把同一句用户消息跑两遍。
 package copilot
 
 import (
@@ -18,6 +31,15 @@ type rateBucket struct {
 	last   time.Time
 }
 
+// copilotRateLimiter 是"令牌桶"实现的进程内限流器。
+//
+// 字段：
+//   - buckets —— 按 key 维度（ws+userID）分桶，互不影响
+//   - rate    —— 每秒补充的 token 数（= RPM/60）
+//   - burst   —— 桶容量上限（= RPM），允许短时尖峰
+//
+// 每次 allow() 先按 elapsed × rate 给桶补 token，封顶 burst，再扣 1；
+// 扣完 <1 即视为超限。
 type copilotRateLimiter struct {
 	mu      sync.Mutex
 	buckets map[string]*rateBucket
@@ -41,6 +63,12 @@ func newCopilotRateLimiter() *copilotRateLimiter {
 
 var globalCopilotRL = newCopilotRateLimiter()
 
+// allow 是令牌桶的核心动作，调用方需保证 key 维度的合理性（一般用 ws+userID）。
+//
+// 实现细节：
+//   - 用一把 mutex 串行化所有桶的访问——单进程内限流器不需要细粒度锁
+//   - 补 token 公式 elapsed × rate 必须先于扣减，避免新桶被超额扣除
+//   - 返回 false 时调用方负责把指标 IncCopilotRateLimited 上报
 func (l *copilotRateLimiter) allow(key string) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()

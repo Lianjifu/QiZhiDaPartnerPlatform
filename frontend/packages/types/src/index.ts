@@ -285,7 +285,60 @@ export interface ControlledTask extends Task {
     blockedBy?: ID;
   };
   auditEvents: TaskAuditEvent[];
+  comments?: TaskComment[];
   version: number;
+}
+
+export interface TaskComment {
+  id: ID;
+  at: ISODate;
+  actor: string;
+  body: string;
+}
+
+export type ScheduleCadence = 'once' | 'hourly' | 'daily' | 'weekly';
+export type ScheduleJobStatus = 'active' | 'paused' | 'expired';
+export type ScheduleRunStatus = 'running' | 'success' | 'failed' | 'skipped';
+
+export interface ScheduledTask {
+  id: ID;
+  workspaceId?: ID;
+  code: string;
+  title: string;
+  description?: string;
+  cadence: ScheduleCadence;
+  hour: number;
+  minute: number;
+  weekday?: number;
+  runAt?: ISODate;
+  timezone: string;
+  nextRunAt?: ISODate;
+  lastRunAt?: ISODate;
+  lastStatus?: ScheduleRunStatus;
+  enabled: boolean;
+  status: ScheduleJobStatus;
+  digitalPartnerId?: ID;
+  digitalPartnerName?: string;
+  workflowId?: ID;
+  workflowName?: string;
+  owner?: string;
+  createdBy?: ID;
+  createdAt: ISODate;
+  updatedAt: ISODate;
+  runCount: number;
+  failCount: number;
+}
+
+export interface ScheduledTaskRun {
+  id: ID;
+  scheduleId: ID;
+  workspaceId?: ID;
+  startedAt: ISODate;
+  finishedAt?: ISODate;
+  status: ScheduleRunStatus;
+  message?: string;
+  taskId?: ID;
+  taskCode?: string;
 }
 
 // ============ 智能体 P5 ============

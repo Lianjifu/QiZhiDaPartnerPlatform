@@ -52,8 +52,14 @@ type EmployeeConfigurationInput = {
 };
 type EmployeeConfigurationResult = DigitalPartnerConfigurationVersion & { requiresApproval: boolean };
 
+export type EmbeddedSaveHandle = {
+  save: () => void;
+  pending: boolean;
+  canSave: boolean;
+};
+
 /** `EmployeeConfigurationWorkbench` — 配置岗位授权契约 (role) 或 受控能力装配 (capability)。 */
-export function EmployeeConfigurationWorkbench({ employee, open, onClose, initialSection = 'profile', mode = 'role' }: { employee: DigitalPartner; open: boolean; onClose: () => void; initialSection?: EmployeeConfigurationSection; mode?: 'role' | 'capability' }) {
+export function EmployeeConfigurationWorkbench({ employee, open, onClose, initialSection = 'profile', mode = 'role', layout = 'modal', embedded = false, onSaved, onBindSave }: { employee: DigitalPartner; open: boolean; onClose: () => void; initialSection?: EmployeeConfigurationSection; mode?: 'role' | 'capability'; layout?: 'modal' | 'inline'; embedded?: boolean; onSaved?: () => void; onBindSave?: (handle: EmbeddedSaveHandle | null) => void }) {
   const [section, setSection] = useState<EmployeeConfigurationSection>(initialSection);
   const [profile, setProfile] = useState({ name: employee.name, role: employee.role, department: employee.department, description: employee.description, owner: employee.owner, escalationOwner: employee.escalationOwner, serviceObject: employee.serviceObject, risk: employee.risk, environment: employee.environment });
   const [boundaryPolicy, setBoundaryPolicy] = useState<DigitalPartnerBoundaryPolicy>(() => resolveBoundaryPolicy(employee));
@@ -65,8 +71,8 @@ export function EmployeeConfigurationWorkbench({ employee, open, onClose, initia
   const isAdmin = user?.role === 'admin';
   const canMutate = roleCanMutate(user?.role);
 
-  const { data: versions = [] } = useApiQuery<DigitalPartnerConfigurationVersion[]>(['digital-employee', employee.id, 'configuration-versions'], `/api/partners/${employee.id}/configuration-versions`, undefined, { enabled: open });
-  const { data: capabilityCatalog } = useApiQuery<DigitalPartnerCapabilityCatalog>(['digital-employee-capability-catalog'], '/api/partner-capability-catalog', undefined, { enabled: open });
+  const { data: versions = [] } = useApiQuery<DigitalPartnerConfigurationVersion[]>(['digital-employee', employee.id, 'configuration-versions'], `/api/partners/${employee.id}/configuration-versions`, undefined, { enabled: open || layout === 'inline' });
+  const { data: capabilityCatalog } = useApiQuery<DigitalPartnerCapabilityCatalog>(['digital-employee-capability-catalog'], '/api/partner-capability-catalog', undefined, { enabled: open || layout === 'inline' });
   const closeAfterSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const save = useApiMutation<EmployeeConfigurationResult, EmployeeConfigurationInput>(() => `/api/partners/${employee.id}/configuration`, {
@@ -80,6 +86,10 @@ export function EmployeeConfigurationWorkbench({ employee, open, onClose, initia
             ? `${result.version} 岗位授权契约已保存并生效。`
             : `${result.version} 已保存，可继续执行评测与上岗流程。`,
       });
+      if (layout === 'inline') {
+        onSaved?.();
+        return;
+      }
       if (closeAfterSaveRef.current) clearTimeout(closeAfterSaveRef.current);
       closeAfterSaveRef.current = setTimeout(() => { closeAfterSaveRef.current = null; onClose(); }, 600);
     },
@@ -184,6 +194,18 @@ export function EmployeeConfigurationWorkbench({ employee, open, onClose, initia
     });
   };
 
+  const submitRef = useRef(submit);
+  submitRef.current = submit;
+  useEffect(() => {
+    if (!embedded) return;
+    onBindSave?.({
+      save: () => submitRef.current(),
+      pending: save.isPending,
+      canSave: canMutate && blocking.length === 0,
+    });
+    return () => onBindSave?.(null);
+  }, [embedded, onBindSave, save.isPending, canMutate, blocking.length]);
+
   const nav: Array<{ key: EmployeeConfigurationSection; label: string; note: string }> = mode === 'capability' ? [] : [
     { key: 'profile', label: '岗位档案', note: '身份与责任' },
     { key: 'boundary', label: '职责与边界', note: '可做与不可做' },
@@ -193,8 +215,8 @@ export function EmployeeConfigurationWorkbench({ employee, open, onClose, initia
   const pendingVersion = versions.find((item) => item.status === 'pending_approval');
   const workbenchTitle = mode === 'capability' ? '受控能力装配' : '配置岗位授权契约';
   const workbenchDescription = mode === 'capability'
-    ? '引用已发布模型与能力资产，并为技能/工具/流程设置执行授权；保存后立即生效。岗位职责请到「岗位配置」。'
-    : '维护岗位档案、职责边界、人工接管与记忆策略；能力引用请到「能力装配」。保存后立即生效。';
+    ? '引用已发布模型与能力资产，并为技能/工具/流程设置执行授权；保存后立即生效。'
+    : '维护岗位档案、职责边界、人工接管与记忆策略。保存后立即生效。';
 
   const validationAside = (
     <aside className="space-y-3 lg:w-[220px] lg:shrink-0">
@@ -255,9 +277,9 @@ export function EmployeeConfigurationWorkbench({ employee, open, onClose, initia
     setBoundaryPolicy(syncCapabilityModes(next, capabilityCapabilities, capabilityCatalog));
   };
 
-  return (
-    <Modal open={open} onClose={onClose} title={workbenchTitle} description={canMutate ? workbenchDescription : '只读核查岗位契约与能力装配证据，不提交变更。'} size="xl" footer={canMutate ? <><Button variant="ghost" onClick={onClose}>取消</Button><Button loading={save.isPending} disabled={Boolean(blocking.length)} onClick={submit}><Save className="h-3.5 w-3.5" />保存配置</Button></> : <Button variant="ghost" onClick={onClose}>关闭</Button>}>
+  const inner = (
       <div className="space-y-4">
+        {!embedded && (
         <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[var(--bg-elevated)] px-4 py-3" style={{ boxShadow: 'var(--saas-ring)' }}>
           <div className="flex min-w-0 items-center gap-3">
             <EmployeeAvatar employee={employee} size={40} />
@@ -274,9 +296,15 @@ export function EmployeeConfigurationWorkbench({ employee, open, onClose, initia
             {mode === 'capability' ? '能力装配可直接保存生效' : alreadyOnDuty ? '岗位授权契约保存后立即生效' : '配置可保存，上岗前仍需完成评测'}
           </div>
         </section>
+        )}
+        {embedded && (
+          <p className="text-xs leading-5 text-[var(--text-muted)]">
+            {mode === 'capability' ? '引用已发布模型与能力资产，并为技能 / 工具 / 流程设置执行授权。保存本步后再进入上岗。' : '维护岗位档案、职责边界、人工接管与记忆策略。保存本步后再进入能力装配。'}
+          </p>
+        )}
         {mode === 'capability' && !roleContractReady && (
           <p role="status" className="rounded-lg border border-[var(--warning)]/35 bg-[var(--warning-light)] px-3 py-2 text-xs text-[var(--text-secondary)]">
-            岗位授权契约尚未完整，可先装配能力；上岗评测前请到「岗位配置」补齐档案与职责。
+            岗位授权契约尚未完整，可先装配能力；上岗评测前请先补齐档案与职责。
           </p>
         )}
         {feedback && (
@@ -356,6 +384,24 @@ export function EmployeeConfigurationWorkbench({ employee, open, onClose, initia
           </div>
         )}
       </div>
+  );
+
+  if (layout === 'inline') {
+    return (
+      <div className="space-y-4">
+        {inner}
+        {canMutate && !embedded ? (
+          <div className="flex justify-end">
+            <Button loading={save.isPending} disabled={Boolean(blocking.length)} onClick={submit}><Save className="h-3.5 w-3.5" />保存配置</Button>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title={workbenchTitle} description={canMutate ? workbenchDescription : '只读核查岗位契约与能力装配证据，不提交变更。'} size="xl" footer={canMutate ? <><Button variant="ghost" onClick={onClose}>取消</Button><Button loading={save.isPending} disabled={Boolean(blocking.length)} onClick={submit}><Save className="h-3.5 w-3.5" />保存配置</Button></> : <Button variant="ghost" onClick={onClose}>关闭</Button>}>
+      {inner}
     </Modal>
   );
 }

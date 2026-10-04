@@ -497,3 +497,68 @@ func TestT9_Unauthorized(t *testing.T) {
 		t.Fatalf("want ok=false, got ok=true body=%s", rr.Body.String())
 	}
 }
+
+func TestScheduledTasks_CreatePauseRunComment(t *testing.T) {
+	srv, _ := newServer(t)
+	tok := adminTok(t)
+
+	rr := doRequest(t, srv, http.MethodGet, "/api/scheduled-tasks", tok, nil)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("list schedules: %d %s", rr.Code, rr.Body.String())
+	}
+
+	body := []byte(`{"title":"夜间巡检","cadence":"daily","hour":2,"minute":30}`)
+	rr = doRequest(t, srv, http.MethodPost, "/api/scheduled-tasks", tok, body)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("create schedule: %d %s", rr.Code, rr.Body.String())
+	}
+	created := decodeData(t, decodeEnvelope(t, rr).Data)
+	sid, _ := created["id"].(string)
+	if sid == "" {
+		t.Fatalf("missing schedule id: %s", rr.Body.String())
+	}
+	if created["cadence"] != "daily" {
+		t.Fatalf("cadence=%v", created["cadence"])
+	}
+
+	rr = doRequest(t, srv, http.MethodPost, "/api/scheduled-tasks/"+sid+"/pause", tok, []byte(`{}`))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("pause: %d %s", rr.Code, rr.Body.String())
+	}
+	paused := decodeData(t, decodeEnvelope(t, rr).Data)
+	if paused["status"] != "paused" {
+		t.Fatalf("status=%v", paused["status"])
+	}
+
+	rr = doRequest(t, srv, http.MethodPost, "/api/scheduled-tasks/"+sid+"/resume", tok, []byte(`{}`))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("resume: %d %s", rr.Code, rr.Body.String())
+	}
+
+	rr = doRequest(t, srv, http.MethodPost, "/api/scheduled-tasks/"+sid+"/run", tok, []byte(`{}`))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("run: %d %s", rr.Code, rr.Body.String())
+	}
+	run := decodeData(t, decodeEnvelope(t, rr).Data)
+	taskID, _ := run["taskId"].(string)
+	if taskID == "" {
+		t.Fatalf("run did not spawn task: %s", rr.Body.String())
+	}
+
+	rr = doRequest(t, srv, http.MethodPost, "/api/tasks/"+taskID+"/comments", tok, []byte(`{"body":"已接手夜间巡检"}`))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("comment: %d %s", rr.Code, rr.Body.String())
+	}
+
+	rr = doRequest(t, srv, http.MethodGet, "/api/tasks/"+taskID+"/comments", tok, nil)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("list comments: %d %s", rr.Code, rr.Body.String())
+	}
+	var comments []map[string]any
+	if err := json.Unmarshal(decodeEnvelope(t, rr).Data, &comments); err != nil {
+		t.Fatalf("comments json: %v %s", err, rr.Body.String())
+	}
+	if len(comments) != 1 {
+		t.Fatalf("comments=%d", len(comments))
+	}
+}

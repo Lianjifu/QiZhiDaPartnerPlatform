@@ -672,3 +672,43 @@ func TestW15_CrossModuleRunToEngineGet(t *testing.T) {
 		t.Fatalf("engine.Run.EngineName=%s, want qzda-workflow", got.EngineName)
 	}
 }
+
+func TestOrchestrationSessionGenerateAndApply(t *testing.T) {
+	srv, _, _ := newServer(t)
+	tok := adminTok(t)
+	create := doRequest(t, srv, http.MethodPost, "/api/workflows/orchestration-sessions", tok, []byte(`{"goal":"由数字伙伴研判处置路径，经双重审批后执行受控恢复","constraints":{"riskLevel":"L2","requireApproval":true,"requireRollback":true}}`))
+	if create.Code != http.StatusOK {
+		t.Fatalf("create want 200, got %d body=%s", create.Code, create.Body.String())
+	}
+	created := decodeData(t, decodeEnvelope(t, create).Data)
+	sid, _ := created["id"].(string)
+	if sid == "" {
+		t.Fatalf("missing session id: %v", created)
+	}
+	if created["status"] != "drafting" {
+		t.Fatalf("status=%v want drafting", created["status"])
+	}
+	gen := doRequest(t, srv, http.MethodPost, "/api/workflows/orchestration-sessions/"+sid+"/generate", tok, []byte(`{"skipClarification":true}`))
+	if gen.Code != http.StatusOK {
+		t.Fatalf("generate want 200, got %d body=%s", gen.Code, gen.Body.String())
+	}
+	generated := decodeData(t, decodeEnvelope(t, gen).Data)
+	session := generated["session"].(map[string]any)
+	if session["status"] != "ready" {
+		t.Fatalf("generate status=%v want ready", session["status"])
+	}
+	cand := generated["candidate"].(map[string]any)
+	cid, _ := cand["id"].(string)
+	apply := doRequest(t, srv, http.MethodPost, "/api/workflows/orchestration-sessions/"+sid+"/apply", tok, []byte(`{"candidateId":"`+cid+`"}`))
+	if apply.Code != http.StatusOK {
+		t.Fatalf("apply want 200, got %d body=%s", apply.Code, apply.Body.String())
+	}
+	applied := decodeData(t, decodeEnvelope(t, apply).Data)
+	if applied["status"] != "applied" {
+		t.Fatalf("apply status=%v want applied", applied["status"])
+	}
+	if _, ok := applied["revisionId"].(string); !ok || applied["revisionId"] == "" {
+		t.Fatalf("missing revisionId: %v", applied)
+	}
+}
+

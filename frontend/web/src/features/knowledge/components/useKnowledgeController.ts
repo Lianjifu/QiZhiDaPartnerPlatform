@@ -10,7 +10,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import type {
   KnowledgeAuditEvent, KnowledgeConsumerBinding, KnowledgeDoc, KnowledgeEvaluation,
   KnowledgeGovernancePolicy, KnowledgeGraphEntity, KnowledgeGraphRelation,
@@ -53,6 +53,8 @@ export type PipelineStage = {
 export type KnowledgeController = ReturnType<typeof useKnowledgeController>;
 
 export function useKnowledgeController() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuthStore();
   const permissionWrite = Boolean(user?.permissions.includes('knowledge.write'));
   const canWrite = permissionWrite && roleCanMutate(user?.role);
@@ -65,7 +67,7 @@ export function useKnowledgeController() {
 
   // 工作区 / 子视图
   const [workspace, setWorkspace] = useState<KnowledgeWorkspace>(() => defaultKnowledgeTab(user?.role));
-  const [assetsView, setAssetsView] = useState<AssetsView>('docs');
+  const [assetsView, setAssetsView] = useState<AssetsView>('packages');
   const [highlightedPackageId, setHighlightedPackageId] = useState<string | null>(null);
 
   // 内容文档 / 加工任务筛选
@@ -76,7 +78,7 @@ export function useKnowledgeController() {
   const [tagFilter, setTagFilter] = useState<string | null>(null);
 
   // 文档阅读器 / 切片抽屉
-  const [docPreviewId, setDocPreviewId] = useState<string | null>('k1');
+  const [docPreviewId, setDocPreviewId] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [editingContent, setEditingContent] = useState(false);
   const [chunkDrawer, setChunkDrawer] = useState<KnowledgeRetrievalResult | null>(null);
@@ -100,59 +102,56 @@ export function useKnowledgeController() {
   // 深链：`?package=xxx` / `?view=packages` 触发跳转
   const [searchParams] = useSearchParams();
   useEffect(() => {
+    if (location.pathname !== '/knowledge') return;
     const packageId = searchParams.get('package');
     const view = searchParams.get('view');
-    if (!packageId && view !== 'packages') return;
-    setWorkspace('assets');
-    if (view === 'packages' || packageId) setAssetsView('packages');
     if (packageId) {
-      setHighlightedPackageId(packageId);
-      setGovernanceNotice('已定位记忆晋升生成的知识包草稿，请完成加工与评测后发布。');
+      navigate(`/knowledge/packages/${encodeURIComponent(packageId)}`, { replace: true });
+      return;
     }
-  }, [searchParams]);
-
-  const isAssets = workspace === 'assets';
-  const isProcessing = workspace === 'processing';
-  const isRetrieval = workspace === 'retrieval';
-  const isGraph = workspace === 'graph';
-  const isGovernance = workspace === 'governance';
+    if (view === 'packages') setAssetsView('packages');
+  }, [location.pathname, navigate, searchParams]);
 
   // ===== 服务端查询 =====
   const { data: docs = [] } = useApiQuery<KnowledgeDoc[]>(['knowledge', 'docs', scopeKey], '/api/knowledge/docs', undefined, {
-    enabled: isAssets || isRetrieval,
     refetchInterval: (query) => {
       const list = query.state.data as KnowledgeDoc[] | undefined;
       return Array.isArray(list) && list.some((doc) => doc.status === 'indexing' || doc.status === 'parsing') ? 1500 : false;
     },
   });
-  const { data: docDetail } = useApiQuery<any>(['doc', docPreviewId, scopeKey], `/api/knowledge/doc/${docPreviewId ?? 'k1'}`, undefined, { enabled: isAssets && Boolean(docPreviewId) && showDetails });
-  const { data: citationTrace = [] } = useApiQuery<any[]>(['citation-trace', scopeKey], '/api/knowledge/citation-trace', undefined, { enabled: isAssets || isGovernance });
-  const { data: evalMetrics } = useApiQuery<any>(['eval', scopeKey], '/api/knowledge/eval', undefined, { enabled: isAssets || isRetrieval });
+  const { data: docDetail } = useApiQuery<any>(['doc', docPreviewId, scopeKey], `/api/knowledge/doc/${docPreviewId ?? 'k1'}`, undefined, { enabled: Boolean(docPreviewId) });
+  const { data: citationTrace = [] } = useApiQuery<any[]>(['citation-trace', scopeKey], '/api/knowledge/citation-trace');
+  const { data: evalMetrics } = useApiQuery<any>(['eval', scopeKey], '/api/knowledge/eval');
   const normalizedEvalMetrics = useMemo(() => normalizeEvalMetrics(evalMetrics), [evalMetrics]);
-  const { data: topChunks = [] } = useApiQuery<KnowledgeRetrievalResult[]>(['knowledge', 'chunks', 'top', scopeKey], '/api/knowledge/chunks/top', undefined, { enabled: isAssets || isRetrieval });
-  const { data: sourceConnections = [] } = useApiQuery<KnowledgeSourceConnection[]>(['knowledge', 'sources', scopeKey], '/api/knowledge/sources', undefined, { enabled: isProcessing });
-  const { data: governance } = useApiQuery<KnowledgeGovernancePolicy>(['knowledge', 'governance', scopeKey], '/api/knowledge/governance', undefined, { enabled: isGovernance });
-  const { data: knowledgeAudit = [] } = useApiQuery<KnowledgeAuditEvent[]>(['knowledge', 'audit', scopeKey], '/api/knowledge/audit', undefined, { enabled: isGovernance });
-  const { data: knowledgePackages = [] } = useApiQuery<KnowledgePackage[]>(['knowledge', 'packages', scopeKey], '/api/knowledge/packages', undefined, { enabled: isAssets || isRetrieval || isProcessing });
+  const { data: topChunks = [] } = useApiQuery<KnowledgeRetrievalResult[]>(['knowledge', 'chunks', 'top', scopeKey], '/api/knowledge/chunks/top');
+  const { data: sourceConnections = [] } = useApiQuery<KnowledgeSourceConnection[]>(['knowledge', 'sources', scopeKey], '/api/knowledge/sources');
+  const { data: governance } = useApiQuery<KnowledgeGovernancePolicy>(['knowledge', 'governance', scopeKey], '/api/knowledge/governance');
+  const { data: knowledgeAudit = [] } = useApiQuery<KnowledgeAuditEvent[]>(['knowledge', 'audit', scopeKey], '/api/knowledge/audit');
+  const { data: knowledgePackages = [] } = useApiQuery<KnowledgePackage[]>(['knowledge', 'packages', scopeKey], '/api/knowledge/packages');
   const { data: processingJobs = [] } = useApiQuery<KnowledgeProcessingJob[]>(['knowledge', 'processing-jobs', scopeKey], '/api/knowledge/processing-jobs', undefined, {
-    enabled: isProcessing || isAssets,
     refetchInterval: (query) => {
       const list = query.state.data as KnowledgeProcessingJob[] | undefined;
       return Array.isArray(list) && list.some((job) => job.status === 'queued' || job.status === 'running') ? 1500 : false;
     },
   });
-  const { data: retrievalProfiles = [] } = useApiQuery<KnowledgeRetrievalProfile[]>(['knowledge', 'retrieval-profiles', scopeKey], '/api/knowledge/retrieval-profiles', undefined, { enabled: isRetrieval });
-  const { data: evaluations = [] } = useApiQuery<KnowledgeEvaluation[]>(['knowledge', 'evaluations', scopeKey], '/api/knowledge/evaluations', undefined, { enabled: isRetrieval });
-  const { data: graphEntities = [] } = useApiQuery<KnowledgeGraphEntity[]>(['knowledge', 'graph-entities', scopeKey], '/api/knowledge/graph/entities', undefined, { enabled: isGraph });
-  const { data: graphRelations = [] } = useApiQuery<KnowledgeGraphRelation[]>(['knowledge', 'graph-relations', scopeKey], '/api/knowledge/graph/relations', undefined, { enabled: isGraph });
-  const { data: consumerBindings = [] } = useApiQuery<KnowledgeConsumerBinding[]>(['knowledge', 'bindings', scopeKey], '/api/knowledge/bindings', undefined, { enabled: isGovernance });
+  const { data: retrievalProfiles = [] } = useApiQuery<KnowledgeRetrievalProfile[]>(['knowledge', 'retrieval-profiles', scopeKey], '/api/knowledge/retrieval-profiles');
+  const { data: evaluations = [] } = useApiQuery<KnowledgeEvaluation[]>(['knowledge', 'evaluations', scopeKey], '/api/knowledge/evaluations');
+  const { data: graphEntities = [] } = useApiQuery<KnowledgeGraphEntity[]>(['knowledge', 'graph-entities', scopeKey], '/api/knowledge/graph/entities');
+  const { data: graphRelations = [] } = useApiQuery<KnowledgeGraphRelation[]>(['knowledge', 'graph-relations', scopeKey], '/api/knowledge/graph/relations');
+  const { data: consumerBindings = [] } = useApiQuery<KnowledgeConsumerBinding[]>(['knowledge', 'bindings', scopeKey], '/api/knowledge/bindings');
 
   // ===== Mutations =====
-  const uploadMutation = useApiMutation<KnowledgeDoc, { title: string; source: string; tags: string; content: string; fileName?: string }>('/api/knowledge/docs', {
+  const uploadStayRef = useRef(false);
+  const uploadMutation = useApiMutation<KnowledgeDoc, { title: string; source: string; tags: string; content: string; fileName?: string; packageId?: string }>('/api/knowledge/docs', {
     onSuccess: (doc) => {
       setActiveModal(null);
-      setAssetsView('docs');
       setGovernanceNotice(`文档「${doc.title}」已进入解析与索引队列。`);
+      if (uploadStayRef.current) {
+        uploadStayRef.current = false;
+        return;
+      }
+      if (doc.packageId) navigate(`/knowledge/packages/${encodeURIComponent(doc.packageId)}?step=processing`);
+      else if (doc.id) navigate(`/knowledge/docs/${encodeURIComponent(doc.id)}`);
     },
   });
   const reindexMutation = useApiMutation<{ status: string; affected: number }, { kb: string }>('/api/knowledge/reindex', {
@@ -174,6 +173,7 @@ export function useKnowledgeController() {
       if (docPreviewId && result.ids.includes(docPreviewId)) {
         setShowDetails(false);
         setDocPreviewId(null);
+        navigate('/knowledge');
       }
       setGovernanceNotice(`已删除 ${result.deleted} 项知识文档，相关切片与引用痕迹已清理。`);
     },
@@ -187,7 +187,7 @@ export function useKnowledgeController() {
   const rescoreMutation = useApiMutation<KnowledgeRetrievalResult[], Record<string, never>>('/api/knowledge/chunks/rescore', {
     onSuccess: () => setGovernanceNotice('证据重新评分完成，已刷新 Top-K 结果。'),
   });
-  const sourceMutation = useApiMutation<KnowledgeSourceConnection, import('@/features/knowledge/components/ConnectSourceModal').ConnectSourceForm>(
+  const sourceMutation = useApiMutation<KnowledgeSourceConnection, import('@/features/knowledge/components/ConnectSourceForm').ConnectSourceForm>(
     '/api/knowledge/sources',
     { onError: (err) => setGovernanceNotice(err instanceof Error ? err.message : '接入数据源失败。') },
   );
@@ -204,8 +204,6 @@ export function useKnowledgeController() {
   const createPackageMutation = useApiMutation<KnowledgePackage, { name: string; description: string; domain: string; classification: KnowledgePackage['classification'] }>('/api/knowledge/packages', {
     onSuccess: (item) => {
       setActiveModal(null);
-      setWorkspace('assets');
-      setAssetsView('packages');
       setHighlightedPackageId(item.id);
       setGovernanceNotice(`知识包「${item.name}」已创建，请纳管文档后完成加工与评测再发布。`);
     },
@@ -220,7 +218,7 @@ export function useKnowledgeController() {
   const processPackageMutation = useApiMutation<KnowledgeProcessingJob, { id: string; strategy: KnowledgeProcessingJob['strategy'] }>(
     ({ id }) => `/api/knowledge/packages/${id}/process`,
     {
-      onSuccess: (job) => { setWorkspace('processing'); setGovernanceNotice(`已启动 ${job.strategy} 切片与 ${job.indexVersion} 索引构建。`); },
+      onSuccess: (job) => { setGovernanceNotice(`已启动 ${job.strategy} 切片与 ${job.indexVersion} 索引构建。`); },
       onError: (err) => setGovernanceNotice(err instanceof Error ? err.message : '加工启动失败。'),
     },
   );
@@ -315,7 +313,8 @@ export function useKnowledgeController() {
   const activeCitation = citationTrace[0] ?? null;
 
   // ===== Handlers =====
-  const handleUploadDoc = useCallback((form: { title: string; source: string; tags: string; content: string; fileName?: string }) => {
+  const handleUploadDoc = useCallback((form: { title: string; source: string; tags: string; content: string; fileName?: string; packageId?: string }, opts?: { stay?: boolean }) => {
+    uploadStayRef.current = Boolean(opts?.stay);
     uploadMutation.mutate(form);
   }, [uploadMutation]);
   // 单一知识目录下的重建始终覆盖全部可用资产，而不是某个空间子集。
@@ -340,8 +339,9 @@ export function useKnowledgeController() {
   const openDocument = useCallback((id: string) => {
     setDocPreviewId(id);
     setEditingContent(false);
-    setShowDetails(true);
-  }, []);
+    setShowDetails(false);
+    navigate(`/knowledge/docs/${encodeURIComponent(id)}`);
+  }, [navigate]);
   const downloadOriginal = useCallback(() => {
     if (!docDetail) return;
     const blob = new Blob([docDetail.content ?? ''], { type: 'text/markdown;charset=utf-8' });
@@ -349,11 +349,10 @@ export function useKnowledgeController() {
     link.href = URL.createObjectURL(blob); link.download = `${docDetail.title ?? 'knowledge-content'}.md`; link.click(); URL.revokeObjectURL(link.href);
   }, [docDetail]);
   const syncSource = useCallback((id: string) => sourceSyncMutation.mutate({ id }), [sourceSyncMutation]);
-  const connectSource = useCallback(async (form: import('@/features/knowledge/components/ConnectSourceModal').ConnectSourceForm) => {
+  const connectSource = useCallback(async (form: import('@/features/knowledge/components/ConnectSourceForm').ConnectSourceForm) => {
     try {
       const source = await sourceMutation.mutateAsync(form);
       setActiveModal(null);
-      setWorkspace('processing');
       if (form.syncNow && source.kind !== 'Webhook') {
         try {
           await sourceSyncMutation.mutateAsync({ id: source.id });
@@ -361,15 +360,16 @@ export function useKnowledgeController() {
         } catch {
           setGovernanceNotice(`数据源「${source.name}」已接入，但首次同步失败，可在列表中重试。`);
         }
-        return;
+        return source;
       }
       setGovernanceNotice(
         source.kind === 'Webhook'
           ? `Webhook「${source.name}」已接入，回调地址已签发，等待事件推送。`
           : `数据源「${source.name}」已接入，等待首次同步。`,
       );
+      return source;
     } catch {
-      /* onError 已提示 */
+      return null;
     }
   }, [sourceMutation, sourceSyncMutation]);
 

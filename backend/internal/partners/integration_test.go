@@ -631,3 +631,37 @@ func TestP14_CrossModuleCopilotToPartner(t *testing.T) {
 		t.Fatalf("M05 partner id=%v, want de-1", d["id"])
 	}
 }
+
+func TestDeleteUnreleasedPartner(t *testing.T) {
+	srv, _ := newServer(t)
+	tok := adminTok(t)
+
+	rr := doRequest(t, srv, http.MethodPost, "/api/partners", tok, []byte(`{"name":"待删","role":"QA","department":"测试部"}`))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("create: want 200, got %d body=%s", rr.Code, rr.Body.String())
+	}
+	created := decodeData(t, decodeEnvelope(t, rr).Data)
+	id, _ := created["id"].(string)
+	if id == "" {
+		t.Fatalf("missing id: %v", created)
+	}
+
+	rr = doRequest(t, srv, http.MethodDelete, "/api/partners/"+id, tok, nil)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("delete: want 200, got %d body=%s", rr.Code, rr.Body.String())
+	}
+	deleted := decodeEnvelope(t, rr)
+	if !deleted.OK {
+		t.Fatalf("delete ok=false: %+v body=%s", deleted, rr.Body.String())
+	}
+
+	rr = doRequest(t, srv, http.MethodGet, "/api/partners/"+id, tok, nil)
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("get after delete: want 404, got %d body=%s", rr.Code, rr.Body.String())
+	}
+
+	rr = doRequest(t, srv, http.MethodDelete, "/api/partners/de-1", tok, nil)
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("delete released: want 409, got %d body=%s", rr.Code, rr.Body.String())
+	}
+}

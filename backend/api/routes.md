@@ -22,7 +22,8 @@
 | GET/POST | `/api/partners` |
 | GET | `/api/partners/overview` |
 | POST | `/api/partners/:id/{lifecycle,release,evaluate,configuration,…}` |
-| GET/POST | `/api/tasks`、`/api/tasks/:id/transition` |
+| GET/POST | `/api/tasks`、`/api/tasks/:id/transition`、`/api/tasks/:id/comments` |
+| GET/POST | `/api/scheduled-tasks`、`/api/scheduled-tasks/:id/{pause,resume,run,runs}` |
 
 ## 模型 / 渠道（Mock 命名）
 

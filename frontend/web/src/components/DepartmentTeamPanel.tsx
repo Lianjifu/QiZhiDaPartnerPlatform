@@ -5,7 +5,7 @@ import { Badge, Button } from '@qzda/web-ui';
 import { Modal } from '@/components/shared';
 import { DigitalPartnerAvatar } from '@/features/partners/components/DigitalPartnerAvatar';
 import { useApiMutation, useApiQuery } from '@/services/query';
-import { compareDigitalPartners, employeePrimaryLabel, employeeSecondaryLabel, isDepartmentHead } from '@/features/partners/lib/partners';
+import { compareDigitalPartners, employeePrimaryLabel, employeeSecondaryLabel, isDepartmentHead, partnerDetailPath } from '@/features/partners/lib/partners';
 import type { DigitalPartner, Task } from '@qzda/web-types';
 import { MessageSquare, Network, SendHorizontal, UsersRound } from 'lucide-react';
 import { cn } from '@qzda/web-utils';
@@ -103,14 +103,14 @@ export function DepartmentTeamPanel({ head }: { head: DigitalPartner }) {
           <article key={member.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-3">
             <div className="flex min-w-0 items-center gap-3">
               <DigitalPartnerAvatar employee={member} size={36} />
-              <div className="min-w-0">
+              <button type="button" className="min-w-0 text-left" onClick={() => navigate(partnerDetailPath(member.id))}>
                 <div className="flex flex-wrap items-center gap-1.5">
                   <span className="truncate text-sm font-medium">{employeePrimaryLabel(member)}</span>
                   <Badge tone={lifecycleTone(member.lifecycle)}>{lifecycleLabel(member.lifecycle)}</Badge>
                   {member.runtime.anomalies > 0 && <Badge tone="warn">异常 {member.runtime.anomalies}</Badge>}
                 </div>
                 <p className="mt-0.5 truncate text-[11px] text-[var(--text-muted)]">{employeeSecondaryLabel(member)} · 交接 {member.runtime.handoffs24h}/24h</p>
-              </div>
+              </button>
             </div>
             <div className="flex shrink-0 gap-2">
               {member.lifecycle === 'active' && (

@@ -21,7 +21,6 @@ import (
 	"github.com/qizhida-partner-platform/backend/internal/heartbeat"
 	"github.com/qizhida-partner-platform/backend/internal/infra"
 	"github.com/qizhida-partner-platform/backend/internal/knowledge"
-	"github.com/qizhida-partner-platform/backend/internal/skills"
 	mem "github.com/qizhida-partner-platform/backend/internal/memory"
 	memid "github.com/qizhida-partner-platform/backend/internal/memory/identity"
 	"github.com/qizhida-partner-platform/backend/internal/metrics"
@@ -36,6 +35,7 @@ import (
 	"github.com/qizhida-partner-platform/backend/internal/qzdaworkflow"
 	"github.com/qizhida-partner-platform/backend/internal/runtimeenv"
 	"github.com/qizhida-partner-platform/backend/internal/settings"
+	"github.com/qizhida-partner-platform/backend/internal/skills"
 	"github.com/qizhida-partner-platform/backend/internal/skills/registry"
 	"github.com/qizhida-partner-platform/backend/internal/store"
 	"github.com/qizhida-partner-platform/backend/internal/tasks"
@@ -842,8 +842,14 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) {
 		data, err = s.partnerSvc.AdoptTemplate(r)
 	case strings.HasPrefix(path, "/api/partner-templates/") && method == http.MethodPatch:
 		data, err = s.partnerSvc.ListEmployeeTemplates(r)
-	case strings.HasPrefix(path, "/api/partners/") && (method == http.MethodGet || method == http.MethodPost || method == http.MethodPatch):
+	case strings.HasPrefix(path, "/api/partners/") && (method == http.MethodGet || method == http.MethodPost || method == http.MethodPatch || method == http.MethodDelete):
 		data, err = s.partnerSvc.DigitalEmployeeRoute(r)
+	case path == "/api/scheduled-tasks" && method == http.MethodGet:
+		data, err = s.taskSvc.ListScheduledTasks(r)
+	case path == "/api/scheduled-tasks" && method == http.MethodPost:
+		data, err = s.taskSvc.CreateScheduledTask(r)
+	case strings.HasPrefix(path, "/api/scheduled-tasks/") && (method == http.MethodGet || method == http.MethodPost || method == http.MethodPatch || method == http.MethodDelete):
+		data, err = s.taskSvc.ScheduledTaskRoute(r)
 	case path == "/api/tasks" && method == http.MethodGet:
 		data, err = s.taskSvc.ListTasks(r)
 	case path == "/api/tasks" && method == http.MethodPost:
@@ -1064,6 +1070,8 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) {
 		data, err = s.workflowSvc.ListWorkflowGenerations(r)
 	case path == "/api/workflows/generate" && method == http.MethodPost:
 		data, err = s.workflowSvc.GenerateWorkflow(r)
+	case strings.HasPrefix(path, "/api/workflows/orchestration-sessions"):
+		data, err = s.workflowSvc.OrchestrationRoute(r)
 	case path == "/api/workflow-skills" && method == http.MethodGet:
 		data, err = s.workflowSvc.ListWorkflowSkillsAligned(r)
 	case strings.HasPrefix(path, "/api/workflow-skills/") && strings.HasSuffix(path, "/publish") && method == http.MethodPost:
@@ -1549,22 +1557,22 @@ func (s *Server) buildModelSvc() *models.Service {
 		s.Store.AppendAudit(workspaceID, actor, action, target, result, reason)
 	}
 	svc := models.NewService(s.Store, models.Deps{
-		WorkspaceID:                  s.workspaceID,
-		IdentityFrom:                 identityFrom,
-		DecodeMap:                    decodeMap,
-		EvaluateWrite:                s.evaluateWrite,
-		RequiresPeerApprovalGate:     requiresPeerApprovalGate,
+		WorkspaceID:                   s.workspaceID,
+		IdentityFrom:                  identityFrom,
+		DecodeMap:                     decodeMap,
+		EvaluateWrite:                 s.evaluateWrite,
+		RequiresPeerApprovalGate:      requiresPeerApprovalGate,
 		RequireProductionDualApproval: requireProductionDualApproval,
-		MaybeHoldForCountersign:      maybeHoldForCountersign,
-		ProductionLikeEnv:            productionLikeEnv,
-		AppendAudit:                  appendAuditSink,
-		AllowRate:                    allowRate,
-		IncModelVaultError:           IncModelVaultError,
-		IncModelProbe:                IncModelProbe,
-		IncModelPolicyPublish:        IncModelPolicyPublish,
-		IncModelBudgetDeny:           IncModelBudgetDeny,
-		IsCollabMode:                 isCollab,
-		CapBaseURL:                   capBaseURL,
+		MaybeHoldForCountersign:       maybeHoldForCountersign,
+		ProductionLikeEnv:             productionLikeEnv,
+		AppendAudit:                   appendAuditSink,
+		AllowRate:                     allowRate,
+		IncModelVaultError:            IncModelVaultError,
+		IncModelProbe:                 IncModelProbe,
+		IncModelPolicyPublish:         IncModelPolicyPublish,
+		IncModelBudgetDeny:            IncModelBudgetDeny,
+		IsCollabMode:                  isCollab,
+		CapBaseURL:                    capBaseURL,
 		// Late-bound Vault accessor: tests that swap srv.Vault after
 		// New() (e.g. TestResolveModelAliasToPublishedRoute) still see
 		// their override, because the Service reads through this
@@ -1600,34 +1608,34 @@ func (s *Server) buildTaskSvc() *tasks.Service {
 	// the caller — taskRoute holds the lock when invoking this).
 	ingestRuntimeMemoryAdapter := func(in tasks.RuntimeMemoryInput) (map[string]any, error) {
 		return s.ingestRuntimeMemoryLocked(runtimeMemoryInput{
-			WorkspaceID:       in.WorkspaceID,
-			OwnerID:           in.OwnerID,
-			OwnerName:         in.OwnerName,
+			WorkspaceID:      in.WorkspaceID,
+			OwnerID:          in.OwnerID,
+			OwnerName:        in.OwnerName,
 			DigitalPartnerID: in.DigitalPartnerID,
-			Title:             in.Title,
-			Content:           in.Content,
-			SourceType:        in.SourceType,
-			SourceID:          in.SourceID,
-			CorrelationID:     in.CorrelationID,
-			Layer:             in.Layer,
-			Scope:             in.Scope,
-			Classification:    in.Classification,
-			Confidence:        in.Confidence,
+			Title:            in.Title,
+			Content:          in.Content,
+			SourceType:       in.SourceType,
+			SourceID:         in.SourceID,
+			CorrelationID:    in.CorrelationID,
+			Layer:            in.Layer,
+			Scope:            in.Scope,
+			Classification:   in.Classification,
+			Confidence:       in.Confidence,
 		})
 	}
 	return tasks.NewService(s.Store, tasks.Deps{
-		IdentityFrom:           identityFrom,
-		WorkspaceID:            s.workspaceID,
-		RequireWorkspaceAccess: s.requireWorkspaceAccess,
-		DecodeMap:              decodeMap,
-		EvaluateWriteLocked:    s.evaluateWriteLocked,
-		IncTaskCreated:          IncTaskCreated,
-		IncTaskTransition:      IncTaskTransition,
-		IncTaskApprove:         IncTaskApprove,
-		IncTaskTakeover:        IncTaskTakeover,
-		IncTaskRetry:           IncTaskRetry,
+		IdentityFrom:              identityFrom,
+		WorkspaceID:               s.workspaceID,
+		RequireWorkspaceAccess:    s.requireWorkspaceAccess,
+		DecodeMap:                 decodeMap,
+		EvaluateWriteLocked:       s.evaluateWriteLocked,
+		IncTaskCreated:            IncTaskCreated,
+		IncTaskTransition:         IncTaskTransition,
+		IncTaskApprove:            IncTaskApprove,
+		IncTaskTakeover:           IncTaskTakeover,
+		IncTaskRetry:              IncTaskRetry,
 		IngestRuntimeMemoryLocked: ingestRuntimeMemoryAdapter,
-		PersistMemory:          s.persistMemory,
+		PersistMemory:             s.persistMemory,
 	})
 }
 
@@ -1752,23 +1760,23 @@ func (s *Server) buildWorkflowSvc() *workflows.Service {
 	// qzdaworkflow.Engine stored on Server.
 	startTrial := s.Workflows.StartTrial
 	return workflows.NewService(s.Store, workflows.Deps{
-		WorkspaceID:                  s.workspaceID,
-		DecodeMap:                    decodeMap,
-		EvaluateWriteLocked:          s.evaluateWriteLocked,
-		RequireSkillRead:             requireSkillRead,
-		RequireSkillWrite:            requireSkillWrite,
-		RequiresPeerApprovalGate:     requiresPeerApprovalGate,
+		WorkspaceID:                   s.workspaceID,
+		DecodeMap:                     decodeMap,
+		EvaluateWriteLocked:           s.evaluateWriteLocked,
+		RequireSkillRead:              requireSkillRead,
+		RequireSkillWrite:             requireSkillWrite,
+		RequiresPeerApprovalGate:      requiresPeerApprovalGate,
 		RequireProductionDualApproval: requireProductionDualApproval,
-		MaybeHoldForCountersign:      maybeHoldForCountersign,
-		ProductionLikeEnv:            productionLikeEnv,
-		AfterWriteLocked:             s.afterWriteLocked,
-		AfterWrite:                   s.afterWrite,
-		DurableDeleteSync:            s.durableDeleteSync,
-		PersistSkills:                s.persistSkills,
-		PersistSkillExtra:            s.persistSkillExtra,
-		PersistSkillHealth:           s.persistSkillHealth,
-		ApplyWorkflowSkillCatalog:    s.applyWorkflowSkillCatalog,
-		StartTrial:                   startTrial,
+		MaybeHoldForCountersign:       maybeHoldForCountersign,
+		ProductionLikeEnv:             productionLikeEnv,
+		AfterWriteLocked:              s.afterWriteLocked,
+		AfterWrite:                    s.afterWrite,
+		DurableDeleteSync:             s.durableDeleteSync,
+		PersistSkills:                 s.persistSkills,
+		PersistSkillExtra:             s.persistSkillExtra,
+		PersistSkillHealth:            s.persistSkillHealth,
+		ApplyWorkflowSkillCatalog:     s.applyWorkflowSkillCatalog,
+		StartTrial:                    startTrial,
 	})
 }
 
@@ -1829,20 +1837,20 @@ func (s *Server) buildKnowledgeSvc() *knowledge.Service {
 	// afterWrite / afterWriteLocked / durableDeleteSync are existing
 	// *Server helpers exposed via method values.
 	return knowledge.NewService(s.Store, knowledge.Deps{
-		WorkspaceID:                    s.workspaceID,
-		IdentityFrom:                   identityFrom,
-		DecodeMap:                      decodeMap,
-		EvaluateWrite:                  s.evaluateWrite,
-		RequiresPeerApprovalGate:       requiresPeerApprovalGate,
-		RequireProductionDualApproval:  requireProductionDualApproval,
-		MaybeHoldForCountersign:        maybeHoldForCountersign,
-		ProductionLikeEnv:              productionLikeEnv,
-		AppendAudit:                    appendAuditSink,
-		AfterWriteLocked:               s.afterWriteLocked,
-		AfterWrite:                     s.afterWrite,
-		DurableDeleteSync:              s.durableDeleteSync,
-		RAGURL:                         ragURL,
-		RecordUsageWS:                  recordUsageWS,
+		WorkspaceID:                   s.workspaceID,
+		IdentityFrom:                  identityFrom,
+		DecodeMap:                     decodeMap,
+		EvaluateWrite:                 s.evaluateWrite,
+		RequiresPeerApprovalGate:      requiresPeerApprovalGate,
+		RequireProductionDualApproval: requireProductionDualApproval,
+		MaybeHoldForCountersign:       maybeHoldForCountersign,
+		ProductionLikeEnv:             productionLikeEnv,
+		AppendAudit:                   appendAuditSink,
+		AfterWriteLocked:              s.afterWriteLocked,
+		AfterWrite:                    s.afterWrite,
+		DurableDeleteSync:             s.durableDeleteSync,
+		RAGURL:                        ragURL,
+		RecordUsageWS:                 recordUsageWS,
 	})
 }
 

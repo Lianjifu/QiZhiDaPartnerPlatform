@@ -1,10 +1,9 @@
-// Package-private helpers used by the multi-agent panel (copilot_multi.go).
-// Mirrors the mergeParticipantOpinions / fmtParticipantSkipNote helpers that
-// lived in internal/server/session_panel.go before the M02 backend
-// consolidation. They use copilot-internal types (participantTurnResult) so
-// they belong here, not on server.
+// multi-agent panel (copilot_multi.go) 使用的进程内辅助函数。
+// 把原先写在 internal/server/session_panel.go 的 mergeParticipantOpinions / fmtParticipantSkipNote
+// 镜像到这里（因为它们消费 copilot-internal 类型 participantTurnResult）。
 package copilot
 
+// mergeParticipantOpinions 把 participantTurnResults 列表拼成 supervisor 聚合 prompt 用的字符串切片。
 // mergeParticipantOpinions stitches participantTurnResults into the
 // supervisor-aggregate prompt. Truncates each opinion to keep the aggregate
 // LLM call within budget.
@@ -25,6 +24,7 @@ func mergeParticipantOpinions(results []participantTurnResult, perRunes int) []s
 	return out
 }
 
+// fmtParticipantSkipNote 给"未成功"（拒答 / 超时 / 失败）的子专家生成一行省略说明。
 // fmtParticipantSkipNote renders a one-line summary for a participant whose
 // turn didn't return a usable success response (refused / timed out /
 // failed). Returned string is used as the participant's contribution to the

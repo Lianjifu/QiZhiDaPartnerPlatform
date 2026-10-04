@@ -52,7 +52,10 @@ export function useApiMutation<TData, TVar>(
     mutationFn: async (vars: TVar) => {
       const c = getApiClient();
       const p = typeof path === 'function' ? path(vars) : path;
-      return c.request<TData>(p, { method, body: vars });
+      const payload = vars as unknown;
+      const skipBody = method === 'DELETE' && (payload === undefined || payload === null
+        || (typeof payload === 'object' && !Array.isArray(payload) && Object.keys(payload as object).length === 0));
+      return c.request<TData>(p, skipBody ? { method } : { method, body: vars });
     },
     onSuccess: (data, vars) => {
       options?.onSuccess?.(data, vars);

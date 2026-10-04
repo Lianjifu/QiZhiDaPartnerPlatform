@@ -1,3 +1,15 @@
+// Package copilot —— 路由决策模块。
+//
+// 决定"这一轮用哪个 harness 图（direct/react/plan_exec/multi_agent）、
+// 对应到哪个 routing policy 级别（P0~P3）"。
+//
+// 决策信号分三层：
+//   - 客户端 hint（modeHint 字段直接指定）
+//   - 消息特征（长度、关键词、跨部门意图）
+//   - 风险等级（riskLevel 抬高 policy 下限）
+//
+// 输出 routeDecision 会被 runReactTurn / runMultiAgentTurn 等调度器消费，
+// 后续 resolveModelByPolicyLevel 据此再选具体模型。
 package copilot
 
 import (
@@ -13,14 +25,25 @@ const (
 	modeMultiAgent = "multi_agent"
 )
 
+// routeDecision 是一次路由决策的结果，由 classifyCopilotMode 产出。
+//
+// Mode 取值：direct / react / plan_exec / multi_agent。
+// PolicyLevel：P0（最贵最严）~ P3（最便宜），与 published routing_policies.level 对齐。
 type routeDecision struct {
 	Mode        string
 	Reason      string
 	PolicyLevel string // P0 | P1 | P2 | P3 — maps to published routing_policies.level
 }
 
-// classifyCopilotMode picks harness graph + suggested routing policy level.
-// modeHint: auto|react|plan_exec|direct|multi_agent
+// classifyCopilotMode 是路由决策的核心。
+//
+// 决策顺序（短路返回）：
+//  1. 客户端 modeHint 显式指定 → 直接采用（client_hint）
+//  2. 用户要求 reflect → react（reflect_requested）
+//  3. 短句寒暄（你好/谢谢 等） → direct P3
+//  4. 跨部门/多方协作意图 → multi_agent P0
+//  5. 多步骤/清单/方案/对比等关键词 → plan_exec P0
+//  6. 兜底 → react P1（默认走 ReAct 循环 + 中等模型）
 func classifyCopilotMode(userMsg, modeHint, reflectHint string) routeDecision {
 	hint := strings.ToLower(strings.TrimSpace(modeHint))
 	switch hint {
@@ -110,17 +133,18 @@ func containsAnyFold(msg, lower string, needles ...string) bool {
 	return false
 }
 
-// resolveModelByPolicyLevel returns primaryModelId from a published routing policy at level.
-// Explicit non-demo requested model always wins.
+// resolveModelByPolicyLevel 按 routing policy 级别查具体模型。
 //
-// riskLevel: low|medium|high (defaults to "medium"). When set, the requested
-// level is floored to the minimum level appropriate for the risk:
-//   - high   → must run at P0 (most capable) unless user explicitly asked for a model
-//   - medium → floor P1
-//   - low    → floor P2 (cheapest acceptable tier)
+// 关键策略：
+//   - 显式 requested 模型（非 demo alias）始终胜出，不受 risk floor 约束
+//   - 按 riskLevel 设下限：高风险→P0，中风险→P1，低风险→P2
+//     （保证高风险 prompt 不能被静默降到轻量模型）
+//   - 在 [floor, requested] 区间内，按预设降级顺序找第一份已发布的 policy
+//     （P0→P0/P1/P2/P3，P1→P1/P2/P3/P0...）保证至少有一个可用模型
 //
-// This guarantees that a high-risk prompt cannot be silently downgraded to a
-// lightweight model even if no exact-level policy exists. See copilot_route_test.go.
+// Demo model alias（DE_DEMO_MODEL_ALIASES 注册的那些）即使被显式指定，
+// 也会被 IsDemoModelAliasFn 拦截、强制走 policy 查找——避免 demo 模型
+// 被错用到生产回合。
 func (s *Service) resolveModelByPolicyLevel(ws, requested, level, riskLevel string) (modelID, policyID, usedLevel string) {
 	requested = strings.TrimSpace(requested)
 	if requested != "" {

@@ -2,7 +2,7 @@
  * M01 · 功能入口栏（Functional Rail）
  *
  * 三角色差异：
- *  - user / admin：数字伙伴 / 专家协作 / 知识记忆 / 任务 SLA
+ *  - user / admin：数字伙伴 / 专家协作 / 知识中心 / 任务 SLA
  *  - auditor：审计中心 / 持续验证 / 任务核查 / 协作记录
  */
 import { Link } from 'react-router-dom';

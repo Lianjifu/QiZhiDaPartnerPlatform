@@ -1,19 +1,23 @@
-// Tool classification helpers used by the M02 copilot module. Duplicates
-// of helpers in internal/server/ — kept here so copilot never imports
-// server/. The originals in server/ continue to exist for the rest of the
-// server-side callers (skill_harness.go, runtime_tools.go, cmdb_adapter.go,
-// pilotdeck_registry.go).
+// copilot 模块用的工具分类辅助函数（与 internal/server/ 同名常量/函数镜像）。
+// 镜像的目的是让 copilot 包不反向依赖 server/。
+// 名字/签名必须与 server/ 原版 1:1 一致，改一边必须同步另一边。
 //
-// Names / signatures here MUST match the server originals one-for-one; if
-// you change one, change the other.
+// 覆盖范围：
+//   - skillActionOpen 常量 + normalizeSkillAction：把 args.action 映射为 open/run/write/artifacts
+//   - runtimeToolNames + isRuntimeTool：平台 runtime 工具集合
+//   - isPlatformPilotdeckTool：Pilotdeck 平台工具（todo_write / ask_user_question 等）
+//   - isCMDBTool：CMDB 只读适配器
+//   - pilotdeckToolDef + pilotdeckToolRegistry：PilotDeck builtin 工具对齐表
 package copilot
 
 import "strings"
 
+// skillActionOpen 是 skill.read/open 通用 open 动作的归一化取值。
 // skillActionOpen mirrors server.skillActionOpen. Drives skill-read vs
 // skill-write vs skill-run branch in normalizeSkillAction.
 const skillActionOpen = "open"
 
+// normalizeSkillAction 把 args.action 字符串映射为标准 action token；空串代表 auto。
 // normalizeSkillAction maps args.action to a canonical action token. Empty
 // string means "auto" (caller infers open vs run from other args). Mirrors
 // server.normalizeSkillAction.
@@ -33,6 +37,7 @@ func normalizeSkillAction(args map[string]any) string {
 	}
 }
 
+// runtimeToolNames 是平台 runtime 工具名集合（read_file / glob / bash ...）。
 // runtimeToolNames is the table of platform-runtime tools (read_file,
 // glob, bash, …). Mirrors server.runtimeToolNames.
 var runtimeToolNames = map[string]bool{
@@ -43,12 +48,14 @@ var runtimeToolNames = map[string]bool{
 	"list_mcp_resources": true, "read_mcp_resource": true,
 }
 
+// isRuntimeTool 判断 name 是否属于平台 runtime 工具集合。
 // isRuntimeTool reports whether name belongs to the platform runtime tool
 // set. Mirrors server.isRuntimeTool.
 func isRuntimeTool(name string) bool {
 	return runtimeToolNames[strings.ToLower(strings.TrimSpace(name))]
 }
 
+// isPlatformPilotdeckTool 判断 name 是否是 Pilotdeck 平台内置工具（todo_write / ask_user_question 等）。
 // isPlatformPilotdeckTool reports whether name is a Pilotdeck-managed
 // platform tool (todo_write / ask_user_question / structured_output /
 // enter/exit_plan_mode). Mirrors server.isPlatformPilotdeckTool.
@@ -61,6 +68,7 @@ func isPlatformPilotdeckTool(name string) bool {
 	}
 }
 
+// isCMDBTool 判断 name 是否为 CMDB 只读适配器（名字含 cmdb 子串）。
 // isCMDBTool reports whether name matches the CMDB read adapter. Mirrors
 // server.isCMDBTool.
 func isCMDBTool(name string) bool {
@@ -68,6 +76,7 @@ func isCMDBTool(name string) bool {
 	return strings.Contains(n, "cmdb")
 }
 
+// pilotdeckToolDef 是 PilotDeck builtin 工具对齐表里一行的字段定义。
 // pilotdeckToolDef is the row shape in the PilotDeck builtin tool
 // alignment registry. Mirrors server.pilotdeckToolDef.
 type pilotdeckToolDef struct {
@@ -83,6 +92,7 @@ type pilotdeckToolDef struct {
 	PilotDeckSource  string
 }
 
+// pilotdeckToolRegistry 返回 PilotDeck builtin 工具对齐表的副本。
 // pilotdeckToolRegistry returns the canonical alignment table. Mirrors
 // server.pilotdeckToolRegistry; the bodies of the two must stay in sync so
 // the /api/tools/pilotdeck endpoint reports the same numbers from both

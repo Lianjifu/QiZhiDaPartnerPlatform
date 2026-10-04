@@ -24,11 +24,10 @@ export function ThoughtPanel({ message, streaming }: Props) {
   const hiddenStepCount = Math.max(0, steps.length - MAX_VISIBLE_THOUGHT_STEPS);
   const visibleSteps = hiddenStepCount > 0 ? steps.slice(-MAX_VISIBLE_THOUGHT_STEPS) : steps;
   const hasContent = thinking.length > 0 || steps.length > 0;
-  const [expanded, setExpanded] = useState(Boolean(streaming));
+  const [expanded, setExpanded] = useState(true);
 
   useEffect(() => {
     if (streaming) setExpanded(true);
-    else setExpanded(false);
   }, [streaming, message.id]);
 
   if (!hasContent && streaming) {

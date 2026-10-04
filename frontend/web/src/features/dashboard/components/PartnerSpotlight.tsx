@@ -9,7 +9,7 @@ import { Link } from 'react-router-dom';
 import { Badge, Button } from '@qzda/web-ui';
 import { cn } from '@qzda/web-utils';
 import { DigitalPartnerAvatar } from '@/features/partners/components/DigitalPartnerAvatar';
-import { employeePrimaryLabel, employeeSecondaryLabel } from '@/features/partners/lib/partners';
+import { employeePrimaryLabel, employeeSecondaryLabel, partnerDetailPath } from '@/features/partners/lib/partners';
 import type { DigitalPartner } from '@qzda/web-types';
 
 type Props = {
@@ -59,7 +59,7 @@ export function PartnerSpotlight({
         </div>
         <div className="home-spotlight__cta">
           {featured.lifecycle === 'active' && <Badge tone="success" className="text-[10px]">在岗</Badge>}
-          <Button size="sm" variant="secondary" onClick={() => onNavigate(`/partners?employeeId=${featured.id}`)}>
+          <Button size="sm" variant="secondary" onClick={() => onNavigate(partnerDetailPath(featured.id))}>
             档案 <ArrowRight className="h-3.5 w-3.5" />
           </Button>
           {!isAuditor && (
@@ -93,7 +93,7 @@ export function PartnerSpotlight({
                 type="button"
                 className={cn('home-spotlight__avatar', emp.id === featured.id && 'is-active')}
                 title={employeePrimaryLabel(emp)}
-                onClick={() => onNavigate(`/partners?employeeId=${emp.id}`)}
+                onClick={() => onNavigate(partnerDetailPath(emp.id))}
               >
                 <DigitalPartnerAvatar employee={emp} size={28} rounded="full" />
               </button>

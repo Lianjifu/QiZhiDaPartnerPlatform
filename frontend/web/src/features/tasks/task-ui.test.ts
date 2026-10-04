@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { cadenceLabel, scheduleWhen } from './schedule-ui';
 import { conversationHref, employeeLabel, getPrimaryAction, getStageMeta, nextStepLabel, sourceLabel } from './task-ui';
 
 describe('controlled task primary actions', () => {
@@ -38,5 +39,13 @@ describe('task center copy', () => {
     expect(conversationHref({ links: {}, digitalPartnerId: 'de-sre' })).toBeNull();
     expect(conversationHref({ links: {}, digitalPartnerId: undefined })).toBeNull();
     expect(conversationHref({ digitalPartnerId: 'de-sre' })).toBeNull();
+  });
+});
+
+describe('scheduled task copy', () => {
+  it('labels cadence in operator language', () => {
+    expect(cadenceLabel('daily')).toBe('每天');
+    expect(cadenceLabel('weekly')).toBe('每周');
+    expect(scheduleWhen({ cadence: 'daily', hour: 9, minute: 0 } as never)).toContain('每天');
   });
 });

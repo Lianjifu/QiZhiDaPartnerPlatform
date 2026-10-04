@@ -4,8 +4,9 @@
  * 拆分原因：原 pages/Models.tsx 2273L，按 D1 决策拆为 12 个子文件；
  * 本文件聚焦壳层：tab 路由、KPI 卡、工作区面板与所有弹层入口。
  */
+import { useNavigate } from 'react-router-dom';
 import { useT } from '@/i18n';
-import { KpiCard, toast } from '@qzda/web-ui';
+import { KpiCard } from '@qzda/web-ui';
 import { Activity, AlertTriangle, CheckCircle2, Cloud, FileKey2, FlaskConical, History, Network, Plus, Route, ShieldCheck } from 'lucide-react';
 import { EmptyState, RoleReadonlyBanner } from '@/components/shared';
 import { budgetRiskLabel, defaultModelTab, type ModelWorkspaceTab } from '@/features/models/model-ui';
@@ -13,7 +14,6 @@ import { rolePageCopy } from '@/features/role-nav/role-nav';
 import { cn } from '@qzda/web-utils';
 import { useModelsController } from './useModelsController';
 import { ModelsTabProviders } from './ModelsTab.Providers';
-import { ModelsTabRouting } from './ModelsTab.Routing';
 import { ModelsTabGovernance } from './ModelsTab.Governance';
 import { ModelsTabAudit } from './ModelsTab.Audit';
 import { ModelsModals } from './ModelsModals';
@@ -22,7 +22,6 @@ type TT = (key: string, fallback?: string) => string;
 
 const WORKSPACES: Array<{ key: ModelWorkspaceTab; labelKey: string; icon: typeof Cloud; description: string }> = [
   { key: 'access', labelKey: 'module.models.tabs.access', icon: Cloud, description: '接入供应商、验证连通性，并管理凭据引用与退役影响。' },
-  { key: 'routing', labelKey: 'module.models.tabs.routing', icon: Route, description: '按业务等级维护主/降级模型与数据边界；校验通过后发布不可变路由快照，供数字伙伴与工作流引用。' },
   { key: 'governance', labelKey: 'module.models.tabs.governance', icon: Activity, description: '观察运行健康、预算占用与地域分布；在 sandbox 隔离范围验证已发布路由的降级链。' },
   { key: 'audit', labelKey: 'module.models.tabs.audit', icon: History, description: '追溯接入、校验、发布、回滚、退役与演练结果。' },
 ];
@@ -34,10 +33,10 @@ export default function ModelsPage() {
 }
 
 function ModelsPageShell({ controller: c, t }: { controller: ReturnType<typeof useModelsController>; t: TT }) {
+  const navigate = useNavigate();
   const pageCopy = rolePageCopy('models', c.user?.role);
   const activeWorkspace = WORKSPACES.find((item) => item.key === c.workspace) ?? WORKSPACES.find((item) => item.key === defaultModelTab(c.user?.role)) ?? WORKSPACES[0];
   const visibleWorkspaces = WORKSPACES.filter((item) => c.visibleTabs.includes(item.key));
-  const activeProvider = c.activeProvider;
 
   return (
     <div className="models-page h-full min-w-0 overflow-y-auto bg-[var(--bg-elevated)] p-3 md:p-4 lg:p-5">
@@ -61,13 +60,8 @@ function ModelsPageShell({ controller: c, t }: { controller: ReturnType<typeof u
                 </span>
               )}
               {c.workspace === 'access' && (
-                <button type="button" className="de-employee-btn de-employee-btn--primary" disabled={!c.canWrite} onClick={() => c.setProviderModal('new')}>
+                <button type="button" className="de-employee-btn de-employee-btn--primary" disabled={!c.canWrite} onClick={() => navigate('/models/providers/new')}>
                   <Plus className="h-3.5 w-3.5" />接入供应商
-                </button>
-              )}
-              {c.workspace === 'routing' && (
-                <button type="button" className="de-employee-btn de-employee-btn--primary" disabled={!c.canWrite} onClick={() => c.setCreatePolicyOpen(true)}>
-                  <Plus className="h-3.5 w-3.5" />新建策略
                 </button>
               )}
               {c.workspace === 'governance' && (
@@ -103,15 +97,8 @@ function ModelsPageShell({ controller: c, t }: { controller: ReturnType<typeof u
           )}
         </section>
 
-        <section className={cn('grid grid-cols-2 gap-3', c.workspace === 'governance' || c.workspace === 'routing' || c.workspace === 'audit' ? 'lg:grid-cols-4' : 'lg:grid-cols-3')} aria-label="控制面摘要">
-          {c.workspace === 'routing' ? (
-            <>
-              <KpiCard label="已发布路由" value={c.routingSummary.published} sub="条" icon={Route} tone="success" size="comfortable" />
-              <KpiCard label="草稿待校验" value={c.routingSummary.draft} sub="条" icon={FileKey2} tone="warn" size="comfortable" />
-              <KpiCard label="待发布" value={c.routingSummary.ready} sub="条" icon={CheckCircle2} tone="brand" size="comfortable" />
-              <KpiCard label="含降级链" value={c.routingSummary.withFallback} sub="条已发布" icon={Network} tone="info" size="comfortable" />
-            </>
-          ) : c.workspace === 'governance' ? (
+        <section className={cn('grid grid-cols-2 gap-3', c.workspace === 'governance' || c.workspace === 'audit' ? 'lg:grid-cols-4' : 'lg:grid-cols-3')} aria-label="控制面摘要">
+          {c.workspace === 'governance' ? (
             <>
               <KpiCard label="健康占比" value={c.governance?.healthyShare ?? 0} sub="%" icon={Activity} tone="info" size="comfortable" />
               <KpiCard label="预算状态" value={budgetRiskLabel(c.governance?.budgetRisk ?? 'normal')} icon={ShieldCheck} tone={c.budgetTone} size="comfortable" />
@@ -156,7 +143,7 @@ function ModelsPageShell({ controller: c, t }: { controller: ReturnType<typeof u
               <EmptyState
                 icon={c.isAuditor ? History : Cloud}
                 title={c.isAuditor ? '暂无模型控制面审计事件' : c.queryState.label}
-                description={c.isAuditor ? '接入、发布、回滚与演练操作发生后，证据会出现在此。' : '请先接入供应商或创建路由草稿。'}
+                description={c.isAuditor ? '接入、发布、回滚与演练操作发生后，证据会出现在此。' : '请先接入供应商。'}
               />
             </div>
           ) : c.workspace === 'access' ? (
@@ -166,15 +153,8 @@ function ModelsPageShell({ controller: c, t }: { controller: ReturnType<typeof u
               canWrite={c.canWrite}
               providers={c.providers}
               policies={c.policies}
-              onSelect={(id) => c.setProviderModal(id)}
+              onSelect={(id) => navigate(`/models/providers/${encodeURIComponent(id)}`)}
               onDelete={(provider) => c.setDeleteProvider(provider)}
-            />
-          ) : c.workspace === 'routing' ? (
-            <ModelsTabRouting
-              policies={c.policies}
-              models={c.models}
-              description={activeWorkspace.description}
-              onOpen={c.setPolicyDrawer}
             />
           ) : c.workspace === 'governance' ? (
             <ModelsTabGovernance
@@ -188,7 +168,12 @@ function ModelsPageShell({ controller: c, t }: { controller: ReturnType<typeof u
                 if (policyId) c.setDrillPolicyId(policyId);
                 c.setDrillModalOpen(true);
               }}
-              onGoRouting={() => c.setWorkspace('routing')}
+              onGoRouting={() => {
+                const first = c.providers[0];
+                navigate(first
+                  ? `/models/providers/new?id=${encodeURIComponent(first.id)}&step=routing`
+                  : '/models/providers/new');
+              }}
               onConfigurePolicy={c.openPolicyFromGovernance}
             />
           ) : (

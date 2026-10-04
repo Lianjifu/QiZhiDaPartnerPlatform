@@ -38,6 +38,8 @@ var DurableCollections = []string{
 	"employees",
 	"backups",
 	"tasks",
+	"scheduled_tasks",
+	"scheduled_runs",
 	"conversations",
 	"messages",
 	"sessions",
@@ -210,6 +212,10 @@ func (s *Store) snapshotLocked(collection string) []map[string]any {
 		return s.Backups
 	case "tasks":
 		return s.Tasks
+	case "scheduled_tasks":
+		return s.ScheduledTasks
+	case "scheduled_runs":
+		return s.ScheduledRuns
 	case "conversations":
 		return s.Conversations
 	case "messages":
@@ -432,6 +438,10 @@ func (s *Store) HydrateFrom(collection string, items []map[string]any) {
 		s.Backups = items
 	case "tasks":
 		s.Tasks = items
+	case "scheduled_tasks":
+		s.ScheduledTasks = items
+	case "scheduled_runs":
+		s.ScheduledRuns = items
 	case "conversations":
 		s.Conversations = items
 	case "messages":

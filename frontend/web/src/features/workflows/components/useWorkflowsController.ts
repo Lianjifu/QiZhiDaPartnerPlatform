@@ -4,7 +4,7 @@
  * 在 workflow-template-helpers.ts，避免控制器膨胀。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { MarkerType, applyNodeChanges, type Edge, type Node, type NodeChange, type NodeMouseHandler, type Connection } from 'reactflow';
 import type { DigitalPartner, Workflow, WorkflowNodeKind, WorkflowSkill } from '@qzda/web-types';
 import { useApiMutation, useApiQuery } from '@/services/query';
@@ -12,9 +12,9 @@ import { useAuthStore } from '@/stores/authStore';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import {
   ALL_WORKFLOW_TEMPLATES, DEPARTMENT_OPTIONS, deriveTemplateBlockers, diffTemplateUpgrade,
-  filterByIndustry, isPersonalTemplate, isPlatformTemplate, isTemplateReusable,
+  filterByIndustry, isPersonalTemplate, isTemplateReusable,
   loadConnectorBindings, matchDepartmentKey, saveConnectorBindings,
-  type ConnectorBindings, type DepartmentKey, type TemplateOrigin, type TemplateUpgradeDiff,
+  type ConnectorBindings, type DepartmentKey, type TemplateUpgradeDiff,
   type WorkflowTemplateAsset,
 } from '@/features/workflows/department-templates';
 import { defaultWorkflowTab, roleCanMutate, visibleWorkflowTabs } from '@/features/role-nav/role-nav';
@@ -37,14 +37,35 @@ export type WorkflowsController = ReturnType<typeof useWorkflowsController>;
 
 export function useWorkflowsController() {
   const navigate = useNavigate();
+  const location = useLocation();
   const userRole = useAuthStore((s) => s.user?.role);
   const canWrite = useAuthStore((s) => s.hasPermission('workflow.write')) && roleCanMutate(userRole);
   const canExecute = useAuthStore((s) => s.hasPermission('workflow.execute')) && roleCanMutate(userRole);
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
   const workflowTabs = visibleWorkflowTabs(userRole);
   const currentWorkspaceId = useWorkspaceStore((s) => s.currentWorkspaceId ?? 'w1');
+  const useTemplateId = useMemo(() => new URLSearchParams(location.search).get('use'), [location.search]);
+  const isStudio = location.pathname.startsWith('/workflows/new');
 
-  const [tab, setTab] = useState<TabKey>(() => defaultWorkflowTab(userRole));
+  const goStudio = useCallback((step: 'canvas' | 'publishSkill' | 'versions' | 'history' = 'canvas') => {
+    setTab(step);
+    const search = step === 'canvas' ? '' : `?step=${step}`;
+    if (location.pathname === '/workflows/new' && location.search === search) return;
+    navigate({ pathname: '/workflows/new', search }, { state: location.state });
+  }, [location.pathname, location.search, location.state, navigate]);
+  const goCatalog = useCallback(() => {
+    setTab('templates');
+    navigate('/workflows');
+  }, [navigate]);
+
+  const [tab, setTab] = useState<TabKey>(() => {
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/workflows/new')) {
+      const step = new URLSearchParams(window.location.search).get('step');
+      if (step === 'publishSkill' || step === 'versions' || step === 'canvas' || step === 'history') return step;
+      return 'canvas';
+    }
+    return defaultWorkflowTab(userRole);
+  });
   const [sidePanel, setSidePanel] = useState<SidePanelKey>('library');
   const [librarySearchQ, setLibrarySearchQ] = useState('');
   const [canvasSearchQ, setCanvasSearchQ] = useState('');
@@ -53,9 +74,8 @@ export function useWorkflowsController() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
-  const [filterGroup, setFilterGroup] = useState<DepartmentKey | 'all'>('office');
+  const [filterGroup, setFilterGroup] = useState<DepartmentKey | 'all'>('all');
   const [filterIndustry, setFilterIndustry] = useState<string>('all');
-  const [templateOriginFilter, setTemplateOriginFilter] = useState<TemplateOrigin>('platform');
   const [showAdvancedLibrary, setShowAdvancedLibrary] = useState(false);
   const [workspaceDeptOnly, setWorkspaceDeptOnly] = useState(false);
   const [connectorBindings, setConnectorBindings] = useState<ConnectorBindings>(() => loadConnectorBindings(currentWorkspaceId));
@@ -68,7 +88,7 @@ export function useWorkflowsController() {
   const [versionCenterSelectedId, setVersionCenterSelectedId] = useState<string>('');
   const [diffBaseId, setDiffBaseId] = useState<string>('');
   const [rollbackTargetId, setRollbackTargetId] = useState<string | null>(null);
-  const [previewTemplate, setPreviewTemplate] = useState<WorkflowTemplateAsset | null>(null);
+  const [useTemplate, setUseTemplate] = useState<WorkflowTemplateAsset | null>(null);
   const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
   const [generationStep, setGenerationStep] = useState<'input' | 'preview'>('input');
   const [generationResult, setGenerationResult] = useState<GenerationResult | null>(null);
@@ -76,11 +96,17 @@ export function useWorkflowsController() {
   const [generationConstraints, setGenerationConstraints] = useState<GenerationVars['constraints']>({ riskLevel: 'L2', requireApproval: true, requireAudit: true, requireRollback: true });
   const [generationModel, setGenerationModel] = useState('企业默认模型');
 
-  const { data: generationHistoryData } = useApiQuery<GenerationResult[]>(['workflow-generations'], '/api/workflows/generations');
+  const { data: generationHistoryData } = useApiQuery<GenerationResult[]>(
+    ['workflow-generations'], '/api/workflows/generations', undefined, { enabled: aiGenerateOpen },
+  );
   const generationHistory = generationHistoryData ?? [];
-  const { data: templateAssetsData, refetch: refetchTemplates } = useApiQuery<Array<Partial<WorkflowTemplateAsset> & { id: string; name: string }>>(['workflow-templates'], '/api/workflow-templates');
+  const { data: templateAssetsData, refetch: refetchTemplates } = useApiQuery<Array<Partial<WorkflowTemplateAsset> & { id: string; name: string }>>(
+    ['workflow-templates'], '/api/workflow-templates', undefined, { enabled: tab === 'templates' || Boolean(useTemplateId) || isStudio },
+  );
   const templateAssets = templateAssetsData ?? [];
-  const { data: employeesData } = useApiQuery<DigitalPartner[]>(['digital-employees'], '/api/partners');
+  const { data: employeesData } = useApiQuery<DigitalPartner[]>(
+    ['digital-employees'], '/api/partners', undefined, { enabled: tab === 'templates' },
+  );
   const workspaceDepartments = useMemo(() => {
     const keys = new Set<DepartmentKey>();
     for (const employee of employeesData ?? []) {
@@ -89,12 +115,19 @@ export function useWorkflowsController() {
     }
     return keys;
   }, [employeesData]);
-  const { data: workflowListData } = useApiQuery<Array<Pick<Workflow, 'id'>>>(['workflows', currentWorkspaceId], '/api/workflows');
+  const needsDraft = isStudio || tab === 'canvas' || tab === 'versions' || tab === 'publishSkill';
+  const { data: workflowListData } = useApiQuery<Array<Pick<Workflow, 'id'>>>(
+    ['workflows', currentWorkspaceId], '/api/workflows', undefined, { enabled: needsDraft },
+  );
   const workflowList = Array.isArray(workflowListData) ? workflowListData : [];
   const workflowId = workflowList[0]?.id ?? '';
-  const { data: workflowDraft } = useApiQuery<Workflow>(['workflow-draft', currentWorkspaceId, workflowId], `/api/workflows/${workflowId || '__none__'}`, undefined, { enabled: Boolean(workflowId) });
+  const { data: workflowDraft } = useApiQuery<Workflow>(
+    ['workflow-draft', currentWorkspaceId, workflowId], `/api/workflows/${workflowId || '__none__'}`, undefined,
+    { enabled: needsDraft && Boolean(workflowId) },
+  );
   const { data: remoteVersionsData, refetch: refetchVersions } = useApiQuery<Array<Parameters<typeof mapRemoteVersion>[0]>>(
-    ['workflow-versions', currentWorkspaceId, workflowId], `/api/workflows/${workflowId || '__none__'}/versions`, undefined, { enabled: Boolean(workflowId) },
+    ['workflow-versions', currentWorkspaceId, workflowId], `/api/workflows/${workflowId || '__none__'}/versions`, undefined,
+    { enabled: (tab === 'canvas' || tab === 'versions' || tab === 'publishSkill' || isStudio) && Boolean(workflowId) },
   );
   const remoteVersions = Array.isArray(remoteVersionsData) ? remoteVersionsData : [];
   const draftHydratedRef = useRef(false);
@@ -103,11 +136,15 @@ export function useWorkflowsController() {
   const [preflightOpen, setPreflightOpen] = useState(false);
   const [preflightResult, setPreflightResult] = useState<WorkflowValidation | null>(null);
   const [preflightVersion, setPreflightVersion] = useState<string | null>(null);
-  const [nodeLibraryOpen, setNodeLibraryOpen] = useState(false);
+  const [nodeLibraryOpen, setNodeLibraryOpen] = useState(true);
   const [focusRunId, setFocusRunId] = useState<string | null>(null);
-  const { data: workflowRunsData } = useApiQuery<WorkflowRunRecord[]>(['workflow-runs'], '/api/workflow-runs');
+  const { data: workflowRunsData } = useApiQuery<WorkflowRunRecord[]>(
+    ['workflow-runs'], '/api/workflow-runs', undefined, { enabled: tab === 'history' || isStudio },
+  );
   const workflowRuns = workflowRunsData ?? [];
-  const { data: workflowSkillsData, refetch: refetchWorkflowSkills } = useApiQuery<WorkflowSkill[]>(['workflow-skills'], '/api/workflow-skills');
+  const { data: workflowSkillsData, refetch: refetchWorkflowSkills } = useApiQuery<WorkflowSkill[]>(
+    ['workflow-skills'], '/api/workflow-skills', undefined, { enabled: tab === 'publishSkill' || isStudio },
+  );
   const workflowSkills = workflowSkillsData ?? [];
   const [skillName, setSkillName] = useState('生产故障处置流程技能');
   const [skillDesc, setSkillDesc] = useState('由工作流程发布的标准作业能力，可供数字伙伴在能力装配中引用。');
@@ -133,7 +170,7 @@ export function useWorkflowsController() {
   const runWorkflowApi = useApiMutation<WorkflowRunRecord, Record<string, unknown>>(
     (vars) => `/api/workflows/${String((vars as { workflowId?: string }).workflowId ?? workflowId)}/run`,
     {
-      onSuccess: (run) => { setPreflightOpen(false); setFocusRunId(run.id); setTab('history'); showToast(`已创建沙箱运行记录 ${run.id}`, 'success'); },
+      onSuccess: (run) => { setPreflightOpen(false); setFocusRunId(run.id); goStudio('history'); showToast(`已创建沙箱运行记录 ${run.id}`, 'success'); },
       onError: (err) => showToast(apiErr(err, '工作流执行请求失败'), 'error'),
     },
   );
@@ -159,7 +196,7 @@ export function useWorkflowsController() {
     { name: string; description?: string; department?: string; sequence?: string[]; graph?: { nodes: unknown[]; edges: unknown[] }; risk?: string }
   >('/api/workflow-templates', {
     invalidateKeys: [['workflow-templates']],
-    onSuccess: (tpl) => { setTemplateOriginFilter('personal'); setTab('templates'); showToast(`已保存个人模板「${tpl.name}」`, 'success'); void refetchTemplates(); },
+    onSuccess: (tpl) => { goCatalog(); showToast(`已保存个人模板「${tpl.name}」`, 'success'); void refetchTemplates(); },
     onError: (err) => showToast(apiErr(err, '保存个人模板失败'), 'error'),
   });
   const deletePersonalTemplateApi = useApiMutation<{ ok: boolean; id: string }, { id: string }>(
@@ -174,7 +211,7 @@ export function useWorkflowsController() {
         const next = cloneSnapshot(mapped);
         setNodes(next.nodes); setEdges(next.edges); setActiveVersion(mapped.id); setSelectedNodeId(next.nodes[0]?.id ?? null);
         historyRef.current = { stack: [next], idx: 0 };
-        setRollbackTargetId(null); setVersionMenuOpen(false); setTab('canvas');
+        setRollbackTargetId(null); setVersionMenuOpen(false); goStudio('canvas');
         showToast(`已从 ${result.restoredFrom} 回滚并生成草稿 ${mapped.id}`, 'success');
       },
       onError: (err) => showToast(apiErr(err, '回滚失败'), 'error'),
@@ -266,7 +303,7 @@ export function useWorkflowsController() {
       if (e.key === 'Escape') {
         if (contextMenu) { setContextMenu(null); return; }
         if (versionMenuOpen) { setVersionMenuOpen(false); return; }
-        if (previewTemplate) { setPreviewTemplate(null); return; }
+        if (useTemplate) { setUseTemplate(null); return; }
       }
       if (isInput) return;
       const mod = e.metaKey || e.ctrlKey;
@@ -278,26 +315,37 @@ export function useWorkflowsController() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedNodeId, contextMenu, versionMenuOpen, previewTemplate, undo, redo]);
+  }, [selectedNodeId, contextMenu, versionMenuOpen, useTemplate, undo, redo]);
 
   const availableTemplates = useMemo(() => {
     const fromApi = templateAssets.length > 0
       ? templateAssets.map((item) => normalizeTemplateAsset(item, connectorBindings))
-      : (templateOriginFilter === 'personal' ? [] : ALL_WORKFLOW_TEMPLATES.map((item) => normalizeTemplateAsset(item, connectorBindings)));
+      : ALL_WORKFLOW_TEMPLATES.map((item) => normalizeTemplateAsset(item, connectorBindings));
     const byId = new Map(fromApi.map((item) => [item.id, item]));
-    if (templateOriginFilter === 'platform') for (const item of ALL_WORKFLOW_TEMPLATES) if (!byId.has(item.id)) byId.set(item.id, normalizeTemplateAsset(item, connectorBindings));
+    for (const item of ALL_WORKFLOW_TEMPLATES) if (!byId.has(item.id)) byId.set(item.id, normalizeTemplateAsset(item, connectorBindings));
     return filterByIndustry(Array.from(byId.values()), filterIndustry);
-  }, [templateAssets, connectorBindings, filterIndustry, templateOriginFilter]);
+  }, [templateAssets, connectorBindings, filterIndustry]);
   const filteredTemplates = availableTemplates.filter((t) => {
-    if (templateOriginFilter === 'platform' ? !isPlatformTemplate(t) : !isPersonalTemplate(t)) return false;
-    if (templateOriginFilter === 'platform' && !showAdvancedLibrary && t.library === 'advanced') return false;
+    if (!showAdvancedLibrary && t.library === 'advanced') return false;
     if (filterGroup !== 'all' && t.department !== filterGroup) return false;
     if (workspaceDeptOnly && workspaceDepartments.size > 0 && !workspaceDepartments.has(t.department)) return false;
     return true;
   });
-  const platformTemplateCount = availableTemplates.filter((t) => isPlatformTemplate(t) && t.library === 'default').length;
-  const personalTemplateCount = availableTemplates.filter((t) => isPersonalTemplate(t)).length;
   const filteredLibrary = NODE_LIB.filter((k) => !librarySearchQ || NODE_LABELS[k].includes(librarySearchQ) || NODE_DESCS[k].toLowerCase().includes(librarySearchQ.toLowerCase()));
+  useEffect(() => {
+    if (!useTemplateId) return;
+    if (!isStudio) {
+      navigate(`/workflows/new?use=${encodeURIComponent(useTemplateId)}`, { replace: true });
+      return;
+    }
+    const found = availableTemplates.find((item) => item.id === useTemplateId)
+      ?? ALL_WORKFLOW_TEMPLATES.find((item) => item.id === useTemplateId);
+    if (found) {
+      setUseTemplate(normalizeTemplateAsset(found, connectorBindings));
+      setTab('canvas');
+    }
+    navigate({ pathname: '/workflows/new', search: '' }, { replace: true });
+  }, [useTemplateId, availableTemplates, connectorBindings, navigate, isStudio]);
   const selectedNode = useMemo(() => nodes.find((n) => n.id === selectedNodeId) || null, [nodes, selectedNodeId]);
   const rfNodes = useMemo<Node[]>(() => nodes.map((n) => ({ ...n, selected: n.id === selectedNodeId, data: { ...n.data, id: n.id } })), [nodes, selectedNodeId]);
   const rfEdges = useMemo<Edge[]>(() => edges.map((e) => ({ ...e, type: 'smoothstep', markerEnd: { type: MarkerType.ArrowClosed, color: '#94a3b8' }, style: { stroke: '#94a3b8', strokeWidth: 1.2 } })), [edges]);
@@ -401,6 +449,16 @@ export function useWorkflowsController() {
     setCleanBaseline(JSON.stringify({ nodes: next.nodes, edges: next.edges }));
   }, [pushHistory]);
 
+  useEffect(() => {
+    const draft = (location.state as { orchDraft?: { nodes: Node[]; edges: Edge[]; revisionId?: string; label?: string } } | null)?.orchDraft;
+    if (!draft?.nodes?.length) return;
+    loadSnapshot({ nodes: draft.nodes, edges: draft.edges }, draft.revisionId || 'orch-draft');
+    draftHydratedRef.current = true;
+    goStudio('canvas');
+    showToast(draft.label ? `已写入隔离草稿「${draft.label}」` : '已写入隔离草稿', 'success');
+    navigate('.', { replace: true, state: {} });
+  }, [goStudio, loadSnapshot, location.state, navigate, showToast]);
+
   const runWorkflow = useCallback(() => {
     if (!canExecute) { showToast('当前账号没有工作流执行权限', 'error'); return; }
     if (draftGate?.blocked) { showToast(`模板依赖未授权，禁止试运行：${draftGate.reasons[0] ?? '请先完成依赖授权'}`, 'error'); return; }
@@ -431,21 +489,24 @@ export function useWorkflowsController() {
       edges: applied.workflow.edges.map((edge) => ({ id: edge.id, source: edge.source, target: edge.target })),
     };
     setNodes(snapshot.nodes); setEdges(snapshot.edges);
+    draftHydratedRef.current = true;
     setVersions((previous) => previous.some((version) => version.id === applied.revisionId) ? previous : [{ id: applied.revisionId!, label: `${applied.revisionId} · AI 草稿`, time: '刚刚', desc: `AI 辅助编排 · ${applied.promptDigest ?? applied.id}`, nodes: cloneSnapshot(snapshot).nodes, edges: cloneSnapshot(snapshot).edges }, ...previous]);
     setActiveVersion(applied.revisionId); pushHistory(snapshot); setSelectedNodeId(snapshot.nodes[0]?.id ?? null);
-    setTab('canvas'); setSidePanel('properties'); setAiGenerateOpen(false);
+    setSidePanel('properties'); setAiGenerateOpen(false);
+    goStudio('canvas');
     showToast(`已创建隔离草稿 ${applied.revisionId}，专家复核后可发布为流程技能供数字伙伴装配`, 'success');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeVersion, applyGenerationApi, canWrite, edges, generationResult, nodes, pushHistory, versions]);
   const discardGeneration = useCallback(() => { if (generationResult) discardGenerationApi.mutate({ id: generationResult.id }); setAiGenerateOpen(false); setGenerationResult(null); setGenerationStep('input'); }, [discardGenerationApi, generationResult]);
 
-  const createTemplateDraft = useCallback((template: WorkflowTemplateAsset) => {
+  const createTemplateDraft = useCallback((template: WorkflowTemplateAsset, opts?: { skipConfirm?: boolean }) => {
     if (!canWrite) { showToast('当前账号没有工作流编辑权限', 'error'); return; }
     const asset = normalizeTemplateAsset(template, connectorBindings);
     const snapshot = templateSnapshot(asset);
+    draftHydratedRef.current = true;
     const currentSnapshot = versions.find((version) => version.id === activeVersion);
-    const hasUnsavedChanges = !currentSnapshot || JSON.stringify({ nodes, edges }) !== JSON.stringify({ nodes: currentSnapshot.nodes, edges: currentSnapshot.edges });
-    if (hasUnsavedChanges && !window.confirm('当前画布存在未保存修改。模板将创建为新的隔离草稿，是否继续？')) return;
+    const hasUnsavedChanges = isDirtyRef.current || !currentSnapshot || JSON.stringify({ nodes, edges }) !== JSON.stringify({ nodes: currentSnapshot.nodes, edges: currentSnapshot.edges });
+    if (!opts?.skipConfirm && hasUnsavedChanges && !window.confirm('当前画布存在未保存修改。模板将创建为新的隔离草稿，是否继续？')) return;
     const revisionId = `tpl_${asset.id}_${Date.now().toString(36)}`;
     const reasons = asset.blockers.length ? asset.blockers : deriveTemplateBlockers(asset);
     const blocked = !isTemplateReusable(asset);
@@ -454,7 +515,9 @@ export function useWorkflowsController() {
     setVersions((previous) => [{ id: revisionId, label: `${asset.version} · 模板草稿`, time: '刚刚', desc: `sourceTemplateId=${asset.id}@${asset.version} · ${asset.name} · ${asset.owner}${asset.healthHint ? ` · ${asset.healthHint}` : ''}`, nodes: cloneSnapshot(snapshot).nodes, edges: cloneSnapshot(snapshot).edges }, ...previous]);
     setActiveVersion(revisionId); pushHistory(snapshot); setSelectedNodeId(snapshot.nodes[0]?.id ?? null);
     setDraftGate({ blocked, reasons: reasons.length ? reasons : (blocked ? ['存在未满足的依赖或治理条件'] : []), templateId: asset.id, templateName: asset.name, templateVersion: asset.version, owner: asset.owner, sourceTemplateId: provenance.sourceTemplateId, sourceTemplateVersion: provenance.sourceTemplateVersion, degraded: provenance.degraded, healthHint: asset.healthHint });
-    setTab('canvas'); setSidePanel('properties');
+    setSidePanel('properties');
+    setUseTemplate(null); setUpgradeDiff(null);
+    goStudio('canvas');
     showToast(blocked ? `已基于「${asset.name}」创建隔离草稿（依赖未授权，试运行与发布已禁用）` : asset.healthHint ? `已基于「${asset.name}」创建隔离草稿（${asset.healthHint}）` : `已基于「${asset.name}」创建隔离草稿（溯源 ${asset.id}@${asset.version}）`, blocked ? 'info' : 'success');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canWrite, connectorBindings, edges, nodes, pushHistory, versions]);
@@ -484,16 +547,11 @@ export function useWorkflowsController() {
 
   const openUpgradeDiff = useCallback((template: WorkflowTemplateAsset) => {
     const latest = availableTemplates.find((t) => t.id === template.id) ?? template;
-    const current = draftGate?.sourceTemplateId === template.id ? { ...template, version: draftGate.sourceTemplateVersion || template.version } : { ...template, version: '0.9.0' };
-    const previewLatest = template.changelog.some((c) => c.version !== template.version)
-      ? { ...latest, version: template.changelog.map((c) => c.version).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).at(-1) || latest.version } : latest;
-    const diff = diffTemplateUpgrade(current, previewLatest);
-    if (!diff.available && template.id === 'wf.fin.expense') {
-      setUpgradeDiff({ template, diff: diffTemplateUpgrade({ ...template, version: '1.0.0' }, { ...template, version: '1.1.0', sequence: [...template.sequence, 'schedule'], connectors: [...template.connectors, { slot: 'budget.check', label: '预算校验', required: false, capability: 'budget.check' }], changelog: [...template.changelog] }) });
-      return;
-    }
-    setUpgradeDiff({ template, diff });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const currentVersion = draftGate?.sourceTemplateId === template.id
+      ? (draftGate.sourceTemplateVersion || template.version)
+      : template.version;
+    const diff = diffTemplateUpgrade({ ...template, version: currentVersion }, latest);
+    setUpgradeDiff({ template: latest, diff });
   }, [availableTemplates, draftGate]);
 
   const exportWorkflow = useCallback(() => {
@@ -567,16 +625,16 @@ export function useWorkflowsController() {
   }, [draftGate, skillValidationReady, publishAsSkillApi, workflowId, skillSourceVersion, skillName, skillDesc, skillRiskLevel]);
 
   return {
-    navigate, canWrite, canExecute, isAdmin, workflowTabs,
+    navigate, canWrite, canExecute, isAdmin, workflowTabs, goStudio, goCatalog,
     tab, setTab, sidePanel, setSidePanel, librarySearchQ, setLibrarySearchQ, canvasSearchQ, setCanvasSearchQ,
     nodes, edges, selectedNodeId, setSelectedNodeId,
     contextMenu, setContextMenu, clearConfirmOpen, setClearConfirmOpen,
-    filterGroup, setFilterGroup, filterIndustry, setFilterIndustry, templateOriginFilter, setTemplateOriginFilter,
+    filterGroup, setFilterGroup, filterIndustry, setFilterIndustry,
     showAdvancedLibrary, setShowAdvancedLibrary, workspaceDeptOnly, setWorkspaceDeptOnly,
     connectorBindings, setConnectorBindings, upgradeDiff, setUpgradeDiff, webhookEnabled, setWebhookEnabled,
     activeVersion, setActiveVersion, versionMenuOpen, setVersionMenuOpen, versionDiffOpen, setVersionDiffOpen,
     versions, setVersions, versionCenterSelectedId, setVersionCenterSelectedId, diffBaseId, setDiffBaseId, rollbackTargetId, setRollbackTargetId,
-    previewTemplate, setPreviewTemplate, aiGenerateOpen, setAiGenerateOpen, generationStep, setGenerationStep,
+    useTemplate, setUseTemplate, aiGenerateOpen, setAiGenerateOpen, generationStep, setGenerationStep,
     generationResult, setGenerationResult, generationPrompt, setGenerationPrompt, generationConstraints, setGenerationConstraints, generationModel, setGenerationModel,
     generationHistory, templateAssets, refetchTemplates, employeesData, workspaceDepartments,
     workflowId, workflowDraft, remoteVersions, draftGate, setDraftGate, preflightOpen, setPreflightOpen,
@@ -587,7 +645,7 @@ export function useWorkflowsController() {
     workflowSkills, refetchWorkflowSkills, publishAsSkillApi,
     skillName, setSkillName, skillDesc, setSkillDesc, skillSourceVersion, setSkillSourceVersion, skillRiskLevel, setSkillRiskLevel,
     requestProductionRelease, wrapperRef, draggedKind, setDraggedKind, historyRef, undo, redo, reactFlowRef, focusNode,
-    availableTemplates, filteredTemplates, platformTemplateCount, personalTemplateCount, filteredLibrary,
+    availableTemplates, filteredTemplates, filteredLibrary,
     selectedNode, rfNodes, rfEdges, onNodesChange, addNode, deleteNode, duplicateNode,
     updateNodeLabel, updateNodeDescription, updateNodeNote, patchNodeData,
     structureIssues, disableNode, clearCanvas, confirmClearCanvas, resetCanvas, saveCanvas, saveAsVersion, loadSnapshot,

@@ -1,3 +1,14 @@
+// Package copilot —— ReAct（Reason→Act→Observe）回合执行器。
+//
+// 一次 runReactTurn 就是一次有界的多轮"模型决策→工具调用→观察注入"循环，
+// 最后产出 finalText + toolCalls + citations + 段片段 + 模型元信息。
+//
+// 关键能力：
+//   - bootstrap retrieve —— 首次自动跑 knowledge.retrieve（不依赖 LLM 主动调用）
+//   - 自动续跑 auto-continue —— 写工具成功后自动接一个 run 工具，避免"只写不跑"
+//   - maxSteps 兜底 —— 到达步数上限时再喂一次 system 提醒，逼出最终回答
+//   - 富化 —— enrichCopilotFinalText 收尾（注入引用、去掉工具标记等）
+//   - 段流式 —— runReactTurn 收尾后通过 streamHarnessAnswer 转 SSE 段事件
 package copilot
 
 import (
@@ -14,8 +25,23 @@ import (
 const reactMaxSteps = 10
 const reactToolObservationMaxRunes = 800
 
+// reactEmitFunc 是 SSE emit 的统一签名（typ, stage, extra）。
+//
+// typ 取自 contract.Stream*（thought / tool / stage / delta / reflect / ...），
+// stage 是触发阶段的标签（react / harness / plan / bootstrap）。
+//
+// 注意签名上 emit 不返回 error——SSE 通道断了由调用方（runReactTurn 的循环）自行判断。
 type reactEmitFunc func(typ, stage string, extra map[string]any)
 
+// reactTurnInput 是 runReactTurn 的入参。"输入"几乎涵盖了一次 copilot 回合需要的全部上下文。
+//
+// 字段分组：
+//   - 路由相关：ModeHint / ReflectHint / RouteReason / SkipRoute / SkipStream / NoBootstrap
+//   - 会话相关：SessionMode / RiskLevel / Channel / RAGPrefetched / SnapshotID / Binding
+//   - 上下文注入：MemoryProvenance / SegmentPolicy / ReplyMode / FirstMessageID
+//   - 流式相关：StepSegments / LiveStream / BranchFromMessageID（regenerate 入口）
+//
+// 字段命名约定：所有 ID 类都带 Id 后缀或全大写（Corr / ConversationID）。
 type reactTurnInput struct {
 	Request         *http.Request
 	WorkspaceID     string
@@ -56,6 +82,15 @@ type reactTurnInput struct {
 	BranchFromMessageID string
 }
 
+// reactTurnResult 是 runReactTurn 的出参。
+//
+// 关键字段：
+//   - Text          —— 最终中文回答（已剥工具标记 + 富化）
+//   - Resolved      —— 实际命中的模型 + 协议 + 级别（给 SSE 计费用）
+//   - ToolCalls     —— 本回合所有工具调用记录（包含 bootstrap + auto-continue）
+//   - Citations     —— 去重后的引用列表（docId+source+text 三元组去重）
+//   - Steps         —— ReAct 实际走了多少步（含 bootstrap 但不含 maxSteps 兜底那次）
+//   - Segments      —— 段流式输出（replyMode=segmented 时使用）
 type reactTurnResult struct {
 	Text          string
 	Resolved      ResolvedTurn

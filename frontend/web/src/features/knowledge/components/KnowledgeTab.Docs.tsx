@@ -5,6 +5,7 @@
  * 单文档阅读器（详情弹层）由 KnowledgeModals.DocDetail 承担，避免本文件超 400L。
  */
 import { Boxes, ChevronRight, Eye, FileText, Search, ShieldCheck, Tag as TagIcon, Trash2, Upload as UploadIcon } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Badge, Button, Input } from '@qzda/web-ui';
 import { EmptyState } from '@/components/shared';
 import { cn } from '@qzda/web-utils';
@@ -12,6 +13,7 @@ import { CONTENT_PAGE_SIZE, docOwnerLabel, docVersionFromTitle } from './Knowled
 import type { KnowledgeController } from './useKnowledgeController';
 
 export function KnowledgeTabDocs({ c }: { c: KnowledgeController }) {
+  const navigate = useNavigate();
   return (
     <>
       {c.knowledgePackages.length > 0 && (
@@ -102,7 +104,7 @@ export function KnowledgeTabDocs({ c }: { c: KnowledgeController }) {
             title="没有匹配的内容"
             description="尝试清除筛选条件，或上传新的企业知识文档。"
             action={c.canWrite ? (
-              <Button size="sm" onClick={() => c.setActiveModal('upload')}>
+              <Button size="sm" onClick={() => navigate('/knowledge/new')}>
                 <UploadIcon className="h-3.5 w-3.5" />上传文档
               </Button>
             ) : undefined}

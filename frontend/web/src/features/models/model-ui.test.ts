@@ -52,13 +52,14 @@ describe('model control-plane UI state', () => {
   });
 
   it('parses model workspace tabs from URL with role-scoped visibility', () => {
+    expect(parseModelTab('routing')).toBe('access');
     expect(parseModelTab('governance')).toBe('governance');
     expect(parseModelTab('unknown')).toBe('access');
     expect(parseModelTab(null)).toBe('access');
     expect(parseModelTab('audit')).toBe('access');
     expect(parseModelTab('audit', 'auditor')).toBe('audit');
     expect(parseModelTab('access', 'auditor')).toBe('audit');
-    expect(visibleModelTabs('admin')).toEqual(['access', 'routing', 'governance']);
+    expect(visibleModelTabs('admin')).toEqual(['access', 'governance']);
     expect(visibleModelTabs('auditor')).toEqual(['audit']);
     expect(defaultModelTab('auditor')).toBe('audit');
   });

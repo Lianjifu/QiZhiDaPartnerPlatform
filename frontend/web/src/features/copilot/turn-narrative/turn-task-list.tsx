@@ -48,6 +48,23 @@ export function TurnTaskList({ tasks, compact }: Props) {
   );
 }
 
+/** When the assistant message is no longer streaming, open tasks must not keep spinning. */
+export function settleTurnTasks(
+  tasks: TurnTaskItem[],
+  opts?: { streaming?: boolean; messageStatus?: string },
+): TurnTaskItem[] {
+  const list = dedupeTurnTasks(tasks);
+  if (opts?.streaming) return list;
+  const status = (opts?.messageStatus ?? '').toLowerCase();
+  const failed = status === 'failed' || status === 'error';
+  const cancelled = status === 'cancelled' || status === 'aborted' || status === 'expired';
+  const next: TurnTaskItem['status'] = failed ? 'failed' : cancelled ? 'cancelled' : 'done';
+  return list.map((task) => {
+    if (task.status !== 'pending' && task.status !== 'running') return task;
+    return { ...task, status: next, endedAt: task.endedAt ?? new Date().toISOString() };
+  });
+}
+
 /** Keep latest status per task id (backend historically appended added/started/completed). */
 export function dedupeTurnTasks(tasks: TurnTaskItem[]): TurnTaskItem[] {
   const byId = new Map<string, TurnTaskItem>();

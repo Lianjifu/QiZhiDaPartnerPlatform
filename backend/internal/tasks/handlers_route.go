@@ -3,6 +3,7 @@ package tasks
 import (
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/qizhida-partner-platform/backend/internal/auth"
 	"github.com/qizhida-partner-platform/backend/internal/policy"
@@ -61,7 +62,7 @@ func (s *Service) taskRoute(r *http.Request) (any, error) {
 		if id.Role == "user" && !TaskVisibleToUser(task, id) {
 			return nil, apperr.Forbidden(apperr.TaskOwnerScope, "只能更新自己相关的任务")
 		}
-		for _, key := range []string{"title", "description", "assignee", "priority", "tags"} {
+		for _, key := range []string{"title", "description", "assignee", "priority", "tags", "collaboratorNames", "collaboratorIds"} {
 			if body[key] != nil {
 				task[key] = body[key]
 			}
@@ -76,6 +77,32 @@ func (s *Service) taskRoute(r *http.Request) (any, error) {
 		out := make([]map[string]any, len(evs))
 		copy(out, evs)
 		return out, nil
+	}
+	if action == "comments" && r.Method == http.MethodGet {
+		return TaskComments(task), nil
+	}
+	if action == "comments" && r.Method == http.MethodPost {
+		if !auth.Has(id, "task.write") {
+			return nil, apperr.Forbidden(apperr.RoleForbidden, "无权留言")
+		}
+		if id.Role == "user" && !TaskVisibleToUser(task, id) {
+			return nil, apperr.Forbidden(apperr.TaskOwnerScope, "只能在自己相关的任务上留言")
+		}
+		body, _ := s.Deps.DecodeMap(r)
+		text := strings.TrimSpace(str(body["body"]))
+		if text == "" {
+			return nil, apperr.BadReq(apperr.BadRequest, "留言内容必填")
+		}
+		EnsureTaskShape(task)
+		comments, _ := task["comments"].([]map[string]any)
+		entry := map[string]any{
+			"id": s.Store.ID("cmt"), "at": time.Now().UTC().Format(time.RFC3339), "actor": id.Name, "body": text,
+		}
+		task["comments"] = append(comments, entry)
+		AppendTaskAuditLocked(task, id.Name, "团队留言", text, "info")
+		s.Store.AppendAudit(str(task["workspaceId"]), id.Name, "任务留言", str(task["title"]), "success", "")
+		go s.Store.Persist("tasks")
+		return entry, nil
 	}
 	body, _ := s.Deps.DecodeMap(r)
 	if err := CheckTaskVersion(task, body); err != nil {

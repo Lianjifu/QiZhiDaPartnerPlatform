@@ -7,7 +7,6 @@ import { I18nProvider } from './i18n';
 import { AuthBootstrap } from './auth';
 import { queryClient } from './lib/queryClient';
 import './styles/global.css';
-import 'reactflow/dist/style.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

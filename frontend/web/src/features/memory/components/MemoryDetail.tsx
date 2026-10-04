@@ -57,7 +57,7 @@ export function MemoryDetail({
       </dl>
       <div className="flex flex-wrap gap-2">
         {employee && (
-          <Button size="sm" variant="secondary" onClick={() => navigate(`/partners?employeeId=${employee.id}`)}>
+          <Button size="sm" variant="secondary" onClick={() => navigate(`/partners/${employee.id}?tab=boundary`)}>
             查看岗位契约
           </Button>
         )}

@@ -61,6 +61,7 @@ export function ProcessingWorkbench({
   onOpenPackages,
   sourcesRef,
   jobsRef,
+  scoped,
 }: {
   sources: KnowledgeSourceConnection[];
   jobs: KnowledgeProcessingJob[];
@@ -78,30 +79,33 @@ export function ProcessingWorkbench({
   activeJobCount: number;
   failedJobCount: number;
   onFilterChange: (filter: JobFilter) => void;
-  onConnectSource: () => void;
+  onConnectSource?: () => void;
   onSyncSource: (id: string) => void;
   onReindex: () => void;
   onProcessPending: () => void;
   onRetryJob: (id: string) => void;
-  onOpenPackages: () => void;
+  onOpenPackages?: () => void;
   sourcesRef: RefObject<HTMLElement>;
   jobsRef: RefObject<HTMLElement>;
+  scoped?: boolean;
 }) {
   return (
     <div className="knowledge-processing">
       <header className="knowledge-processing__intro">
         <div className="min-w-0">
-          <h2>加工中心</h2>
-          <p>先看任务进度与失败项，再管理数据源与加工链路。日常运维从任务列表开始即可。</p>
+          <h2>{scoped ? '加工' : '加工中心'}</h2>
+          <p>{scoped ? '查看本包切片、索引与已接入数据源的同步。完成后到「检索评测」验证质量。' : '先看任务进度与失败项，再管理数据源与加工链路。'}</p>
         </div>
         {canWrite && (
           <div className="flex flex-wrap items-center gap-2">
             <Button size="sm" variant="secondary" onClick={onReindex}>
               <RefreshCw className={cn('h-3.5 w-3.5', isReindexing && 'animate-spin')} />重建索引
             </Button>
-            <Button size="sm" onClick={onConnectSource}>
-              <Plus className="h-3.5 w-3.5" />接入数据源
-            </Button>
+            {onConnectSource && (
+              <Button size="sm" onClick={onConnectSource}>
+                <Plus className="h-3.5 w-3.5" />接入数据源
+              </Button>
+            )}
           </div>
         )}
       </header>
@@ -159,7 +163,7 @@ export function ProcessingWorkbench({
           </div>
         </div>
 
-        {pendingPackages.length > 0 && (
+        {!scoped && pendingPackages.length > 0 && onOpenPackages && (
           <button type="button" className="knowledge-package-strip" onClick={onOpenPackages}>
             <span className="flex min-w-0 items-center gap-2">
               <Boxes className="h-3.5 w-3.5 shrink-0 text-[var(--brand)]" />
@@ -264,7 +268,7 @@ export function ProcessingWorkbench({
             <h3>数据源</h3>
             <p>连接企业知识来源，按计划同步后进入加工队列。</p>
           </div>
-          {canWrite && sources.length > 0 && (
+          {canWrite && sources.length > 0 && onConnectSource && (
             <Button size="sm" onClick={onConnectSource}>
               <Plus className="h-3.5 w-3.5" />接入数据源
             </Button>
@@ -276,10 +280,7 @@ export function ProcessingWorkbench({
             <EmptyState
               icon={Database}
               title="尚未接入数据源"
-              description="可先上传文档加工；需要自动同步时再接入 Git、API 或 Webhook。"
-              action={canWrite ? (
-                <Button size="sm" onClick={onConnectSource}><Plus className="h-3.5 w-3.5" />接入数据源</Button>
-              ) : undefined}
+              description="新增连接请从知识中心「接入数据源」入口进入。"
             />
           </div>
         ) : (

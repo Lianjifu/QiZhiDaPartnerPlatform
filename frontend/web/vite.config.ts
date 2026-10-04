@@ -37,6 +37,17 @@ export default defineConfig({
     },
   },
   preview: { host: true, port: 4173 },
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      'react-router-dom',
+      '@tanstack/react-query',
+      'zustand',
+      'lucide-react',
+      'reactflow',
+    ],
+  },
   build: { target: 'es2022', sourcemap: true },
   test: { environment: 'jsdom' },
 });

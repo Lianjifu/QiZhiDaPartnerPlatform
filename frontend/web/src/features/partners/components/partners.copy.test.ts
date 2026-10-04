@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { capabilityAssemblyCompleteness, operationsHealth, OPERATIONS_HANDOFF_THRESHOLD, releaseOnboardingCompleteness, roleSetupCompleteness, type CapabilityAssemblyEmployee, type OperationsEmployee, type ReleaseOnboardingEmployee, type RoleSetupEmployee } from '@/features/partners/lib/partners';
+import { capabilityAssemblyCompleteness, operationsHealth, OPERATIONS_HANDOFF_THRESHOLD, partnerCanDelete, releaseOnboardingCompleteness, roleSetupCompleteness, type CapabilityAssemblyEmployee, type OperationsEmployee, type ReleaseOnboardingEmployee, type RoleSetupEmployee } from '@/features/partners/lib/partners';
 
 /** Mirrors gateLabel / terminology rules from DigitalPartners for regression. */
 function gateLabel(employee: {
@@ -335,5 +335,18 @@ describe('operationsHealth', () => {
   it('marks paused and quarantined stages', () => {
     expect(operationsHealth(baseOperationsEmployee({ lifecycle: 'paused', opsControl: { lastAction: 'paused', reason: '值班复核' } })).label).toBe('已暂停');
     expect(operationsHealth(baseOperationsEmployee({ lifecycle: 'quarantined' })).stage).toBe('quarantined');
+  });
+});
+
+describe('partnerCanDelete', () => {
+  it('allows deleting drafts that are not released', () => {
+    expect(partnerCanDelete({ lifecycle: 'draft', release: { status: 'not_released' } })).toBe(true);
+    expect(partnerCanDelete({ lifecycle: 'testing', release: { status: 'pending_approval' } })).toBe(true);
+  });
+
+  it('blocks deleting on-duty or released partners', () => {
+    expect(partnerCanDelete({ lifecycle: 'active', release: { status: 'released' } })).toBe(false);
+    expect(partnerCanDelete({ lifecycle: 'paused', release: { status: 'released' } })).toBe(false);
+    expect(partnerCanDelete({ lifecycle: 'active', release: { status: 'not_released' } })).toBe(false);
   });
 });

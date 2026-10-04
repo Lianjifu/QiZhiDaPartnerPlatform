@@ -20,7 +20,6 @@ import {
   EmployeeAvatar,
   EmptyState,
   lifecycleMeta,
-  ModuleTab,
 } from './PartnersShared';
 import {
   ChevronLeft,
@@ -44,7 +43,7 @@ function readOperationsPageSize() {
   return readStoredPageSize(OPERATIONS_PAGE_SIZE_KEY, OPERATIONS_DEFAULT_PAGE_SIZE);
 }
 
-export function OperationsView({ employees, onSelect, onGoToModule }: { employees: DigitalPartner[]; onSelect: (id: string) => void; onGoToModule: (tab: ModuleTab) => void }) {
+export function OperationsView({ employees, onSelect }: { employees: DigitalPartner[]; onSelect: (id: string) => void }) {
   type OpsSegment = 'all' | OperationsHealthStage;
   const [segment, setSegment] = useState<OpsSegment>('needs_attention');
   const [page, setPage] = useState(1);
@@ -89,11 +88,7 @@ export function OperationsView({ employees, onSelect, onGoToModule }: { employee
   return (
     <div className="space-y-3">
       <div className="de-employee-hint rounded-xl px-4 py-3 text-xs leading-5 text-[var(--text-secondary)]">
-        运行管理只做在岗健康观测与受控启停/隔离；岗位档案请到「岗位配置」，能力引用请到「能力装配」。交接偏高阈值：≥ {OPERATIONS_HANDOFF_THRESHOLD} 次 / 24h。
-        <div className="mt-2 flex flex-wrap gap-2">
-          <button type="button" className="de-employee-btn text-[11px]" onClick={() => onGoToModule('roleSetup')}>岗位配置</button>
-          <button type="button" className="de-employee-btn text-[11px]" onClick={() => onGoToModule('capabilities')}>能力装配</button>
-        </div>
+        运行管理只做在岗健康观测与受控启停/隔离。岗位档案、能力引用请进入专家详情，或从「继续配置」进入分步向导。交接偏高阈值：≥ {OPERATIONS_HANDOFF_THRESHOLD} 次 / 24h。
       </div>
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <button type="button" className="text-left" onClick={() => setSegment('all')} aria-pressed={segment === 'all'}>

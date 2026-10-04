@@ -4,6 +4,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { useApiQuery } from '@/services/query';
 import { useChat } from '@/hooks/useChat';
+import { useAuthStore } from '@/stores/authStore';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import type { DigitalPartner, ModelProvider, RoutingPolicyDraft } from '@qzda/web-types';
 import {
@@ -93,15 +94,17 @@ export function useCopilotState() {
 
   const chat = useChat({ name: '岗位专家' });
   const currentWorkspaceId = useWorkspaceStore((state) => state.currentWorkspaceId ?? 'w1');
+  const canReadModels = useAuthStore((state) =>
+    state.user?.role === 'admin' || Boolean(state.user?.permissions?.includes('model.read')),
+  );
 
   const { data: employeesData } = useApiQuery<DigitalPartner[]>(['digital-employees'], '/api/partners');
   const employees = useMemo(() => employeesData ?? [], [employeesData]);
-  const isAdmin = false; // 实际值在 controller 里覆盖
   const { data: modelProvidersData } = useApiQuery<ModelProvider[]>(
-    ['model-providers', 'copilot'], '/api/model-providers', undefined, { enabled: isAdmin },
+    ['model-providers', 'copilot'], '/api/model-providers', undefined, { enabled: canReadModels },
   );
   const { data: routingPoliciesData } = useApiQuery<RoutingPolicyDraft[]>(
-    ['model-routing-policies', 'copilot'], '/api/model-routing/policies', undefined, { enabled: isAdmin },
+    ['model-routing-policies', 'copilot'], '/api/model-routing/policies', undefined, { enabled: canReadModels },
   );
   const modelOptions = useMemo(
     () => buildCopilotModelOptions(modelProvidersData, routingPoliciesData),

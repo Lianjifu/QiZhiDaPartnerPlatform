@@ -1,3 +1,8 @@
+// Package copilot —— 顶层 harness 调度模块。
+//
+// 职责：把 classifyCopilotMode 的路由决策、resolveModelByPolicyLevel 的模型选型、
+// decideCognitiveFramework 的认知框架、reflection 反思、live stream 等子模块
+// 在 runHarnessTurn 里串成一个完整的 copilot 回合。
 package copilot
 
 import (
