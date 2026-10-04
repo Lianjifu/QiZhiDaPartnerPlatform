@@ -15,6 +15,9 @@ export interface ContextHandlers {
   switchSession: (id: string) => void;
   openCitation: (citation: any, messageId?: string) => void;
   copyMessage: (m: ChatMessageEx) => Promise<void>;
+  switchActiveVariant: (mid: string, variantId: string) => Promise<void>;
+  openAuditTab: (auditEventId: string) => void;
+  openReplay: (conversationId: string, correlationId: string) => void;
 }
 
 export function messageHasContext(m?: ChatMessageEx) {
@@ -92,5 +95,17 @@ export function buildContextHandlers(
     } catch { /* ignore */ }
   };
 
-  return { openContext, closeContext, setContextTab, jumpToMessage, switchSession, openCitation, copyMessage };
+  const switchActiveVariant = async (mid: string, variantId: string) => {
+    await s.chat.switchActiveVariant(mid, variantId);
+  };
+
+  const openAuditTab = (auditEventId: string) => {
+    s.setContextSelection((sel: any) => ({ ...sel, open: true, tab: 'audit', auditEventId }));
+  };
+
+  const openReplay = (conversationId: string, correlationId: string) => {
+    navigate(`/copilot/${currentSession?.id ?? conversationId}?replay=${encodeURIComponent(correlationId)}`);
+  };
+
+  return { openContext, closeContext, setContextTab, jumpToMessage, switchSession, openCitation, copyMessage, switchActiveVariant, openAuditTab, openReplay };
 }

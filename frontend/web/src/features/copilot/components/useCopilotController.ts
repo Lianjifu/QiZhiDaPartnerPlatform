@@ -146,17 +146,20 @@ export function useCopilotController(): CopilotController {
   });
   const sessionMode: 'investigate' | 'execute' = activeSession?.sessionMode === 'execute' ? 'execute' : 'investigate';
 
-  // Conversation fetch
+  // Conversation fetch — only when the active session has a real conversationId
+  // that we already own. Falling back to serverSession.id is unsafe because it
+  // can be a conv-X id that belongs to a different owner and 403s.
   const serverSession = useMemo(
     () => s.sessionHistory.find((item) => item.id === s.chat.state.activeId),
     [s.sessionHistory, s.chat.state.activeId],
   );
   const conversationFetchId = activeSession?.conversationId
-    || (serverSession ? (serverSession.conversationId || serverSession.id) : undefined);
+    || serverSession?.conversationId
+    || undefined;
   const canFetchConversation = Boolean(conversationFetchId)
     && !/^s_/.test(conversationFetchId ?? '')
     && !s.chat.isConversationDeleted(conversationFetchId)
-    && sessionInWorkspace(activeSession, s.currentWorkspaceId);
+    && sessionInWorkspace(activeSession ?? serverSession, s.currentWorkspaceId);
   const { isError: conversationMissing } = useApiQuery<any>(
     ['conversation', conversationFetchId, s.currentWorkspaceId],
     `/api/conversations/${conversationFetchId ?? '__none__'}`,

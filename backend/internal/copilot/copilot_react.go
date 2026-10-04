@@ -50,6 +50,10 @@ type reactTurnInput struct {
 	LiveStream       *liveAnswerStream
 	Employee         map[string]any
 	Cognitive        cognitiveDecision
+	// BranchFromMessageID makes the upcoming assistant turn a sibling of
+	// the given parent message ID (regenerate-from-here). When empty the
+	// new turn is the root of its own variant group.
+	BranchFromMessageID string
 }
 
 type reactTurnResult struct {

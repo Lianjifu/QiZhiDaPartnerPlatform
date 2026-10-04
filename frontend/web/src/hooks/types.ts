@@ -293,6 +293,14 @@ export interface ChatMessageEx {
   segmentIndex?: number;
   /** 分段类型：artifact 等为下载附件段 */
   segmentKind?: 'ack' | 'body' | 'summary' | 'step' | 'artifact';
+  /** 变体组根 ID（同组所有兄弟共享） */
+  variantsGroupId?: string;
+  /** 当前是否为变体组内可见的活跃兄弟 */
+  isActive?: boolean;
+  /** 每消息审计行 ID；点击「审计」跳右侧审计 tab 深链 */
+  auditEventId?: string;
+  /** 本轮全部变体兄弟列表（包含自身） */
+  variants?: Array<{ id: string; branchIndex: number; isActive: boolean; role?: string; preview?: string }>;
 }
 
 /* ---------- 会话 ---------- */

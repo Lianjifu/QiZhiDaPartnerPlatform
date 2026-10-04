@@ -61,7 +61,8 @@ export function useCopilotEffects(p: UseCopilotEffectsParams) {
       predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'conversation',
     });
     if (routeSessionId) navigate('/copilot', { replace: true });
-  }, [currentWorkspaceId, p.s, queryClient, routeSessionId, navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- p.s itself changes identity every render; setters + refs are stable.
+  }, [currentWorkspaceId, queryClient, routeSessionId, navigate, p.s.prevWorkspaceRef, p.s.setHistoryReady, p.s.chat.clearActive]);
 
   // viewport resize
   useEffect(() => {
@@ -69,7 +70,8 @@ export function useCopilotEffects(p: UseCopilotEffectsParams) {
     const onResize = () => p.s.setViewportW(window.innerWidth);
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
-  }, [p.s]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- p.s.setViewportW is a stable useState setter.
+  }, [p.s.setViewportW]);
 
   // Esc handler
   useEffect(() => {
@@ -90,22 +92,26 @@ export function useCopilotEffects(p: UseCopilotEffectsParams) {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [p.s]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- p.s changes identity each render; only the keyboard binding needs to mount once.
+  }, [p.s.showSlash, p.s.showMention, p.s.setShowSlash, p.s.setMentionPane, p.s.setShowMention, p.s.setMentionQuery, p.s.sessionsOpen, p.s.setSessionsOpen, p.s.sessionToggleRef, p.s.contextSelection.open, p.s.setContextSelection, p.s.detailsToggleRef]);
 
   // Keep sessions pinned on tablet/desktop
   useEffect(() => {
     const keep = () => {
-      if (sessionHistoryPresentation(window.innerWidth) === 'pinned') p.s.setSessionsOpen(true);
+      const should = sessionHistoryPresentation(window.innerWidth) === 'pinned';
+      if (should !== p.s.sessionsOpen) p.s.setSessionsOpen(should);
     };
     keep();
     window.addEventListener('resize', keep);
     return () => window.removeEventListener('resize', keep);
-  }, [p.s]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- p.s.sessionsOpen/setSessionsOpen are the only deps that affect this; p.s itself changes identity each render.
+  }, [p.s.sessionsOpen, p.s.setSessionsOpen]);
 
   // Focus input on session change
   useEffect(() => {
     setTimeout(() => p.s.inputRef.current?.focus(), 50);
-  }, [p.s.chat.state.activeId, p.s]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- p.s.inputRef is a stable ref.
+  }, [p.s.chat.state.activeId, p.s.inputRef]);
 
   // Auto-scroll messages
   useEffect(() => {
@@ -115,7 +121,8 @@ export function useCopilotEffects(p: UseCopilotEffectsParams) {
         behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
       });
     }
-  }, [p.s.chat.activeSession?.messages.length, p.s.chat.state.typing, p.s]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- p.s.scrollRef is a stable ref.
+  }, [p.s.chat.activeSession?.messages.length, p.s.chat.state.typing, p.s.scrollRef]);
 
   // Close more-menu on outside click
   useEffect(() => {
@@ -127,7 +134,8 @@ export function useCopilotEffects(p: UseCopilotEffectsParams) {
     };
     window.addEventListener('mousedown', onPointer);
     return () => window.removeEventListener('mousedown', onPointer);
-  }, [p.s.moreMenuOpen, p.s]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- setters + ref are stable.
+  }, [p.s.moreMenuOpen, p.s.moreMenuRef, p.s.setMoreMenuOpen, p.s.setExportSubOpen]);
 
   // Merge server history into local sessions
   useEffect(() => {
@@ -140,8 +148,9 @@ export function useCopilotEffects(p: UseCopilotEffectsParams) {
       workspaceId: currentWorkspaceId,
       reconcile: Array.isArray(p.s.sessionHistoryData) && p.s.sessionHistoryData.length > 0,
     });
-    p.s.setHistoryReady(true);
-  }, [p.s, queryClient, currentWorkspaceId]);
+    if (!p.s.historyReady) p.s.setHistoryReady(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run when server data actually changes; p.s itself changes identity each render.
+  }, [p.s.sessionsLoading, p.s.sessionHistoryData, p.s.sessionsError, p.s.sessionsFetching, p.s.sessionHistory, p.s.historyReady, p.s.setHistoryReady, p.s.chat.importSessions, queryClient, currentWorkspaceId]);
 
   // Recovery effect on typing edge
   useEffect(() => {
@@ -225,8 +234,11 @@ export function useCopilotEffects(p: UseCopilotEffectsParams) {
   // Restore toolchain on session / tool list change
   useEffect(() => {
     const seed = p.activeSession?.enabledTools?.length ? p.activeSession.enabledTools : [];
-    p.s.setEnabledTools(ensureDefaultSkillsEnabled(seed, p.availableTools));
-  }, [p.activeSession?.id, p.enabledToolKeySig, p.s, p.availableTools, p.activeSession]);
+    const next = ensureDefaultSkillsEnabled(seed, p.availableTools);
+    const same = p.s.enabledTools.length === next.length && p.s.enabledTools.every((k, i) => k === next[i]);
+    if (!same) p.s.setEnabledTools(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- p.s itself is now stable via useMemo; p.activeSession identity changes each useChat render.
+  }, [p.activeSession?.id, p.enabledToolKeySig, p.s.enabledTools, p.s.setEnabledTools, p.availableTools]);
 
   // Cleanup invalid digitalPartnerId
   useEffect(() => {
@@ -243,42 +255,48 @@ export function useCopilotEffects(p: UseCopilotEffectsParams) {
   // Restore risk/handoff/closed on session change
   useEffect(() => {
     if (!p.currentSession) return;
-    p.s.setRiskLevel(p.currentSession.riskLevel === 'high' || p.currentSession.riskLevel === 'low' ? p.currentSession.riskLevel : 'medium');
+    const nextRisk = p.currentSession.riskLevel === 'high' || p.currentSession.riskLevel === 'low' ? p.currentSession.riskLevel : 'medium';
+    if (p.s.riskLevel !== nextRisk) p.s.setRiskLevel(nextRisk);
     const h = p.currentSession.handoff;
-    p.s.setHandoffActive(Boolean(h?.active));
-    if (h?.ownerName) p.s.setHandoffOwner(h.ownerName);
-    p.s.setIsClosed(
-      p.currentSession.status === 'closed' || p.currentSession.status === 'done'
+    const nextHandoffActive = Boolean(h?.active);
+    if (p.s.handoffActive !== nextHandoffActive) p.s.setHandoffActive(nextHandoffActive);
+    if (h?.ownerName && p.s.handoffOwner !== h.ownerName) p.s.setHandoffOwner(h.ownerName);
+    const nextClosed = p.currentSession.status === 'closed' || p.currentSession.status === 'done'
       || p.currentSession.status === 'archived' || p.currentSession.lifecycle === 'archived'
-      || p.currentSession.lifecycle === 'deleted',
-    );
-  }, [p.currentSession?.id, p.currentSession, p.s]);
+      || p.currentSession.lifecycle === 'deleted';
+    if (p.s.isClosed !== nextClosed) p.s.setIsClosed(nextClosed);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- p.s is memoized; p.currentSession identity changes each useChat render but primitives guard the writes.
+  }, [p.currentSession?.id, p.s.riskLevel, p.s.handoffActive, p.s.handoffOwner, p.s.isClosed, p.s.setRiskLevel, p.s.setHandoffActive, p.s.setHandoffOwner, p.s.setIsClosed]);
 
   // Sync handoff/closed on governance field updates
   useEffect(() => {
     if (!p.currentSession) return;
     const h = p.currentSession.handoff;
-    p.s.setHandoffActive(Boolean(h?.active));
-    p.s.setIsClosed(
-      p.currentSession.status === 'closed' || p.currentSession.status === 'done'
+    const nextHandoffActive = Boolean(h?.active);
+    if (p.s.handoffActive !== nextHandoffActive) p.s.setHandoffActive(nextHandoffActive);
+    const nextClosed = p.currentSession.status === 'closed' || p.currentSession.status === 'done'
       || p.currentSession.status === 'archived' || p.currentSession.lifecycle === 'archived'
-      || p.currentSession.lifecycle === 'deleted',
-    );
-  }, [p.currentSession?.handoff?.active, p.currentSession?.status, p.currentSession?.lifecycle, p.currentSession, p.s]);
+      || p.currentSession.lifecycle === 'deleted';
+    if (p.s.isClosed !== nextClosed) p.s.setIsClosed(nextClosed);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p.currentSession?.handoff?.active, p.currentSession?.status, p.currentSession?.lifecycle, p.s.handoffActive, p.s.isClosed, p.s.setHandoffActive, p.s.setIsClosed]);
 
   // Restore Composer mode on session change
   useEffect(() => {
     if (!p.activeSession) {
-      p.s.setRunMode('ask');
-      p.s.setReasoningEffort('standard');
+      if (p.s.runMode !== 'ask') p.s.setRunMode('ask');
+      if (p.s.reasoningEffort !== 'standard') p.s.setReasoningEffort('standard');
       return;
     }
-    p.s.setRunMode(deriveRunMode({ runMode: p.activeSession.runMode, sessionMode: p.activeSession.sessionMode }));
-    p.s.setReasoningEffort(deriveReasoningEffort({
+    const nextRun = deriveRunMode({ runMode: p.activeSession.runMode, sessionMode: p.activeSession.sessionMode });
+    if (p.s.runMode !== nextRun) p.s.setRunMode(nextRun);
+    const nextEffort = deriveReasoningEffort({
       reasoningEffort: p.activeSession.reasoningEffort,
-      runMode: deriveRunMode({ runMode: p.activeSession.runMode, sessionMode: p.activeSession.sessionMode }),
-    }));
-  }, [p.activeSession?.id, p.s]);
+      runMode: nextRun,
+    });
+    if (p.s.reasoningEffort !== nextEffort) p.s.setReasoningEffort(nextEffort);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p.activeSession?.id, p.activeSession?.runMode, p.activeSession?.sessionMode, p.activeSession?.reasoningEffort, p.s.runMode, p.s.reasoningEffort, p.s.setRunMode, p.s.setReasoningEffort]);
 
   // Restore model on session change
   useEffect(() => {
@@ -286,9 +304,11 @@ export function useCopilotEffects(p: UseCopilotEffectsParams) {
       const match = p.s.modelOptions.find(
         (m: any) => m.key === p.activeSession.modelId || m.modelId === p.activeSession.modelId || m.apiModel === p.activeSession.modelId || m.label === p.activeSession.modelId,
       );
-      p.s.setCurrentModelKey(match?.key ?? p.activeSession.modelId);
+      const next = match?.key ?? p.activeSession.modelId;
+      if (p.s.currentModelKey !== next) p.s.setCurrentModelKey(next);
     }
-  }, [p.activeSession?.id, p.activeSession?.modelId, p.s.modelOptions, p.s]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p.activeSession?.id, p.activeSession?.modelId, p.s.modelOptions, p.s.currentModelKey, p.s.setCurrentModelKey]);
 
   // Switch to default model if currentModelKey invalid
   useEffect(() => {
@@ -302,17 +322,23 @@ export function useCopilotEffects(p: UseCopilotEffectsParams) {
   useEffect(() => {
     const empKey = matchCopilotModelKey(p.s.modelOptions, p.employeeBoundModel);
     if (!empKey) return;
+    if (p.s.currentModelKey === empKey) return;
     if (isDemoCopilotModelKey(p.s.currentModelKey) || !p.activeSession?.modelId || isDemoCopilotModelKey(p.activeSession.modelId)) {
       p.s.setCurrentModelKey(empKey);
     }
-  }, [p.employeeBoundModel, p.s.modelOptions, p.activeSession?.id, p.activeSession?.modelId, p.s.currentModelKey, p.s]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p.employeeBoundModel, p.s.modelOptions, p.activeSession?.id, p.activeSession?.modelId, p.s.currentModelKey, p.s.setCurrentModelKey]);
 
   // Strip write tools when session mode is investigate
   const sessionMode = p.activeSession?.sessionMode === 'execute' ? 'execute' : 'investigate';
   useEffect(() => {
     if (sessionMode !== 'investigate') return;
-    p.s.setEnabledTools((prev: string[]) => prev.filter((key) => !p.availableTools.find((tool) => tool.key === key)?.requiresApproval));
-  }, [sessionMode, p.availableTools, p.s]);
+    const writeKeys = new Set(p.availableTools.filter((t) => t.requiresApproval).map((t) => t.key));
+    const hasWrite = p.s.enabledTools.some((k) => writeKeys.has(k));
+    if (!hasWrite) return;
+    p.s.setEnabledTools((prev: string[]) => prev.filter((key) => !writeKeys.has(key)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionMode, p.availableTools, p.s.enabledTools, p.s.setEnabledTools]);
 
   // Generation timer
   useEffect(() => {
@@ -320,7 +346,8 @@ export function useCopilotEffects(p: UseCopilotEffectsParams) {
     p.s.setGenerationStartedAt((prev: number | null) => prev ?? Date.now());
     const timer = window.setInterval(() => p.s.setGenerationTick((v: number) => v + 1), 1000);
     return () => window.clearInterval(timer);
-  }, [p.isGenerating, p.s]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p.isGenerating, p.s.setGenerationStartedAt, p.s.setGenerationTick]);
 
   // Auto-select active session
   useEffect(() => {

@@ -173,6 +173,7 @@ export type StreamTurnInput = {
   clientMsgId?: string;
   firstMessageId?: string;
   replyMode?: ReplyMode;
+  branchFromMessageId?: string;
   signal?: AbortSignal;
   onEvent: (event: string, data: CopilotSSEEvent) => void;
 };
@@ -209,6 +210,7 @@ export async function streamCopilotTurn(input: StreamTurnInput): Promise<void> {
         riskLevel: input.riskLevel,
         attachmentIds: input.attachmentIds,
         clientMsgId: input.clientMsgId,
+        branchFromMessageId: input.branchFromMessageId,
         firstMessageId: input.firstMessageId,
         replyMode: input.replyMode,
       }),

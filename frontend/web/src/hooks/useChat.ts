@@ -155,6 +155,7 @@ type Action =
   | { type: 'del_msg'; sid: string; mid: string }
   | { type: 'regenerate'; sid: string; mid: string; msg: ChatMessageEx }
   | { type: 'replace_from_message'; sid: string; mid: string; msg: ChatMessageEx }
+  | { type: 'set_active_variant'; sid: string; mid: string; variants: Array<{ id: string; isActive: boolean; branchIndex: number; role?: string; preview?: string }>; activeId: string }
   | { type: 'update_session'; sid: string; patch: Partial<ChatSession> }
   | { type: 'set_typing'; typing: boolean }
   | { type: 'stop_typing' }
@@ -462,6 +463,22 @@ function reducer(s: State, a: Action): State {
       const idx = sess.messages.findIndex((m) => m.id === a.mid);
       if (idx < 0) return s;
       return { ...s, sessions: { ...s.sessions, [a.sid]: { ...sess, messages: [...sess.messages.slice(0, idx), a.msg], lastActiveAt: Date.now() } } };
+    }
+    case 'set_active_variant': {
+      const sess = s.sessions[a.sid];
+      if (!sess) return s;
+      const messages = sess.messages.map((m) => {
+        if (!m.variants || m.variants.length === 0) return m;
+        return { ...m, variants: m.variants, isActive: a.variants.find((v) => v.id === m.id)?.isActive ?? m.isActive };
+      });
+      const focused = sess.messages.find((m) => m.id === a.mid);
+      if (focused) {
+        const idx = sess.messages.findIndex((m) => m.id === a.mid);
+        if (idx >= 0) {
+          messages[idx] = { ...focused, variants: a.variants, isActive: true, variantsGroupId: focused.variantsGroupId ?? a.activeId };
+        }
+      }
+      return { ...s, sessions: { ...s.sessions, [a.sid]: { ...sess, messages, lastActiveAt: Date.now() } } };
     }
     case 'update_session':
       return { ...s, sessions: { ...s.sessions, [a.sid]: { ...s.sessions[a.sid], ...a.patch } } };
@@ -1172,7 +1189,7 @@ export function useChat(agentMeta?: { name: string }) {
       ctrl: AbortController,
       correlationIdStr: string,
       digitalPartnerId?: string,
-      opts?: { skipAppend?: boolean; agentName?: string; modelId?: string; enabledTools?: string[]; conversationId?: string; modeHint?: string; reflectHint?: string; sessionMode?: 'investigate' | 'execute'; runMode?: 'ask' | 'plan' | 'agent'; reasoningEffort?: 'off' | 'standard' | 'deep'; riskLevel?: 'low' | 'medium' | 'high'; attachmentIds?: string[]; clientMsgId?: string; replyMode?: 'single' | 'segmented' | 'stepwise' },
+      opts?: { skipAppend?: boolean; agentName?: string; modelId?: string; enabledTools?: string[]; conversationId?: string; modeHint?: string; reflectHint?: string; sessionMode?: 'investigate' | 'execute'; runMode?: 'ask' | 'plan' | 'agent'; reasoningEffort?: 'off' | 'standard' | 'deep'; riskLevel?: 'low' | 'medium' | 'high'; attachmentIds?: string[]; clientMsgId?: string; replyMode?: 'single' | 'segmented' | 'stepwise'; branchFromMessageId?: string },
     ) => {
       const agentName = opts?.agentName ?? '岗位专家';
       const modelId = opts?.modelId ?? '';
@@ -1687,6 +1704,7 @@ export function useChat(agentMeta?: { name: string }) {
         clientMsgId: opts?.clientMsgId,
         firstMessageId: replyId,
         replyMode: opts?.replyMode ?? DEFAULT_REPLY_MODE,
+        branchFromMessageId: opts?.branchFromMessageId,
         signal: ctrl.signal,
         onEvent,
       }).then(() => {
@@ -1718,7 +1736,7 @@ export function useChat(agentMeta?: { name: string }) {
       ctrl: AbortController,
       corr: string,
       digitalPartnerId?: string,
-      opts?: { replyId?: string; skipAppend?: boolean; agentName?: string; modelId?: string; enabledTools?: string[]; conversationId?: string; modeHint?: string; reflectHint?: string; sessionMode?: 'investigate' | 'execute'; runMode?: 'ask' | 'plan' | 'agent'; reasoningEffort?: 'off' | 'standard' | 'deep'; riskLevel?: 'low' | 'medium' | 'high'; attachmentIds?: string[]; clientMsgId?: string; replyMode?: 'single' | 'segmented' | 'stepwise' },
+      opts?: { replyId?: string; skipAppend?: boolean; agentName?: string; modelId?: string; enabledTools?: string[]; conversationId?: string; modeHint?: string; reflectHint?: string; sessionMode?: 'investigate' | 'execute'; runMode?: 'ask' | 'plan' | 'agent'; reasoningEffort?: 'off' | 'standard' | 'deep'; riskLevel?: 'low' | 'medium' | 'high'; attachmentIds?: string[]; clientMsgId?: string; replyMode?: 'single' | 'segmented' | 'stepwise'; branchFromMessageId?: string },
     ) => {
       const replyId = opts?.replyId ?? uid('m_');
       if (isMockChatMode()) {
@@ -2200,6 +2218,7 @@ export function useChat(agentMeta?: { name: string }) {
         runMode: opts?.runMode ?? sess.runMode,
         reasoningEffort: opts?.reasoningEffort ?? sess.reasoningEffort,
         clientMsgId: userMsg.clientMsgId,
+        branchFromMessageId: mid,
       });
     }, isMockChatMode() ? 200 : 0);
   }, [state.activeId, state.sessions, launchReply]);
@@ -2668,6 +2687,28 @@ export function useChat(agentMeta?: { name: string }) {
       || deletedSessionIdsRef.current.has(conversationId);
   }, []);
 
+  const switchActiveVariant = useCallback(async (mid: string, variantId: string) => {
+    const sess = state.sessions[state.activeId];
+    if (!sess) return;
+    const convId = sess.conversationId ?? state.activeId;
+    if (/^s_/.test(convId)) return;
+    try {
+      const data = await getApiClient().request<{ activeId: string; variants: Array<{ id: string; branchIndex: number; isActive: boolean; role?: string; preview?: string }> }>(
+        `/api/copilot/conversations/${encodeURIComponent(convId)}/messages/${encodeURIComponent(mid)}/branch-active`,
+        { method: 'POST', body: { variantId } },
+      );
+      dispatch({
+        type: 'set_active_variant',
+        sid: state.activeId,
+        mid,
+        variants: data.variants,
+        activeId: data.activeId,
+      });
+    } catch (err) {
+      console.error('switchActiveVariant failed', err);
+    }
+  }, [state.activeId, state.sessions]);
+
   return {
     state,
     activeSession: state.sessions[state.activeId],
@@ -2696,6 +2737,7 @@ export function useChat(agentMeta?: { name: string }) {
     appendLocalAssistant,
     clearActiveMessages,
     approveSign,
+    switchActiveVariant,
 
     /* 企业级 */
     approve,

@@ -74,6 +74,20 @@
   --glass-bg: rgba(255, 255, 255, 0.72);
   --glass-border: rgba(226, 232, 240, 0.65);
   --glass-blur: 14px;
+
+  /* M02 消息状态 chip + 严重度边框 + 上下文分组背景 */
+  --status-running-fg: #2563eb;
+  --status-running-bg: #dbeafe;
+  --status-pending-approval-fg: #b45309;
+  --status-pending-approval-bg: #fef3c7;
+  --status-retry-fg: #be123c;
+  --status-retry-bg: #ffe4e6;
+  --status-muted-fg: #64748b;
+  --status-muted-bg: #f1f5f9;
+  --severity-info-border: var(--info);
+  --severity-warn-border: var(--warning);
+  --severity-crit-border: var(--danger);
+  --context-group-bg: color-mix(in srgb, var(--bg-hover) 70%, transparent);
 }
 
 /* ============ Dark ============ */
@@ -123,6 +137,20 @@
   --glass-bg: rgba(15, 21, 37, 0.72);
   --glass-border: rgba(42, 54, 84, 0.75);
   --glass-blur: 16px;
+
+  /* M02 消息状态 chip + 严重度边框 + 上下文分组背景（暗色） */
+  --status-running-fg: #93c5fd;
+  --status-running-bg: rgba(37, 99, 235, 0.20);
+  --status-pending-approval-fg: #fcd34d;
+  --status-pending-approval-bg: rgba(180, 83, 9, 0.20);
+  --status-retry-fg: #fda4af;
+  --status-retry-bg: rgba(190, 18, 60, 0.20);
+  --status-muted-fg: #94a3b8;
+  --status-muted-bg: rgba(100, 116, 139, 0.20);
+  --severity-info-border: var(--info);
+  --severity-warn-border: var(--warning);
+  --severity-crit-border: var(--danger);
+  --context-group-bg: color-mix(in srgb, var(--bg-hover) 70%, transparent);
 
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);

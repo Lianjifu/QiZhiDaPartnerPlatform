@@ -18,6 +18,9 @@ import { MessageCapabilityTrace, RiskDecisionCard } from './CopilotPage.MessageT
 import { ArtifactOutline, SkillArtifactDownloadCard } from './CopilotPage.ArtifactCard';
 import { CitationsList, ToolCallDetails } from './CopilotPage.ToolCallDetails';
 import { ApprovalCard } from './CopilotPage.ApprovalCard';
+import { CopilotMessageStatus } from './CopilotPage.MessageStatus';
+import { CopilotVariantNav, type CopilotVariant } from './CopilotPage.VariantNav';
+import { CopilotMessageAuditLink } from './CopilotPage.MessageAuditLink';
 
 export function CopilotPageMessageBubble({
   m, expandedArgs = {}, setExpandedArgs = (() => undefined) as any,
@@ -30,6 +33,10 @@ export function CopilotPageMessageBubble({
   agentName, expertRole, expert, onOpenContext = () => undefined,
   selectedContextMessageId, messageRef, currentUser = null,
   generationStatus, generationElapsedSec,
+  onOpenAudit = () => undefined,
+  onOpenReplay = () => undefined,
+  onSwitchVariant = () => undefined,
+  conversationId,
 }: {
   m: ChatMessageEx;
   expandedArgs?: Record<string, boolean>;
@@ -61,6 +68,10 @@ export function CopilotPageMessageBubble({
   currentUser?: { id: string; name: string; role: 'user' | 'admin' | 'auditor' } | null;
   generationStatus?: string;
   generationElapsedSec?: number;
+  onOpenAudit?: (auditEventId: string) => void;
+  onOpenReplay?: (conversationId: string, correlationId: string) => void;
+  onSwitchVariant?: (messageId: string, variantId: string) => void;
+  conversationId?: string;
 }) {
   const isUser = m.role === 'user';
   const isTool = m.role === 'tool';
@@ -139,10 +150,7 @@ export function CopilotPageMessageBubble({
             <span className="truncate text-[10px] text-[var(--text-muted)]">{expertRole}</span>
           ) : null}
           {!isUser && m.status ? (
-            <span className={cn('inline-flex items-center gap-1 text-[10px] text-[var(--text-muted)]', isStreaming && 'text-[var(--brand)]')}>
-              {isStreaming ? <span className="h-1.5 w-1.5 rounded-full bg-[var(--brand)] animate-pulse" aria-hidden="true" /> : null}
-              {STATUS_LABEL[m.status]}
-            </span>
+            <CopilotMessageStatus status={m.status} elapsedSec={generationElapsedSec} />
           ) : null}
           {!isUser && m.metrics?.ttftMs !== undefined ? (
             <details className="text-[10px] text-[var(--text-muted)]">
@@ -153,7 +161,24 @@ export function CopilotPageMessageBubble({
           <span className="text-[10px] text-[var(--text-muted)] font-mono tabular-nums" title={m.createdAt}>{formatShanghaiTime(m.createdAt)}</span>
           {((m.toolCalls?.length ?? 0) > 0 || isTool) ? <Badge tone="warn" className="text-[9px]">能力调用</Badge> : null}
           {m.approvalRequest ? <Badge tone="error" className="text-[9px]">写操作</Badge> : null}
+          {!isUser ? (
+            <CopilotMessageAuditLink
+              conversationId={conversationId}
+              correlationId={m.correlationId}
+              auditEventId={m.auditEventId}
+              onOpenAudit={onOpenAudit}
+              onOpenReplay={onOpenReplay}
+            />
+          ) : null}
         </div>
+
+        {!isUser && m.variants && m.variants.length > 1 ? (
+          <CopilotVariantNav
+            variants={m.variants as CopilotVariant[]}
+            activeId={(m.variants.find((v) => v.isActive) ?? m.variants[0])?.id ?? null}
+            onSwitch={(variantId) => onSwitchVariant(m.id, variantId)}
+          />
+        ) : null}
 
         {!isUser ? (
           <MessageCapabilityTrace

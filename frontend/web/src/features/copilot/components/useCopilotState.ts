@@ -137,7 +137,7 @@ export function useCopilotState() {
   const currentModel = modelOptions.find((m) => m.key === currentModelKey) ?? modelOptions[0];
   const runModelId = resolveCopilotModelId(currentModel, currentModelKey);
 
-  return {
+  return useMemo(() => ({
     // search/UI state
     searchQ, setSearchQ,
     historyReady, setHistoryReady,
@@ -186,7 +186,7 @@ export function useCopilotState() {
     draggingSplit, setDraggingSplit,
     generationStartedAt, setGenerationStartedAt,
     generationTick, setGenerationTick,
-    // refs
+    // refs (stable identity)
     deepLinkHandled, moreMenuRef, fileInputRef, shellRef, scrollRef, inputRef,
     sessionToggleRef, detailsToggleRef, messageRefs, historyIdx, typingWasRef, prevWorkspaceRef,
     // data
@@ -195,7 +195,22 @@ export function useCopilotState() {
     slashCmdsData, slashCmds,
     sessionHistoryData, sessionHistory, sessionsLoading, sessionsError, sessionsFetching,
     currentModel, runModelId,
-  };
+  }), [
+    searchQ, historyReady, showSlash, showMention, mentionPane, mentionQuery, showApproval,
+    expandedArgs, expandedApproval, focusedCitation, sessionsOpen, contextSelection,
+    editingMessageId, mediaCapturing, mediaAttachments, runMode, reasoningEffort, riskLevel,
+    closeoutOpen, handoffOpen, handoffOwner, handoffActive, isClosed, debugOpen,
+    hoverMsgId, copiedId, feedbackOpen, shareDialog, rejectionReason,
+    expertPickerOpen, expertPickerMode, expertPickerQuery, moreMenuOpen, exportSubOpen,
+    rebindBlockedReason, modelOpen, toolsOpen, currentModelKey, enabledTools, attachments,
+    isDragging, sessionsPaneW, viewportW, detailsPaneW, draggingSplit,
+    generationStartedAt, generationTick,
+    chat, currentWorkspaceId, employees, employeesData,
+    modelProvidersData, routingPoliciesData, modelOptions,
+    slashCmdsData, slashCmds,
+    sessionHistoryData, sessionHistory, sessionsLoading, sessionsError, sessionsFetching,
+    currentModel, runModelId,
+  ]);
 }
 
 export type CopilotState = ReturnType<typeof useCopilotState>;

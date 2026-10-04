@@ -10,7 +10,8 @@ import { TurnThoughtPanel } from '@/features/copilot/turn-narrative/turn-thought
 export function CopilotPageMessages() {
   const ctrl = useCopilotContext();
   const { s, currentSession, displayMessages, showTypingFallback, generationHint,
-    openContext, isGenerating, streamingAssistant, jumpToMessage } = ctrl;
+    openContext, isGenerating, streamingAssistant, jumpToMessage,
+    switchActiveVariant, openAuditTab, openReplay } = ctrl;
 
   // Auto-scroll on message updates
   useEffect(() => {
@@ -43,6 +44,10 @@ export function CopilotPageMessages() {
               key={message.id}
               m={message}
               onOpenContext={(tab, mid, artifact, opts) => openContext(tab, mid, artifact, opts)}
+              onOpenAudit={openAuditTab}
+              onOpenReplay={openReplay}
+              onSwitchVariant={(mid, variantId) => void switchActiveVariant(mid, variantId)}
+              conversationId={currentSession?.conversationId}
             />
           ))}
           {streamingAssistant && (

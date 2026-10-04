@@ -152,7 +152,7 @@ function WorkflowOrchestrationSession() {
     undefined,
     { enabled: Boolean(sessionId) },
   );
-  const { data: knowledgeDocsData } = useApiQuery<KnowledgeDocLite[]>(['orchestration-kb', currentWorkspaceId], '/api/knowledge');
+  const { data: knowledgeDocsData } = useApiQuery<KnowledgeDocLite[]>(['orchestration-kb', currentWorkspaceId], '/api/knowledge/docs');
   const knowledgeDocs = knowledgeDocsData ?? [];
 
   useEffect(() => {

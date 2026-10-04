@@ -77,7 +77,11 @@ export class ApiClient {
       return data as T;
     }
     const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), opts.timeoutMs ?? DEFAULT_TIMEOUT);
+    let timedOut = false;
+    const t = setTimeout(() => {
+      timedOut = true;
+      controller.abort('timeout');
+    }, opts.timeoutMs ?? DEFAULT_TIMEOUT);
     try {
       const url = resolveRequestURL(this.baseURL, path, opts.query);
       const headers: Record<string, string> = {
@@ -96,7 +100,13 @@ export class ApiClient {
       } catch (err) {
         const aborted = err instanceof DOMException && err.name === 'AbortError';
         if (aborted) {
-          throw new ApiError('E_TIMEOUT', '请求超时，请确认控制面网关是否可达', 408);
+          // Caller-cancel (TanStack Query unmount / key churn) — not a failure;
+          // let TanStack Query handle it as a silent cancel. Only flag as
+          // E_TIMEOUT when our own timeout fired.
+          if (timedOut) {
+            throw new ApiError('E_TIMEOUT', '请求超时，请确认控制面网关是否可达', 408);
+          }
+          throw err;
         }
         const hint = this.baseURL
           ? `无法连接控制面 ${this.baseURL}，请先启动：cd backend && make run`
@@ -162,7 +172,11 @@ export class ApiClient {
       })) as T;
     }
     const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), opts.timeoutMs ?? DEFAULT_TIMEOUT);
+    let timedOut = false;
+    const t = setTimeout(() => {
+      timedOut = true;
+      controller.abort('timeout');
+    }, opts.timeoutMs ?? DEFAULT_TIMEOUT);
     try {
       const url = resolveRequestURL(this.baseURL, path, opts.query);
       const headers = sanitizeHeaders(requestHeaders);
@@ -178,7 +192,10 @@ export class ApiClient {
       } catch (err) {
         const aborted = err instanceof DOMException && err.name === 'AbortError';
         if (aborted) {
-          throw new ApiError('E_TIMEOUT', '上传超时，请确认控制面网关是否可达', 408);
+          if (timedOut) {
+            throw new ApiError('E_TIMEOUT', '上传超时，请确认控制面网关是否可达', 408);
+          }
+          throw err;
         }
         throw new ApiError('E_NETWORK', '无法连接控制面完成上传', 0);
       }

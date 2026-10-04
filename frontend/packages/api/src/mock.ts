@@ -5800,7 +5800,6 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
   if (path === '/api/control-plane-audit' && method === 'GET') return mockControlPlaneAudit;
 
   // 设置
-  if (path === '/api/audits') return mockComplianceChecks;
   if (path === '/api/api-keys') return mockApiKeys;
   if (path === '/api/webhooks-config') return mockWebhooks;
   if (path === '/api/tenant/profile' && method === 'GET') {
