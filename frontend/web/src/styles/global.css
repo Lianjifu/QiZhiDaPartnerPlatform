@@ -9576,11 +9576,26 @@ a:focus-visible,
   font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
+  transition: border-color .15s ease, background-color .15s ease, color .15s ease;
 }
+.wf-tpl-pager__btn:hover:not(.is-active) { border-color: var(--brand); color: var(--brand); }
 .wf-tpl-pager__btn.is-active {
   border-color: var(--brand);
   background: var(--brand);
   color: #fff;
+  cursor: default;
+}
+.wf-tpl-pager__gap { padding: 0 4px; color: var(--text-muted); font-size: 12px; line-height: 30px; }
+.wf-tpl-pagebar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.wf-tpl-pagebar__page {
+  color: var(--text-muted);
+  font-size: 11px;
 }
 
 .wf-tpl-preview {
