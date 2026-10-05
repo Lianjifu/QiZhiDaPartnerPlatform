@@ -91,7 +91,10 @@ runsc install
 
 ## Prometheus + OTel
 
-Scrape target: `qzda-sandbox:8093/metrics`,已在 `backend/deploy/obs/prometheus.yml:26` 配置。
+`qzda-sandbox:8093/metrics` 暴露 Prometheus 抓取端点。生产可在 host
+agent 或 reverse proxy 后挂 Prometheus / VictoriaMetrics 拉取(本仓库不附
+prometheus 容器,单进程部署不含 obs profile)。
+
 关键 series 见 [`api.md`](api.md) 的 `/metrics` 段。
 
 OTel:

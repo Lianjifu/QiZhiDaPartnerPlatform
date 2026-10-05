@@ -30,44 +30,30 @@ jobs:
           # Isolate unit tests from any accidental local FastAPI RAG.
           QZDA_RAG_URL: http://127.0.0.1:1
         run: go test ./... -count=1
-      - name: Proto presence (Connect IDL)
+      - name: Proto presence (Connect IDL, single-process monolith)
         run: |
-          test -f api/proto/de/collab/v1/collab.proto
-          test -f api/proto/de/rag/v1/rag.proto
-          test -f api/proto/de/runtime/v1/runtime.proto
-          test -f api/proto/de/employee/v1/employee.proto
+          test -f api/proto/qzda/collab/v1/collab.proto
+          test -f api/proto/qzda/rag/v1/rag.proto
+          test -f api/proto/qzda/runtime/v1/runtime.proto
+          test -f api/proto/qzda/partner/v1/partner.proto
           test -f buf.yaml
           test -f buf.gen.yaml
-          test -f gen/de/rag/v1/rag.pb.go
-          test -f gen/de/collab/v1/collab.pb.go
-          test -f gen/de/rag/v1/ragv1connect/rag.connect.go
-          test -f deploy/dex/config.yaml
-          test -f deploy/envoy/envoy.mtls.yaml
-          test -f deploy/certs/generate.sh
-          grep -q 'profiles: \["milvus"\]' deploy/compose.yml
-          grep -q 'milvusdb/milvus' deploy/compose.yml
-          grep -q 'profiles: \["apps"\]' deploy/compose.yml
-          grep -q 'profiles: \["opa"\]' deploy/compose.yml
-          grep -q 'profiles: \["search"\]' deploy/compose.yml
-          grep -q 'profiles: \["authentik"\]' deploy/compose.yml
-          grep -q 'profiles: \["obs"\]' deploy/compose.yml
-          grep -q 'profiles: \["spiffe"\]' deploy/compose.yml
-          grep -q 'profiles: \["monolith"\]' deploy/compose.yml
-          grep -q 'qzda_exec_net' deploy/compose.yml
-          test -f deploy/opa/policies/de/authz.rego
-          test -f deploy/authentik/README.md
-          test -f deploy/obs/prometheus.yml
-          test -f deploy/obs/alerts.yml
-          test -f deploy/.env.staging
-          grep -q 'compose-up-staging' Makefile
-          grep -q 'DeCoreCopilotStreamErrorRate' deploy/obs/alerts.yml
-          grep -q 'DeCoreAuditWriteFailures' deploy/obs/alerts.yml
-          test -f deploy/envoy/envoy.spiffe.yaml
-          test -f deploy/spiffe/README.md
+          test -f gen/qzda/rag/v1/rag.pb.go
+          test -f gen/qzda/collab/v1/collab.pb.go
+          test -f gen/qzda/rag/v1/ragv1connect/rag.connect.go
+          # Docker 栈关键文件存在
+          test -f deploy/compose.yml
+          test -f deploy/.env.example
+          test -f deploy/migrations/0001_init.sql || test -f deploy/migrations/0001_initial.sql
           test -f deploy/qzda-sandbox/seccomp.json
           test -f Dockerfile
-          test -f services/qzda-agent-runtime/Dockerfile
+          test -f services/qzda-app/Dockerfile
+          test -f services/qzda-sandbox/Dockerfile
           test -f services/qzda-rag/Dockerfile
+          test -f services/qzda-gateway/Dockerfile
+          # Dockerfile 必须以单进程命令结尾(monolith 形态)
+          grep -q 'qzda-app' Dockerfile
+          grep -q 'qzda-sandbox' services/qzda-sandbox/Dockerfile
           test -f services/qzda-sandbox/Dockerfile
           test -f services/qzda-gateway/Dockerfile
           test -f services/qzda-rag/requirements-milvus.txt

@@ -18,7 +18,6 @@ coverage/
 .env
 .env.*
 !.env.example
-!.env.staging
 *.local
 
 # Local Go binaries and compile cache
