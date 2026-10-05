@@ -4,7 +4,7 @@
  * 由原 pages/Skills.tsx 「工作区启用清单」视图（L625-L963）+ 升级 / 批量升级 confirm 抽出。
  * 商店视图在接入页；点击卡片进入 /skills/:id 详情页。
  */
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, lazy, memo, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApiMutation, useApiQuery } from '@/services/query';
 import { Button, Input, KpiCard } from '@qzda/web-ui';
@@ -16,8 +16,10 @@ import { cn } from '@qzda/web-utils';
 import type { Skill, SkillLifecycleStatus, SkillRuntimeHealth } from '@qzda/web-types';
 import { ConfirmDialog, EmptyState } from '@/components/shared';
 import { KIND_META, buildHealthBySkillId, enrichSkillRow, isBuiltinSource, skillLifecycleLabel, skillSourceLabel, type CatalogTypeFilter, type SkillRow } from './SkillsShared';
-import { PlatformToolsWorkspace } from './SkillsTab.PlatformTools';
-import { PackInstallPanel } from './SkillsTab.Packages';
+
+// Lazy-load 仅在「builtin」筛选时才挂载的两个组件（首次进入 catalog tab 不需要它们）
+const PlatformToolsWorkspace = lazy(() => import('./SkillsTab.PlatformTools').then((m) => ({ default: m.PlatformToolsWorkspace })));
+const PackInstallPanel = lazy(() => import('./SkillsTab.Packages').then((m) => ({ default: m.PackInstallPanel })));
 
 const EMPTY_HEALTH: SkillRuntimeHealth[] = [];
 const PAGE_SIZE = 16;
@@ -195,10 +197,12 @@ export function SkillsTabCatalog({
 
       {initialTypeFilter === 'builtin' && (
         <section className="de-employee-shell space-y-4 overflow-hidden rounded-xl bg-[var(--surface-1)] p-4 md:p-5">
-          <PlatformToolsWorkspace />
-          <div className="border-t border-[var(--border)] pt-4">
-            <PackInstallPanel onInstalled={onNotice} />
-          </div>
+          <Suspense fallback={<div className="h-24" />}>
+            <PlatformToolsWorkspace />
+            <div className="border-t border-[var(--border)] pt-4">
+              <PackInstallPanel onInstalled={onNotice} />
+            </div>
+          </Suspense>
         </section>
       )}
 
@@ -254,47 +258,71 @@ function CatalogListView({ rows, onOpen, canWrite, onLifecycleToggle, onUpgradeC
       <div className="skills-inventory-table__head">
         <span>技能</span><span>类型</span><span>来源</span><span>状态</span><span>版本</span><span className="text-right">操作</span>
       </div>
-      {rows.map((skill) => {
-        const meta = KIND_META[skill.kind] ?? KIND_META.skill;
-        const lifecycle = skill.lifecycleStatus ?? 'enabled';
-        const statusClass = lifecycle === 'enabled' ? 'is-ready' : lifecycle === 'quarantined' || lifecycle === 'pending_approval' ? 'is-failed' : 'is-indexing';
-        const builtin = isBuiltinSource(skill.source);
-        return (
-          <div key={skill.id} className="skills-inventory-table__row" onClick={() => onOpen(skill.id)} role="button" tabIndex={0} onKeyDown={(event) => event.key === 'Enter' && onOpen(skill.id)}>
-            <span className="min-w-0">
-              <span className="flex min-w-0 items-start gap-3">
-                <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--brand-light)] text-[var(--brand)]"><meta.icon className="h-4 w-4" /></span>
-                <span className="min-w-0">
-                  <strong className="block truncate text-[13px] font-semibold text-[var(--text)]">{skill.name}</strong>
-                  <span className="skills-inventory-table__desc">{skill.description}</span>
-                </span>
-              </span>
-            </span>
-            <span><span className="knowledge-source-chip">{meta.label}</span></span>
-            <span className="text-[12px] text-[var(--text-secondary)]">{skillSourceLabel(skill.source)}</span>
-            <span className={cn('knowledge-status-dot', statusClass)}>{skillLifecycleLabel(lifecycle)}</span>
-            <span className="font-mono text-[12px] text-[var(--text-secondary)]">v{skill.version}</span>
-            <span className="justify-self-end">
-              {canWrite && !builtin ? (
-                <span className="flex items-center gap-1">
-                  <button type="button" className="knowledge-row-action" onClick={(event) => { event.stopPropagation(); onLifecycleToggle(skill, lifecycle as SkillLifecycleStatus); }}>
-                    {lifecycle === 'enabled' ? <><Power className="h-3.5 w-3.5" />暂停</> : <><Play className="h-3.5 w-3.5" />启用</>}
-                  </button>
-                  {skill.hasUpdate && (
-                    <button type="button" className="knowledge-row-action" onClick={(event) => { event.stopPropagation(); onUpgradeClick(skill); }}>
-                      <ArrowUpCircle className="h-3.5 w-3.5" />升级
-                    </button>
-                  )}
-                </span>
-              ) : (
-                <button type="button" className="knowledge-row-action" onClick={(event) => { event.stopPropagation(); onOpen(skill.id); }}>
-                  <Eye className="h-3.5 w-3.5" />查看
-                </button>
-              )}
-            </span>
-          </div>
-        );
-      })}
+      {rows.map((skill) => (
+        <CatalogRow
+          key={skill.id}
+          skill={skill}
+          canWrite={canWrite}
+          onOpen={onOpen}
+          onLifecycleToggle={onLifecycleToggle}
+          onUpgradeClick={onUpgradeClick}
+        />
+      ))}
     </div>
   );
 }
+
+const CatalogRow = memo(function CatalogRow({
+  skill,
+  canWrite,
+  onOpen,
+  onLifecycleToggle,
+  onUpgradeClick,
+}: {
+  skill: SkillRow;
+  canWrite: boolean;
+  onOpen: (id: string) => void;
+  onLifecycleToggle: (skill: SkillRow, lifecycle: SkillLifecycleStatus) => void;
+  onUpgradeClick: (skill: SkillRow) => void;
+}) {
+  const meta = KIND_META[skill.kind] ?? KIND_META.skill;
+  const lifecycle = skill.lifecycleStatus ?? 'enabled';
+  const statusClass = lifecycle === 'enabled' ? 'is-ready' : lifecycle === 'quarantined' || lifecycle === 'pending_approval' ? 'is-failed' : 'is-indexing';
+  const builtin = isBuiltinSource(skill.source);
+  const Icon = meta.icon;
+  return (
+    <div className="skills-inventory-table__row" onClick={() => onOpen(skill.id)} role="button" tabIndex={0} onKeyDown={(event) => event.key === 'Enter' && onOpen(skill.id)}>
+      <span className="min-w-0">
+        <span className="flex min-w-0 items-start gap-3">
+          <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--brand-light)] text-[var(--brand)]"><Icon className="h-4 w-4" /></span>
+          <span className="min-w-0">
+            <strong className="block truncate text-[13px] font-semibold text-[var(--text)]">{skill.name}</strong>
+            <span className="skills-inventory-table__desc">{skill.description}</span>
+          </span>
+        </span>
+      </span>
+      <span><span className="knowledge-source-chip">{meta.label}</span></span>
+      <span className="text-[12px] text-[var(--text-secondary)]">{skillSourceLabel(skill.source)}</span>
+      <span className={cn('knowledge-status-dot', statusClass)}>{skillLifecycleLabel(lifecycle)}</span>
+      <span className="font-mono text-[12px] text-[var(--text-secondary)]">v{skill.version}</span>
+      <span className="justify-self-end">
+        {canWrite && !builtin ? (
+          <span className="flex items-center gap-1">
+            <button type="button" className="knowledge-row-action" onClick={(event) => { event.stopPropagation(); onLifecycleToggle(skill, lifecycle as SkillLifecycleStatus); }}>
+              {lifecycle === 'enabled' ? <><Power className="h-3.5 w-3.5" />暂停</> : <><Play className="h-3.5 w-3.5" />启用</>}
+            </button>
+            {skill.hasUpdate && (
+              <button type="button" className="knowledge-row-action" onClick={(event) => { event.stopPropagation(); onUpgradeClick(skill); }}>
+                <ArrowUpCircle className="h-3.5 w-3.5" />升级
+              </button>
+            )}
+          </span>
+        ) : (
+          <button type="button" className="knowledge-row-action" onClick={(event) => { event.stopPropagation(); onOpen(skill.id); }}>
+            <Eye className="h-3.5 w-3.5" />查看
+          </button>
+        )}
+      </span>
+    </div>
+  );
+});

@@ -69,17 +69,20 @@ export default function SkillsDetailPage() {
   );
 
   const detailEnabled = Boolean(id);
-  const { data: trace } = useApiQuery<any>(['skill', id, 'trace'], `/api/skills/${id}/trace`, undefined, { enabled: detailEnabled });
-  const { data: versionsData } = useApiQuery<any[]>(['skill', id, 'versions'], `/api/skills/${id}/versions`, undefined, { enabled: detailEnabled });
-  const { data: permsData } = useApiQuery<SkillPermission[]>(['skill', id, 'permissions'], `/api/skills/${id}/permissions`, undefined, { enabled: detailEnabled });
-  const { data: governance } = useApiQuery<SkillGovernancePolicy>(['skill', id, 'governance'], `/api/skills/${id}/governance`, undefined, { enabled: detailEnabled });
+  // 仅在概览 tab 激活时请求策略 / 权限 / 版本 / 审计等次要数据,减少首屏 API 并发
+  const overviewEnabled = detailEnabled && step === 'overview';
+  const runtimeEnabled = detailEnabled && step === 'runtime';
+  const { data: trace } = useApiQuery<any>(['skill', id, 'trace'], `/api/skills/${id}/trace`, undefined, { enabled: runtimeEnabled });
+  const { data: versionsData } = useApiQuery<any[]>(['skill', id, 'versions'], `/api/skills/${id}/versions`, undefined, { enabled: overviewEnabled });
+  const { data: permsData } = useApiQuery<SkillPermission[]>(['skill', id, 'permissions'], `/api/skills/${id}/permissions`, undefined, { enabled: overviewEnabled });
+  const { data: governance } = useApiQuery<SkillGovernancePolicy>(['skill', id, 'governance'], `/api/skills/${id}/governance`, undefined, { enabled: overviewEnabled });
   const { data: runtimeConfigData } = useApiQuery<{ cacheable: boolean; timeout: string; retries: string }>(
     ['skill', id, 'runtime'],
     `/api/skills/${id}/runtime`,
     undefined,
-    { enabled: detailEnabled },
+    { enabled: overviewEnabled },
   );
-  const { data: skillAuditData } = useApiQuery<SkillAuditEvent[]>(['skill', 'audit'], '/api/skills/audit');
+  const { data: skillAuditData } = useApiQuery<SkillAuditEvent[]>(['skill', 'audit'], '/api/skills/audit', undefined, { enabled: overviewEnabled });
   const { data: apiInstalledData } = useApiQuery<any[]>(['skills'], '/api/skills');
   const { data: governanceHealthData } = useApiQuery<SkillRuntimeHealth[]>(
     ['skills', 'governance', 'health'],
