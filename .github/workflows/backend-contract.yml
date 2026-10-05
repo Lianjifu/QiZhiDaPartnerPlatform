@@ -52,7 +52,7 @@ jobs:
           test -f services/qzda-rag/Dockerfile
           test -f services/qzda-gateway/Dockerfile
           # Dockerfile 必须以单进程命令结尾(monolith 形态)
-          grep -q 'qzda-app' Dockerfile
+          grep -q 'CMD=qzda-app' Dockerfile
           grep -q 'qzda-sandbox' services/qzda-sandbox/Dockerfile
           test -f services/qzda-sandbox/Dockerfile
           test -f services/qzda-gateway/Dockerfile
