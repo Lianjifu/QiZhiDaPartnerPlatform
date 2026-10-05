@@ -14,8 +14,8 @@
 ## 凭据
 
 - 请求：`credential`（兼容 `apiKey`）
-- 落库：仅 `credentialRef`（`vault://model-providers/:id/credential`）+ `credentialMasked`
-- staging/prod：`QZDA_REQUIRE_VAULT=1` 或 `QZDA_ENV=production|staging` 时拒绝无 Vault 写凭据（`QZDA_BAN_MOCK_TOKEN` 仅影响鉴权，不单独触发 Vault 门禁）
+- 落库：仅 `credentialRef`（命名空间 URI，如 `model-providers/:id/credential` — 真生产用外部 KMS/Vault 注入，本地 dev 走 in-process secret store）+ `credentialMasked`
+- staging/prod：`QZDA_ENV=production|staging` 时拒绝无 `credentialRef` 的写凭据；`QZDA_BAN_MOCK_TOKEN=1` 仅影响鉴权，不单独触发凭据门禁
 
 ## 关键响应
 
