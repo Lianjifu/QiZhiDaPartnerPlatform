@@ -1,135 +1,182 @@
-# 本地基础设施（Docker）
+# 单进程 Docker 部署
 
-PostgreSQL 与 Redis **仅通过 Docker Compose** 提供，**禁止**在本机直接安装并监听 `5432` / `6379`（例如 Homebrew `postgresql@17` 会抢占 Colima 映射，导致控制面连错库）。
+> 本仓库后端采用 **单进程 Docker Compose** 部署:Go 控制面单二进制(M10 折叠
+> 后)+ Python 沙箱 / RAG / 网关三个独立容器,数据依赖 Postgres + Redis。
+> 没有微服务拆分,没有 K8s/Helm。Coarse 四进程(qzda-sys/collab/cap/workflow)
+> 已在 M10 折叠到 qzda-app。
 
-联调启动前请执行：
+## 1. 架构(单机)
 
-```bash
-bash scripts/dev-stack/ensure-docker-postgres.sh
-# 或
-cd backend && make infra-env
+```
+   :8089 qzda-gateway (Python 反向代理,stdio BaseHTTPRequestHandler)
+       │
+       ▼
+   :8100 qzda-app (Go 单进程,M10 monolith)
+       │
+       ├── postgres:5432  (control plane + audit + KV durable)
+       └── redis:6379     (rate-limit + audit bus + cache)
+
+   :8093 qzda-sandbox (Python,沙箱执行,RunToken HMAC + gVisor/seccomp)
+   :8092 qzda-rag     (Python FastAPI,向量检索 / 内存或 Milvus)
 ```
 
-脚本会停掉占用 5432 的本机 Postgres、拉起 `qzda-postgres`，并校验为 **16.x**。更多说明见 [`docs/环境与数据模式.md`](../../docs/环境与数据模式.md)。
+四个容器都跑在同一台 host(本机 Colima / 生产 Docker Engine),没有跨主机
+服务发现、没有 Envoy mesh、没有 K8s。`docker compose up` 一条命令拉起全部。
 
-## 前置
+## 2. 启动
 
-- macOS：`brew install colima docker docker-compose`，首次需拉取 ~275MB Colima 磁盘镜像
-- 或已安装 Docker Desktop / 其他 Docker Engine
-- 若 Docker Hub 超时，在 Colima VM 内配置 registry mirror（如 `docker.m.daocloud.io`）后 `systemctl restart docker`
-
-## 启动
+### 2.1 完整 Docker 栈(主路径)
 
 ```bash
 cd backend
-make compose-up          # 自动启动 Colima（若需要）并拉起 PG + Redis
-make compose-ps          # 查看状态
-make compose-logs        # 查看日志
-make compose-down        # 停止并移除容器（数据卷默认保留）
+make run           # 自动拉起 Colima → docker compose up -d → 等所有 healthcheck 通过
+make compose-ps    # 确认所有 6 个容器 running/healthy
+make compose-logs  # 滚动日志(默认尾 100 行)
 ```
 
-| 服务 | 容器名 | 主机端口 | 账号 |
-|------|--------|----------|------|
-| PostgreSQL 16 | `qzda-postgres` | `5432` | `de` / `de`，库 `digital_employee` |
-| Redis 7 | `qzda-redis` | `6379` | 无密码 |
+| 容器 | 端口 | 镜像 | 角色 |
+|------|------|------|------|
+| `qzda-postgres` | 5432 | postgres:16-alpine | 控制面持久化 + 审计 |
+| `qzda-redis` | 6379 | redis:7-alpine | rate-limit + audit bus + KV 缓存 |
+| `qzda-sandbox` | 8093 | qzda-sandbox:local | skill 沙箱执行(gVisor seccomp=unconfined) |
+| `qzda-rag` | 8092 | qzda-rag:local | 向量检索 backend |
+| `qzda-app` | 8100 | qzda-app:local | Go 单进程控制面(M10 折叠) |
+| `qzda-gateway` | 8089 | qzda-gateway:local | Python 反向代理,8089 → 8100 |
 
-Schema 初始化：`deploy/migrations/*.sql` 挂载到 Postgres 的 `/docker-entrypoint-initdb.d`（**仅数据卷首次创建时执行**）。
+### 2.2 仅本机 Go 控制面(debug)
 
-## 控制面环境变量
+不需要完整 docker 栈时,可直接 `go run`:
 
 ```bash
-export QZDA_DATABASE_URL=postgres://de:de@127.0.0.1:5432/digital_employee?sslmode=disable
-export QZDA_REDIS_URL=redis://127.0.0.1:6379/0
-make run                 # monolith（默认）
+cd backend
+make run-app       # 启动 PG/Redis + go run ./cmd/qzda-app(连本机 PG/Redis)
+make run-demo      # 内存 + ACME seed,无 PG(纯 demo)
 ```
 
-`GET /readyz` 会报告 `postgres` / `redis` 连通性。
+### 2.3 沙箱 gVisor 启用
 
-控制面关键集合（workspaces / model_providers / workflows / employees / backups / tasks）会写入 `platform.kv_documents`，重启后 hydrate；审计中心优先读 `audit.events`。
-
-## 可选 profile
+默认 `runtime=runc`(兼容性兜底)。要启用 gVisor:
 
 ```bash
-make compose-up-full       # + Vault(:8200) + Envoy(:8088)
-make compose-up-monolith   # ★ 主路径：qzda-app + qzda-sandbox + gateway:8089
-make compose-up-monolith-workflow  # monolith + 进程内 Temporal worker（QZDA_WORKFLOW_WORKER=1）
-make compose-up-temporal   # + Temporal(:7233)
-make compose-up-oidc       # + Dex OIDC(:5556)
-make compose-up-authentik  # + Authentik(:9000)
-make compose-up-kafka      # + Redpanda(:19092)
-make compose-up-mtls       # + Envoy mTLS(:8443)
-make compose-up-spiffe     # + Envoy SPIFFE mTLS(:8444)
-make compose-up-milvus     # + Milvus
-make compose-up-opa        # + OPA(:8181)
-make compose-up-search     # + OpenSearch(:9200)
-make compose-up-obs        # + Prometheus(:9090) + Grafana(:3000)
-make compose-up-staging    # monolith + oidc + opa + search + obs
+# host 安装 runsc(Linux/macOS gVisor shim)
+curl -fsSL https://gvisor.dev/archive/nightly/latest/runsc \
+  -o /usr/local/bin/runsc && chmod +x /usr/local/bin/runsc
+
+# 重启 qzda-sandbox 容器时启用
+QZDA_SANDBOX_RUNTIME=runsc docker compose -f deploy/compose.yml up -d qzda-sandbox
+# Linux KVM:再设 QZDA_SANDBOX_RUNTIME=runsc-kvm 加速
 ```
 
-| 变量 | 说明 |
-|------|------|
-| `QZDA_OIDC_ISSUER=http://127.0.0.1:5556/dex` 等 | Dex：历史 `CLIENT_ID=qzda-core`（可用 `qzda-platform`）；`SECRET=qzda-core-secret`；账号 `admin@acme.com` / `password` |
-| Authentik issuer | `http://127.0.0.1:9000/application/o/de/`（discovery 自动解析端点） |
-| `QZDA_VAULT_ADDR` / `QZDA_VAULT_TOKEN` | KV v2 Put/Resolve；供应商 test 会 Resolve `credentialRef` |
-| `QZDA_TEMPORAL_HOST` | Temporal SDK 提交试运行；需 `QZDA_WORKFLOW_WORKER=1` 由 qzda-app 启动进程内 Temporal worker |
-| `QZDA_WORKFLOW_WORKER` | `1` 启用 qzda-app 进程内 Temporal worker（需 `QZDA_TEMPORAL_HOST`） |
-| `QZDA_KAFKA_BROKERS=127.0.0.1:19092` | 审计双写 Kafka topic `de.audit.v1`（仍写 Redis Stream） |
-| `QZDA_MILVUS_URI=http://127.0.0.1:19530` | Docker Milvus（`make compose-up-milvus`）；未设置则 RAG 用内存向量 |
-| `QZDA_OPA_URL=http://127.0.0.1:8181` | 远程 OPA evaluate；失败回退内嵌 baseline |
-| `QZDA_OPENSEARCH_URL=http://127.0.0.1:9200` | 审计写入/查询 OpenSearch |
-| `QZDA_SANDBOX_RUN_SECRET` | 控制面与 qzda-sandbox 共享的 RunToken HMAC 密钥 |
-| `QZDA_ENV` | `demo` \| `development`（默认）\| `staging` \| `production`；见 [环境与数据模式](../../docs/环境与数据模式.md) |
-| `QZDA_BAN_MOCK_TOKEN=1` | 仅禁用 `mock-*-token`，**不**触发双人审批 |
-| `QZDA_FORCE_OIDC=1` | 拒绝密码登录，仅 OIDC |
+qzda-sandbox 必须 `seccomp=unconfined`(gVisor 自身做 syscall 拦截),
+compose.yml 已配置。
 
-### Staging（硬化预发）
+## 3. 环境变量
+
+`make run` 时通过 `deploy/.env` 注入到所有容器。完整变量清单见
+[`deploy/.env.example`](./.env.example)。最常用:
+
+| 变量 | 默认 | 说明 |
+|------|------|------|
+| `QZDA_ENV` | `development` | `development` / `demo` / `staging` / `production` |
+| `QZDA_DATABASE_URL` | `postgres://de:de@127.0.0.1:5432/digital_employee?sslmode=disable` | docker compose 内自动用 `postgres:5432` |
+| `QZDA_REDIS_URL` | `redis://127.0.0.1:6379/0` | 同上,容器内用 `redis:6379` |
+| `QZDA_BAN_MOCK_TOKEN` | `0` | `1` 禁用 `mock-*-token`(生产) |
+| `QZDA_FORCE_OIDC` | 留空 | `1` 强制仅 OIDC 登录(无密码) |
+| `QZDA_SANDBOX_RUNTIME` | `runc` | `runsc` 启用 gVisor |
+| `QZDA_SANDBOX_RUN_SECRET` | `qzda-skill-run-dev` | 控制面与沙箱共享 HMAC;生产 `openssl rand -hex 32 > deploy/secrets/skill-run-secret` 后挂进容器 |
+| `QZDA_LLM_BASE_URL` / `QZDA_LLM_API_KEY` / `QZDA_LLM_MODEL` | 留空 / 留空 / `gpt-4o-mini` | OpenAI-compatible 远程供应商;留空走 `QZDA_EMBEDDED_CHAT=1` 内置 fallback |
+| `QZDA_MILVUS_URI` | `vector-memory` | `vector-memory` = qzda-rag 内存向量;`./milvus_rag.db` = Milvus Lite 文件;`http://...` = 外部 Milvus |
+| `QZDA_PUBLIC_BASE_URL` | `http://127.0.0.1:8089` | 网关对外地址,飞书 webhook URL hint 等 |
+
+`QZDA_JWT_SECRET` 生产必填 32 字节随机串;留空走 dev fallback。
+
+## 4. 数据模式
+
+```
+QZDA_ENV=development   (本机默认)  → PG 持久化,空库不灌演示 seed
+QZDA_ENV=demo          (纯内存)    → ACME seed,不写 PG;一键 reset
+QZDA_ENV=staging       (硬化预发)  → 双人审批 + Vault required
+QZDA_ENV=production    (生产)      → 同 staging,加 BAN_MOCK=1 / FORCE_OIDC=1
+```
+
+切换模式只需重启 `qzda-app` 容器:`QZDA_ENV=staging docker compose -f deploy/compose.yml up -d qzda-app`。
+
+### Reset 开发库
 
 ```bash
-make compose-up-staging   # monolith + Dex + OPA + OpenSearch + obs
-# 默认加载 deploy/.env.staging：BAN_MOCK=1 FORCE_OIDC=1
+make db-reset-dev
+# → drop platform/audit/policy schema,qzda-app 重启后自动 hydrate
 ```
 
-### Authentik / 可观测
+## 5. Smoke test
+
+栈起来后,端到端冒烟:
 
 ```bash
-make compose-up-authentik   # :9000，见 deploy/authentik/README.md
-make compose-up-obs         # Prometheus :9090，Grafana :3000（抓取 :8100/metrics + :8093/metrics）
+make smoke
+# 输出:
+#   healthz ok
+#   workspaces ok
+#   skills ok
+#   sessions ok
+#   evaluate ok
 ```
 
-### SPIFFE / 沙箱
+直接 `curl`:
 
 ```bash
-make certs && make certs-rotate
-make compose-up-spiffe            # https://127.0.0.1:8444
-# qzda-sandbox：qzda_exec_net + seccomp；见 topology-split.md
+curl -sf http://127.0.0.1:8089/healthz
+TOKEN=$(curl -sf -X POST http://127.0.0.1:8089/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"admin@acme.com","password":"x"}' \
+  | python3 -c 'import sys,json; print(json.load(sys.stdin)["data"]["token"])')
+curl -sf -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8089/api/skills
 ```
 
-Proto / Connect：`make buf-generate` → `gen/`（`/de.*.Service/*`）。  
-mTLS：`make certs` 生成本地 CA；客户端证书 `deploy/certs/client.{crt,key}`。
+## 6. Skill 安全门禁(W1-D3)
 
-### Milvus（RAG）
+CI 必跑,失败即阻断发布:
 
 ```bash
-make compose-up-milvus
-pip install -r services/qzda-rag/requirements-milvus.txt
-export QZDA_MILVUS_URI=http://127.0.0.1:19530
-make rag   # :8092，healthz 中 backend=milvus
+make skill-gate
+# = make verify-builtins (Ed25519 签名 + SHA256 file list)
+# + make vet-builtins   (5 类危险模式静态扫描)
 ```
 
-容器：`qzda-milvus`（19530/9091）、`qzda-milvus-etcd`、`qzda-milvus-minio`（内网）。Milvus 较吃内存，Colima/Docker 建议 ≥6–8GB。
+源代码: [`services/qzda-sandbox/builtin/skills/manifest.json`](
+../services/qzda-sandbox/builtin/skills/manifest.json)
 
-### 应用进程
+## 7. 容器健康检查
 
-**Monolith（默认，profile `monolith`）**
+每个容器自带 healthcheck:
 
 ```bash
-make compose-up-monolith
-# gateway:8089  qzda-app:8100  qzda-sandbox:8093
-# 可选：make compose-up-monolith-workflow   # 进程内 Temporal worker
+docker inspect --format '{{.Name}} {{.State.Health.Status}}' \
+  $(docker compose -f deploy/compose.yml ps -q)
+# qzda-postgres   healthy
+# qzda-redis      healthy
+# qzda-sandbox    healthy
+# qzda-rag        healthy
+# qzda-app        healthy
+# qzda-gateway    healthy
 ```
 
-> Coarse 四进程 / qzda-sys / qzda-collab / qzda-cap / qzda-workflow 已在 M10 折叠到 qzda-app。`compose-up-coarse` 不再可用。
+`make compose-up` 自动等所有 healthy 才退出。
 
-生产/预发：`QZDA_ENV=staging|production`（双人审批 + Vault 门禁）；另设 `QZDA_BAN_MOCK_TOKEN=1` 或 `QZDA_FORCE_OIDC=1`。
-本机联调默认 `QZDA_ENV=development`（持久化、空库不灌演示 seed；硬删须 PersistDelete）。演示内存：`QZDA_ENV=demo` / `make run-demo`。
-清理历史 ACME 残留：`psql "$QZDA_DATABASE_URL" -f ../scripts/purge-demo-seed-ids.sql`（详见 [环境与数据模式](../../docs/环境与数据模式.md)）。
+## 8. 不再使用
+
+历史以下 target / profile 已废弃(M10 折叠 / Phase 4 重命名后):
+
+- `compose-up-temporal` / `compose-up-oidc` / `compose-up-authentik` /
+  `compose-up-kafka` / `compose-up-mtls` / `compose-up-spiffe` /
+  `compose-up-milvus` / `compose-up-opa` / `compose-up-search` /
+  `compose-up-obs` / `compose-up-staging` / `compose-up-replica` /
+  `compose-up-full` / `compose-up-monolith-workflow` — K8s / 分布式组件
+  全部下线,单机部署不再需要
+- `compose-up-coarse` — M10 折叠到 qzda-app,不存在
+- 所有 OIDC / Vault / Temporal / Kafka / Milvus / OPA / OpenSearch /
+  Prometheus / Grafana / SPIFFE / mTLS 相关 env 变量 — 单进程部署不需要
+- K8s / Helm / kubectl 相关说明 — 已迁移到单机 Docker
+
+详见 [`docs/数字伙伴平台-技术规格说明.md`](../../docs/数字伙伴平台-技术规格说明.md)
+与 [`CHANGELOG.md`](../../CHANGELOG.md)(M10 折叠 + Phase 4 重命名)。
