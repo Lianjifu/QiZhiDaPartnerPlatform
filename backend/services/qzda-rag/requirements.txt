@@ -1,2 +1,6 @@
 fastapi>=0.115.0,<0.116
 uvicorn[standard]>=0.32.0,<0.33
+# pgvector client:psycopg3 + pgvector 适配,支持 vector(N) 类型 + cosine distance
+# 安装后 pgvector.psycopg.register_vector 自动把 vector 列映射成 numpy.ndarray。
+psycopg[binary]>=3.2.0,<3.3
+pgvector>=0.3.6,<0.4

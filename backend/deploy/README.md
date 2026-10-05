@@ -17,7 +17,7 @@
        └── redis:6379     (rate-limit + audit bus + cache)
 
    :8093 qzda-sandbox (Python,沙箱执行,RunToken HMAC + gVisor/seccomp)
-   :8092 qzda-rag     (Python FastAPI,向量检索 / 内存或 Milvus)
+   :8092 qzda-rag     (Python FastAPI,向量检索:pgvector 同 PG 实例 / vector-memory 回退)
 ```
 
 四个容器都跑在同一台 host(本机 Colima / 生产 Docker Engine),没有跨主机
@@ -85,7 +85,7 @@ compose.yml 已配置。
 | `QZDA_SANDBOX_RUNTIME` | `runc` | `runsc` 启用 gVisor |
 | `QZDA_SANDBOX_RUN_SECRET` | `qzda-skill-run-dev` | 控制面与沙箱共享 HMAC;生产 `openssl rand -hex 32 > deploy/secrets/skill-run-secret` 后挂进容器 |
 | `QZDA_LLM_BASE_URL` / `QZDA_LLM_API_KEY` / `QZDA_LLM_MODEL` | 留空 / 留空 / `gpt-4o-mini` | OpenAI-compatible 远程供应商;留空走 `QZDA_EMBEDDED_CHAT=1` 内置 fallback |
-| `QZDA_MILVUS_URI` | `vector-memory` | `vector-memory` = qzda-rag 内存向量;`./milvus_rag.db` = Milvus Lite 文件;`http://...` = 外部 Milvus |
+| `QZDA_PGVECTOR_URL` | `postgres://de:de@127.0.0.1:5432/digital_employee?sslmode=disable` | 控制面 PG 已内嵌 pgvector 扩展(RAG 向量);留空走进程内 `vector-memory`(demo,不持久)。同 PG 实例,免额外容器。 |
 | `QZDA_PUBLIC_BASE_URL` | `http://127.0.0.1:8089` | 网关对外地址,飞书 webhook URL hint 等 |
 
 `QZDA_JWT_SECRET` 生产必填 32 字节随机串;留空走 dev fallback。
@@ -169,13 +169,14 @@ docker inspect --format '{{.Name}} {{.State.Health.Status}}' \
 
 - `compose-up-temporal` / `compose-up-oidc` / `compose-up-authentik` /
   `compose-up-kafka` / `compose-up-mtls` / `compose-up-spiffe` /
-  `compose-up-milvus` / `compose-up-opa` / `compose-up-search` /
+  `compose-up-opa` / `compose-up-search` /
   `compose-up-obs` / `compose-up-staging` / `compose-up-replica` /
   `compose-up-full` / `compose-up-monolith-workflow` — K8s / 分布式组件
   全部下线,单机部署不再需要
 - `compose-up-coarse` — M10 折叠到 qzda-app,不存在
-- 所有 OIDC / Vault / Temporal / Kafka / Milvus / OPA / OpenSearch /
+- 所有 OIDC / Vault / Temporal / Kafka / OPA / OpenSearch /
   Prometheus / Grafana / SPIFFE / mTLS 相关 env 变量 — 单进程部署不需要
+- `QZDA_MILVUS_URI` — 已替换为 `QZDA_PGVECTOR_URL`(同 PG 实例的 pgvector 扩展)
 - K8s / Helm / kubectl 相关说明 — 已迁移到单机 Docker
 
 详见 [`docs/数字伙伴平台-技术规格说明.md`](../../docs/数字伙伴平台-技术规格说明.md)

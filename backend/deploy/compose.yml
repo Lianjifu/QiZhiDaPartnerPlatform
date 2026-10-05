@@ -13,7 +13,9 @@
 
 services:
   postgres:
-    image: postgres:16-alpine
+    # pgvector/pgvector 镜像:postgresql 16 + pgvector 扩展预装,RAG 向量
+    # 与控制面事务一致(同一 PG 实例,免额外容器)。
+    image: pgvector/pgvector:pg16-alpine
     container_name: qzda-postgres
     restart: unless-stopped
     environment:
@@ -112,7 +114,8 @@ services:
     environment:
       QZDA_BIND_HOST: "0.0.0.0"
       QZDA_BIND_PORT: "8092"
-      QZDA_MILVUS_URI: ${QZDA_MILVUS_URI:-vector-memory}
+      # pgvector 与控制面共享同一 PG,容器内用服务名 hostname
+      QZDA_PGVECTOR_URL: ${QZDA_PGVECTOR_URL:-postgres://de:de@postgres:5432/digital_employee?sslmode=disable}
       PROMETHEUS_MULTIPROC_DIR: /tmp/prom-multiproc
     ports:
       - "8092:8092"

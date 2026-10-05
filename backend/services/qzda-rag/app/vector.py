@@ -1,4 +1,10 @@
-"""Vector index backends: in-memory and optional Milvus."""
+"""Vector index backends: in-memory (default) and pgvector (recommended).
+
+pgvector 是单进程 Docker 部署的默认推荐:把向量存在同一个 PostgreSQL 实例,
+不需要额外容器,事务 / 备份 / 复制路径与控制面一致。
+
+Milvus 已下线(commit e88eb2a 删除 deploy/milvus profile 与 infra/milvus/)。
+"""
 from __future__ import annotations
 
 import math
@@ -22,8 +28,8 @@ DEFAULT_PUBLISHED = [
     },
 ]
 
-_TOKEN = re.compile(r"[\w\u4e00-\u9fff]+", re.UNICODE)
-COLLECTION = "de_published_docs"
+_TOKEN = re.compile(r"[\w一-鿿]+", re.UNICODE)
+COLLECTION = "rag_published_docs"
 DIM = 64
 
 
@@ -40,7 +46,7 @@ def embed(text: str) -> dict[str, float]:
 
 
 def dense_embed(text: str, dim: int = DIM) -> list[float]:
-    """Deterministic hashing trick → fixed-dim unit vector for Milvus."""
+    """Deterministic hashing trick → fixed-dim unit vector for pgvector."""
     vec = [0.0] * dim
     for t in tokenize(text):
         h = hash(t)
@@ -106,88 +112,129 @@ class VectorIndex:
         return [h for _, h in scored[:top_k]]
 
 
-class MilvusIndex:
-    """Optional Milvus / Milvus-Lite backend (QZDA_MILVUS_URI)."""
+class PgVectorIndex:
+    """PG-backed vector index via pgvector extension.
 
-    def __init__(self, uri: str) -> None:
-        from pymilvus import DataType, MilvusClient  # type: ignore
+    Reads QZDA_PGVECTOR_URL (falls back to QZDA_DATABASE_URL, since pgvector
+    lives in the same Postgres instance as the control plane). On first
+    use, ensures `CREATE EXTENSION vector` + `CREATE TABLE rag_published_docs`.
 
-        self.client = MilvusClient(uri)
-        self.uri = uri
-        if COLLECTION in self.client.list_collections():
-            self.client.drop_collection(COLLECTION)
-        schema = self.client.create_schema(auto_id=False, enable_dynamic_field=True)
-        schema.add_field("id", DataType.VARCHAR, is_primary=True, max_length=64)
-        schema.add_field("title", DataType.VARCHAR, max_length=512)
-        schema.add_field("snippet", DataType.VARCHAR, max_length=2048)
-        schema.add_field("status", DataType.VARCHAR, max_length=32)
-        schema.add_field("vector", DataType.FLOAT_VECTOR, dim=DIM)
-        idx = self.client.prepare_index_params()
-        idx.add_index(field_name="vector", index_type="AUTOINDEX", metric_type="COSINE")
-        self.client.create_collection(COLLECTION, schema=schema, index_params=idx)
+    Reindex is destructive (TRUNCATE) — acceptable since this is the dev/demo
+    RAG store; production should manage rows via Knowledge publish flow.
+    """
+
+    def __init__(self, dsn: str) -> None:
+        import psycopg
+        from pgvector.psycopg import register_vector
+
+        self.dsn = dsn
+        self.conn = psycopg.connect(dsn, autocommit=True)
+        self.table = COLLECTION
+        register_vector(self.conn)
+        with self.conn.cursor() as cur:
+            cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
+            cur.execute(
+                f"""
+                CREATE TABLE IF NOT EXISTS {COLLECTION} (
+                    id          TEXT PRIMARY KEY,
+                    title       TEXT        NOT NULL,
+                    snippet     TEXT        NOT NULL,
+                    status      TEXT        NOT NULL DEFAULT 'published',
+                    vector      vector({DIM}) NOT NULL,
+                    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+                """
+            )
         self.reindex(DEFAULT_PUBLISHED)
 
     def reindex(self, docs: list[dict]) -> int:
         published = [d for d in docs if (d.get("status") or "published") == "published"]
-        if COLLECTION in self.client.list_collections():
-            self.client.drop_collection(COLLECTION)
-            schema = self.client.create_schema(auto_id=False, enable_dynamic_field=True)
-            from pymilvus import DataType  # type: ignore
-
-            schema.add_field("id", DataType.VARCHAR, is_primary=True, max_length=64)
-            schema.add_field("title", DataType.VARCHAR, max_length=512)
-            schema.add_field("snippet", DataType.VARCHAR, max_length=2048)
-            schema.add_field("status", DataType.VARCHAR, max_length=32)
-            schema.add_field("vector", DataType.FLOAT_VECTOR, dim=DIM)
-            idx = self.client.prepare_index_params()
-            idx.add_index(field_name="vector", index_type="AUTOINDEX", metric_type="COSINE")
-            self.client.create_collection(COLLECTION, schema=schema, index_params=idx)
-        if not published:
-            return 0
-        rows = []
-        for d in published:
-            text = f"{d.get('title', '')} {d.get('snippet', '')}"
-            rows.append(
-                {
-                    "id": str(d.get("docId") or d.get("id")),
-                    "title": str(d.get("title") or "")[:512],
-                    "snippet": str(d.get("snippet") or "")[:2048],
-                    "status": "published",
-                    "vector": dense_embed(text),
-                }
+        with self.conn.cursor() as cur:
+            cur.execute(f"TRUNCATE {COLLECTION}")
+            if not published:
+                return 0
+            from psycopg.types.json import Jsonb
+            rows = []
+            for d in published:
+                text = f"{d.get('title', '')} {d.get('snippet', '')}"
+                rows.append((
+                    str(d.get("docId") or d.get("id")),
+                    str(d.get("title") or "")[:512],
+                    str(d.get("snippet") or "")[:2048],
+                    "published",
+                    dense_embed(text),
+                ))
+            from psycopg.types.array import Array
+            cur.executemany(
+                f"INSERT INTO {COLLECTION} (id, title, snippet, status, vector) VALUES (%s, %s, %s, %s, %s)",
+                rows,
             )
-        self.client.insert(COLLECTION, rows)
         return len(rows)
 
+    def ingest(self, docs: list[dict]) -> int:
+        published = [d for d in docs if (d.get("status") or "published") == "published"]
+        with self.conn.cursor() as cur:
+            cur.executemany(
+                f"""
+                INSERT INTO {COLLECTION} (id, title, snippet, status, vector)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (id) DO UPDATE SET
+                    title = EXCLUDED.title,
+                    snippet = EXCLUDED.snippet,
+                    status = EXCLUDED.status,
+                    vector = EXCLUDED.vector,
+                    updated_at = NOW()
+                """,
+                [
+                    (
+                        str(d.get("docId") or d.get("id") or ""),
+                        str(d.get("title") or "")[:512],
+                        str(d.get("snippet") or "")[:2048],
+                        "published",
+                        dense_embed(f"{d.get('title', '')} {d.get('snippet', '')}"),
+                    )
+                    for d in published
+                    if d.get("docId") or d.get("id")
+                ],
+            )
+        return len(published)
+
     def search(self, query: str, top_k: int = 8) -> list[dict]:
-        res = self.client.search(
-            COLLECTION,
-            data=[dense_embed(query)],
-            limit=top_k,
-            output_fields=["title", "snippet", "status"],
-        )
-        hits: list[dict] = []
-        for batch in res:
-            for row in batch:
-                ent = row.get("entity") or {}
-                hits.append(
-                    {
-                        "docId": row.get("id"),
-                        "title": ent.get("title"),
-                        "snippet": ent.get("snippet"),
-                        "status": ent.get("status") or "published",
-                        "score": round(float(row.get("distance") or 0), 4),
-                    }
-                )
-        return hits
+        qvec = dense_embed(query)
+        with self.conn.cursor() as cur:
+            cur.execute(
+                f"""
+                SELECT id, title, snippet, status,
+                       1 - (vector <=> %s::vector) AS score
+                  FROM {COLLECTION}
+                 ORDER BY vector <=> %s::vector
+                 LIMIT %s
+                """,
+                (qvec, qvec, top_k),
+            )
+            rows = cur.fetchall()
+        return [
+            {
+                "docId": r[0],
+                "title": r[1],
+                "snippet": r[2],
+                "status": r[3] or "published",
+                "score": round(float(r[4] or 0), 4),
+            }
+            for r in rows
+        ]
 
 
-def build_index() -> tuple[VectorIndex | MilvusIndex, str]:
-    uri = (os.environ.get("QZDA_MILVUS_URI") or "").strip()
-    if uri:
+def build_index() -> tuple[VectorIndex | PgVectorIndex, str]:
+    pgvector_url = (
+        os.environ.get("QZDA_PGVECTOR_URL")
+        or os.environ.get("QZDA_DATABASE_URL")
+        or ""
+    ).strip()
+    if pgvector_url:
         try:
-            idx = MilvusIndex(uri)
-            return idx, "milvus"
+            idx = PgVectorIndex(pgvector_url)
+            return idx, "pgvector"
         except Exception as exc:  # noqa: BLE001
-            print(f"milvus unavailable ({exc}), falling back to vector-memory")
+            print(f"pgvector unavailable ({exc}), falling back to vector-memory")
     return VectorIndex(), "vector-memory"

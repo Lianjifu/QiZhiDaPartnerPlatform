@@ -1,4 +1,12 @@
-"""RAG FastAPI service: published-only retrieve with vector-memory or optional Milvus."""
+"""RAG FastAPI service: published-only retrieve with pgvector or in-memory fallback.
+
+pgvector 是单进程 Docker 部署的默认推荐 backend:向量存在控制面同一个
+PostgreSQL 实例的 `rag_published_docs` 表(vector(64) + cosine distance),
+无需额外容器,事务 / 备份 / 复制路径与控制面一致。
+
+未配置 `QZDA_PGVECTOR_URL` 或 `QZDA_DATABASE_URL` 时回退到进程内 vector-memory
+(适合 demo / 离线环境,数据不持久)。
+"""
 from __future__ import annotations
 
 from typing import Any
@@ -6,7 +14,7 @@ from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from app.vector import COLLECTION, VectorIndex, build_index
+from app.vector import PgVectorIndex, VectorIndex, build_index
 
 INDEX, BACKEND = build_index()
 
@@ -14,13 +22,16 @@ app = FastAPI(title="qzda-rag", version="1.0.0")
 
 
 def _indexed_count() -> int:
-    n = len(getattr(INDEX, "docs", []) or [])
-    if BACKEND == "milvus":
+    if BACKEND == "pgvector":
         try:
-            n = INDEX.client.get_collection_stats(COLLECTION).get("row_count", n)  # type: ignore[attr-defined]
+            with INDEX.conn.cursor() as cur:  # type: ignore[attr-defined]
+                cur.execute(f"SELECT COUNT(*) FROM {INDEX.table}")  # type: ignore[attr-defined]
+                return int(cur.fetchone()[0])
         except Exception:  # noqa: BLE001
-            pass
-    return n
+            return 0
+    if BACKEND == "vector-memory":
+        return len(getattr(INDEX, "docs", []) or [])
+    return 0
 
 
 @app.get("/healthz")
@@ -45,18 +56,14 @@ async def retrieve(request: Request) -> dict[str, Any]:
         data = {}
     corr = data.get("correlationId") or ""
     # Explicit docs payload (including empty list) scopes search to that corpus.
-    # Avoid falling through to the process-global INDEX, which may contain demo seeds.
+    # Always uses VectorIndex (in-memory) so caller payload never touches the
+    # process-global PG table — only admin sync/ingest writes to pgvector.
     if "docs" in data:
         docs = data.get("docs") or []
-        if BACKEND != "milvus":
-            tmp = VectorIndex()
-            tmp.reindex(docs if isinstance(docs, list) else [])
-            results = tmp.search(data.get("query") or "")
-            backend = "vector-memory"
-        else:
-            INDEX.reindex(docs if isinstance(docs, list) else [])
-            results = INDEX.search(data.get("query") or "")
-            backend = BACKEND
+        tmp = VectorIndex()
+        tmp.reindex(docs if isinstance(docs, list) else [])
+        results = tmp.search(data.get("query") or "")
+        backend = "vector-memory"
     else:
         results = INDEX.search(data.get("query") or "")
         backend = BACKEND
@@ -78,7 +85,15 @@ async def sync(request: Request) -> dict[str, Any]:
     if not isinstance(data, dict):
         data = {}
     docs = data.get("docs") or []
-    n = INDEX.reindex(docs)
+    if BACKEND == "pgvector":
+        # For pgvector backend: TRUNCATE + re-insert via reindex().
+        # If we have an ingest() method that supports upsert, prefer it.
+        if hasattr(INDEX, "ingest"):
+            n = INDEX.ingest(docs)  # type: ignore[attr-defined]
+        else:
+            n = INDEX.reindex(docs)
+    else:
+        n = INDEX.reindex(docs)
     return {"indexed": n, "backend": BACKEND}
 
 
