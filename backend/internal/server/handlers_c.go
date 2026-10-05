@@ -1109,7 +1109,7 @@ func allowRuntimeStub() bool {
 	if !auth.AllowMockIdentity() {
 		return false
 	}
-	return envFlagTrue("DE_ALLOW_RUNTIME_STUB")
+	return envFlagTrue("QZDA_ALLOW_RUNTIME_STUB")
 }
 
 // resolveCopilotModelID picks the model/route for one turn.

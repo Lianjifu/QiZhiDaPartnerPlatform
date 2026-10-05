@@ -6,7 +6,7 @@
 //   - 18 位身份证号（safetyIDRe）
 //   - API Key / Bearer Token / sk-* 等密钥（safetyKeyRe）
 //
-// 模式由环境变量 DE_CONTENT_SAFETY 控制：
+// 模式由环境变量 QZDA_CONTENT_SAFETY 控制：
 //   - block   → 命中即整段拒答（返回占位提示文案）
 //   - redact  → 默认，把命中片段替换为 "[手机号已脱敏]" 等
 //   - off     → 关闭扫描（仅供测试）
@@ -25,7 +25,7 @@ var (
 )
 
 func contentSafetyMode() string {
-	v := strings.ToLower(strings.TrimSpace(os.Getenv("DE_CONTENT_SAFETY")))
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("QZDA_CONTENT_SAFETY")))
 	switch v {
 	case "block", "redact", "off":
 		return v

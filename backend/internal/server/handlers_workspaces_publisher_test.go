@@ -335,7 +335,7 @@ func TestImportRevokedWorkspaceKeyDenied(t *testing.T) {
 	srv := server.New(st)
 	srv.EnsureBuiltinSkillsReady()
 	h := srv.Handler()
-	t.Setenv("DE_REQUIRE_SKILL_SIGNATURE", "any")
+	t.Setenv("QZDA_REQUIRE_SKILL_SIGNATURE", "any")
 
 	_, priv, _ := ed25519.GenerateKey(nil)
 	pub := priv.Public().(ed25519.PublicKey)
@@ -370,7 +370,7 @@ func TestImportUnsignedDeniedUnderWorkspacePolicy(t *testing.T) {
 	srv := server.New(st)
 	srv.EnsureBuiltinSkillsReady()
 	h := srv.Handler()
-	t.Setenv("DE_REQUIRE_SKILL_SIGNATURE", "workspace")
+	t.Setenv("QZDA_REQUIRE_SKILL_SIGNATURE", "workspace")
 
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
@@ -396,7 +396,7 @@ func TestImportActiveWorkspaceKeySucceeds(t *testing.T) {
 	srv := server.New(st)
 	srv.EnsureBuiltinSkillsReady()
 	h := srv.Handler()
-	t.Setenv("DE_REQUIRE_SKILL_SIGNATURE", "any")
+	t.Setenv("QZDA_REQUIRE_SKILL_SIGNATURE", "any")
 
 	_, priv, _ := ed25519.GenerateKey(nil)
 	pub := priv.Public().(ed25519.PublicKey)
@@ -424,7 +424,7 @@ func TestImportRotatedWorkspaceKeySucceedsInGrace(t *testing.T) {
 	srv := server.New(st)
 	srv.EnsureBuiltinSkillsReady()
 	h := srv.Handler()
-	t.Setenv("DE_REQUIRE_SKILL_SIGNATURE", "any")
+	t.Setenv("QZDA_REQUIRE_SKILL_SIGNATURE", "any")
 
 	_, priv, _ := ed25519.GenerateKey(nil)
 	pub := priv.Public().(ed25519.PublicKey)

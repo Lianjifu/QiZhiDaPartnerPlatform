@@ -20,12 +20,12 @@ import (
 // Architecture: monolith — sys + collab + cap + workflow in one Go process
 // Port: 8100
 // Owns: platform, sessions/copilot, models/knowledge/memory/skills/channels,
-//   workflow HTTP + Temporal worker (when DE_WORKFLOW_WORKER=1)
+//   workflow HTTP + Temporal worker (when QZDA_WORKFLOW_WORKER=1)
 // Sidecars: qzda-sandbox (8093) for sandbox execution; qzda-agent-runtime,
 //   qzda-rag optional
 // Forbidden: in-process skill script execution (→ qzda-sandbox)
 func main() {
-	addr := env("DE_APP_ADDR", env("DE_LISTEN_ADDR", ":8100"))
+	addr := env("QZDA_APP_ADDR", env("QZDA_LISTEN_ADDR", ":8100"))
 
 	var wg sync.WaitGroup
 	errCh := make(chan error, 2)
@@ -38,10 +38,10 @@ func main() {
 		}
 	}()
 
-	if env("DE_WORKFLOW_WORKER", "0") == "1" {
-		host := env("DE_TEMPORAL_HOST", "")
+	if env("QZDA_WORKFLOW_WORKER", "0") == "1" {
+		host := env("QZDA_TEMPORAL_HOST", "")
 		if host == "" {
-			log.Printf("qzda-app: DE_TEMPORAL_HOST empty — Temporal worker disabled (set DE_TEMPORAL_HOST to enable)")
+			log.Printf("qzda-app: QZDA_TEMPORAL_HOST empty — Temporal worker disabled (set QZDA_TEMPORAL_HOST to enable)")
 		} else {
 			wg.Add(1)
 			go func() {

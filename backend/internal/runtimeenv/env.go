@@ -16,10 +16,10 @@ const (
 	ModeProduction  Mode = "production"
 )
 
-// FromEnv resolves DE_ENV (alias: mock→demo, prod→production). GO_ENV is a fallback.
-// Tests should use t.Setenv("DE_ENV", ...) — no process-global override (parallel-safe).
+// FromEnv resolves QZDA_ENV (alias: mock→demo, prod→production). GO_ENV is a fallback.
+// Tests should use t.Setenv("QZDA_ENV", ...) — no process-global override (parallel-safe).
 func FromEnv() Mode {
-	raw := strings.ToLower(strings.TrimSpace(os.Getenv("DE_ENV")))
+	raw := strings.ToLower(strings.TrimSpace(os.Getenv("QZDA_ENV")))
 	if raw == "" {
 		raw = strings.ToLower(strings.TrimSpace(os.Getenv("GO_ENV")))
 	}
@@ -62,22 +62,22 @@ func (m Mode) AllowsDemoToken() bool {
 	if m.IsDemo() {
 		return true
 	}
-	if m == ModeDevelopment && envFlagTrue("DE_ALLOW_DEMO_TOKEN") {
+	if m == ModeDevelopment && envFlagTrue("QZDA_ALLOW_DEMO_TOKEN") {
 		return true
 	}
 	return false
 }
 
-// RequiresVault is true for staging/production (or DE_REQUIRE_VAULT=1).
+// RequiresVault is true for staging/production (or QZDA_REQUIRE_VAULT=1).
 func (m Mode) RequiresVault() bool {
-	if envFlagTrue("DE_REQUIRE_VAULT") {
+	if envFlagTrue("QZDA_REQUIRE_VAULT") {
 		return true
 	}
 	return m == ModeStaging || m == ModeProduction
 }
 
 // DualApproval enables SoD / dual approval gates (staging/production only).
-// DE_BAN_MOCK_TOKEN must NOT imply dual approval.
+// QZDA_BAN_MOCK_TOKEN must NOT imply dual approval.
 func (m Mode) DualApproval() bool {
 	return m == ModeStaging || m == ModeProduction
 }
@@ -86,10 +86,10 @@ func (m Mode) DualApproval() bool {
 // a developer signing keypair on first start. True in demo / development
 // modes (and when explicitly opted-in elsewhere); false in staging / prod.
 func (m Mode) AutoProvisionsSkillKeys() bool {
-	if envFlagTrue("DE_FORCE_DEV_KEYPAIR") {
+	if envFlagTrue("QZDA_FORCE_DEV_KEYPAIR") {
 		return true
 	}
-	if envFlagTrue("DE_BAN_DEV_KEYPAIR") {
+	if envFlagTrue("QZDA_BAN_DEV_KEYPAIR") {
 		return false
 	}
 	return m == ModeDemo || m == ModeDevelopment
@@ -97,9 +97,9 @@ func (m Mode) AutoProvisionsSkillKeys() bool {
 
 // SkillSignatureRequired reports whether attachBuiltinPackageToSkill /
 // importSkillPackage MUST verify an Ed25519 signature. Defaults to true.
-// Disable with DE_REQUIRE_SKILL_SIGNATURE=disabled (or =warn_only).
+// Disable with QZDA_REQUIRE_SKILL_SIGNATURE=disabled (or =warn_only).
 func (m Mode) SkillSignatureRequired() bool {
-	raw := strings.ToLower(strings.TrimSpace(os.Getenv("DE_REQUIRE_SKILL_SIGNATURE")))
+	raw := strings.ToLower(strings.TrimSpace(os.Getenv("QZDA_REQUIRE_SKILL_SIGNATURE")))
 	switch raw {
 	case "disabled", "off", "0", "false":
 		return false
@@ -114,10 +114,10 @@ func (m Mode) SkillSignatureRequired() bool {
 
 // AllowsDemoIdentityHeaders controls x-mock-* identity forging.
 func (m Mode) AllowsDemoIdentityHeaders() bool {
-	if envFlagTrue("DE_ALLOW_MOCK_IDENTITY") || envFlagTrue("DE_ALLOW_DEMO_IDENTITY") {
+	if envFlagTrue("QZDA_ALLOW_MOCK_IDENTITY") || envFlagTrue("QZDA_ALLOW_DEMO_IDENTITY") {
 		return true
 	}
-	if envFlagFalse("DE_ALLOW_MOCK_IDENTITY") || envFlagFalse("DE_ALLOW_DEMO_IDENTITY") {
+	if envFlagFalse("QZDA_ALLOW_MOCK_IDENTITY") || envFlagFalse("QZDA_ALLOW_DEMO_IDENTITY") {
 		return false
 	}
 	if m.DualApproval() {
@@ -129,14 +129,14 @@ func (m Mode) AllowsDemoIdentityHeaders() bool {
 	return m == ModeDemo || m == ModeDevelopment
 }
 
-// BanDemoToken reports DE_BAN_DEMO_TOKEN / DE_BAN_MOCK_TOKEN.
+// BanDemoToken reports QZDA_BAN_DEMO_TOKEN / QZDA_BAN_MOCK_TOKEN.
 func BanDemoToken() bool { return banDemoToken() }
 
 func banDemoToken() bool {
-	if envFlagTrue("DE_BAN_DEMO_TOKEN") || envFlagTrue("DE_BAN_MOCK_TOKEN") {
+	if envFlagTrue("QZDA_BAN_DEMO_TOKEN") || envFlagTrue("QZDA_BAN_MOCK_TOKEN") {
 		return true
 	}
-	if envFlagFalse("DE_BAN_DEMO_TOKEN") || envFlagFalse("DE_BAN_MOCK_TOKEN") {
+	if envFlagFalse("QZDA_BAN_DEMO_TOKEN") || envFlagFalse("QZDA_BAN_MOCK_TOKEN") {
 		return false
 	}
 	m := FromEnv()
@@ -153,24 +153,24 @@ func envFlagFalse(key string) bool {
 	return v == "0" || strings.EqualFold(v, "false")
 }
 
-// EnsureGeneralEmployeeAllowed: only demo, or development with DE_ENSURE_GENERAL=1.
+// EnsureGeneralEmployeeAllowed: only demo, or development with QZDA_ENSURE_GENERAL=1.
 func (m Mode) EnsureGeneralEmployeeAllowed() bool {
 	if m.IsDemo() {
 		return true
 	}
-	if m == ModeDevelopment && envFlagTrue("DE_ENSURE_GENERAL") {
+	if m == ModeDevelopment && envFlagTrue("QZDA_ENSURE_GENERAL") {
 		return true
 	}
 	return false
 }
 
-// SessionSyncEnabled reads DE_SESSION_SYNC_ENABLED (default true). When set
+// SessionSyncEnabled reads QZDA_SESSION_SYNC_ENABLED (default true). When set
 // to "false" / "FALSE" / "0", session-sync metric writes are rejected and the
 // FE should likewise disable BroadcastChannel + heartbeat. The mirror reader
 // keeps FE/BE consistent so ops can globally disable the feature. Matching
 // is case-insensitive on the boolean value (envFlagFalse convention).
 func SessionSyncEnabled() bool {
-	v := strings.TrimSpace(os.Getenv("DE_SESSION_SYNC_ENABLED"))
+	v := strings.TrimSpace(os.Getenv("QZDA_SESSION_SYNC_ENABLED"))
 	if v == "" {
 		return true
 	}

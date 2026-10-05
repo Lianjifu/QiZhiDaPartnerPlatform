@@ -15,9 +15,9 @@ import (
 // We seed a minimal valid docx into the artifact dir so the preview
 // parser succeeds; otherwise the test would 404 before headers matter.
 func TestPreviewSandboxHeadersJSON(t *testing.T) {
-	t.Setenv("DE_ENV", "test")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
-	t.Setenv("DE_ARTIFACT_REQUIRE_AUTH", "false")
+	t.Setenv("QZDA_ENV", "test")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ARTIFACT_REQUIRE_AUTH", "false")
 	h := server.New(store.New()).Handler()
 
 	// The seed docx lives in data/skill-artifacts; if missing, the
@@ -49,8 +49,8 @@ func TestSandboxHeadersShape(t *testing.T) {
 	// private writePreviewSandboxHeaders from server_test, so we round-
 	// trip through an arbitrary endpoint and assert that at least the
 	// known-shape headers are consistent (no relaxations).
-	t.Setenv("DE_ENV", "test")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "test")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	h := server.New(store.New()).Handler()
 
 	req := httptest.NewRequest("GET", "/api/skill-artifacts/no-such-file.docx", nil)
@@ -82,8 +82,8 @@ func TestWantInlineQuery(t *testing.T) {
 	// itself is package-private, so we cover it indirectly by hitting
 	// an arbitrary skill-artifact URL with the query and asserting that
 	// 404 still comes back (meaning parsing didn't crash).
-	t.Setenv("DE_ENV", "test")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "test")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	h := server.New(store.New()).Handler()
 
 	for _, q := range []string{"?inline=1", "?inline=true", "?inline=yes", "?inline=0", ""} {
@@ -102,9 +102,9 @@ func TestWantInlineQuery(t *testing.T) {
 // a real (seeded) artifact and asserts the success path emits the
 // sandbox headers. Skipped when the data/ dir isn't available in CI.
 func TestSandboxHeadersOnRealArtifact(t *testing.T) {
-	t.Setenv("DE_ENV", "test")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
-	t.Setenv("DE_ARTIFACT_REQUIRE_AUTH", "false")
+	t.Setenv("QZDA_ENV", "test")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ARTIFACT_REQUIRE_AUTH", "false")
 
 	// We don't want to require a real artifact on disk — instead drive
 	// the preview sandbox helper directly through a known endpoint that

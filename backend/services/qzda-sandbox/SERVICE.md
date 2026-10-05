@@ -33,16 +33,16 @@
 
 | Var | 默认 | 用途 |
 |---|---|---|
-| `DE_BIND_HOST` / `DE_BIND_PORT` | `0.0.0.0` / `8093` | uvicorn bind |
-| `DE_SANDBOX_RUN_SECRET_FILE` | `/etc/qzda/skill-run-secret` | RunToken HMAC key 文件(fail-closed) |
-| `DE_SANDBOX_RUN_SECRET` | (无) | 兼容用 env 注入 HMAC;**生产拒收 `qzda-skill-run-dev` 占位值** |
-| `DE_SANDBOX_REQUIRE_ISOLATION` | `1` (Docker) | 控制面可达时 fail-closed |
-| `DE_SANDBOX_RUNTIME_DETECTED` | (entrypoint 设置) | 实际 runsc / runc / process,`/healthz` 反射 |
-| `DE_SANDBOX_SANDBOX` | `runsc` | 声明期望的隔离模式 |
-| `DE_SANDBOX_AUDIT` / `DE_SANDBOX_AUDIT_BLOCK_OPEN` | `0` | Python `audit_hooks` 开关 |
-| `DE_SANDBOX_DEFAULT_PIDS` / `CPU_SECS` / `MEM_MB` | `64` / `30` / `512` | `prlimit` per-exec 默认 |
-| `DE_SANDBOX_RATE_LIMIT_PER_MIN` | `60` | token-bucket 阈值(per `(ws, actor)` + per-IP) |
-| `DE_SANDBOX_TRUSTED_KEY_IDS` | (CSV) | 信任的 Ed25519 publisher KeyID 列表 |
+| `QZDA_BIND_HOST` / `QZDA_BIND_PORT` | `0.0.0.0` / `8093` | uvicorn bind |
+| `QZDA_SANDBOX_RUN_SECRET_FILE` | `/etc/qzda/skill-run-secret` | RunToken HMAC key 文件(fail-closed) |
+| `QZDA_SANDBOX_RUN_SECRET` | (无) | 兼容用 env 注入 HMAC;**生产拒收 `qzda-skill-run-dev` 占位值** |
+| `QZDA_SANDBOX_REQUIRE_ISOLATION` | `1` (Docker) | 控制面可达时 fail-closed |
+| `QZDA_SANDBOX_RUNTIME_DETECTED` | (entrypoint 设置) | 实际 runsc / runc / process,`/healthz` 反射 |
+| `QZDA_SANDBOX_SANDBOX` | `runsc` | 声明期望的隔离模式 |
+| `QZDA_SANDBOX_AUDIT` / `QZDA_SANDBOX_AUDIT_BLOCK_OPEN` | `0` | Python `audit_hooks` 开关 |
+| `QZDA_SANDBOX_DEFAULT_PIDS` / `CPU_SECS` / `MEM_MB` | `64` / `30` / `512` | `prlimit` per-exec 默认 |
+| `QZDA_SANDBOX_RATE_LIMIT_PER_MIN` | `60` | token-bucket 阈值(per `(ws, actor)` + per-IP) |
+| `QZDA_SANDBOX_TRUSTED_KEY_IDS` | (CSV) | 信任的 Ed25519 publisher KeyID 列表 |
 
 ## 网络
 

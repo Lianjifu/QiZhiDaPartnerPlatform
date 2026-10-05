@@ -10,16 +10,16 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// OpenRedis connects to Docker Compose Redis via DE_REDIS_URL.
+// OpenRedis connects to Docker Compose Redis via QZDA_REDIS_URL.
 // Returns nil client when URL is empty.
 func OpenRedis(ctx context.Context) (*redis.Client, error) {
-	url := os.Getenv("DE_REDIS_URL")
+	url := os.Getenv("QZDA_REDIS_URL")
 	if url == "" {
 		return nil, nil
 	}
 	opt, err := redis.ParseURL(url)
 	if err != nil {
-		return nil, fmt.Errorf("parse DE_REDIS_URL: %w", err)
+		return nil, fmt.Errorf("parse QZDA_REDIS_URL: %w", err)
 	}
 	client := redis.NewClient(opt)
 

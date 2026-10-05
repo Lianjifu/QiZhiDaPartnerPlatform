@@ -6,7 +6,7 @@ import "testing"
 // qzda-collab / qzda-cap / qzda-workflow binaries folded into qzda-app.
 // Legacy names ("sys" / "collab" / "cap" / "workflow" / "qzda-sys" / ...)
 // must still parse to ModeApp for backward compatibility — older scripts
-// that export DE_SERVICE=sys should keep working.
+// that export QZDA_SERVICE=sys should keep working.
 func TestParseServiceMode(t *testing.T) {
 	cases := []struct {
 		in   string

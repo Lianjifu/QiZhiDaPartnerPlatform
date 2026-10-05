@@ -124,8 +124,8 @@ func envFlagFalse(key string) bool {
 }
 
 func productionLikeEnv() bool {
-	// Dual-approval / production governance: DE_ENV=staging|production only.
-	// DE_BAN_MOCK_TOKEN no longer implies production-like behavior.
+	// Dual-approval / production governance: QZDA_ENV=staging|production only.
+	// QZDA_BAN_MOCK_TOKEN no longer implies production-like behavior.
 	return runtimeenv.FromEnv().DualApproval()
 }
 

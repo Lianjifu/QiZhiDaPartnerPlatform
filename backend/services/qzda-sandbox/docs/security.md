@@ -77,21 +77,21 @@ openpyxl 重写到位后从列表移除并重新签发。
 | 2 | RunToken secret 硬编码 `"qzda-skill-run-dev"`,翻 `app/sandbox.py` 即伪造 token | Docker Compose `secrets:` 长语法 + 文件 mount,默认 fail-closed |
 | 3 | skill 包无 `.signed` marker 验证,任何有 `/skills/*` 写权的人注入任意代码 | [`app/sign_verify.py`](../app/sign_verify.py) + Go [`signing/`](../../services/qzda-sandbox/signing/) Ed25519 |
 | 4 | per-skill cgroup 配额缺失,fork bomb 把容器 pids 吃光 | `preexec_fn=make_preexec()` 调 `prlimit(RLIMIT_NPROC/AS/CPU)` |
-| 5 | workspaceId 只 echo,fs/net 未真正 per-tenant | `DE_WORKSPACE_ID` env 透传;RunToken `workspaceId` claim 是租户身份唯一可信源 |
+| 5 | workspaceId 只 echo,fs/net 未真正 per-tenant | `QZDA_WORKSPACE_ID` env 透传;RunToken `workspaceId` claim 是租户身份唯一可信源 |
 | 6 | `/v1/execute` 无 QPS 限流 | [`app/rate_limit.py`](../app/rate_limit.py):per `(ws,actor)` + per-IP token-bucket,滑动 60s |
 | 7 | 父进程(`uvicorn`)无 DnsGate,lifespan 内任意模块解析 PG/Redis DNS 即绕过审计 | lifespan 末尾 `DnsGate([], deny_all=True).install()` |
 | 8 | egress proxy 8080 无自愈,进程死了子进程全 502 | 后台 supervisor thread 10s 探活 + 指数退避重启;`egress_proxy_up` Gauge |
 
 ## secrets 模型
 
-`DE_SANDBOX_RUN_SECRET_FILE` 是生产路径,Compose `secrets:` block
+`QZDA_SANDBOX_RUN_SECRET_FILE` 是生产路径,Compose `secrets:` block
 [`backend/deploy/compose.yml`](../../../deploy/compose.yml) 把 `qzda_sandbox_run_secret`
 挂到 `/etc/qzda/skill-run-secret`(默认权限 0400)。
 
 [`app/sandbox.py:42-69`](../app/sandbox.py) 的 `skill_secret()` 顺序:
 
-1. 读 `DE_SANDBOX_RUN_SECRET_FILE`,strip,非空 → 返回
-2. 读 `DE_SANDBOX_RUN_SECRET` env,**且** 不等于 `"qzda-skill-run-dev"` 占位 → 返回
+1. 读 `QZDA_SANDBOX_RUN_SECRET_FILE`,strip,非空 → 返回
+2. 读 `QZDA_SANDBOX_RUN_SECRET` env,**且** 不等于 `"qzda-skill-run-dev"` 占位 → 返回
 3. 都没有 → `raise RuntimeError`,**lifespan 立即退出**(fail-closed)
 
 不允许在生产接受 dev 占位密钥。

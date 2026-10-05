@@ -7,7 +7,7 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$DIR"
 
 TTL_DAYS="${1:-825}"
-TRUST_DOMAIN="${DE_SPIFFE_TRUST_DOMAIN:-qzda.local}"
+TRUST_DOMAIN="${QZDA_SPIFFE_TRUST_DOMAIN:-qzda.local}"
 
 # Keep CA if rotating leaf certs only
 if [[ ! -f ca.crt || ! -f ca.key ]]; then

@@ -1,2 +1,2 @@
-# Optional: required when DE_MILVUS_URI points at Docker Milvus / Milvus-Lite
+# Optional: required when QZDA_MILVUS_URI points at Docker Milvus / Milvus-Lite
 pymilvus>=2.4.0,<2.5

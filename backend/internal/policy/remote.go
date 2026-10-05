@@ -12,12 +12,12 @@ import (
 	"time"
 )
 
-// RemoteURL returns DE_OPA_URL when set (e.g. http://127.0.0.1:8181).
+// RemoteURL returns QZDA_OPA_URL when set (e.g. http://127.0.0.1:8181).
 func RemoteURL() string {
-	return strings.TrimSpace(os.Getenv("DE_OPA_URL"))
+	return strings.TrimSpace(os.Getenv("QZDA_OPA_URL"))
 }
 
-// Evaluate prefers remote OPA when DE_OPA_URL is set; falls back to embedded rules.
+// Evaluate prefers remote OPA when QZDA_OPA_URL is set; falls back to embedded rules.
 func (e *Engine) Evaluate(ctx context.Context, in Input) Decision {
 	if url := RemoteURL(); url != "" {
 		if d, err := evaluateOPA(ctx, url, in); err == nil {

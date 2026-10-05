@@ -12,7 +12,7 @@ import (
 )
 
 func attachmentRoot() string {
-	base := strings.TrimSpace(os.Getenv("DE_SANDBOX_ARTIFACT_DIR"))
+	base := strings.TrimSpace(os.Getenv("QZDA_SANDBOX_ARTIFACT_DIR"))
 	if base == "" {
 		base = "/tmp/qzda-stack/artifacts"
 	}

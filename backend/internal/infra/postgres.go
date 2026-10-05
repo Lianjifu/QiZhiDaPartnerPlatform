@@ -11,17 +11,17 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// ReplicaStandbyFromEnv reports DE_REPLICA_MODE=standby|readonly|passive.
+// ReplicaStandbyFromEnv reports QZDA_REPLICA_MODE=standby|readonly|passive.
 func ReplicaStandbyFromEnv() bool {
-	v := strings.ToLower(strings.TrimSpace(os.Getenv("DE_REPLICA_MODE")))
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("QZDA_REPLICA_MODE")))
 	return v == "standby" || v == "readonly" || v == "passive"
 }
 
-// ResolveDatabaseURL picks the primary URL, or DE_DATABASE_REPLICA_URL when
+// ResolveDatabaseURL picks the primary URL, or QZDA_DATABASE_REPLICA_URL when
 // this process is explicitly standby. Empty means memory-only (tests).
 func ResolveDatabaseURL() string {
-	primary := strings.TrimSpace(os.Getenv("DE_DATABASE_URL"))
-	replica := strings.TrimSpace(os.Getenv("DE_DATABASE_REPLICA_URL"))
+	primary := strings.TrimSpace(os.Getenv("QZDA_DATABASE_URL"))
+	replica := strings.TrimSpace(os.Getenv("QZDA_DATABASE_REPLICA_URL"))
 	if ReplicaStandbyFromEnv() && replica != "" {
 		return replica
 	}
@@ -42,8 +42,8 @@ func PostgresInRecovery(ctx context.Context, pool *pgxpool.Pool) (bool, error) {
 	return inRecovery, nil
 }
 
-// OpenPostgres connects via DE_DATABASE_URL, or DE_DATABASE_REPLICA_URL when
-// DE_REPLICA_MODE=standby. Returns nil pool when URL is empty (tests / memory-only).
+// OpenPostgres connects via QZDA_DATABASE_URL, or QZDA_DATABASE_REPLICA_URL when
+// QZDA_REPLICA_MODE=standby. Returns nil pool when URL is empty (tests / memory-only).
 func OpenPostgres(ctx context.Context) (*pgxpool.Pool, error) {
 	url := ResolveDatabaseURL()
 	if url == "" {
@@ -77,7 +77,7 @@ func OpenPostgres(ctx context.Context) (*pgxpool.Pool, error) {
 
 func MustReady(ctx context.Context, pool *pgxpool.Pool) error {
 	if pool == nil {
-		return fmt.Errorf("DE_DATABASE_URL 未设置：请先 make compose-up，并 export DE_DATABASE_URL")
+		return fmt.Errorf("QZDA_DATABASE_URL 未设置：请先 make compose-up，并 export QZDA_DATABASE_URL")
 	}
 	return pool.Ping(ctx)
 }

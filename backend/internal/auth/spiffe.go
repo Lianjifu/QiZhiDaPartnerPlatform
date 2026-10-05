@@ -10,9 +10,9 @@ import (
 
 const defaultTrustDomain = "qzda.local"
 
-// SPIFFETrustDomain returns DE_SPIFFE_TRUST_DOMAIN or de.local.
+// SPIFFETrustDomain returns QZDA_SPIFFE_TRUST_DOMAIN or de.local.
 func SPIFFETrustDomain() string {
-	if v := strings.TrimSpace(os.Getenv("DE_SPIFFE_TRUST_DOMAIN")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("QZDA_SPIFFE_TRUST_DOMAIN")); v != "" {
 		return v
 	}
 	return defaultTrustDomain

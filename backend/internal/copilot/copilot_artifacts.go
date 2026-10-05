@@ -101,10 +101,10 @@ func formatArtifactSegmentContent(full string) string {
 
 // artifactSegmentSeparate 为 true 时下载卡片独立成段；默认 inline（单气泡内卡片）。
 func artifactSegmentSeparate() bool {
-	if envFlagTrue("DE_COPILOT_ARTIFACT_SEGMENT") {
+	if envFlagTrue("QZDA_COPILOT_ARTIFACT_SEGMENT") {
 		return true
 	}
-	return envFlagFalse("DE_COPILOT_ARTIFACT_INLINE")
+	return envFlagFalse("QZDA_COPILOT_ARTIFACT_INLINE")
 }
 
 // artifactSegmentID 产出下载段的 ID：优先复用 firstMessageID 后缀，否则用 idGen，

@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.6
 # qzda-app monolith image: sys + collab + cap + workflow in a single binary.
-# Optional in-process Temporal worker (DE_WORKFLOW_WORKER=1, DE_TEMPORAL_HOST=...).
+# Optional in-process Temporal worker (QZDA_WORKFLOW_WORKER=1, QZDA_TEMPORAL_HOST=...).
 
 FROM golang:1.23-bookworm AS builder
 
@@ -20,8 +20,8 @@ COPY --from=builder /out/app /app/qzda-app
 
 USER nonroot:nonroot
 
-ENV DE_APP_ADDR=:8100 \
-    DE_SERVICE=app
+ENV QZDA_APP_ADDR=:8100 \
+    QZDA_SERVICE=app
 
 EXPOSE 8100
 

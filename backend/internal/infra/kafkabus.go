@@ -18,11 +18,11 @@ type KafkaAuditBus struct {
 }
 
 func NewKafkaAuditBusFromEnv() *KafkaAuditBus {
-	brokers := strings.TrimSpace(os.Getenv("DE_KAFKA_BROKERS"))
+	brokers := strings.TrimSpace(os.Getenv("QZDA_KAFKA_BROKERS"))
 	if brokers == "" {
 		return nil
 	}
-	topic := envOr("DE_KAFKA_AUDIT_TOPIC", "de.audit.v1")
+	topic := envOr("QZDA_KAFKA_AUDIT_TOPIC", "de.audit.v1")
 	return &KafkaAuditBus{
 		topic: topic,
 		writer: &kafka.Writer{

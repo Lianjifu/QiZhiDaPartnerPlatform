@@ -81,7 +81,7 @@ func normalizeReplyMode(v string) string {
 	}
 }
 
-// resolveReplyMode 决策 replyMode：body.replyMode > DE_COPILOT_REPLY_MODE 环境变量 >
+// resolveReplyMode 决策 replyMode：body.replyMode > QZDA_COPILOT_REPLY_MODE 环境变量 >
 // 数字伙伴 runtime.replyMode > 默认 segmented。
 func resolveReplyMode(body map[string]any, emp map[string]any) string {
 	if body != nil {
@@ -89,7 +89,7 @@ func resolveReplyMode(body map[string]any, emp map[string]any) string {
 			return normalizeReplyMode(raw)
 		}
 	}
-	if env := strings.ToLower(strings.TrimSpace(lookupEnv("DE_COPILOT_REPLY_MODE"))); env != "" {
+	if env := strings.ToLower(strings.TrimSpace(lookupEnv("QZDA_COPILOT_REPLY_MODE"))); env != "" {
 		switch env {
 		case replyModeSegmented, replyModeStepwise, replyModeSingle:
 			return env
@@ -132,9 +132,9 @@ func resolveSegmentPolicy(body map[string]any, emp map[string]any) string {
 	return segmentPolicyDocument
 }
 
-// segmentAckEnabled 报告是否启用"先说一句确认"的 ack 段；由 DE_COPILOT_SEGMENT_ACK 控制。
+// segmentAckEnabled 报告是否启用"先说一句确认"的 ack 段；由 QZDA_COPILOT_SEGMENT_ACK 控制。
 func segmentAckEnabled() bool {
-	return envFlagTrue("DE_COPILOT_SEGMENT_ACK")
+	return envFlagTrue("QZDA_COPILOT_SEGMENT_ACK")
 }
 
 // defaultSegmentIDGen 返回一个默认的段 ID 生成器（"msg_<时间戳>"）；

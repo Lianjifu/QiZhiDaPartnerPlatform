@@ -38,11 +38,11 @@ func TestProductionModeFlags(t *testing.T) {
 }
 
 func TestBanMockDoesNotImplyDualApproval(t *testing.T) {
-	t.Setenv("DE_ENV", "development")
-	t.Setenv("DE_BAN_MOCK_TOKEN", "1")
+	t.Setenv("QZDA_ENV", "development")
+	t.Setenv("QZDA_BAN_MOCK_TOKEN", "1")
 	m := FromEnv()
 	if m.DualApproval() {
-		t.Fatal("DE_BAN_MOCK_TOKEN must not enable dual approval in development")
+		t.Fatal("QZDA_BAN_MOCK_TOKEN must not enable dual approval in development")
 	}
 	if m.AllowsDemoToken() {
 		t.Fatal("development + BAN should not allow demo token")
@@ -57,9 +57,9 @@ func TestSessionSyncEnabledFlagVariants(t *testing.T) {
 	for _, v := range disabled {
 		t.Run("disabled_"+v, func(t *testing.T) {
 			if v == "" {
-				t.Setenv("DE_SESSION_SYNC_ENABLED", "")
+				t.Setenv("QZDA_SESSION_SYNC_ENABLED", "")
 			} else {
-				t.Setenv("DE_SESSION_SYNC_ENABLED", v)
+				t.Setenv("QZDA_SESSION_SYNC_ENABLED", v)
 			}
 			// The empty case is also handled by the enabled group below; skip here.
 			if v == "" {
@@ -72,7 +72,7 @@ func TestSessionSyncEnabledFlagVariants(t *testing.T) {
 	}
 	for _, v := range enabled {
 		t.Run("enabled_"+v, func(t *testing.T) {
-			t.Setenv("DE_SESSION_SYNC_ENABLED", v)
+			t.Setenv("QZDA_SESSION_SYNC_ENABLED", v)
 			if !SessionSyncEnabled() {
 				t.Fatalf("SessionSyncEnabled()=false for %q, want true", v)
 			}

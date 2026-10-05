@@ -234,7 +234,7 @@ func TestCreateSessionAndApproveAction(t *testing.T) {
 }
 
 func TestDeleteSessionRemovesAcrossMemberWorkspaceHeader(t *testing.T) {
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "1")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "1")
 	st := store.New()
 	now := "2026-08-19T12:00:00Z"
 	st.Sessions = []map[string]any{
@@ -265,7 +265,7 @@ func TestDeleteSessionRemovesAcrossMemberWorkspaceHeader(t *testing.T) {
 }
 
 func TestGetConversationForbiddenForOtherOwner(t *testing.T) {
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "1")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "1")
 	st := store.New()
 	now := "2026-08-19T12:00:00Z"
 	st.Conversations = []map[string]any{
@@ -287,7 +287,7 @@ func TestGetConversationForbiddenForOtherOwner(t *testing.T) {
 }
 
 func TestGetConversationRejectsCrossWorkspaceHeader(t *testing.T) {
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "1")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "1")
 	st := store.New()
 	now := "2026-08-19T12:00:00Z"
 	st.Conversations = append(st.Conversations, map[string]any{
@@ -313,7 +313,7 @@ func TestGetConversationRejectsCrossWorkspaceHeader(t *testing.T) {
 }
 
 func TestListSessionsFiltersByWorkspaceHeader(t *testing.T) {
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "1")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "1")
 	st := store.New()
 	now := "2026-08-19T12:00:00Z"
 	st.Sessions = []map[string]any{

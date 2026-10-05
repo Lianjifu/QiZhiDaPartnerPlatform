@@ -68,14 +68,14 @@ def test_reset():
 
 
 def test_build_default_env_override(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("DE_SANDBOX_RATE_LIMIT_PER_MIN", "123")
+    monkeypatch.setenv("QZDA_SANDBOX_RATE_LIMIT_PER_MIN", "123")
     b = build_default()
     assert b.rate == 123
 
 
 def test_build_default_no_env():
     # 不设 env,默认 60
-    os.environ.pop("DE_SANDBOX_RATE_LIMIT_PER_MIN", None)
+    os.environ.pop("QZDA_SANDBOX_RATE_LIMIT_PER_MIN", None)
     b = build_default()
     assert b.rate == 60
 

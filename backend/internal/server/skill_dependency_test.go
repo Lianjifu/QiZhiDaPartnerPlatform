@@ -14,8 +14,8 @@ func TestSkillDependencyReport_UsesBundledShims(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, "runtime", "bin", "gh")); err != nil {
 		t.Skip("bundled skill bin shims missing")
 	}
-	t.Setenv("DE_BUILTIN_SKILLS_DIR", root)
-	t.Setenv("DE_BUILTIN_SKILL_BIN", filepath.Join(root, "runtime", "bin"))
+	t.Setenv("QZDA_BUILTIN_SKILLS_DIR", root)
+	t.Setenv("QZDA_BUILTIN_SKILL_BIN", filepath.Join(root, "runtime", "bin"))
 
 	for _, skill := range []string{"github", "1password", "gog", "himalaya", "notion", "obsidian", "powershell", "tmux", "trello"} {
 		rep := skillDependencyReport(skill)

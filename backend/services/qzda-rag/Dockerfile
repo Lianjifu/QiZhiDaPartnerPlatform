@@ -5,7 +5,7 @@ RUN pip install --no-cache-dir -r requirements.txt \
     && pip install --no-cache-dir -r requirements-milvus.txt
 COPY app/ ./app/
 ENV PYTHONUNBUFFERED=1
-ENV DE_BIND_HOST=0.0.0.0
-ENV DE_BIND_PORT=8092
+ENV QZDA_BIND_HOST=0.0.0.0
+ENV QZDA_BIND_PORT=8092
 EXPOSE 8092
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8092"]

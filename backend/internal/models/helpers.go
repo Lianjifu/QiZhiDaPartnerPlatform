@@ -39,13 +39,13 @@ func vaultRequiredForCredentials() bool {
 }
 
 // budgetEnforceEnabled reports whether the published-budget gate must be enforced
-// on /api/model-invoke. Controlled by DE_MODEL_BUDGET_ENFORCE; defaults to
+// on /api/model-invoke. Controlled by QZDA_MODEL_BUDGET_ENFORCE; defaults to
 // "required-vault OR dual-approval env" when unset.
 func budgetEnforceEnabled() bool {
-	if envFlagFalse("DE_MODEL_BUDGET_ENFORCE") {
+	if envFlagFalse("QZDA_MODEL_BUDGET_ENFORCE") {
 		return false
 	}
-	if envFlagTrue("DE_MODEL_BUDGET_ENFORCE") {
+	if envFlagTrue("QZDA_MODEL_BUDGET_ENFORCE") {
 		return true
 	}
 	return runtimeenv.FromEnv().RequiresVault() || runtimeenv.FromEnv().DualApproval()

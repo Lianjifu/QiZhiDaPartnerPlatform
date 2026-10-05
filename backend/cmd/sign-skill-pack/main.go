@@ -6,7 +6,7 @@
 //
 // Usage:
 //
-//	DE_SIGNER_PRIVATE_KEY=$(cat /tmp/wp.priv.b64) \
+//	QZDA_SIGNER_PRIVATE_KEY=$(cat /tmp/wp.priv.b64) \
 //	go run ./cmd/sign-skill-pack \
 //	    --archive /tmp/foo.skill \
 //	    --workspace w1 \
@@ -14,7 +14,7 @@
 //	    --auth-token "Bearer $TOKEN"
 //
 // The CLI refuses to overwrite existing outputs without --force. Private
-// keys are read from DE_SIGNER_PRIVATE_KEY (base64) to avoid leaking via
+// keys are read from QZDA_SIGNER_PRIVATE_KEY (base64) to avoid leaking via
 // process-listing.
 package main
 
@@ -48,8 +48,8 @@ func main() {
 	flag.StringVar(&archive, "archive", "", "path to the .skill archive (zip)")
 	flag.StringVar(&workspace, "workspace", "", "workspace id (e.g. w1)")
 	flag.StringVar(&server, "server", "http://127.0.0.1:8089", "base URL of the running backend")
-	flag.StringVar(&authToken, "auth-token", "", "Bearer token for /publisher-key (or env DE_AUTH_TOKEN)")
-	flag.StringVar(&signerKey, "signer-key-env", "DE_SIGNER_PRIVATE_KEY", "env var holding base64 Ed25519 private key")
+	flag.StringVar(&authToken, "auth-token", "", "Bearer token for /publisher-key (or env QZDA_AUTH_TOKEN)")
+	flag.StringVar(&signerKey, "signer-key-env", "QZDA_SIGNER_PRIVATE_KEY", "env var holding base64 Ed25519 private key")
 	flag.BoolVar(&force, "force", false, "overwrite output if it exists")
 	flag.Parse()
 
@@ -59,10 +59,10 @@ func main() {
 	}
 
 	if authToken == "" {
-		authToken = os.Getenv("DE_AUTH_TOKEN")
+		authToken = os.Getenv("QZDA_AUTH_TOKEN")
 	}
 	if authToken == "" {
-		fmt.Fprintln(os.Stderr, "auth token missing: pass --auth-token or set DE_AUTH_TOKEN")
+		fmt.Fprintln(os.Stderr, "auth token missing: pass --auth-token or set QZDA_AUTH_TOKEN")
 		os.Exit(1)
 	}
 	privB64 := os.Getenv(signerKey)
@@ -72,7 +72,7 @@ func main() {
 	}
 	privBytes, err := base64.StdEncoding.DecodeString(strings.TrimSpace(privB64))
 	if err != nil || len(privBytes) != ed25519.PrivateKeySize {
-		fmt.Fprintf(os.Stderr, "invalid DE_SIGNER_PRIVATE_KEY (must be base64 of %d-byte Ed25519 private key)\n", ed25519.PrivateKeySize)
+		fmt.Fprintf(os.Stderr, "invalid QZDA_SIGNER_PRIVATE_KEY (must be base64 of %d-byte Ed25519 private key)\n", ed25519.PrivateKeySize)
 		os.Exit(1)
 	}
 	priv := ed25519.PrivateKey(privBytes)

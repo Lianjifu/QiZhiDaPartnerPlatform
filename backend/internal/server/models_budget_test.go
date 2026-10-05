@@ -8,7 +8,7 @@ import (
 )
 
 func TestCheckModelBudgetLocked(t *testing.T) {
-	t.Setenv("DE_MODEL_BUDGET_ENFORCE", "1")
+	t.Setenv("QZDA_MODEL_BUDGET_ENFORCE", "1")
 	st := store.New()
 	srv := New(st)
 	st.Lock()

@@ -1,8 +1,8 @@
 """``audit_hooks.py`` 的纯单元测试 — 不依赖 docker / 网络 / FastAPI。
 
 每个测试用例:
-1. 保存原 ``os.environ``,按用例需要设置 ``DE_SANDBOX_AUDIT`` /
-   ``DE_SANDBOX_PACKAGE_ROOT`` / ``DE_SANDBOX_AUDIT_BLOCK_OPEN``。
+1. 保存原 ``os.environ``,按用例需要设置 ``QZDA_SANDBOX_AUDIT`` /
+   ``QZDA_SANDBOX_PACKAGE_ROOT`` / ``QZDA_SANDBOX_AUDIT_BLOCK_OPEN``。
 2. 调用 ``_reset_for_tests()`` 清掉旧安装状态与计数。
 3. 调用 ``install_audit_hooks()`` 按当前 env 重新装。
 4. 跑断言。
@@ -49,13 +49,13 @@ def _isolate_audit_env():
 
 
 def test_audit_disabled_when_env_unset():
-    """``DE_SANDBOX_AUDIT`` 默认/=0 时,``subprocess.Popen.__init__`` 必须保持原样。"""
+    """``QZDA_SANDBOX_AUDIT`` 默认/=0 时,``subprocess.Popen.__init__`` 必须保持原样。"""
     # 显式清掉审计 env(autouse fixture 已重置过,但保险起见再设一次)。
-    os.environ.pop("DE_SANDBOX_AUDIT", None)
+    os.environ.pop("QZDA_SANDBOX_AUDIT", None)
     # 先记下当前 subprocess.Popen.__init__ 身份。
     original_id = id(subprocess.Popen.__init__)
     installed = install_audit_hooks()
-    assert installed is False, "DE_SANDBOX_AUDIT 未设置时不应安装"
+    assert installed is False, "QZDA_SANDBOX_AUDIT 未设置时不应安装"
     # 身份必须未变 — 即 monkey-patch 没生效。
     assert id(subprocess.Popen.__init__) == original_id
     # summary 应保持 4 键 0 值(从未计数,允许前端拿到稳定的字段集)。
@@ -63,11 +63,11 @@ def test_audit_disabled_when_env_unset():
 
 
 def test_audit_installs_when_env_set():
-    """``DE_SANDBOX_AUDIT=1`` 时,``subprocess.Popen.__init__`` 必须被替换。"""
-    os.environ["DE_SANDBOX_AUDIT"] = "1"
+    """``QZDA_SANDBOX_AUDIT=1`` 时,``subprocess.Popen.__init__`` 必须被替换。"""
+    os.environ["QZDA_SANDBOX_AUDIT"] = "1"
     original_id = id(subprocess.Popen.__init__)
     installed = install_audit_hooks()
-    assert installed is True, "DE_SANDBOX_AUDIT=1 应触发安装"
+    assert installed is True, "QZDA_SANDBOX_AUDIT=1 应触发安装"
     patched_id = id(subprocess.Popen.__init__)
     assert patched_id != original_id, "Popen.__init__ 必须被 monkey-patch"
     # 幂等:再装一次应直接返回 False,且身份不变。
@@ -78,13 +78,13 @@ def test_audit_installs_when_env_set():
 
 def test_audit_counts_open():
     """``os.open`` 在包根内 → allowed;在包根外 → blocked_open 计数 +1。"""
-    os.environ["DE_SANDBOX_AUDIT"] = "1"
-    os.environ["DE_SANDBOX_AUDIT_BLOCK_OPEN"] = "0"  # 不强阻塞,只计数
-    os.environ["DE_SANDBOX_PACKAGE_ROOT"] = "/skills/weather"
+    os.environ["QZDA_SANDBOX_AUDIT"] = "1"
+    os.environ["QZDA_SANDBOX_AUDIT_BLOCK_OPEN"] = "0"  # 不强阻塞,只计数
+    os.environ["QZDA_SANDBOX_PACKAGE_ROOT"] = "/skills/weather"
     install_audit_hooks()
     # 包根内路径:这里创建临时文件以避免 ENOENT,但 _path_allowed 不在乎是否存在,
     # 只看路径前缀;为了 ``os.open`` 不抛错,真造一个临时目录。
-    tmp_root = os.environ["DE_SANDBOX_PACKAGE_ROOT"]
+    tmp_root = os.environ["QZDA_SANDBOX_PACKAGE_ROOT"]
     # 模拟「在包根内」 — _path_allowed 用 realpath,所以必须真存在。
     # 但 audit_hooks 测试不需要真打开文件成功;只验证计数。
     # 用 O_RDONLY 打开一个真存在的系统文件就行(/etc/passwd 用于「包外」分支)。
@@ -104,10 +104,10 @@ def test_audit_counts_open():
 
 
 def test_audit_blocks_open_outside_root_when_env_set():
-    """``DE_SANDBOX_AUDIT_BLOCK_OPEN=1`` 时,包外路径必须抛 ``PermissionError``。"""
-    os.environ["DE_SANDBOX_AUDIT"] = "1"
-    os.environ["DE_SANDBOX_AUDIT_BLOCK_OPEN"] = "1"
-    os.environ["DE_SANDBOX_PACKAGE_ROOT"] = "/skills/weather"
+    """``QZDA_SANDBOX_AUDIT_BLOCK_OPEN=1`` 时,包外路径必须抛 ``PermissionError``。"""
+    os.environ["QZDA_SANDBOX_AUDIT"] = "1"
+    os.environ["QZDA_SANDBOX_AUDIT_BLOCK_OPEN"] = "1"
+    os.environ["QZDA_SANDBOX_PACKAGE_ROOT"] = "/skills/weather"
     install_audit_hooks()
     with pytest.raises(PermissionError, match="audit: open blocked outside package"):
         os.open("/etc/passwd", os.O_RDONLY)
@@ -115,8 +115,8 @@ def test_audit_blocks_open_outside_root_when_env_set():
 
 def test_audit_counts_subprocess_execve():
     """``subprocess.run`` 必须让 ``summary()["execve"] >= 1``。"""
-    os.environ["DE_SANDBOX_AUDIT"] = "1"
-    os.environ.pop("DE_SANDBOX_AUDIT_BLOCK_OPEN", None)
+    os.environ["QZDA_SANDBOX_AUDIT"] = "1"
+    os.environ.pop("QZDA_SANDBOX_AUDIT_BLOCK_OPEN", None)
     install_audit_hooks()
     before = summary().get("execve", 0)
     # 用 ``true`` 命令(POSIX / macOS / Linux 都有),尽量避免环境差异。
@@ -136,7 +136,7 @@ def test_socket_connect_also_counted():
     即便这里我们故意连一个不存在的本地端口 — monkey-patch
     只计数,不阻塞,失败由 socket 自身抛 OSError。
     """
-    os.environ["DE_SANDBOX_AUDIT"] = "1"
+    os.environ["QZDA_SANDBOX_AUDIT"] = "1"
     install_audit_hooks()
     before = summary().get("connect", 0)
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

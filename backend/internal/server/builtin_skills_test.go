@@ -47,7 +47,7 @@ func TestEnsureBuiltinSkillsReady_PruneDeprecatedSeed(t *testing.T) {
 	if _, err := os.Stat(root); err != nil {
 		t.Skip("builtin skills dir missing")
 	}
-	t.Setenv("DE_BUILTIN_SKILLS_DIR", root)
+	t.Setenv("QZDA_BUILTIN_SKILLS_DIR", root)
 
 	st := store.New()
 	st.SkillCatalog = append(st.SkillCatalog,
@@ -96,7 +96,7 @@ func TestEnsureBuiltinSkillsReady_GeneralPack(t *testing.T) {
 	if _, err := os.Stat(root); err != nil {
 		t.Skip("builtin skills dir missing; run make sync-builtin-skills")
 	}
-	t.Setenv("DE_BUILTIN_SKILLS_DIR", root)
+	t.Setenv("QZDA_BUILTIN_SKILLS_DIR", root)
 
 	st := store.New()
 	srv := server.New(st)

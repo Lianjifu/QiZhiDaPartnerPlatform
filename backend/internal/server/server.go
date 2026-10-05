@@ -146,23 +146,23 @@ type Server struct {
 	Multimodal *multimodal.Registry
 	// W6-D1 · PM SOP engine + bundled templates. nil until initPMsop.
 	PMSop *pmsop.Engine
-	// W7-D1 · SQLite durability hooks. nil when DE_STORE_BACKEND != "sqlite".
+	// W7-D1 · SQLite durability hooks. nil when QZDA_STORE_BACKEND != "sqlite".
 	SQLite *store.SQLiteHooks
 	// W2-D3 · SubAgent dispatch engine. Built in New(); concurrency cap
-	// configured via DE_SUBAGENT_MAX_CONCURRENCY.
+	// configured via QZDA_SUBAGENT_MAX_CONCURRENCY.
 	SubAgent *agentos.Engine
 	// CopSvc is the M02 专家协作 backend service. Built once in New();
 	// server handlers dispatch into its methods (rather than the legacy
 	// *Server receivers that lived in copilot_*.go before the M02 P2
 	// deep move). nil only during very early boot.
 	CopSvc *copilot.Service
-	// P1-4 · AuditBus is the Redis stream publisher (DE_REDIS_URL). Injected
+	// P1-4 · AuditBus is the Redis stream publisher (QZDA_REDIS_URL). Injected
 	// by apprun/runDurable so future code can read or replace it; its
 	// underlying *redis.Client is closed via RegisterCloseFunc by runDurable
 	// (registered once for Cache — same rdb).
 	AuditBus *infra.AuditBus
 	// P1-4 · KafkaBus is the optional Kafka audit publisher
-	// (DE_KAFKA_BROKERS). nil when env unset; Close is registered by
+	// (QZDA_KAFKA_BROKERS). nil when env unset; Close is registered by
 	// apprun/runDurable.
 	KafkaBus *infra.KafkaAuditBus
 
@@ -298,8 +298,8 @@ func New(st *store.Store) *Server {
 	s := &Server{
 		Store:            st,
 		Mode:             ModeAll,
-		RuntimeURL:       envOr("DE_AGENT_RUNTIME_URL", "http://127.0.0.1:8091"),
-		RAGURL:           envOr("DE_RAG_URL", "http://127.0.0.1:8092"),
+		RuntimeURL:       envOr("QZDA_AGENT_RUNTIME_URL", "http://127.0.0.1:8091"),
+		RAGURL:           envOr("QZDA_RAG_URL", "http://127.0.0.1:8092"),
 		Policy:           policy.New(),
 		Vault:            vault.NewFromEnv(),
 		OIDC:             auth.LoadOIDC(),
@@ -330,7 +330,7 @@ func New(st *store.Store) *Server {
 	s.initMultimodal()
 	// W6-D1 · PM SOP templates + plan state machine.
 	s.initPMsop()
-	// W7-D1 · SQLite durability layer (gated on DE_STORE_BACKEND=sqlite).
+	// W7-D1 · SQLite durability layer (gated on QZDA_STORE_BACKEND=sqlite).
 	s.initSQLiteDurability()
 	// W2-D3 · SubAgent dispatch engine.
 	s.SubAgent = buildSubAgentEngine()
@@ -546,7 +546,7 @@ func (s *Server) WithRecoverForTest(next http.Handler) http.Handler {
 // from env. Defaults: 4 concurrent participants, 30s per-task budget.
 func buildSubAgentEngine() *agentos.Engine {
 	maxConc := agentos.MaxConcurrencyDefault
-	if v := strings.TrimSpace(os.Getenv("DE_SUBAGENT_MAX_CONCURRENCY")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("QZDA_SUBAGENT_MAX_CONCURRENCY")); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			maxConc = n
 		}
@@ -564,11 +564,11 @@ func buildSubAgentEngine() *agentos.Engine {
 // is set. Default backend remains in-memory (no durability); the PG path
 // in infra.KVStore is selected by infra.OpenPostgres in main. ADR-028.
 func (s *Server) initSQLiteDurability() {
-	backend := strings.ToLower(strings.TrimSpace(os.Getenv("DE_STORE_BACKEND")))
+	backend := strings.ToLower(strings.TrimSpace(os.Getenv("QZDA_STORE_BACKEND")))
 	if backend != "sqlite" {
 		return
 	}
-	path := strings.TrimSpace(os.Getenv("DE_SQLITE_PATH"))
+	path := strings.TrimSpace(os.Getenv("QZDA_SQLITE_PATH"))
 	if path == "" {
 		path = "data/store.db"
 	}
@@ -588,7 +588,7 @@ func (s *Server) initSQLiteDurability() {
 // permits it (demo / development).
 func (s *Server) bootstrapSkillSigning() {
 	mode := runtimeenv.FromEnv()
-	tfPath := envOr("DE_TRUSTED_PUBLISHERS_PATH", "data/skill-keys/trusted-publishers.json")
+	tfPath := envOr("QZDA_TRUSTED_PUBLISHERS_PATH", "data/skill-keys/trusted-publishers.json")
 	tf, err := signing.LoadTrustFile(tfPath)
 	if err != nil {
 		log.Printf("skill signing: trust file load failed: %v", err)
@@ -600,7 +600,7 @@ func (s *Server) bootstrapSkillSigning() {
 	if !mode.AutoProvisionsSkillKeys() {
 		return
 	}
-	keyPath := envOr("DE_DEV_KEYPAIR_PATH", "data/skill-keys/dev-keypair.json")
+	keyPath := envOr("QZDA_DEV_KEYPAIR_PATH", "data/skill-keys/dev-keypair.json")
 	d, err := signing.NewDevKeyStore(keyPath)
 	if err != nil {
 		log.Printf("skill signing: dev keypair provisioning failed: %v", err)
@@ -630,15 +630,15 @@ func (s *Server) bootstrapSkillSigning() {
 }
 
 // bootstrapVaultSkillSigning wires VaultKeyStore as the active
-// SignerResolver when DE_VAULT_ADDR + DE_VAULT_TOKEN are configured and
-// DE_SANDBOX_KEYSTORE=vault is set. The dev auto-provision path is skipped
+// SignerResolver when QZDA_VAULT_ADDR + QZDA_VAULT_TOKEN are configured and
+// QZDA_SANDBOX_KEYSTORE=vault is set. The dev auto-provision path is skipped
 // so no dev-keypair.json ever lands on disk in production. A bootstrap
 // lookup against the vault is done to fail fast on misconfiguration.
 func (s *Server) bootstrapVaultSkillSigning() {
 	if s.Vault == nil || !s.Vault.Enabled() {
 		return
 	}
-	if !envFlagTrue("DE_SANDBOX_KEYSTORE") {
+	if !envFlagTrue("QZDA_SANDBOX_KEYSTORE") {
 		return
 	}
 	ks, err := signing.NewVaultKeyStore(s.Vault)
@@ -646,7 +646,7 @@ func (s *Server) bootstrapVaultSkillSigning() {
 		log.Printf("skill signing: vault keystore init failed: %v", err)
 		return
 	}
-	probe := envOr("DE_VAULT_KEYSTORE_PROBE", "ed25519:probe")
+	probe := envOr("QZDA_VAULT_KEYSTORE_PROBE", "ed25519:probe")
 	if _, err := ks.Signer(probe); err != nil {
 		log.Printf("skill signing: vault keystore probe %q failed: %v", probe, err)
 		return
@@ -677,19 +677,19 @@ func envOr(k, def string) string {
 	return def
 }
 
-// heartbeatConfigFromEnv reads DE_HEARTBEAT_INTERVAL and DE_HEARTBEAT_STALE.
+// heartbeatConfigFromEnv reads QZDA_HEARTBEAT_INTERVAL and QZDA_HEARTBEAT_STALE.
 // Both default to heartbeat.DefaultConfig().
 func heartbeatConfigFromEnv() heartbeat.Config {
 	def := heartbeat.DefaultConfig()
 	cfg := def
-	if v := strings.TrimSpace(lookupEnv("DE_HEARTBEAT_INTERVAL")); v != "" {
+	if v := strings.TrimSpace(lookupEnv("QZDA_HEARTBEAT_INTERVAL")); v != "" {
 		if d, err := time.ParseDuration(v); err == nil && d > 0 {
 			cfg.Interval = d
 			cfg.SweepEvery = d
 			cfg.StaleAfter = d * 3
 		}
 	}
-	if v := strings.TrimSpace(lookupEnv("DE_HEARTBEAT_STALE")); v != "" {
+	if v := strings.TrimSpace(lookupEnv("QZDA_HEARTBEAT_STALE")); v != "" {
 		if d, err := time.ParseDuration(v); err == nil && d > 0 {
 			cfg.StaleAfter = d
 		}
@@ -1345,17 +1345,17 @@ func writeErr(w http.ResponseWriter, err error) {
 	response.Fail(w, err)
 }
 
-// artifactPolicy reads DE_ARTIFACT_MAX_BYTES + DE_ARTIFACT_REQUIRE_AUTH
+// artifactPolicy reads QZDA_ARTIFACT_MAX_BYTES + QZDA_ARTIFACT_REQUIRE_AUTH
 // and returns the gate configuration for /api/skill-artifacts/*. Built
 // once at startup via lazy init; env reads are cached on the Server.
 func (s *Server) artifactPolicy() *gateway.ArtifactPolicy {
 	p := gateway.DefaultArtifactPolicy()
-	if v := strings.TrimSpace(os.Getenv("DE_ARTIFACT_MAX_BYTES")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("QZDA_ARTIFACT_MAX_BYTES")); v != "" {
 		if n, err := strconv.ParseInt(v, 10, 64); err == nil && n > 0 {
 			p.MaxBytes = n
 		}
 	}
-	if envFlagFalse("DE_ARTIFACT_REQUIRE_AUTH") {
+	if envFlagFalse("QZDA_ARTIFACT_REQUIRE_AUTH") {
 		p.RequireAuth = false
 	}
 	return p

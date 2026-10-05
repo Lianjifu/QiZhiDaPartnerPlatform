@@ -45,12 +45,12 @@ type errBody struct {
 }
 
 // TestOIDCLoginStubWhenNotConfigured 覆盖 I4 —
-// 未配置 DE_OIDC_ISSUER 时,/api/auth/oidc/login 必须返回
+// 未配置 QZDA_OIDC_ISSUER 时,/api/auth/oidc/login 必须返回
 // {enabled: false, hint, stubCallback, state} 而非真实授权 URL。
 func TestOIDCLoginStubWhenNotConfigured(t *testing.T) {
-	t.Setenv("DE_OIDC_ISSUER", "")
-	t.Setenv("DE_OIDC_CLIENT_ID", "")
-	t.Setenv("DE_OIDC_CLIENT_SECRET", "")
+	t.Setenv("QZDA_OIDC_ISSUER", "")
+	t.Setenv("QZDA_OIDC_CLIENT_ID", "")
+	t.Setenv("QZDA_OIDC_CLIENT_SECRET", "")
 
 	h := server.New(store.New()).Handler()
 	rr := httptest.NewRecorder()
@@ -85,7 +85,7 @@ func TestOIDCLoginStubWhenNotConfigured(t *testing.T) {
 // TestProtectedRouteReturns401WithoutToken 覆盖 I6 —
 // /api/workspaces 无 Authorization header 必须返 401 + 标准 error 包络。
 func TestProtectedRouteReturns401WithoutToken(t *testing.T) {
-	t.Setenv("DE_BAN_MOCK_TOKEN", "")
+	t.Setenv("QZDA_BAN_MOCK_TOKEN", "")
 	h := server.New(store.New()).Handler()
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/workspaces", nil)
@@ -107,11 +107,11 @@ func TestProtectedRouteReturns401WithoutToken(t *testing.T) {
 }
 
 // TestMockIdentityHeadersRejectedWhenBanMock 覆盖 I8 —
-// DE_BAN_MOCK_TOKEN=1 时 x-mock-* 头被中间件拒为 401 (IdentityMockForbidden)。
+// QZDA_BAN_MOCK_TOKEN=1 时 x-mock-* 头被中间件拒为 401 (IdentityMockForbidden)。
 // 这是身份伪造路径(不只 token 伪造)的关闭测试。
 func TestMockIdentityHeadersRejectedWhenBanMock(t *testing.T) {
-	t.Setenv("DE_BAN_MOCK_TOKEN", "1")
-	_ = os.Unsetenv("DE_OIDC_ALLOW_DEV_CODES")
+	t.Setenv("QZDA_BAN_MOCK_TOKEN", "1")
+	_ = os.Unsetenv("QZDA_OIDC_ALLOW_DEV_CODES")
 	h := server.New(store.New()).Handler()
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/workspaces", nil)
@@ -125,11 +125,11 @@ func TestMockIdentityHeadersRejectedWhenBanMock(t *testing.T) {
 }
 
 // TestLoginReturnsMockAdminTokenLiteral 守住行为契约 —
-// 默认 demo 环境(无 DE_BAN_MOCK_TOKEN)下 /api/auth/login 返 mock-admin-token,
+// 默认 demo 环境(无 QZDA_BAN_MOCK_TOKEN)下 /api/auth/login 返 mock-admin-token,
 // 整合后 token 字面量必须未变(下游 FE 烟雾测试依赖此字符串)。
 func TestLoginReturnsMockAdminTokenLiteral(t *testing.T) {
-	t.Setenv("DE_FORCE_OIDC", "")
-	t.Setenv("DE_BAN_MOCK_TOKEN", "")
+	t.Setenv("QZDA_FORCE_OIDC", "")
+	t.Setenv("QZDA_BAN_MOCK_TOKEN", "")
 	h := server.New(store.New()).Handler()
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/login",

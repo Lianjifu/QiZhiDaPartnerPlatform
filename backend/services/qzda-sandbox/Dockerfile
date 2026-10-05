@@ -2,7 +2,7 @@
 # gVisor-aware image for qzda-sandbox.
 #
 # 启动时由 entrypoint 检测实际运行时(runc / runsc-kvm / runsc-ptrace),
-# 设置 DE_SANDBOX_SANDBOX 与 DE_SANDBOX_RUNTIME_DETECTED,应用代码据此声明能力。
+# 设置 QZDA_SANDBOX_SANDBOX 与 QZDA_SANDBOX_RUNTIME_DETECTED,应用代码据此声明能力。
 #
 # 构建后增加 runsc:`make image-sandbox` 会从
 # https://github.com/google/gvisor/releases 下载 runsc 二进制到 /usr/local/bin。
@@ -28,9 +28,9 @@ FROM python:3.12-slim AS base
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
-    DE_BIND_HOST=0.0.0.0 \
-    DE_BIND_PORT=8093 \
-    DE_SANDBOX_REQUIRE_ISOLATION=1
+    QZDA_BIND_HOST=0.0.0.0 \
+    QZDA_BIND_PORT=8093 \
+    QZDA_SANDBOX_REQUIRE_ISOLATION=1
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends curl ca-certificates tini \

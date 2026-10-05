@@ -2,7 +2,7 @@
 -- KEEPS: user-created employees (de-3…), real model providers (mp-31+),
 --        conversation/session memory with memory-N ids, builtin skills,
 --        workspaces, and live sessions sess-69 / conv-13.
--- Usage: psql "$DE_DATABASE_URL" -f backend/scripts/purge-demo-seed-ids.sql
+-- Usage: psql "$QZDA_DATABASE_URL" -f backend/scripts/purge-demo-seed-ids.sql
 
 BEGIN;
 

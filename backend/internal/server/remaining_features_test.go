@@ -39,7 +39,7 @@ func TestOIDCStubCallback(t *testing.T) {
 }
 
 func TestModelProviderTestResolvesVault(t *testing.T) {
-	t.Setenv("DE_MODEL_ALLOW_PRIVATE", "1")
+	t.Setenv("QZDA_MODEL_ALLOW_PRIVATE", "1")
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/models", func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "Bearer sk-live" {

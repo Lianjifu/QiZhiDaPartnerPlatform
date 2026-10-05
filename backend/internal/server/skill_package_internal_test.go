@@ -133,7 +133,7 @@ func TestParseSkillPackageIgnoresMalformedSidecar(t *testing.T) {
 // must not be written to the materialized package directory.
 func TestMaterializeSkillPackageSkipsSignatureSidecar(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("DE_SANDBOX_PACKAGE_DIR", tmp)
+	t.Setenv("QZDA_SANDBOX_PACKAGE_DIR", tmp)
 
 	files := map[string][]byte{
 		"hello-skill/SKILL.md":            []byte("---\nname: hello-skill\ndescription: x\n---\n"),

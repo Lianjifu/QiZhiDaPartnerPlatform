@@ -69,7 +69,7 @@ func (m *Middleware) RequireAuth(next http.Handler) http.Handler {
 		// /api/skill-artifacts/*: try to parse Authorization so the gateway
 		// gate sees an identity and can audit who downloaded what. Absence
 		// of the header is NOT a 401 here — the gateway's RequireAuth
-		// policy (DE_ARTIFACT_REQUIRE_AUTH) decides.
+		// policy (QZDA_ARTIFACT_REQUIRE_AUTH) decides.
 		if (r.Method == http.MethodGet || r.Method == http.MethodHead) && strings.HasPrefix(r.URL.Path, "/api/skill-artifacts/") {
 			if h := r.Header.Get("Authorization"); h != "" {
 				token := trimBearer(h)

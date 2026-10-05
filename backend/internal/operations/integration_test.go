@@ -484,7 +484,7 @@ func TestH7_AckAlert_NonAdminForbidden(t *testing.T) {
 // routes flow through the same RequireAuth gate as /api/workspaces.
 func TestH8_HomeExtra_UnauthorizedWithoutToken(t *testing.T) {
 	srv, _ := newServer(t)
-	t.Setenv("DE_BAN_MOCK_TOKEN", "") // keep mock allowed for the negative test
+	t.Setenv("QZDA_BAN_MOCK_TOKEN", "") // keep mock allowed for the negative test
 	rr := doRequest(t, srv, http.MethodGet, "/api/home/extra", "", nil)
 	if rr.Code != http.StatusUnauthorized {
 		t.Fatalf("want 401, got %d body=%s", rr.Code, rr.Body.String())

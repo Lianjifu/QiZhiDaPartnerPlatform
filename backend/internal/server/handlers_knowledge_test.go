@@ -77,7 +77,7 @@ func TestKnowledgeP0AuthEvalIsolation(t *testing.T) {
 
 func TestKnowledgeP1WritePipeline(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("DE_KNOWLEDGE_BLOB_DIR", dir)
+	t.Setenv("QZDA_KNOWLEDGE_BLOB_DIR", dir)
 	h := server.New(store.New()).Handler()
 
 	rr := knowledgeDo(t, h, http.MethodPost, "/api/knowledge/packages", "mock-admin-token",
@@ -213,7 +213,7 @@ func TestKnowledgeP3EvalGraphCitation(t *testing.T) {
 
 func TestKnowledgeDocDelete(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("DE_KNOWLEDGE_BLOB_DIR", dir)
+	t.Setenv("QZDA_KNOWLEDGE_BLOB_DIR", dir)
 	h := server.New(store.New()).Handler()
 
 	rr := knowledgeDo(t, h, http.MethodPost, "/api/knowledge/docs", "mock-admin-token",
@@ -274,7 +274,7 @@ func TestKnowledgeDocDelete(t *testing.T) {
 
 func TestKnowledgePackageAttachAndPublishScope(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("DE_KNOWLEDGE_BLOB_DIR", dir)
+	t.Setenv("QZDA_KNOWLEDGE_BLOB_DIR", dir)
 	h := server.New(store.New()).Handler()
 
 	rr := knowledgeDo(t, h, http.MethodPost, "/api/knowledge/packages", "mock-admin-token",

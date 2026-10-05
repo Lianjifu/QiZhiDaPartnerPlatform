@@ -2,9 +2,9 @@
 # 七架构 Phase 0–4 冒烟验收（需本地 qzda-core / collab 已启动）
 set -euo pipefail
 
-BASE="${DE_API_BASE:-http://127.0.0.1:8080}"
-TOKEN="${DE_TOKEN:-mock-admin-token}"
-WS="${DE_WORKSPACE:-w1}"
+BASE="${QZDA_API_BASE:-http://127.0.0.1:8080}"
+TOKEN="${QZDA_TOKEN:-mock-admin-token}"
+WS="${QZDA_WORKSPACE:-w1}"
 AUTH="Authorization: Bearer ${TOKEN}"
 HDR=(-H "$AUTH" -H "x-workspace-id: $WS" -H "Content-Type: application/json")
 

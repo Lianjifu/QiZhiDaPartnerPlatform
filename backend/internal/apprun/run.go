@@ -28,14 +28,14 @@ type Options struct {
 // Run blocks serving HTTP for the qzda-app monolith.
 func Run(opts Options) error {
 	if opts.Mode == "" {
-		opts.Mode = server.ParseServiceMode(os.Getenv("DE_SERVICE"))
+		opts.Mode = server.ParseServiceMode(os.Getenv("QZDA_SERVICE"))
 	}
 	if opts.Addr == "" {
-		opts.Addr = env("DE_LISTEN_ADDR", ":8080")
+		opts.Addr = env("QZDA_LISTEN_ADDR", ":8080")
 	}
 
 	rt := runtimeenv.FromEnv()
-	log.Printf("runtimeenv DE_ENV=%s persist=%v seed=%v", rt, rt.PersistEnabled(), rt.AllowsSeed())
+	log.Printf("runtimeenv QZDA_ENV=%s persist=%v seed=%v", rt, rt.PersistEnabled(), rt.AllowsSeed())
 
 	ctx := context.Background()
 
@@ -105,7 +105,7 @@ func runDurable(ctx context.Context, opts Options, rt runtimeenv.Mode) error {
 		return err
 	}
 	if pg == nil && rt.RequiresPostgres() {
-		return fmt.Errorf("DE_ENV=%s requires Postgres (set DE_DATABASE_URL)", rt)
+		return fmt.Errorf("QZDA_ENV=%s requires Postgres (set QZDA_DATABASE_URL)", rt)
 	}
 	replicaForced := false
 	postgresRecovery := false

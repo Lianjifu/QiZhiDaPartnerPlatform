@@ -12,7 +12,7 @@ import (
 )
 
 func TestPasswordLoginBlockedWhenForceOIDC(t *testing.T) {
-	t.Setenv("DE_FORCE_OIDC", "1")
+	t.Setenv("QZDA_FORCE_OIDC", "1")
 	h := server.New(store.New()).Handler()
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/login",
@@ -25,9 +25,9 @@ func TestPasswordLoginBlockedWhenForceOIDC(t *testing.T) {
 }
 
 func TestPasswordLoginBlockedWhenBanMockWithoutAllow(t *testing.T) {
-	t.Setenv("DE_BAN_MOCK_TOKEN", "1")
-	_ = os.Unsetenv("DE_ALLOW_PASSWORD_LOGIN")
-	t.Setenv("DE_FORCE_OIDC", "")
+	t.Setenv("QZDA_BAN_MOCK_TOKEN", "1")
+	_ = os.Unsetenv("QZDA_ALLOW_PASSWORD_LOGIN")
+	t.Setenv("QZDA_FORCE_OIDC", "")
 	h := server.New(store.New()).Handler()
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/login",
@@ -40,9 +40,9 @@ func TestPasswordLoginBlockedWhenBanMockWithoutAllow(t *testing.T) {
 }
 
 func TestPasswordLoginAllowedWithEscapeHatch(t *testing.T) {
-	t.Setenv("DE_BAN_MOCK_TOKEN", "1")
-	t.Setenv("DE_ALLOW_PASSWORD_LOGIN", "1")
-	t.Setenv("DE_FORCE_OIDC", "")
+	t.Setenv("QZDA_BAN_MOCK_TOKEN", "1")
+	t.Setenv("QZDA_ALLOW_PASSWORD_LOGIN", "1")
+	t.Setenv("QZDA_FORCE_OIDC", "")
 	h := server.New(store.New()).Handler()
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/login",

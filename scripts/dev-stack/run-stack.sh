@@ -1,6 +1,6 @@
 #!/bin/bash
 # Keep local FE+BE up for 企智搭 · 数字伙伴平台 (QiZhiDa · PartnerPlatform) (real API + PG/Redis; no frontend mock).
-# Defaults: DE_ENV=development, DE_BAN_MOCK_TOKEN=1. See docs/环境与数据模式.md.
+# Defaults: QZDA_ENV=development, QZDA_BAN_MOCK_TOKEN=1. See docs/环境与数据模式.md.
 set -u
 export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/Users/LIANJIFU/ops/QiZhiDaPartnerPlatform/backend/.tools/go/bin:$PATH"
 ROOT="/Users/LIANJIFU/ops/QiZhiDaPartnerPlatform"
@@ -18,15 +18,15 @@ if [ -f "$BACKEND/deploy/.env" ]; then
   . "$BACKEND/deploy/.env"
   set +a
 fi
-export DE_ENV="${DE_ENV:-development}"
-export DE_BAN_MOCK_TOKEN="${DE_BAN_MOCK_TOKEN:-1}"
-export DE_BAN_DEMO_TOKEN="${DE_BAN_DEMO_TOKEN:-$DE_BAN_MOCK_TOKEN}"
-export DE_ALLOW_PASSWORD_LOGIN="${DE_ALLOW_PASSWORD_LOGIN:-1}"
-export DE_ALLOW_MOCK_IDENTITY="${DE_ALLOW_MOCK_IDENTITY:-0}"
-export DE_ALLOW_RUNTIME_STUB="${DE_ALLOW_RUNTIME_STUB:-0}"
-export DE_MODEL_DISCOVER_FALLBACK="${DE_MODEL_DISCOVER_FALLBACK:-0}"
-export DE_EMBEDDED_CHAT="${DE_EMBEDDED_CHAT:-0}"
-export DE_DATABASE_URL="${DE_DATABASE_URL:-postgres://de:de@127.0.0.1:5432/digital_employee?sslmode=disable}"
+export QZDA_ENV="${QZDA_ENV:-development}"
+export QZDA_BAN_MOCK_TOKEN="${QZDA_BAN_MOCK_TOKEN:-1}"
+export QZDA_BAN_DEMO_TOKEN="${QZDA_BAN_DEMO_TOKEN:-$QZDA_BAN_MOCK_TOKEN}"
+export QZDA_ALLOW_PASSWORD_LOGIN="${QZDA_ALLOW_PASSWORD_LOGIN:-1}"
+export QZDA_ALLOW_MOCK_IDENTITY="${QZDA_ALLOW_MOCK_IDENTITY:-0}"
+export QZDA_ALLOW_RUNTIME_STUB="${QZDA_ALLOW_RUNTIME_STUB:-0}"
+export QZDA_MODEL_DISCOVER_FALLBACK="${QZDA_MODEL_DISCOVER_FALLBACK:-0}"
+export QZDA_EMBEDDED_CHAT="${QZDA_EMBEDDED_CHAT:-0}"
+export QZDA_DATABASE_URL="${QZDA_DATABASE_URL:-postgres://de:de@127.0.0.1:5432/digital_employee?sslmode=disable}"
 # Postgres must be Docker (qzda-postgres). Homebrew postgresql@N on :5432 steals host connections.
 if ! bash "$ROOT/scripts/dev-stack/ensure-docker-postgres.sh"; then
   echo "$(date '+%F %T') ensure-docker-postgres failed" >>"$LOGDIR/keeper.log"
@@ -34,17 +34,17 @@ if ! bash "$ROOT/scripts/dev-stack/ensure-docker-postgres.sh"; then
 fi
 # Redis optional for local: only set when 6379 is listening (Docker Compose redis).
 if /usr/sbin/lsof -nP -iTCP:6379 -sTCP:LISTEN >/dev/null 2>&1; then
-  export DE_REDIS_URL='redis://127.0.0.1:6379/0'
+  export QZDA_REDIS_URL='redis://127.0.0.1:6379/0'
 else
-  unset DE_REDIS_URL 2>/dev/null || true
-  echo "$(date '+%F %T') warn: redis :6379 not listening; starting without DE_REDIS_URL" >>"$LOGDIR/keeper.log"
+  unset QZDA_REDIS_URL 2>/dev/null || true
+  echo "$(date '+%F %T') warn: redis :6379 not listening; starting without QZDA_REDIS_URL" >>"$LOGDIR/keeper.log"
 fi
-export DE_PUBLIC_BASE_URL='http://127.0.0.1:8089'
+export QZDA_PUBLIC_BASE_URL='http://127.0.0.1:8089'
 SKILL_BIN="$BACKEND/builtin/skills/runtime/bin"
-export DE_BUILTIN_SKILL_BIN="$SKILL_BIN"
+export QZDA_BUILTIN_SKILL_BIN="$SKILL_BIN"
 export PATH="$SKILL_BIN:$PATH"
-export DE_MODEL_CANDIDATE_TIMEOUT="${DE_MODEL_CANDIDATE_TIMEOUT:-45}"
-export DE_COPILOT_STREAM_TIMEOUT="${DE_COPILOT_STREAM_TIMEOUT:-300}"
+export QZDA_MODEL_CANDIDATE_TIMEOUT="${QZDA_MODEL_CANDIDATE_TIMEOUT:-45}"
+export QZDA_COPILOT_STREAM_TIMEOUT="${QZDA_COPILOT_STREAM_TIMEOUT:-300}"
 
 # 沙箱 HMAC 密钥:控制面与 qzda-sandbox 必须共用同一份(默认占位
 # "qzda-skill-run-dev" 在阶段 4 fail-closed 中被拒)。首次启动生成一次,
@@ -54,7 +54,7 @@ if [ ! -s "$SKILL_SECRET_FILE" ]; then
   umask 077
   head -c 32 /dev/urandom | shasum -a 256 | awk '{print $1}' >"$SKILL_SECRET_FILE"
 fi
-export DE_SANDBOX_RUN_SECRET_FILE="$SKILL_SECRET_FILE"
+export QZDA_SANDBOX_RUN_SECRET_FILE="$SKILL_SECRET_FILE"
 
 export PYTHONUNBUFFERED=1
 
@@ -154,17 +154,17 @@ if [ ! -x "$BACKEND/bin/qzda-app" ]; then
   (cd "$BACKEND" && make build) >>"$LOGDIR/keeper.log" 2>&1 || true
 fi
 while true; do
-  export DE_RUNTIME_MODE=local
-  export DE_SANDBOX_RUNTIME_URL="${DE_SANDBOX_RUNTIME_URL:-http://127.0.0.1:8093}"
+  export QZDA_RUNTIME_MODE=local
+  export QZDA_SANDBOX_RUNTIME_URL="${QZDA_SANDBOX_RUNTIME_URL:-http://127.0.0.1:8093}"
   workflow_env=()
-  if [ -n "${DE_WITH_WORKFLOW:-}" ]; then
-    workflow_env=(DE_WORKFLOW_WORKER=1 DE_TEMPORAL_HOST="${DE_TEMPORAL_HOST:-127.0.0.1:7233}")
+  if [ -n "${QZDA_WITH_WORKFLOW:-}" ]; then
+    workflow_env=(QZDA_WORKFLOW_WORKER=1 QZDA_TEMPORAL_HOST="${QZDA_TEMPORAL_HOST:-127.0.0.1:7233}")
   else
-    workflow_env=(DE_WORKFLOW_WORKER=0)
+    workflow_env=(QZDA_WORKFLOW_WORKER=0)
   fi
-  start_one 8100 qzda-app env "${workflow_env[@]}" DE_RAG_URL=http://127.0.0.1:8092 DE_RUNTIME_MODE=local DE_SANDBOX_RUNTIME_URL="$DE_SANDBOX_RUNTIME_URL" DE_EMBEDDED_CHAT=0 DE_MODEL_CANDIDATE_TIMEOUT=45 DE_COPILOT_STREAM_TIMEOUT=300 DE_BUILTIN_SKILL_BIN="$SKILL_BIN" PATH="$SKILL_BIN:$PATH" "$BACKEND/bin/qzda-app"
-  start_one 8093 qzda-skill env DE_SANDBOX_REQUIRE_ISOLATION=0 DE_SANDBOX_ARTIFACT_DIR=/tmp/qzda-stack/artifacts DE_BIND_HOST=127.0.0.1 DE_BIND_PORT=8093 python3 "$BACKEND/services/qzda-sandbox/main.py"
-  start_one 8092 qzda-rag env DE_BIND_HOST=127.0.0.1 DE_BIND_PORT=8092 python3 "$BACKEND/services/qzda-rag/main.py"
+  start_one 8100 qzda-app env "${workflow_env[@]}" QZDA_RAG_URL=http://127.0.0.1:8092 QZDA_RUNTIME_MODE=local QZDA_SANDBOX_RUNTIME_URL="$QZDA_SANDBOX_RUNTIME_URL" QZDA_EMBEDDED_CHAT=0 QZDA_MODEL_CANDIDATE_TIMEOUT=45 QZDA_COPILOT_STREAM_TIMEOUT=300 QZDA_BUILTIN_SKILL_BIN="$SKILL_BIN" PATH="$SKILL_BIN:$PATH" "$BACKEND/bin/qzda-app"
+  start_one 8093 qzda-skill env QZDA_SANDBOX_REQUIRE_ISOLATION=0 QZDA_SANDBOX_ARTIFACT_DIR=/tmp/qzda-stack/artifacts QZDA_BIND_HOST=127.0.0.1 QZDA_BIND_PORT=8093 python3 "$BACKEND/services/qzda-sandbox/main.py"
+  start_one 8092 qzda-rag env QZDA_BIND_HOST=127.0.0.1 QZDA_BIND_PORT=8092 python3 "$BACKEND/services/qzda-rag/main.py"
   start_one 8089 qzda-gateway python3 "$GATEWAY_MONOLITH"
   start_vite
   sleep 5

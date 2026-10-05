@@ -58,7 +58,7 @@ func TestOpenSearchIndexAndSearch(t *testing.T) {
 }
 
 func TestNewOpenSearchAuditFromEnvEmpty(t *testing.T) {
-	t.Setenv("DE_OPENSEARCH_URL", "")
+	t.Setenv("QZDA_OPENSEARCH_URL", "")
 	if NewOpenSearchAuditFromEnv() != nil {
 		t.Fatal("expected nil without URL")
 	}

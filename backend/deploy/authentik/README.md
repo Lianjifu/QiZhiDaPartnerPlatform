@@ -23,11 +23,11 @@ make compose-up-authentik
 5. 导出环境变量后启动栈：
 
 ```bash
-export DE_OIDC_ISSUER=http://127.0.0.1:9000/application/o/de/
-export DE_OIDC_CLIENT_ID=<client-id>
-export DE_OIDC_CLIENT_SECRET=<client-secret>
-export DE_OIDC_REDIRECT_URL=http://127.0.0.1:8089/api/auth/oidc/callback
-export DE_FORCE_OIDC=1   # 可选：禁用密码登录
+export QZDA_OIDC_ISSUER=http://127.0.0.1:9000/application/o/de/
+export QZDA_OIDC_CLIENT_ID=<client-id>
+export QZDA_OIDC_CLIENT_SECRET=<client-secret>
+export QZDA_OIDC_REDIRECT_URL=http://127.0.0.1:8089/api/auth/oidc/callback
+export QZDA_FORCE_OIDC=1   # 可选：禁用密码登录
 make compose-up-monolith   # 默认
 # 或 make compose-up-coarse
 ```

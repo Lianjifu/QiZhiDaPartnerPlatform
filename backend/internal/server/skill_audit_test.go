@@ -28,8 +28,8 @@ type ed25519PublicKey = []byte
 // result=denied.
 func TestAuditWrittenOnBuiltinSignatureFailure(t *testing.T) {
 	root := builtinRoot(t)
-	t.Setenv("DE_BUILTIN_SKILLS_DIR", root)
-	t.Setenv("DE_REQUIRE_SKILL_SIGNATURE", "enabled")
+	t.Setenv("QZDA_BUILTIN_SKILLS_DIR", root)
+	t.Setenv("QZDA_REQUIRE_SKILL_SIGNATURE", "enabled")
 	isolatedDevKeypair(t)
 
 	// Swap the manifest's recorded public key for an attacker's. The
@@ -85,14 +85,14 @@ func TestAuditWrittenOnBuiltinSignatureFailure(t *testing.T) {
 // caller's identity.
 func TestAuditWrittenOnImportSignatureFailure(t *testing.T) {
 	root := builtinRoot(t)
-	t.Setenv("DE_BUILTIN_SKILLS_DIR", root)
-	t.Setenv("DE_REQUIRE_SKILL_SIGNATURE", "enabled")
+	t.Setenv("QZDA_BUILTIN_SKILLS_DIR", root)
+	t.Setenv("QZDA_REQUIRE_SKILL_SIGNATURE", "enabled")
 	isolatedDevKeypair(t)
 
 	tmp := t.TempDir()
-	t.Setenv("DE_SANDBOX_PACKAGE_DIR", tmp)
-	t.Setenv("DE_SANDBOX_TEST_SIM", "1")
-	t.Setenv("DE_SANDBOX_RUNTIME_URL", "http://127.0.0.1:1")
+	t.Setenv("QZDA_SANDBOX_PACKAGE_DIR", tmp)
+	t.Setenv("QZDA_SANDBOX_TEST_SIM", "1")
+	t.Setenv("QZDA_SANDBOX_RUNTIME_URL", "http://127.0.0.1:1")
 
 	h := server.New(store.New()).Handler()
 

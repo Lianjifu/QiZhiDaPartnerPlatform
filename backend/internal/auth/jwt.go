@@ -32,7 +32,7 @@ type claims struct {
 }
 
 func secret() []byte {
-	if s := os.Getenv("DE_JWT_SECRET"); s != "" {
+	if s := os.Getenv("QZDA_JWT_SECRET"); s != "" {
 		return []byte(s)
 	}
 	return []byte("de-dev-jwt-secret-change-me")

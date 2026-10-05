@@ -4,11 +4,11 @@ Monolith control plane — **sys + collab + cap + workflow** in one Go process. 
 
 | 项 | 值 |
 |----|-----|
-| 模式 | `DE_SERVICE=app` / `ModeApp`（旧值 sys / collab / cap / workflow 也归 ModeApp） |
-| 端口 | `8100`（`DE_APP_ADDR`） |
+| 模式 | `QZDA_SERVICE=app` / `ModeApp`（旧值 sys / collab / cap / workflow 也归 ModeApp） |
+| 端口 | `8100`（`QZDA_APP_ADDR`） |
 | 写域 | `DomainAll`（全 PG 集合） |
 | 侧车 | `qzda-sandbox :8093`（必须）；可选 `qzda-agent-runtime :8091` / `qzda-rag :8092` |
-| Temporal worker | 可选进程内 goroutine（`DE_WORKFLOW_WORKER=1 DE_TEMPORAL_HOST=...`） |
+| Temporal worker | 可选进程内 goroutine（`QZDA_WORKFLOW_WORKER=1 QZDA_TEMPORAL_HOST=...`） |
 
 ## 启动
 
@@ -24,11 +24,11 @@ make smoke-monolith
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DE_APP_ADDR` | `:8100` | Listen address |
-| `DE_RUNTIME_MODE` | `local` | 进程内 ReAct Harness（不启 qzda-agent） |
-| `DE_SANDBOX_RUNTIME_URL` | `http://127.0.0.1:8093` | 技能沙箱 |
-| `DE_TEMPORAL_HOST` | — | 非空启用进程内 Temporal worker |
-| `DE_WORKFLOW_WORKER` | `0` | `1` 启用进程内 Temporal worker（需 `DE_TEMPORAL_HOST`） |
+| `QZDA_APP_ADDR` | `:8100` | Listen address |
+| `QZDA_RUNTIME_MODE` | `local` | 进程内 ReAct Harness（不启 qzda-agent） |
+| `QZDA_SANDBOX_RUNTIME_URL` | `http://127.0.0.1:8093` | 技能沙箱 |
+| `QZDA_TEMPORAL_HOST` | — | 非空启用进程内 Temporal worker |
+| `QZDA_WORKFLOW_WORKER` | `0` | `1` 启用进程内 Temporal worker（需 `QZDA_TEMPORAL_HOST`） |
 
 ## 与历史 coarse 拓扑的关系
 

@@ -28,7 +28,7 @@ jobs:
       - name: Go test
         env:
           # Isolate unit tests from any accidental local FastAPI RAG.
-          DE_RAG_URL: http://127.0.0.1:1
+          QZDA_RAG_URL: http://127.0.0.1:1
         run: go test ./... -count=1
       - name: Proto presence (Connect IDL)
         run: |

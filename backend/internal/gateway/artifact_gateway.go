@@ -54,8 +54,8 @@ const (
 
 // DefaultArtifactPolicy returns the production defaults: 100 MB cap, the
 // 7 MIME types the document-preview surface actually consumes, and auth
-// required. Operators override MaxBytes via DE_ARTIFACT_MAX_BYTES and
-// RequireAuth via DE_ARTIFACT_REQUIRE_AUTH in the server wrapper.
+// required. Operators override MaxBytes via QZDA_ARTIFACT_MAX_BYTES and
+// RequireAuth via QZDA_ARTIFACT_REQUIRE_AUTH in the server wrapper.
 func DefaultArtifactPolicy() *ArtifactPolicy {
 	return &ArtifactPolicy{
 		MaxBytes: 100 * 1024 * 1024,

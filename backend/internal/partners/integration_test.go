@@ -377,7 +377,7 @@ func TestP8_PatchEmployee(t *testing.T) {
 
 // TestP9_SubmitApprove walks an employee through submit + approve.
 // de-1 (seed) is lifecycle="active" already; we still POST submit + approve
-// and assert both return 200. In non-productionLikeEnv (DE_ENV unset →
+// and assert both return 200. In non-productionLikeEnv (QZDA_ENV unset →
 // runtimeenv.Mode Mock → DualApproval=false) submit immediately flips
 // lifecycle to "active" and sets release.status="released" — that's the
 // path exercised. approve then finds release already set, but the
@@ -550,7 +550,7 @@ func TestP12_LegacyAgentsProxy(t *testing.T) {
 // TestT9_Unauthorized in M03 tasks integration tests.
 func TestP13_Unauthorized(t *testing.T) {
 	srv, _ := newServer(t)
-	t.Setenv("DE_BAN_MOCK_TOKEN", "")
+	t.Setenv("QZDA_BAN_MOCK_TOKEN", "")
 	rr := doRequest(t, srv, http.MethodGet, "/api/partners", "", nil)
 	if rr.Code != http.StatusUnauthorized {
 		t.Fatalf("want 401, got %d body=%s", rr.Code, rr.Body.String())

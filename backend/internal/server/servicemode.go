@@ -20,7 +20,7 @@ func (m ServiceMode) IsUnified() bool {
 	return unifiedMode(m)
 }
 
-// ParseServiceMode resolves DE_SERVICE / cmdline mode names. The legacy
+// ParseServiceMode resolves QZDA_SERVICE / cmdline mode names. The legacy
 // coarse-split names (sys / cap / workflow) are accepted and coerced to
 // ModeApp so older scripts don't fail; the binary they referenced is gone.
 func ParseServiceMode(s string) ServiceMode {

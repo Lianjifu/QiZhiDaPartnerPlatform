@@ -23,7 +23,7 @@ from base64 import urlsafe_b64decode
 from pathlib import Path
 
 # 控制面相关环境变量前缀/全名;子进程必须看不到这些凭据。
-FORBIDDEN_ENV = ("DE_DATABASE_URL", "DE_REDIS_URL", "DATABASE_URL", "POSTGRES_", "REDIS_URL")
+FORBIDDEN_ENV = ("QZDA_DATABASE_URL", "QZDA_REDIS_URL", "DATABASE_URL", "POSTGRES_", "REDIS_URL")
 
 # 允许执行的脚本命令白名单正则:
 # - 必须指向 ``scripts/`` 或 ``.copilot-ws/`` 下的脚本(任意扩展名先过
@@ -49,12 +49,12 @@ def skill_secret() -> str:
     lifespan 立即退出,沙箱不会以默认密钥服务请求。
 
     查找顺序:
-    1. ``DE_SANDBOX_RUN_SECRET_FILE``(Docker secrets 长语法 mount 的文件,默认
+    1. ``QZDA_SANDBOX_RUN_SECRET_FILE``(Docker secrets 长语法 mount 的文件,默认
        ``/etc/qzda/skill-run-secret``)。
-    2. ``DE_SANDBOX_RUN_SECRET`` 环境变量 — 必须**不是**硬编码默认值
+    2. ``QZDA_SANDBOX_RUN_SECRET`` 环境变量 — 必须**不是**硬编码默认值
        ``qzda-skill-run-dev``(生产拒绝接受开发占位密钥)。
     """
-    path = os.environ.get("DE_SANDBOX_RUN_SECRET_FILE", "/etc/qzda/skill-run-secret")
+    path = os.environ.get("QZDA_SANDBOX_RUN_SECRET_FILE", "/etc/qzda/skill-run-secret")
     try:
         with open(path, "r", encoding="utf-8") as f:
             value = f.read().strip()
@@ -62,12 +62,12 @@ def skill_secret() -> str:
             return value
     except OSError:
         pass
-    env = os.environ.get("DE_SANDBOX_RUN_SECRET", "").strip()
+    env = os.environ.get("QZDA_SANDBOX_RUN_SECRET", "").strip()
     if env and env != "qzda-skill-run-dev":
         return env
     raise RuntimeError(
-        "DE_SANDBOX_RUN_SECRET not provisioned: set DE_SANDBOX_RUN_SECRET_FILE "
-        "(Docker secrets mount) or DE_SANDBOX_RUN_SECRET env var; hardcoded "
+        "QZDA_SANDBOX_RUN_SECRET not provisioned: set QZDA_SANDBOX_RUN_SECRET_FILE "
+        "(Docker secrets mount) or QZDA_SANDBOX_RUN_SECRET env var; hardcoded "
         "'qzda-skill-run-dev' is rejected in non-dev environments"
     )
 
@@ -132,17 +132,17 @@ def sandbox_mode() -> str:
     - ``gvisor-local`` : 向后兼容别名，映射到 process
 
     优先级:
-    1. ``DE_SANDBOX_RUNTIME_DETECTED``（由 docker-entrypoint.sh 设置，最准确）
+    1. ``QZDA_SANDBOX_RUNTIME_DETECTED``（由 docker-entrypoint.sh 设置，最准确）
     2. 否则探测 ``/proc/1/cmdline``
-    3. 否则按声明的 ``DE_SANDBOX_SANDBOX`` 推断
+    3. 否则按声明的 ``QZDA_SANDBOX_SANDBOX`` 推断
     """
-    detected = os.environ.get("DE_SANDBOX_RUNTIME_DETECTED", "").strip()
+    detected = os.environ.get("QZDA_SANDBOX_RUNTIME_DETECTED", "").strip()
     if detected:
         return detected
     runtime = _detect_runsc_runtime()
     if runtime in ("runsc-kvm", "runsc-ptrace", "runc", "process"):
         return runtime
-    declared = (os.environ.get("DE_SANDBOX_SANDBOX") or "gvisor-local").strip()
+    declared = (os.environ.get("QZDA_SANDBOX_SANDBOX") or "gvisor-local").strip()
     if declared == "runsc":
         return "runsc-emulated" if runsc_present() else "process"
     return "process"
@@ -152,16 +152,16 @@ def control_plane_probe() -> dict:
     """最佳努力探测:确认沙箱无法触达典型控制面主机。
 
     探测目标:
-    - ``DE_PROBE_POSTGRES_HOST`` 环境变量(默认 ``postgres``):PG 5432
-    - ``DE_PROBE_REDIS_HOST`` 环境变量(默认 ``redis``):Redis 6379
+    - ``QZDA_PROBE_POSTGRES_HOST`` 环境变量(默认 ``postgres``):PG 5432
+    - ``QZDA_PROBE_REDIS_HOST`` 环境变量(默认 ``redis``):Redis 6379
     - ``qzda-postgres`` / ``qzda-redis``:Compose 内固定服务名
 
     返回 ``reachable`` 列表与 ``isolated`` 布尔。
     超时仅 0.15s,确保即使被 DNS 拦截也不会拖慢 ``/healthz``。
     """
     hosts = [
-        os.environ.get("DE_PROBE_POSTGRES_HOST", "postgres"),
-        os.environ.get("DE_PROBE_REDIS_HOST", "redis"),
+        os.environ.get("QZDA_PROBE_POSTGRES_HOST", "postgres"),
+        os.environ.get("QZDA_PROBE_REDIS_HOST", "redis"),
         "qzda-postgres",
         "qzda-redis",
     ]
@@ -228,10 +228,10 @@ def safe_under(root: Path, rel: str) -> Path | None:
 
 
 def _default_prlimit() -> tuple[int, int, int]:
-    """读 ``DE_SANDBOX_DEFAULT_PIDS/CPU_SECS/MEM_MB``,env 缺失时用安全默认。"""
-    pids = int(os.environ.get("DE_SANDBOX_DEFAULT_PIDS") or "64")
-    cpu = int(os.environ.get("DE_SANDBOX_DEFAULT_CPU_SECS") or "30")
-    mem = int(os.environ.get("DE_SANDBOX_DEFAULT_MEM_MB") or "512")
+    """读 ``QZDA_SANDBOX_DEFAULT_PIDS/CPU_SECS/MEM_MB``,env 缺失时用安全默认。"""
+    pids = int(os.environ.get("QZDA_SANDBOX_DEFAULT_PIDS") or "64")
+    cpu = int(os.environ.get("QZDA_SANDBOX_DEFAULT_CPU_SECS") or "30")
+    mem = int(os.environ.get("QZDA_SANDBOX_DEFAULT_MEM_MB") or "512")
     return max(1, pids), max(1, cpu), max(64, mem)
 
 
@@ -285,9 +285,9 @@ def run_package_script(
        提示并附 SKILL.md 前 800 字节(让调用方读说明书再发)。
     3. ``safe_under`` 防路径穿越,确认目标文件存在。
     4. 按扩展名决定解释器(.py→python3 / .sh→bash / 其它→拒)。
-    5. 复制环境变量但过滤 ``FORBIDDEN_ENV``,再注入 ``DE_SANDBOX_PACKAGE_ROOT``
-       / ``DE_SANDBOX_WORK_DIR`` 让脚本能定位自己。
-    5a. **阶段 2 网关**: 注入 ``DE_SANDBOX_ALLOWED_EGRESS`` /
+    5. 复制环境变量但过滤 ``FORBIDDEN_ENV``,再注入 ``QZDA_SANDBOX_PACKAGE_ROOT``
+       / ``QZDA_SANDBOX_WORK_DIR`` 让脚本能定位自己。
+    5a. **阶段 2 网关**: 注入 ``QZDA_SANDBOX_ALLOWED_EGRESS`` /
        ``HTTPS_PROXY=http://127.0.0.1:8080`` / ``HTTP_PROXY=http://127.0.0.1:8080``。
        Python 子进程还会自动加载 :func:`_ensure_dns_bootstrap` 注入的
        ``sitecustomize.py``,把 ``socket.getaddrinfo`` monkey-patch 掉。
@@ -351,11 +351,11 @@ def run_package_script(
         cmd.extend(shlex.split(args_tail))
     # 子进程环境:再过滤一次控制面 DSN,并注入技能包上下文
     env = {k: v for k, v in os.environ.items() if not any(k == p or k.startswith(p) for p in FORBIDDEN_ENV)}
-    env["DE_SANDBOX_PACKAGE_ROOT"] = str(root)
-    env["DE_SANDBOX_WORK_DIR"] = str(root)
+    env["QZDA_SANDBOX_PACKAGE_ROOT"] = str(root)
+    env["QZDA_SANDBOX_WORK_DIR"] = str(root)
     # 阶段 4 #5:透传 workspace_id 给子进程,审计 + 日志 tag 一致
     if workspace_id:
-        env["DE_WORKSPACE_ID"] = str(workspace_id)
+        env["QZDA_WORKSPACE_ID"] = str(workspace_id)
     # 阶段 4 #1:LD_PRELOAD 拦截非环回 IPv4 connect → 重定向到 127.0.0.1:8080,
     # 让 curl/wget/node fetch 等不走 stdlib 的客户端也能被 egress policy 覆盖。
     # .so 不存在时 silently 降级(开发期 / 单元测试环境可能未编译)。
@@ -365,17 +365,17 @@ def run_package_script(
     # 阶段 3:把 correlation_id + 遥测/审计开关透传给子进程,这样 audit_hooks 安装
     # 后记录的 syscall 计数可以携带同一 correlation_id,前端 trace 一致。
     if correlation_id:
-        env["DE_SANDBOX_CORRELATION_ID"] = correlation_id
+        env["QZDA_SANDBOX_CORRELATION_ID"] = correlation_id
     if os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT"):
         env["OTEL_EXPORTER_OTLP_ENDPOINT"] = os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"]
-    if os.environ.get("DE_SANDBOX_AUDIT"):
-        env["DE_SANDBOX_AUDIT"] = os.environ["DE_SANDBOX_AUDIT"]
+    if os.environ.get("QZDA_SANDBOX_AUDIT"):
+        env["QZDA_SANDBOX_AUDIT"] = os.environ["QZDA_SANDBOX_AUDIT"]
     # 阶段 2:出口 allowlist 与代理
     egress = [h for h in (allowed_egress or []) if h and h.strip()]
-    env["DE_SANDBOX_ALLOWED_EGRESS"] = ",".join(egress)
+    env["QZDA_SANDBOX_ALLOWED_EGRESS"] = ",".join(egress)
     # 空 allowlist 等价于 deny-all — DnsGate 仍然安装,但要把所有解析请求
     # (含 IP literal)全部拒绝。否则脚本会绕过域名检查走 IP 直连。
-    env["DE_SANDBOX_DENY_ALL_EGRESS"] = "1" if not egress else "0"
+    env["QZDA_SANDBOX_DENY_ALL_EGRESS"] = "1" if not egress else "0"
     # 始终注入 DnsGate bootstrap(空 allowlist 也装,见 _DNS_BOOTSTRAP_CODE)。
     # 这样 deny-all 是真正的"禁止任何 DNS 解析",而不是"允许 DNS 但不挂代理"。
     bootstrap_dir = _ensure_dns_bootstrap()
@@ -474,9 +474,9 @@ _DNS_BOOTSTRAP_CODE = """\
 # 可以绕过 DNS gate 直连外网。
 import os as _os, sys as _sys
 
-_csv = _os.environ.get("DE_SANDBOX_ALLOWED_EGRESS", "") or ""
+_csv = _os.environ.get("QZDA_SANDBOX_ALLOWED_EGRESS", "") or ""
 _allowed = [h.strip() for h in _csv.replace("\\\\n", ",").split(",") if h.strip()]
-_deny_all = _os.environ.get("DE_SANDBOX_DENY_ALL_EGRESS", "0") == "1"
+_deny_all = _os.environ.get("QZDA_SANDBOX_DENY_ALL_EGRESS", "0") == "1"
 try:
     _sys.path.insert(0, "/app")
     from app.egress import DnsGate
@@ -486,10 +486,10 @@ except Exception as _exc:  # noqa: BLE001
     import sys as _sys2
     print(f"[qzda-egress-bootstrap] failed: {_exc!r}", file=_sys2.stderr)
 
-# 阶段 3:DE_SANDBOX_AUDIT=1 时同时挂上 audit_hooks,记录 os.open / subprocess /
+# 阶段 3:QZDA_SANDBOX_AUDIT=1 时同时挂上 audit_hooks,记录 os.open / subprocess /
 # socket.connect / exec* 的 Python 层 syscall 计数。
 try:
-    if _os.environ.get("DE_SANDBOX_AUDIT", "") == "1":
+    if _os.environ.get("QZDA_SANDBOX_AUDIT", "") == "1":
         _sys.path.insert(0, "/app")
         from app import audit_hooks as _hooks
         _hooks.install_audit_hooks()

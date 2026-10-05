@@ -45,10 +45,10 @@ def artifact_dir() -> Path:
     """返回(必要时创建)制品下载目录。
 
     路径来源:
-    - ``DE_SANDBOX_ARTIFACT_DIR`` 环境变量(覆盖);
+    - ``QZDA_SANDBOX_ARTIFACT_DIR`` 环境变量(覆盖);
     - 默认 ``/tmp/qzda-stack/artifacts``(与 artifact_harvest.py 共用)。
     """
-    raw = os.environ.get("DE_SANDBOX_ARTIFACT_DIR") or "/tmp/qzda-stack/artifacts"
+    raw = os.environ.get("QZDA_SANDBOX_ARTIFACT_DIR") or "/tmp/qzda-stack/artifacts"
     path = Path(raw)
     path.mkdir(parents=True, exist_ok=True)
     return path

@@ -29,7 +29,7 @@ type Decision struct {
 	EvaluatedAt     string `json:"evaluatedAt,omitempty"`
 }
 
-// Engine evaluates write-path policy (remote OPA when DE_OPA_URL set, else embedded).
+// Engine evaluates write-path policy (remote OPA when QZDA_OPA_URL set, else embedded).
 type Engine struct{}
 
 func New() *Engine { return &Engine{} }

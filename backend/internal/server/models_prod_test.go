@@ -42,7 +42,7 @@ func decodeData(t *testing.T, rr *httptest.ResponseRecorder) map[string]any {
 }
 
 func TestModelProviderCredentialAliasAndAudit(t *testing.T) {
-	t.Setenv("DE_MODEL_ALLOW_PRIVATE", "1")
+	t.Setenv("QZDA_MODEL_ALLOW_PRIVATE", "1")
 	st := store.New()
 	srv := server.New(st)
 	h := srv.Handler()
@@ -75,10 +75,10 @@ func TestModelProviderCredentialAliasAndAudit(t *testing.T) {
 }
 
 func TestCreateModelProviderAllowsLocalSecretsWithBanMockToken(t *testing.T) {
-	t.Setenv("DE_MODEL_ALLOW_PRIVATE", "1")
-	t.Setenv("DE_BAN_MOCK_TOKEN", "1")
-	t.Setenv("DE_ALLOW_PASSWORD_LOGIN", "1")
-	t.Setenv("DE_ENV", "development")
+	t.Setenv("QZDA_MODEL_ALLOW_PRIVATE", "1")
+	t.Setenv("QZDA_BAN_MOCK_TOKEN", "1")
+	t.Setenv("QZDA_ALLOW_PASSWORD_LOGIN", "1")
+	t.Setenv("QZDA_ENV", "development")
 	st := store.New()
 	h := server.New(st).Handler()
 
@@ -109,7 +109,7 @@ func TestCreateModelProviderAllowsLocalSecretsWithBanMockToken(t *testing.T) {
 	req.Header.Set("x-workspace-id", "w1")
 	h.ServeHTTP(rr, req)
 	if rr.Code != 200 {
-		t.Fatalf("create with DE_BAN_MOCK_TOKEN=1 should use ModelSecrets locally, got %d %s", rr.Code, rr.Body.String())
+		t.Fatalf("create with QZDA_BAN_MOCK_TOKEN=1 should use ModelSecrets locally, got %d %s", rr.Code, rr.Body.String())
 	}
 }
 
@@ -125,8 +125,8 @@ func TestModelProviderWorkspaceIsolation(t *testing.T) {
 }
 
 func TestDiscoverModelsShape(t *testing.T) {
-	t.Setenv("DE_MODEL_ALLOW_PRIVATE", "1")
-	t.Setenv("DE_MODEL_DISCOVER_FALLBACK", "1")
+	t.Setenv("QZDA_MODEL_ALLOW_PRIVATE", "1")
+	t.Setenv("QZDA_MODEL_DISCOVER_FALLBACK", "1")
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/models", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{"data":[{"id":"m1"}]}`))
@@ -256,7 +256,7 @@ func TestFailoverTestResponseShape(t *testing.T) {
 }
 
 func TestBudgetExceededOnUsage(t *testing.T) {
-	t.Setenv("DE_MODEL_BUDGET_ENFORCE", "1")
+	t.Setenv("QZDA_MODEL_BUDGET_ENFORCE", "1")
 	st := store.New()
 	st.Lock()
 	st.ModelBudgets = []map[string]any{

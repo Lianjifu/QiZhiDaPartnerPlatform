@@ -32,7 +32,7 @@ func TestEvaluateRemoteOPA(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	t.Setenv("DE_OPA_URL", srv.URL)
+	t.Setenv("QZDA_OPA_URL", srv.URL)
 	e := New()
 	d := e.Evaluate(context.Background(), Input{ActorRole: "admin", Action: "read"})
 	if d.Allow || d.PolicyID != "remote.test" {
@@ -46,7 +46,7 @@ func TestEvaluateRemoteFallbackOnError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	t.Setenv("DE_OPA_URL", srv.URL)
+	t.Setenv("QZDA_OPA_URL", srv.URL)
 	e := New()
 	d := e.Evaluate(context.Background(), Input{ActorRole: "admin", Action: "read"})
 	if !d.Allow || d.PolicyID != "baseline.default_allow" {

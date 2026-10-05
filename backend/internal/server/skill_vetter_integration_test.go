@@ -79,13 +79,13 @@ func countAudits(st *store.Store, actionContains, result string) int {
 // result=denied.
 func TestImportSkillVetterDeniedAuditWritten(t *testing.T) {
 	isolatedDevKeypair(t)
-	t.Setenv("DE_REQUIRE_SKILL_SIGNATURE", "off") // signature must not interfere
+	t.Setenv("QZDA_REQUIRE_SKILL_SIGNATURE", "off") // signature must not interfere
 
 	// Disable signature requirement explicitly via the policy-aware gate so
 	// the workspace-policy branch doesn't trip the import.
 	tmp := t.TempDir()
-	t.Setenv("DE_SANDBOX_PACKAGE_DIR", tmp)
-	t.Setenv("DE_SANDBOX_RUNTIME_URL", "http://127.0.0.1:1")
+	t.Setenv("QZDA_SANDBOX_PACKAGE_DIR", tmp)
+	t.Setenv("QZDA_SANDBOX_RUNTIME_URL", "http://127.0.0.1:1")
 
 	srv := server.New(store.New())
 	h := srv.Handler()
@@ -110,11 +110,11 @@ func TestImportSkillVetterDeniedAuditWritten(t *testing.T) {
 // is observable in the audit trail as a result=override row.
 func TestImportSkillVetterOverrideAdmitsAndAudits(t *testing.T) {
 	isolatedDevKeypair(t)
-	t.Setenv("DE_REQUIRE_SKILL_SIGNATURE", "off")
-	t.Setenv("DE_SANDBOX_VETTER", "enabled")
+	t.Setenv("QZDA_REQUIRE_SKILL_SIGNATURE", "off")
+	t.Setenv("QZDA_SANDBOX_VETTER", "enabled")
 	tmp := t.TempDir()
-	t.Setenv("DE_SANDBOX_PACKAGE_DIR", tmp)
-	t.Setenv("DE_SANDBOX_RUNTIME_URL", "http://127.0.0.1:1")
+	t.Setenv("QZDA_SANDBOX_PACKAGE_DIR", tmp)
+	t.Setenv("QZDA_SANDBOX_RUNTIME_URL", "http://127.0.0.1:1")
 
 	srv := server.New(store.New())
 	h := srv.Handler()
@@ -132,15 +132,15 @@ func TestImportSkillVetterOverrideAdmitsAndAudits(t *testing.T) {
 }
 
 // TestImportSkillVetterWarnAuditWritten same payload, but with
-// DE_SANDBOX_VETTER=warn_only. The server must admit the package and emit a
+// QZDA_SANDBOX_VETTER=warn_only. The server must admit the package and emit a
 // result=warn audit row (vetter warn is observable, not silent).
 func TestImportSkillVetterWarnAuditWritten(t *testing.T) {
 	isolatedDevKeypair(t)
-	t.Setenv("DE_REQUIRE_SKILL_SIGNATURE", "off")
-	t.Setenv("DE_SANDBOX_VETTER", "warn_only")
+	t.Setenv("QZDA_REQUIRE_SKILL_SIGNATURE", "off")
+	t.Setenv("QZDA_SANDBOX_VETTER", "warn_only")
 	tmp := t.TempDir()
-	t.Setenv("DE_SANDBOX_PACKAGE_DIR", tmp)
-	t.Setenv("DE_SANDBOX_RUNTIME_URL", "http://127.0.0.1:1")
+	t.Setenv("QZDA_SANDBOX_PACKAGE_DIR", tmp)
+	t.Setenv("QZDA_SANDBOX_RUNTIME_URL", "http://127.0.0.1:1")
 
 	srv := server.New(store.New())
 	h := srv.Handler()
@@ -163,10 +163,10 @@ func TestImportSkillVetterWarnAuditWritten(t *testing.T) {
 // audit log signal-rich.
 func TestImportSkillVetterAllowNoAuditRow(t *testing.T) {
 	isolatedDevKeypair(t)
-	t.Setenv("DE_REQUIRE_SKILL_SIGNATURE", "off")
+	t.Setenv("QZDA_REQUIRE_SKILL_SIGNATURE", "off")
 	tmp := t.TempDir()
-	t.Setenv("DE_SANDBOX_PACKAGE_DIR", tmp)
-	t.Setenv("DE_SANDBOX_RUNTIME_URL", "http://127.0.0.1:1")
+	t.Setenv("QZDA_SANDBOX_PACKAGE_DIR", tmp)
+	t.Setenv("QZDA_SANDBOX_RUNTIME_URL", "http://127.0.0.1:1")
 
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)

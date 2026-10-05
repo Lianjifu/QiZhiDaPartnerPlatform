@@ -18,11 +18,11 @@ def invoke_openai_compatible(
     api_key: str | None = None,
     model: str | None = None,
 ) -> str | None:
-    base = (base_url or env("DE_LLM_BASE_URL")).strip()
+    base = (base_url or env("QZDA_LLM_BASE_URL")).strip()
     if not base:
         return None
-    key = (api_key if api_key is not None else env("DE_LLM_API_KEY")).strip()
-    model_name = (model or env("DE_LLM_MODEL", "gpt-4o-mini")).strip() or "gpt-4o-mini"
+    key = (api_key if api_key is not None else env("QZDA_LLM_API_KEY")).strip()
+    model_name = (model or env("QZDA_LLM_MODEL", "gpt-4o-mini")).strip() or "gpt-4o-mini"
     url = base.rstrip("/") + "/chat/completions"
     payload = {
         "model": model_name,
@@ -43,7 +43,7 @@ def invoke_openai_compatible(
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=float(env("DE_LLM_TIMEOUT", "20"))) as resp:
+        with urllib.request.urlopen(req, timeout=float(env("QZDA_LLM_TIMEOUT", "20"))) as resp:
             body = json.loads(resp.read().decode() or "{}")
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, ValueError):
         return None

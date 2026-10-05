@@ -35,17 +35,17 @@ func countAuditRows(t *testing.T, st *store.Store, actionContains, result string
 }
 
 // withArtifactFixture swaps skillArtifactDir()'s base via env, writes a
-// fixture file, and returns the path + cleanup. We mutate DE_ARTIFACT_DIR
+// fixture file, and returns the path + cleanup. We mutate QZDA_ARTIFACT_DIR
 // through runtimeenv rather than monkey-patching the package func.
 func withArtifactFixture(t *testing.T, name string, size int) (root, absPath string, cleanup func()) {
 	t.Helper()
 	dir := t.TempDir()
-	prev := os.Getenv("DE_SANDBOX_ARTIFACT_DIR")
-	_ = os.Setenv("DE_SANDBOX_ARTIFACT_DIR", dir)
+	prev := os.Getenv("QZDA_SANDBOX_ARTIFACT_DIR")
+	_ = os.Setenv("QZDA_SANDBOX_ARTIFACT_DIR", dir)
 	if err := os.WriteFile(filepath.Join(dir, name), make([]byte, size), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	return dir, filepath.Join(dir, name), func() { _ = os.Setenv("DE_SANDBOX_ARTIFACT_DIR", prev) }
+	return dir, filepath.Join(dir, name), func() { _ = os.Setenv("QZDA_SANDBOX_ARTIFACT_DIR", prev) }
 }
 
 // serverWithIdentity spins up the artifact handler stack with an
@@ -86,7 +86,7 @@ func TestArtifactGatewayRejectsBadExtension(t *testing.T) {
 func TestArtifactGatewayRejectsOversize(t *testing.T) {
 	srv, st := newArtifactServer(t)
 	withArtifactFixture(t, "huge.docx", 4096)
-	t.Setenv("DE_ARTIFACT_MAX_BYTES", "256")
+	t.Setenv("QZDA_ARTIFACT_MAX_BYTES", "256")
 
 	w := serverWithIdentity(t, srv.serveSkillArtifact, "/api/skill-artifacts/huge.docx", &auth.Identity{ID: "u1", Name: "alice", WorkspaceID: "w1"})
 	if w.Code != http.StatusRequestEntityTooLarge {
@@ -180,7 +180,7 @@ func TestArtifactGatewaySlidePNGRespectsBadExtension(t *testing.T) {
 func TestArtifactGatewaySkipsAuthWhenDisabled(t *testing.T) {
 	srv, _ := newArtifactServer(t)
 	withArtifactFixture(t, "report.docx", 128)
-	t.Setenv("DE_ARTIFACT_REQUIRE_AUTH", "false")
+	t.Setenv("QZDA_ARTIFACT_REQUIRE_AUTH", "false")
 
 	w := serverWithIdentity(t, srv.serveSkillArtifact, "/api/skill-artifacts/report.docx", nil)
 	if w.Code != http.StatusOK {

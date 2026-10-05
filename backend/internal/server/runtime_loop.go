@@ -26,7 +26,7 @@ const (
 )
 
 func runtimeMode() string {
-	switch strings.ToLower(strings.TrimSpace(lookupEnv("DE_RUNTIME_MODE"))) {
+	switch strings.ToLower(strings.TrimSpace(lookupEnv("QZDA_RUNTIME_MODE"))) {
 	case "remote", "sidecar", "python":
 		return runtimeModeRemote
 	default:
@@ -35,7 +35,7 @@ func runtimeMode() string {
 }
 
 func runtimeFailoverLocal() bool {
-	return envFlagTrue("DE_RUNTIME_FAILOVER_LOCAL") && !productionLikeEnv()
+	return envFlagTrue("QZDA_RUNTIME_FAILOVER_LOCAL") && !productionLikeEnv()
 }
 
 func (s *Server) runtimeHTTPClient() *http.Client {
@@ -80,7 +80,7 @@ func (s *Server) runRemoteRuntime(ctx context.Context, in reactTurnInput) reactT
 	}
 	base := strings.TrimRight(strings.TrimSpace(s.RuntimeURL), "/")
 	if base == "" {
-		return reactTurnResult{Err: apperr.Unavailable(apperr.RuntimeUnavailable, "未配置 DE_AGENT_RUNTIME_URL")}
+		return reactTurnResult{Err: apperr.Unavailable(apperr.RuntimeUnavailable, "未配置 QZDA_AGENT_RUNTIME_URL")}
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/run", bytes.NewReader(payload))
 	if err != nil {

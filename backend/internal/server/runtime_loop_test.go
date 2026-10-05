@@ -21,7 +21,7 @@ func TestRuntimeModeLocalDoesNotCallSidecar(t *testing.T) {
 	}))
 	t.Cleanup(ts.Close)
 
-	t.Setenv("DE_RUNTIME_MODE", "local")
+	t.Setenv("QZDA_RUNTIME_MODE", "local")
 	st := store.New()
 	srv := server.New(st)
 	srv.RuntimeURL = ts.URL
@@ -63,7 +63,7 @@ func TestRuntimeModeRemoteStreamsLoopEvents(t *testing.T) {
 	}))
 	t.Cleanup(ts.Close)
 
-	t.Setenv("DE_RUNTIME_MODE", "remote")
+	t.Setenv("QZDA_RUNTIME_MODE", "remote")
 	st := store.New()
 	srv := server.New(st)
 	srv.RuntimeURL = ts.URL
@@ -93,8 +93,8 @@ func TestRuntimeModeRemoteStreamsLoopEvents(t *testing.T) {
 }
 
 func TestRuntimeModeRemoteUnavailable(t *testing.T) {
-	t.Setenv("DE_RUNTIME_MODE", "remote")
-	t.Setenv("DE_RUNTIME_FAILOVER_LOCAL", "0")
+	t.Setenv("QZDA_RUNTIME_MODE", "remote")
+	t.Setenv("QZDA_RUNTIME_FAILOVER_LOCAL", "0")
 	st := store.New()
 	srv := server.New(st)
 	srv.RuntimeURL = "http://127.0.0.1:1"
@@ -126,7 +126,7 @@ func TestReplayDoesNotInvokeRuntime(t *testing.T) {
 	}))
 	t.Cleanup(ts.Close)
 
-	t.Setenv("DE_RUNTIME_MODE", "local")
+	t.Setenv("QZDA_RUNTIME_MODE", "local")
 	st := store.New()
 	srv := server.New(st)
 	srv.RuntimeURL = ts.URL
@@ -170,10 +170,10 @@ func TestReplayDoesNotInvokeRuntime(t *testing.T) {
 }
 
 func TestSkillSimDisabledInProduction(t *testing.T) {
-	t.Setenv("DE_ENV", "production")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
-	t.Setenv("DE_SANDBOX_TEST_SIM", "1")
-	t.Setenv("DE_SANDBOX_RUNTIME_URL", "http://127.0.0.1:1")
+	t.Setenv("QZDA_ENV", "production")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_SANDBOX_TEST_SIM", "1")
+	t.Setenv("QZDA_SANDBOX_RUNTIME_URL", "http://127.0.0.1:1")
 	h := server.New(store.New()).Handler()
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/skills/sk-docx/test",
@@ -195,8 +195,8 @@ func TestSkillSimDisabledInProduction(t *testing.T) {
 }
 
 func TestRuntimeRemoteFailoverLocalDev(t *testing.T) {
-	t.Setenv("DE_RUNTIME_MODE", "remote")
-	t.Setenv("DE_RUNTIME_FAILOVER_LOCAL", "true")
+	t.Setenv("QZDA_RUNTIME_MODE", "remote")
+	t.Setenv("QZDA_RUNTIME_FAILOVER_LOCAL", "true")
 	st := store.New()
 	srv := server.New(st)
 	srv.RuntimeURL = "http://127.0.0.1:1"
@@ -222,10 +222,10 @@ func TestRuntimeRemoteFailoverLocalDev(t *testing.T) {
 }
 
 func TestRuntimeRemoteNoFailoverInProduction(t *testing.T) {
-	t.Setenv("DE_ENV", "production")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
-	t.Setenv("DE_RUNTIME_MODE", "remote")
-	t.Setenv("DE_RUNTIME_FAILOVER_LOCAL", "true")
+	t.Setenv("QZDA_ENV", "production")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_RUNTIME_MODE", "remote")
+	t.Setenv("QZDA_RUNTIME_FAILOVER_LOCAL", "true")
 	st := store.New()
 	srv := server.New(st)
 	srv.RuntimeURL = "http://127.0.0.1:1"
@@ -251,8 +251,8 @@ func TestRuntimeRemoteNoFailoverInProduction(t *testing.T) {
 }
 
 func TestRagDegradesWhenSidecarDownInProduction(t *testing.T) {
-	t.Setenv("DE_ENV", "production")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "production")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	st := store.New()
 	st.Lock()
 	st.KnowledgeDocs = append(st.KnowledgeDocs, map[string]any{
@@ -298,7 +298,7 @@ func TestRemoteRuntimeForwardsToolLoopEvents(t *testing.T) {
 	}))
 	t.Cleanup(ts.Close)
 
-	t.Setenv("DE_RUNTIME_MODE", "remote")
+	t.Setenv("QZDA_RUNTIME_MODE", "remote")
 	st := store.New()
 	srv := server.New(st)
 	srv.RuntimeURL = ts.URL

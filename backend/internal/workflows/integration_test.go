@@ -463,7 +463,7 @@ func TestW9_ListWorkflowSkills(t *testing.T) {
 //
 // Deviation note: the plan listed the contract as
 // "promote pending → published + governance gates"; in non-production
-// env (DE_ENV unset → Mock) the published seed is a no-op return. We
+// env (QZDA_ENV unset → Mock) the published seed is a no-op return. We
 // assert 200 + status="published" either way.
 func TestW10_PublishWorkflowSkill(t *testing.T) {
 	srv, _, _ := newServer(t)
@@ -610,7 +610,7 @@ func TestW13_BindWorkflowCapability(t *testing.T) {
 // in M03 tasks integration tests.
 func TestW14_Unauthorized(t *testing.T) {
 	srv, _, _ := newServer(t)
-	t.Setenv("DE_BAN_MOCK_TOKEN", "")
+	t.Setenv("QZDA_BAN_MOCK_TOKEN", "")
 	rr := doRequest(t, srv, http.MethodGet, "/api/workflows", "", nil)
 	if rr.Code != http.StatusUnauthorized {
 		t.Fatalf("want 401, got %d body=%s", rr.Code, rr.Body.String())

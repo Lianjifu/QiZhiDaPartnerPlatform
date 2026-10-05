@@ -13,15 +13,15 @@ import (
 	"github.com/qizhida-partner-platform/backend/internal/store"
 )
 
-// isolatedDevKeypair points DE_DEV_KEYPAIR_PATH at a per-test temp dir so
+// isolatedDevKeypair points QZDA_DEV_KEYPAIR_PATH at a per-test temp dir so
 // each test gets a fresh, deterministic keypair. Without this, the test
 // process would inherit the dev keypair from whatever cwd the test runner
 // happened to use — which is fragile and gives different keyIDs per
 // invocation.
 func isolatedDevKeypair(t *testing.T) {
 	t.Helper()
-	t.Setenv("DE_DEV_KEYPAIR_PATH", filepath.Join(t.TempDir(), "dev-keypair.json"))
-	t.Setenv("DE_TRUSTED_PUBLISHERS_PATH", filepath.Join(t.TempDir(), "trusted-publishers.json"))
+	t.Setenv("QZDA_DEV_KEYPAIR_PATH", filepath.Join(t.TempDir(), "dev-keypair.json"))
+	t.Setenv("QZDA_TRUSTED_PUBLISHERS_PATH", filepath.Join(t.TempDir(), "trusted-publishers.json"))
 }
 
 // seedTrustStoreFromManifest reads the live builtin/skills/manifest.json
@@ -52,10 +52,10 @@ func seedTrustStoreFromManifest(t *testing.T, manifestPath string) {
 	if err := signing.WriteTrustFile(trustPath, tf); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("DE_TRUSTED_PUBLISHERS_PATH", trustPath)
+	t.Setenv("QZDA_TRUSTED_PUBLISHERS_PATH", trustPath)
 	// Disable dev keypair auto-provision so the trust store only contains
 	// what we explicitly seeded.
-	t.Setenv("DE_BAN_DEV_KEYPAIR", "1")
+	t.Setenv("QZDA_BAN_DEV_KEYPAIR", "1")
 }
 
 // builtinRoot locates builtin/skills next to the test binary. Mirrors the
@@ -88,8 +88,8 @@ func builtinRoot(t *testing.T) string {
 // all 34 sign-skill runs landed correctly.
 func TestBuiltinAttachEnforcesSigner(t *testing.T) {
 	root := builtinRoot(t)
-	t.Setenv("DE_BUILTIN_SKILLS_DIR", root)
-	t.Setenv("DE_REQUIRE_SKILL_SIGNATURE", "enabled")
+	t.Setenv("QZDA_BUILTIN_SKILLS_DIR", root)
+	t.Setenv("QZDA_REQUIRE_SKILL_SIGNATURE", "enabled")
 	seedTrustStoreFromManifest(t, filepath.Join(root, "manifest.json"))
 
 	st := store.New()
@@ -115,8 +115,8 @@ func TestBuiltinAttachEnforcesSigner(t *testing.T) {
 // SkillSignatureInvalid (or _UnknownKey).
 func TestBuiltinAttachRejectsUnknownKey(t *testing.T) {
 	root := builtinRoot(t)
-	t.Setenv("DE_BUILTIN_SKILLS_DIR", root)
-	t.Setenv("DE_REQUIRE_SKILL_SIGNATURE", "enabled")
+	t.Setenv("QZDA_BUILTIN_SKILLS_DIR", root)
+	t.Setenv("QZDA_REQUIRE_SKILL_SIGNATURE", "enabled")
 	// DO NOT seed the trust store. The signer bootstrap will fall back to
 	// the dev keypair (keyID 8d0880... or whatever this run produces),
 	// which is NOT in the manifest's `signers` block. Every builtin should
@@ -170,12 +170,12 @@ func TestBuiltinAttachRejectsUnknownKey(t *testing.T) {
 }
 
 // TestBuiltinAttachSkipsSignerWhenDisabled checks the env-controlled
-// escape hatch (DE_REQUIRE_SKILL_SIGNATURE=disabled). Even with a busted
+// escape hatch (QZDA_REQUIRE_SKILL_SIGNATURE=disabled). Even with a busted
 // manifest, the server still installs the packages.
 func TestBuiltinAttachSkipsSignerWhenDisabled(t *testing.T) {
 	root := builtinRoot(t)
-	t.Setenv("DE_BUILTIN_SKILLS_DIR", root)
-	t.Setenv("DE_REQUIRE_SKILL_SIGNATURE", "disabled")
+	t.Setenv("QZDA_BUILTIN_SKILLS_DIR", root)
+	t.Setenv("QZDA_REQUIRE_SKILL_SIGNATURE", "disabled")
 	isolatedDevKeypair(t)
 
 	// Garbage the signature field; disabled mode should ignore it.

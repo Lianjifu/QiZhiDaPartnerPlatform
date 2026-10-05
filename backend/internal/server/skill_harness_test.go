@@ -96,7 +96,7 @@ func TestSkillRunNeedsInstructionWithoutScript(t *testing.T) {
 
 func TestPreviewPptxArtifact(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("DE_SANDBOX_ARTIFACT_DIR", dir)
+	t.Setenv("QZDA_SANDBOX_ARTIFACT_DIR", dir)
 	storage, _, err := generatePptxArtifactLocal("团队季度考评", "# 封面\n## 目录\n- A\n- B\n")
 	if err != nil {
 		t.Fatal(err)
@@ -129,7 +129,7 @@ func TestPreviewPptxArtifact(t *testing.T) {
 
 func TestEnsureSkillArtifactsSkipsWhenPptxPresent(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("DE_SANDBOX_ARTIFACT_DIR", dir)
+	t.Setenv("QZDA_SANDBOX_ARTIFACT_DIR", dir)
 	out := "已生成 PPT\n下载链接：/api/skill-artifacts/abc-团队季度考评.pptx"
 	got := ensureSkillArtifactsInOutput(out, "团队季度考评", "## 目录\n- 一项\n"+strings.Repeat("正文内容足够长以通过结构化检测。", 10))
 	if strings.Contains(got, ".docx") {
@@ -142,7 +142,7 @@ func TestEnsureSkillArtifactsSkipsWhenPptxPresent(t *testing.T) {
 
 func TestGeneratePptxArtifactLocal(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("DE_SANDBOX_ARTIFACT_DIR", dir)
+	t.Setenv("QZDA_SANDBOX_ARTIFACT_DIR", dir)
 	storage, download, err := generatePptxArtifactLocal("团队季度考评", "# 封面\n## 目录\n- A\n- B\n")
 	if err != nil {
 		t.Fatal(err)
@@ -189,7 +189,7 @@ func TestGeneratePptxArtifactLocal(t *testing.T) {
 
 func TestGeneratePdfArtifactLocal(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("DE_SANDBOX_ARTIFACT_DIR", dir)
+	t.Setenv("QZDA_SANDBOX_ARTIFACT_DIR", dir)
 	storage, download, err := generatePdfArtifactLocal("测试PDF", "一、概述\n内容A\n二、结论\n内容B")
 	if err != nil {
 		t.Fatal(err)

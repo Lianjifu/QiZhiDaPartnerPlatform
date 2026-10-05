@@ -13,9 +13,9 @@ FastAPI RAG service on port **8092**. Published-only retrieval with in-memory ve
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DE_BIND_HOST` | `127.0.0.1` | Bind address |
-| `DE_BIND_PORT` | `8092` | Bind port |
-| `DE_MILVUS_URI` | — | Milvus URI (optional) |
+| `QZDA_BIND_HOST` | `127.0.0.1` | Bind address |
+| `QZDA_BIND_PORT` | `8092` | Bind port |
+| `QZDA_MILVUS_URI` | — | Milvus URI (optional) |
 
 ## Run locally
 
@@ -35,7 +35,7 @@ Per-service Dockerfile includes Milvus deps:
 
 ```bash
 docker build -t qzda-rag:local backend/services/qzda-rag
-docker run -p 8092:8092 -e DE_MILVUS_URI=... qzda-rag:local
+docker run -p 8092:8092 -e QZDA_MILVUS_URI=... qzda-rag:local
 ```
 
 Compose (`deploy/compose.yml`) builds from `services/qzda-rag/Dockerfile`.

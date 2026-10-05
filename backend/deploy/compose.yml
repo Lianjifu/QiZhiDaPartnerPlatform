@@ -27,7 +27,7 @@ services:
     networks:
       - qzda_net
 
-  # Optional streaming replica for DE_REPLICA_MODE=standby (not cn-east/south dual-active).
+  # Optional streaming replica for QZDA_REPLICA_MODE=standby (not cn-east/south dual-active).
   postgres-replica:
     image: postgres:16-alpine
     container_name: qzda-postgres-replica
@@ -169,7 +169,7 @@ services:
     networks:
       - qzda_net
 
-  # Local OIDC IdP (Dex). OIDC: DE_OIDC_ISSUER=http://127.0.0.1:5556/dex
+  # Local OIDC IdP (Dex). OIDC: QZDA_OIDC_ISSUER=http://127.0.0.1:5556/dex
   dex:
     image: ghcr.io/dexidp/dex:v2.41.1
     container_name: qzda-dex
@@ -183,7 +183,7 @@ services:
     networks:
       - qzda_net
 
-  # Kafka-compatible audit bus (Redpanda). DE_KAFKA_BROKERS=127.0.0.1:9092
+  # Kafka-compatible audit bus (Redpanda). QZDA_KAFKA_BROKERS=127.0.0.1:9092
   redpanda:
     image: redpandadata/redpanda:v24.2.4
     container_name: qzda-redpanda
@@ -211,7 +211,7 @@ services:
     networks:
       - qzda_net
 
-  # Milvus standalone (etcd + minio + milvus). RAG: DE_MILVUS_URI=http://127.0.0.1:19530
+  # Milvus standalone (etcd + minio + milvus). RAG: QZDA_MILVUS_URI=http://127.0.0.1:19530
   milvus-etcd:
     image: quay.io/coreos/etcd:v3.5.16
     container_name: qzda-milvus-etcd
@@ -289,7 +289,7 @@ services:
     networks:
       - qzda_net
 
-  # External OPA (Rego). Set DE_OPA_URL=http://127.0.0.1:8181 on control-plane processes.
+  # External OPA (Rego). Set QZDA_OPA_URL=http://127.0.0.1:8181 on control-plane processes.
   opa:
     image: openpolicyagent/opa:0.70.0
     container_name: qzda-opa
@@ -308,7 +308,7 @@ services:
     networks:
       - qzda_net
 
-  # OpenSearch audit search (dev, security disabled). DE_OPENSEARCH_URL=http://127.0.0.1:9200
+  # OpenSearch audit search (dev, security disabled). QZDA_OPENSEARCH_URL=http://127.0.0.1:9200
   opensearch:
     image: opensearchproject/opensearch:2.17.1
     container_name: qzda-opensearch
@@ -487,26 +487,26 @@ services:
       qzda-sandbox:
         condition: service_healthy
     environment:
-      DE_APP_ADDR: ":8100"
-      DE_SERVICE: app
-      DE_DATABASE_URL: postgres://de:de@postgres:5432/digital_employee?sslmode=disable
-      DE_REDIS_URL: redis://redis:6379/0
-      DE_RUNTIME_MODE: local
-      DE_SANDBOX_RUNTIME_URL: http://qzda-sandbox:8093
-      DE_SANDBOX_RUN_SECRET: ${DE_SANDBOX_RUN_SECRET:-qzda-skill-run-dev}
-      DE_WORKFLOW_WORKER: ${DE_WORKFLOW_WORKER:-0}
-      DE_TEMPORAL_HOST: ${DE_TEMPORAL_HOST:-}
-      DE_BAN_MOCK_TOKEN: ${DE_BAN_MOCK_TOKEN:-0}
-      DE_BAN_DEMO_TOKEN: ${DE_BAN_DEMO_TOKEN:-${DE_BAN_MOCK_TOKEN:-0}}
-      DE_ENV: ${DE_ENV:-development}
-      DE_JWT_SECRET: ${DE_JWT_SECRET:-}
-      DE_PUBLIC_BASE_URL: ${DE_PUBLIC_BASE_URL:-http://127.0.0.1:8089}
-      DE_LLM_BASE_URL: ${DE_LLM_BASE_URL:-}
-      DE_LLM_API_KEY: ${DE_LLM_API_KEY:-}
-      DE_LLM_MODEL: ${DE_LLM_MODEL:-}
-      DE_MODEL_CANDIDATE_TIMEOUT: ${DE_MODEL_CANDIDATE_TIMEOUT:-45}
-      DE_COPILOT_STREAM_TIMEOUT: ${DE_COPILOT_STREAM_TIMEOUT:-300}
-      DE_MODEL_ALLOW_PRIVATE: ${DE_MODEL_ALLOW_PRIVATE:-0}
+      QZDA_APP_ADDR: ":8100"
+      QZDA_SERVICE: app
+      QZDA_DATABASE_URL: postgres://de:de@postgres:5432/digital_employee?sslmode=disable
+      QZDA_REDIS_URL: redis://redis:6379/0
+      QZDA_RUNTIME_MODE: local
+      QZDA_SANDBOX_RUNTIME_URL: http://qzda-sandbox:8093
+      QZDA_SANDBOX_RUN_SECRET: ${QZDA_SANDBOX_RUN_SECRET:-qzda-skill-run-dev}
+      QZDA_WORKFLOW_WORKER: ${QZDA_WORKFLOW_WORKER:-0}
+      QZDA_TEMPORAL_HOST: ${QZDA_TEMPORAL_HOST:-}
+      QZDA_BAN_MOCK_TOKEN: ${QZDA_BAN_MOCK_TOKEN:-0}
+      QZDA_BAN_DEMO_TOKEN: ${QZDA_BAN_DEMO_TOKEN:-${QZDA_BAN_MOCK_TOKEN:-0}}
+      QZDA_ENV: ${QZDA_ENV:-development}
+      QZDA_JWT_SECRET: ${QZDA_JWT_SECRET:-}
+      QZDA_PUBLIC_BASE_URL: ${QZDA_PUBLIC_BASE_URL:-http://127.0.0.1:8089}
+      QZDA_LLM_BASE_URL: ${QZDA_LLM_BASE_URL:-}
+      QZDA_LLM_API_KEY: ${QZDA_LLM_API_KEY:-}
+      QZDA_LLM_MODEL: ${QZDA_LLM_MODEL:-}
+      QZDA_MODEL_CANDIDATE_TIMEOUT: ${QZDA_MODEL_CANDIDATE_TIMEOUT:-45}
+      QZDA_COPILOT_STREAM_TIMEOUT: ${QZDA_COPILOT_STREAM_TIMEOUT:-300}
+      QZDA_MODEL_ALLOW_PRIVATE: ${QZDA_MODEL_ALLOW_PRIVATE:-0}
     ports:
       - "8100:8100"
     healthcheck:
@@ -544,39 +544,39 @@ services:
     profiles: ["monolith"]
     # gVisor 集成：
     # - 默认 runtime=runc（兼容性兜底）
-    # - 设 DE_SANDBOX_RUNTIME=runsc 启用 runsc：host 必须先安装 runsc
+    # - 设 QZDA_SANDBOX_RUNTIME=runsc 启用 runsc：host 必须先安装 runsc
     #   （install runsc: curl -fsSL https://gvisor.dev/archive/nightly/latest/runsc \
     #       -o /usr/local/bin/runsc && chmod +x /usr/local/bin/runsc）
     # - gVisor 自己实现 syscall 拦截，必须 seccomp=unconfined
-    # - 可选 DE_SANDBOX_RUNTIME=runsc-kvm 需 host 启用 KVM（Linux host only）
-    runtime: ${DE_SANDBOX_RUNTIME:-runc}
-    # Intentionally no DE_DATABASE_URL / DE_REDIS_URL
+    # - 可选 QZDA_SANDBOX_RUNTIME=runsc-kvm 需 host 启用 KVM（Linux host only）
+    runtime: ${QZDA_SANDBOX_RUNTIME:-runc}
+    # Intentionally no QZDA_DATABASE_URL / QZDA_REDIS_URL
     environment:
-      DE_BIND_HOST: "0.0.0.0"
-      DE_BIND_PORT: "8093"
+      QZDA_BIND_HOST: "0.0.0.0"
+      QZDA_BIND_PORT: "8093"
       # 阶段 4 #2:fail-closed — secret 来自 secrets mount(/etc/qzda/skill-run-secret),
       # 不再 fallback 到开发占位 qzda-skill-run-dev。生产必须 mount 文件,否则
       # skill_runtime 主进程 lifespan 主动 skill_secret() 抛 RuntimeError 退出。
-      DE_SANDBOX_RUN_SECRET_FILE: /etc/qzda/skill-run-secret
-      DE_SANDBOX_SANDBOX: ${DE_SANDBOX_SANDBOX:-runsc}
-      DE_SANDBOX_REQUIRE_ISOLATION: "1"
-      DE_SANDBOX_RUNTIME: ${DE_SANDBOX_RUNTIME:-runc}
+      QZDA_SANDBOX_RUN_SECRET_FILE: /etc/qzda/skill-run-secret
+      QZDA_SANDBOX_SANDBOX: ${QZDA_SANDBOX_SANDBOX:-runsc}
+      QZDA_SANDBOX_REQUIRE_ISOLATION: "1"
+      QZDA_SANDBOX_RUNTIME: ${QZDA_SANDBOX_RUNTIME:-runc}
       # 阶段 3:可观测性
       # - PROMETHEUS_MULTIPROC_DIR:prometheus_client 多进程模式必填(uvicorn workers > 1),
       #   tmpfs 8m 放 metric 文件;单 worker 也兼容。
       # - OTEL_EXPORTER_OTLP_ENDPOINT:配置后由 telemetry.py 自动切换 OTLP exporter,
       #   未配则走 Console(开发期友好)。
-      # - DE_SANDBOX_AUDIT:1 = 子进程内自动安装 audit_hooks,记录 Python 层 syscall 计数。
+      # - QZDA_SANDBOX_AUDIT:1 = 子进程内自动安装 audit_hooks,记录 Python 层 syscall 计数。
       PROMETHEUS_MULTIPROC_DIR: "/tmp/prom-multiproc"
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
-      DE_SANDBOX_AUDIT: ${DE_SANDBOX_AUDIT:-1}
+      QZDA_SANDBOX_AUDIT: ${QZDA_SANDBOX_AUDIT:-1}
       # 阶段 4 #6:rate limit 默认 60 req/min per (ws,actor) + IP。开发 / 测试
-      # 环境覆盖:export DE_SANDBOX_RATE_LIMIT_PER_MIN=10000 即可临时放开。
-      DE_SANDBOX_RATE_LIMIT_PER_MIN: ${DE_SANDBOX_RATE_LIMIT_PER_MIN:-60}
+      # 环境覆盖:export QZDA_SANDBOX_RATE_LIMIT_PER_MIN=10000 即可临时放开。
+      QZDA_SANDBOX_RATE_LIMIT_PER_MIN: ${QZDA_SANDBOX_RATE_LIMIT_PER_MIN:-60}
       # 阶段 4 #3:信任的 signer key IDs(CSV),Python 校验 .signed marker 时用。
       # 留空 = 所有包都被拒(fail-closed)。weather 包对应的 ID 在 tools/sign-skill
       # 跑一次后会落到 DEPLOY_TRUSTED_KEYS_DIR 注入。
-      DE_SANDBOX_TRUSTED_KEY_IDS: ${DE_SANDBOX_TRUSTED_KEY_IDS:-ed25519:dev-placeholder}
+      QZDA_SANDBOX_TRUSTED_KEY_IDS: ${QZDA_SANDBOX_TRUSTED_KEY_IDS:-ed25519:dev-placeholder}
     # 阶段 4 #2:secret 文件 mount。挂到 /etc/qzda/skill-run-secret,只读。
     secrets:
       - skill_run_secret

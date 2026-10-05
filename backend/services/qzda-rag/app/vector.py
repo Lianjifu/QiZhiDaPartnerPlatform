@@ -107,7 +107,7 @@ class VectorIndex:
 
 
 class MilvusIndex:
-    """Optional Milvus / Milvus-Lite backend (DE_MILVUS_URI)."""
+    """Optional Milvus / Milvus-Lite backend (QZDA_MILVUS_URI)."""
 
     def __init__(self, uri: str) -> None:
         from pymilvus import DataType, MilvusClient  # type: ignore
@@ -183,7 +183,7 @@ class MilvusIndex:
 
 
 def build_index() -> tuple[VectorIndex | MilvusIndex, str]:
-    uri = (os.environ.get("DE_MILVUS_URI") or "").strip()
+    uri = (os.environ.get("QZDA_MILVUS_URI") or "").strip()
     if uri:
         try:
             idx = MilvusIndex(uri)

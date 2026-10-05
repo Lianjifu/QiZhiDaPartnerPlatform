@@ -423,7 +423,7 @@ func parseSkillFrontmatter(raw string) (meta skillPackageManifest, body string, 
 }
 
 func (s *Server) skillPackageDir(ws, skillID string) string {
-	root := os.Getenv("DE_SANDBOX_PACKAGE_DIR")
+	root := os.Getenv("QZDA_SANDBOX_PACKAGE_DIR")
 	if root == "" {
 		root = filepath.Join("data", "skill-packages")
 	}

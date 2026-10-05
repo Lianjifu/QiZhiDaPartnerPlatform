@@ -69,10 +69,10 @@ var (
 )
 
 // builtinKnowledgeRoot resolves the office-pack root directory.
-// Override with DE_BUILTIN_KNOWLEDGE_DIR; otherwise walks the standard
+// Override with QZDA_BUILTIN_KNOWLEDGE_DIR; otherwise walks the standard
 // candidates relative to the working directory.
 func builtinKnowledgeRoot() string {
-	if v := strings.TrimSpace(os.Getenv("DE_BUILTIN_KNOWLEDGE_DIR")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("QZDA_BUILTIN_KNOWLEDGE_DIR")); v != "" {
 		return v
 	}
 	candidates := []string{

@@ -22,7 +22,7 @@ func TestMaskAndCredentialAlias(t *testing.T) {
 }
 
 func TestProbeAndDiscoverAgainstHTTPTestServer(t *testing.T) {
-	t.Setenv("DE_MODEL_ALLOW_PRIVATE", "1")
+	t.Setenv("QZDA_MODEL_ALLOW_PRIVATE", "1")
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/models", func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "Bearer sk-test" {
@@ -52,11 +52,11 @@ func TestProbeAndDiscoverAgainstHTTPTestServer(t *testing.T) {
 }
 
 func TestValidateBaseURLBlocksPrivate(t *testing.T) {
-	t.Setenv("DE_MODEL_ALLOW_PRIVATE", "0")
+	t.Setenv("QZDA_MODEL_ALLOW_PRIVATE", "0")
 	if err := ValidateBaseURL("http://127.0.0.1:11434"); err == nil {
 		t.Fatal("expected private block")
 	}
-	t.Setenv("DE_MODEL_ALLOW_PRIVATE", "1")
+	t.Setenv("QZDA_MODEL_ALLOW_PRIVATE", "1")
 	if err := ValidateBaseURL("http://127.0.0.1:11434"); err != nil {
 		t.Fatal(err)
 	}

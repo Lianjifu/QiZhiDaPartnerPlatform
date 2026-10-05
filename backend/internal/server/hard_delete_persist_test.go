@@ -11,7 +11,7 @@ import (
 )
 
 func TestHardDeletePersistsDeleteHooks(t *testing.T) {
-	t.Setenv("DE_ENV", "development")
+	t.Setenv("QZDA_ENV", "development")
 
 	st := store.NewEmpty()
 	st.KnowledgeDocs = []map[string]any{{

@@ -8,7 +8,7 @@ import (
 // replicaStandby is the phase-4 multi-active min slice: a standby instance
 // rejects mutating requests (writes go to the active replica).
 func replicaStandby() bool {
-	v := strings.ToLower(strings.TrimSpace(os.Getenv("DE_REPLICA_MODE")))
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("QZDA_REPLICA_MODE")))
 	return v == "standby" || v == "readonly" || v == "passive"
 }
 
@@ -27,7 +27,7 @@ func (s *Server) replicaRole() string {
 }
 
 func instanceID() string {
-	if v := strings.TrimSpace(os.Getenv("DE_INSTANCE_ID")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("QZDA_INSTANCE_ID")); v != "" {
 		return v
 	}
 	h, _ := os.Hostname()

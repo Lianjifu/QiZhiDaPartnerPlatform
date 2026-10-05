@@ -1,9 +1,9 @@
 .PHONY: run test tidy build compose-up compose-up-full compose-up-temporal compose-up-oidc compose-up-authentik compose-up-kafka compose-up-mtls compose-up-spiffe compose-up-monolith compose-up-monolith-workflow compose-up-milvus compose-up-opa compose-up-search compose-up-obs compose-up-staging compose-up-replica compose-down compose-ps compose-logs infra-env smoke smoke-monolith test-python runtime rag skill sync-builtin-skills run-app run-app-workflow run-demo run-dev db-reset-dev docker-engine buf-generate buf-lint certs certs-rotate
 
 
-export DE_DATABASE_URL ?= postgres://de:de@127.0.0.1:5432/digital_employee?sslmode=disable
-export DE_REDIS_URL ?= redis://127.0.0.1:6379/0
-export DE_ENV ?= development
+export QZDA_DATABASE_URL ?= postgres://de:de@127.0.0.1:5432/digital_employee?sslmode=disable
+export QZDA_REDIS_URL ?= redis://127.0.0.1:6379/0
+export QZDA_ENV ?= development
 export PATH := /opt/homebrew/bin:$(HOME)/go/bin:$(PATH)
 
 # Prefer backend/.tools/go when present (toolchain bootstrap; not a source tree).
@@ -11,40 +11,40 @@ GO ?= $(shell if [ -x "$(CURDIR)/.tools/go/bin/go" ]; then echo "$(CURDIR)/.tool
 COMPOSE := docker compose -f deploy/compose.yml
 
 # Primary local entry: monolith stack (gateway :8089 → qzda-app :8100 + qzda-skill :8093).
-# Data mode: DE_ENV=development (production-shaped persist, no demo seed on empty DB).
+# Data mode: QZDA_ENV=development (production-shaped persist, no demo seed on empty DB).
 run: compose-up-monolith
 
 # 演示环境：内存 + ACME seed，不写 Postgres。
 run-demo:
-	DE_ENV=demo DE_SERVICE=app DE_LISTEN_ADDR=:8100 $(GO) run ./cmd/qzda-app
+	QZDA_ENV=demo QZDA_SERVICE=app QZDA_LISTEN_ADDR=:8100 $(GO) run ./cmd/qzda-app
 
 # 本机生产数据模式：需 PG；空库不灌演示 seed。
 run-dev: infra-env run-app
 
 run-app: infra-env
-	DE_ENV=$${DE_ENV:-development} \
-	DE_RUNTIME_MODE=local \
-	DE_SANDBOX_RUNTIME_URL=$${DE_SANDBOX_RUNTIME_URL:-http://127.0.0.1:8093} \
+	QZDA_ENV=$${QZDA_ENV:-development} \
+	QZDA_RUNTIME_MODE=local \
+	QZDA_SANDBOX_RUNTIME_URL=$${QZDA_SANDBOX_RUNTIME_URL:-http://127.0.0.1:8093} \
 	$(GO) run ./cmd/qzda-app
 
 # Run qzda-app with the in-process Temporal workflow worker enabled.
 run-app-workflow: infra-env
-	DE_ENV=$${DE_ENV:-development} \
-	DE_WORKFLOW_WORKER=1 \
-	DE_TEMPORAL_HOST=$${DE_TEMPORAL_HOST:-127.0.0.1:7233} \
-	DE_RUNTIME_MODE=local \
-	DE_SANDBOX_RUNTIME_URL=$${DE_SANDBOX_RUNTIME_URL:-http://127.0.0.1:8093} \
+	QZDA_ENV=$${QZDA_ENV:-development} \
+	QZDA_WORKFLOW_WORKER=1 \
+	QZDA_TEMPORAL_HOST=$${QZDA_TEMPORAL_HOST:-127.0.0.1:7233} \
+	QZDA_RUNTIME_MODE=local \
+	QZDA_SANDBOX_RUNTIME_URL=$${QZDA_SANDBOX_RUNTIME_URL:-http://127.0.0.1:8093} \
 	$(GO) run ./cmd/qzda-app
 
 db-reset-dev: docker-engine
 	@bash ../scripts/dev-stack/ensure-docker-postgres.sh
-	@echo "WARNING: drops application schemas in Docker Postgres ($(DE_DATABASE_URL))"
+	@echo "WARNING: drops application schemas in Docker Postgres ($(QZDA_DATABASE_URL))"
 	@$(COMPOSE) exec -T postgres psql -U de -d digital_employee -c "DROP SCHEMA IF EXISTS platform CASCADE; DROP SCHEMA IF EXISTS audit CASCADE; DROP SCHEMA IF EXISTS policy CASCADE; DROP SCHEMA IF EXISTS collab CASCADE; DROP SCHEMA IF EXISTS cap CASCADE;" || true
-	@echo "Restart qzda-app with DE_ENV=development to re-apply migrations / empty durable store."
+	@echo "Restart qzda-app with QZDA_ENV=development to re-apply migrations / empty durable store."
 
 test:
 	# Isolate unit tests from a locally running FastAPI RAG on :8092.
-	DE_RAG_URL=http://127.0.0.1:1 $(GO) test ./...
+	QZDA_RAG_URL=http://127.0.0.1:1 $(GO) test ./...
 
 tidy:
 	$(GO) mod tidy
@@ -78,8 +78,8 @@ compose-up: docker-engine
 				docker exec -i qzda-postgres psql -U de -d digital_employee < "$$f" >/dev/null; \
 			done; \
 			echo "infra ready"; \
-			echo "  DE_DATABASE_URL=$(DE_DATABASE_URL)"; \
-			echo "  DE_REDIS_URL=$(DE_REDIS_URL)"; \
+			echo "  QZDA_DATABASE_URL=$(QZDA_DATABASE_URL)"; \
+			echo "  QZDA_REDIS_URL=$(QZDA_REDIS_URL)"; \
 			exit 0; \
 		fi; \
 		sleep 2; \
@@ -92,22 +92,22 @@ compose-up-full: docker-engine
 
 compose-up-temporal: docker-engine
 	$(COMPOSE) --profile temporal up -d
-	@echo "Temporal frontend: 127.0.0.1:7233 — set DE_TEMPORAL_HOST=127.0.0.1:7233"
+	@echo "Temporal frontend: 127.0.0.1:7233 — set QZDA_TEMPORAL_HOST=127.0.0.1:7233"
 	@echo "Worker: cd backend && make worker"
 
 compose-up-oidc: docker-engine
 	$(COMPOSE) --profile oidc up -d
 	@echo "Dex OIDC: http://127.0.0.1:5556/dex"
-	@echo "  DE_OIDC_ISSUER=http://127.0.0.1:5556/dex"
-	@echo "  DE_OIDC_CLIENT_ID=qzda-core"
-	@echo "  DE_OIDC_CLIENT_SECRET=qzda-core-secret"
-	@echo "  DE_OIDC_AUTH_PATH=/auth"
+	@echo "  QZDA_OIDC_ISSUER=http://127.0.0.1:5556/dex"
+	@echo "  QZDA_OIDC_CLIENT_ID=qzda-core"
+	@echo "  QZDA_OIDC_CLIENT_SECRET=qzda-core-secret"
+	@echo "  QZDA_OIDC_AUTH_PATH=/auth"
 
 compose-up-authentik: docker-engine
 	$(COMPOSE) --profile authentik up -d
 	@echo "Authentik UI: http://127.0.0.1:9000 (bootstrap admin@acme.com / authentik)"
 	@echo "  setup OAuth2 app slug=de → see deploy/authentik/README.md"
-	@echo "  DE_OIDC_ISSUER=http://127.0.0.1:9000/application/o/de/"
+	@echo "  QZDA_OIDC_ISSUER=http://127.0.0.1:9000/application/o/de/"
 
 compose-up-obs: docker-engine
 	$(COMPOSE) --profile obs up -d
@@ -115,7 +115,7 @@ compose-up-obs: docker-engine
 
 compose-up-kafka: docker-engine
 	$(COMPOSE) --profile kafka up -d
-	@echo "Redpanda Kafka: 127.0.0.1:19092 — set DE_KAFKA_BROKERS=127.0.0.1:19092"
+	@echo "Redpanda Kafka: 127.0.0.1:19092 — set QZDA_KAFKA_BROKERS=127.0.0.1:19092"
 
 compose-up-mtls: docker-engine certs
 	$(COMPOSE) --profile mtls up -d
@@ -130,11 +130,11 @@ compose-up-monolith: docker-engine
 	$(COMPOSE) --profile monolith up -d --build
 	@echo "monolith: gateway:8089 → qzda-app:8100 + qzda-skill:8093"
 	@echo "  FE proxy default → http://127.0.0.1:8089"
-	@echo "  optional workflow: DE_WORKFLOW_WORKER=1 DE_TEMPORAL_HOST=... make run-app-workflow"
+	@echo "  optional workflow: QZDA_WORKFLOW_WORKER=1 QZDA_TEMPORAL_HOST=... make run-app-workflow"
 
 compose-up-monolith-workflow: docker-engine
 	@$(MAKE) compose-up
-	DE_WORKFLOW_WORKER=1 DE_TEMPORAL_HOST=$${DE_TEMPORAL_HOST:-127.0.0.1:7233} $(COMPOSE) --profile monolith-workflow up -d --build
+	QZDA_WORKFLOW_WORKER=1 QZDA_TEMPORAL_HOST=$${QZDA_TEMPORAL_HOST:-127.0.0.1:7233} $(COMPOSE) --profile monolith-workflow up -d --build
 	@echo "monolith+workflow: qzda-app (with in-process Temporal worker) + qzda-skill"
 
 compose-up-milvus: docker-engine
@@ -145,7 +145,7 @@ compose-up-milvus: docker-engine
 		echo "  try $$i: milvus=$$ok"; \
 		if [ "$$ok" = "healthy" ]; then \
 			echo "Milvus ready: http://127.0.0.1:19530"; \
-			echo "  export DE_MILVUS_URI=http://127.0.0.1:19530"; \
+			echo "  export QZDA_MILVUS_URI=http://127.0.0.1:19530"; \
 			echo "  pip install -r services/qzda-rag/requirements-milvus.txt && make rag"; \
 			exit 0; \
 		fi; \
@@ -161,8 +161,8 @@ compose-up-replica: docker-engine
 		echo "  try $$i: replica=$$ok"; \
 		if [ "$$ok" = "healthy" ]; then \
 			echo "PG replica ready: postgres://de:de@127.0.0.1:5433/digital_employee?sslmode=disable"; \
-			echo "  export DE_DATABASE_REPLICA_URL=postgres://de:de@127.0.0.1:5433/digital_employee?sslmode=disable"; \
-			echo "  export DE_REPLICA_MODE=standby"; \
+			echo "  export QZDA_DATABASE_REPLICA_URL=postgres://de:de@127.0.0.1:5433/digital_employee?sslmode=disable"; \
+			echo "  export QZDA_REPLICA_MODE=standby"; \
 			exit 0; \
 		fi; \
 		sleep 3; \
@@ -174,7 +174,7 @@ compose-up-replica: docker-engine
 
 compose-up-opa: docker-engine
 	$(COMPOSE) --profile opa up -d
-	@echo "OPA: http://127.0.0.1:8181 — set DE_OPA_URL=http://127.0.0.1:8181"
+	@echo "OPA: http://127.0.0.1:8181 — set QZDA_OPA_URL=http://127.0.0.1:8181"
 
 compose-up-search: docker-engine
 	$(COMPOSE) --profile search up -d
@@ -184,7 +184,7 @@ compose-up-search: docker-engine
 		echo "  try $$i: opensearch=$$ok"; \
 		if [ "$$ok" = "healthy" ]; then \
 			echo "OpenSearch ready: http://127.0.0.1:9200"; \
-			echo "  export DE_OPENSEARCH_URL=http://127.0.0.1:9200"; \
+			echo "  export QZDA_OPENSEARCH_URL=http://127.0.0.1:9200"; \
 			exit 0; \
 		fi; \
 		sleep 3; \
@@ -229,21 +229,21 @@ compose-logs:
 infra-env:
 	@test -f deploy/.env || cp deploy/.env.example deploy/.env
 	@bash ../scripts/dev-stack/ensure-docker-postgres.sh
-	@echo "using DE_DATABASE_URL=$(DE_DATABASE_URL)"
-	@echo "using DE_REDIS_URL=$(DE_REDIS_URL)"
+	@echo "using QZDA_DATABASE_URL=$(QZDA_DATABASE_URL)"
+	@echo "using QZDA_REDIS_URL=$(QZDA_REDIS_URL)"
 
 runtime:
 	pip install -q -r services/qzda-agent-runtime/requirements.txt
-	cd services/qzda-agent-runtime && python3 -m uvicorn app.main:app --host $${DE_BIND_HOST:-127.0.0.1} --port $${DE_BIND_PORT:-8091}
+	cd services/qzda-agent-runtime && python3 -m uvicorn app.main:app --host $${QZDA_BIND_HOST:-127.0.0.1} --port $${QZDA_BIND_PORT:-8091}
 
 rag:
-	@echo "RAG backend: $${DE_MILVUS_URI:-vector-memory}"
+	@echo "RAG backend: $${QZDA_MILVUS_URI:-vector-memory}"
 	pip install -q -r services/qzda-rag/requirements.txt
-	cd services/qzda-rag && python3 -m uvicorn app.main:app --host $${DE_BIND_HOST:-127.0.0.1} --port $${DE_BIND_PORT:-8092}
+	cd services/qzda-rag && python3 -m uvicorn app.main:app --host $${QZDA_BIND_HOST:-127.0.0.1} --port $${QZDA_BIND_PORT:-8092}
 
 skill:
 	pip install -q -r services/qzda-sandbox/requirements.txt
-	cd services/qzda-sandbox && DE_SANDBOX_REQUIRE_ISOLATION=$${DE_SANDBOX_REQUIRE_ISOLATION:-0} python3 -m uvicorn app.main:app --host $${DE_BIND_HOST:-127.0.0.1} --port $${DE_BIND_PORT:-8093}
+	cd services/qzda-sandbox && QZDA_SANDBOX_REQUIRE_ISOLATION=$${QZDA_SANDBOX_REQUIRE_ISOLATION:-0} python3 -m uvicorn app.main:app --host $${QZDA_BIND_HOST:-127.0.0.1} --port $${QZDA_BIND_PORT:-8093}
 
 sync-builtin-skills:
 	@bash ../scripts/sync-builtin-skills.sh

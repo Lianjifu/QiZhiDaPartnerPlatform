@@ -179,9 +179,9 @@ func docxPreviewSubstantiallyShorterThan(payload map[string]any, body string) bo
 	return br >= 200 && pr < br/3
 }
 
-// skillArtifactDir 返回本地 skill 产物落盘目录；DE_SANDBOX_ARTIFACT_DIR 可覆盖默认值。
+// skillArtifactDir 返回本地 skill 产物落盘目录；QZDA_SANDBOX_ARTIFACT_DIR 可覆盖默认值。
 func skillArtifactDir() string {
-	if v := strings.TrimSpace(os.Getenv("DE_SANDBOX_ARTIFACT_DIR")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("QZDA_SANDBOX_ARTIFACT_DIR")); v != "" {
 		return v
 	}
 	return "/tmp/qzda-stack/artifacts"
@@ -307,14 +307,14 @@ func skillArtifactExists(storageName string) bool {
 	return err == nil && !st.IsDir()
 }
 
-// fetchSkillArtifactFromRuntime 从 sandbox runtime 服务（DE_SANDBOX_RUNTIME_URL）拉产物到本地缓存目录。
+// fetchSkillArtifactFromRuntime 从 sandbox runtime 服务（QZDA_SANDBOX_RUNTIME_URL）拉产物到本地缓存目录。
 func fetchSkillArtifactFromRuntime(storageName string) error {
 	storageName = skillArtifactStorageName(storageName)
 	if storageName == "" {
 		return fmt.Errorf("empty artifact name")
 	}
 	client := &http.Client{Timeout: 8 * time.Second}
-	runtimeURL := strings.TrimRight(envOr("DE_SANDBOX_RUNTIME_URL", "http://127.0.0.1:8093"), "/")
+	runtimeURL := strings.TrimRight(envOr("QZDA_SANDBOX_RUNTIME_URL", "http://127.0.0.1:8093"), "/")
 	reqURL := runtimeURL + "/v1/artifacts/" + url.PathEscape(storageName)
 	resp, err := client.Get(reqURL)
 	if err != nil {

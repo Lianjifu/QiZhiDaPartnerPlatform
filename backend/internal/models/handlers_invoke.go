@@ -54,7 +54,7 @@ func (s *Service) ListResolvedTurns(ctx context.Context, ws, requested string) [
 
 // listResolvedTurns returns ordered provider candidates (requested → routing
 // → active/standby). Callers should try each until one streams successfully,
-// then fall back to DE_LLM_* / embedded via streamEnvFallback.
+// then fall back to QZDA_LLM_* / embedded via streamEnvFallback.
 func (s *Service) listResolvedTurns(ctx context.Context, ws, requested string) []ResolvedTurn {
 	requested = strings.TrimSpace(requested)
 
@@ -329,7 +329,7 @@ func (s *Service) newTraceID() string {
 	return fmt.Sprintf("tr-%d", time.Now().UnixNano())
 }
 
-// streamLocalCandidates tries provider candidates, then DE_LLM_*, then
+// streamLocalCandidates tries provider candidates, then QZDA_LLM_*, then
 // embedded chat. Honors per-attempt timeouts (full for primary, shorter for
 // standbys).
 func (s *Service) streamLocalCandidates(ctx context.Context, ws, modelID string, messages []modelprov.ChatMessage, system string, onDelta func(text, resolvedModelID string) error) (string, ResolvedTurn, error) {
@@ -370,12 +370,12 @@ func (s *Service) streamLocalCandidates(ctx context.Context, ws, modelID string,
 }
 
 // candidateAttemptTimeout returns the per-attempt timeout for the primary
-// candidate. Defaults to 45s; tunable via DE_MODEL_CANDIDATE_TIMEOUT.
+// candidate. Defaults to 45s; tunable via QZDA_MODEL_CANDIDATE_TIMEOUT.
 func candidateAttemptTimeout() time.Duration {
 	// Default 45s: DeepSeek / Azure cold path often exceeds the old 8s fail-fast budget
 	// during tool-heavy Copilot turns (pptx skill, multi-step ReAct).
 	sec := 45
-	if v := strings.TrimSpace(os.Getenv("DE_MODEL_CANDIDATE_TIMEOUT")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("QZDA_MODEL_CANDIDATE_TIMEOUT")); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			sec = n
 		}
@@ -390,10 +390,10 @@ func candidateAttemptTimeout() time.Duration {
 }
 
 // candidateStandbyTimeout returns the per-attempt timeout for standby
-// candidates (shorter than the primary). Tunable via DE_MODEL_STANDBY_TIMEOUT.
+// candidates (shorter than the primary). Tunable via QZDA_MODEL_STANDBY_TIMEOUT.
 func candidateStandbyTimeout() time.Duration {
 	sec := 20
-	if v := strings.TrimSpace(os.Getenv("DE_MODEL_STANDBY_TIMEOUT")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("QZDA_MODEL_STANDBY_TIMEOUT")); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			sec = n
 		}
@@ -430,7 +430,7 @@ func clampAttemptToParent(ctx context.Context, budget time.Duration) time.Durati
 // (multi-step ReAct + tools).
 func copilotStreamTimeout() time.Duration {
 	sec := 300
-	if v := strings.TrimSpace(os.Getenv("DE_COPILOT_STREAM_TIMEOUT")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("QZDA_COPILOT_STREAM_TIMEOUT")); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			sec = n
 		}
@@ -465,7 +465,7 @@ func formatModelInvokeUserMessage(err error) string {
 		strings.Contains(low, "client.timeout exceeded"),
 		strings.Contains(low, "i/o timeout"),
 		(strings.Contains(low, "timeout") && !strings.Contains(low, "timed out waiting for lock")):
-		return "模型调用超时：供应商在限定时间内未返回。请到「模型中心」探测连通性与密钥，或将 DE_MODEL_CANDIDATE_TIMEOUT 调至 45–60 后重启 qzda-app/qzda-cap。"
+		return "模型调用超时：供应商在限定时间内未返回。请到「模型中心」探测连通性与密钥，或将 QZDA_MODEL_CANDIDATE_TIMEOUT 调至 45–60 后重启 qzda-app/qzda-cap。"
 	case strings.Contains(low, "no model endpoint"),
 		strings.Contains(low, "empty model"),
 		strings.Contains(low, "model not found"),
@@ -478,7 +478,7 @@ func formatModelInvokeUserMessage(err error) string {
 	}
 }
 
-// streamEnvFallback tries the DE_LLM_* env fallback, then embedded chat,
+// streamEnvFallback tries the QZDA_LLM_* env fallback, then embedded chat,
 // before bubbling up a "no model endpoint available" error.
 func (s *Service) streamEnvFallback(ctx context.Context, messages []modelprov.ChatMessage, system string, onDelta func(text, resolvedModelID string) error, prior error) (string, ResolvedTurn, error) {
 	userMsg := copilot.LastUserContent(messages)
@@ -489,7 +489,7 @@ func (s *Service) streamEnvFallback(ctx context.Context, messages []modelprov.Ch
 		envReq.Messages = messages
 		rt := ResolvedTurn{
 			ModelID: coalesce(envReq.Model, "env-llm"), ModelName: envReq.Model,
-			ProviderID: "env", ProviderName: "DE_LLM", Protocol: envReq.Protocol, Source: "env", Request: envReq,
+			ProviderID: "env", ProviderName: "QZDA_LLM", Protocol: envReq.Protocol, Source: "env", Request: envReq,
 		}
 		text, streamErr := s.streamResolvedChat(ctx, rt, messages, func(t string) error {
 			return onDelta(t, rt.ModelID)

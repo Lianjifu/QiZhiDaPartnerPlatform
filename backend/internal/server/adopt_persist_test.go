@@ -12,7 +12,7 @@ import (
 )
 
 func TestAdoptTemplatePersistsWhenEnabled(t *testing.T) {
-	t.Setenv("DE_ENV", "development")
+	t.Setenv("QZDA_ENV", "development")
 
 	st := store.NewDemo()
 	var mu sync.Mutex
@@ -47,7 +47,7 @@ func TestAdoptTemplatePersistsWhenEnabled(t *testing.T) {
 }
 
 func TestAfterWriteSkippedInDemo(t *testing.T) {
-	t.Setenv("DE_ENV", "demo")
+	t.Setenv("QZDA_ENV", "demo")
 
 	st := store.NewDemo()
 	called := false

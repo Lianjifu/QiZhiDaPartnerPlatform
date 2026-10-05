@@ -1,7 +1,7 @@
 // Package copilot —— copilot 回合的两类进程级限流。
 //
 // 1. 全局限流器 copilotRateLimiter（令牌桶算法）：
-//    按 ws+userID 维度配额，默认 30 req/min（可由 DE_COPILOT_RPM 调整），
+//    按 ws+userID 维度配额，默认 30 req/min（可由 QZDA_COPILOT_RPM 调整），
 //    超额时让 allowCopilotTurn 返回 false 并把计数器 IncCopilotRateLimited 上报。
 //
 // 2. 流式取消表 streamCancels（sync.Map）：
@@ -49,7 +49,7 @@ type copilotRateLimiter struct {
 
 func newCopilotRateLimiter() *copilotRateLimiter {
 	rpm := 30
-	if v := strings.TrimSpace(os.Getenv("DE_COPILOT_RPM")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("QZDA_COPILOT_RPM")); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			rpm = n
 		}

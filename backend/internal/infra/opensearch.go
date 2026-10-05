@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-// OpenSearchAudit indexes and searches audit events (optional DE_OPENSEARCH_URL).
+// OpenSearchAudit indexes and searches audit events (optional QZDA_OPENSEARCH_URL).
 type OpenSearchAudit struct {
 	Base  string
 	Index string
@@ -21,11 +21,11 @@ type OpenSearchAudit struct {
 }
 
 func NewOpenSearchAuditFromEnv() *OpenSearchAudit {
-	base := strings.TrimSpace(os.Getenv("DE_OPENSEARCH_URL"))
+	base := strings.TrimSpace(os.Getenv("QZDA_OPENSEARCH_URL"))
 	if base == "" {
 		return nil
 	}
-	idx := envOr("DE_OPENSEARCH_AUDIT_INDEX", "qzda-audit")
+	idx := envOr("QZDA_OPENSEARCH_AUDIT_INDEX", "qzda-audit")
 	return &OpenSearchAudit{
 		Base:  strings.TrimRight(base, "/"),
 		Index: idx,

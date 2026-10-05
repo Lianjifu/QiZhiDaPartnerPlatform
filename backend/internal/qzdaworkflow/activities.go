@@ -15,11 +15,11 @@ import (
 // beyond pure in-memory simulation.
 func CallTrialActivities(ctx context.Context, workflowID string) []string {
 	steps := []string{"simulate_nodes"}
-	runtimeURL := strings.TrimSpace(os.Getenv("DE_AGENT_RUNTIME_URL"))
+	runtimeURL := strings.TrimSpace(os.Getenv("QZDA_AGENT_RUNTIME_URL"))
 	if runtimeURL == "" {
 		runtimeURL = "http://127.0.0.1:8091"
 	}
-	ragURL := strings.TrimSpace(os.Getenv("DE_RAG_URL"))
+	ragURL := strings.TrimSpace(os.Getenv("QZDA_RAG_URL"))
 	if ragURL == "" {
 		ragURL = "http://127.0.0.1:8092"
 	}

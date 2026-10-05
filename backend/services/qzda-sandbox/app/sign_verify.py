@@ -14,7 +14,7 @@
 
 **运行时校验**:
 1. ``<packagePath>/.signed`` 存在 → 否则 403。
-2. ``signed_by`` 在 ``DE_SANDBOX_TRUSTED_KEY_IDS`` 列表里(逗号分隔) → 否则 403。
+2. ``signed_by`` 在 ``QZDA_SANDBOX_TRUSTED_KEY_IDS`` 列表里(逗号分隔) → 否则 403。
 3. 现读 ``SKILL.md`` SHA256 与 ``.signed.sha256`` 一致 → 否则 403。
 
 **怎么生成 marker**:在 build pipeline 跑一次 ``tools/sign-skill`` Go 程序
@@ -39,11 +39,11 @@ MARKER_FILENAME = ".signed"
 
 
 def _trusted_key_ids() -> list[str]:
-    """从 ``DE_SANDBOX_TRUSTED_KEY_IDS`` 读 CSV,strip 空;空列表 = 不信任何 key。
+    """从 ``QZDA_SANDBOX_TRUSTED_KEY_IDS`` 读 CSV,strip 空;空列表 = 不信任何 key。
 
     找不到 env 时返回 ``[]``,所有 ``signed_by`` 都会判失败 — fail-closed。
     """
-    raw = (os.environ.get("DE_SANDBOX_TRUSTED_KEY_IDS") or "").strip()
+    raw = (os.environ.get("QZDA_SANDBOX_TRUSTED_KEY_IDS") or "").strip()
     if not raw:
         return []
     return [k.strip() for k in raw.split(",") if k.strip()]
@@ -79,7 +79,7 @@ def verify_package_signature(package_path: str) -> tuple[bool, str]:
     """
     trusted = _trusted_key_ids()
     if not trusted:
-        return False, "no trusted signing keys configured (DE_SANDBOX_TRUSTED_KEY_IDS unset)"
+        return False, "no trusted signing keys configured (QZDA_SANDBOX_TRUSTED_KEY_IDS unset)"
     marker = read_marker(package_path)
     if not marker:
         return False, f"missing marker {MARKER_FILENAME!r}"

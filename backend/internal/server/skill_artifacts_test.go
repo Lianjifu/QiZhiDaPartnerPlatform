@@ -35,7 +35,7 @@ func TestDocxDownloadBasename(t *testing.T) {
 
 func TestGenerateDocxArtifactLocal(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("DE_SANDBOX_ARTIFACT_DIR", dir)
+	t.Setenv("QZDA_SANDBOX_ARTIFACT_DIR", dir)
 	filename, download, err := generateDocxArtifactLocal(
 		"skill_docx__招聘岗位模板_docx",
 		"一、基本信息\n岗位名称：人事专员\n\n二、岗位职责\n1. 负责招聘\n\n三、任职资格\n1. 本科及以上\n\n四、其他说明\n薪资面议",
@@ -100,7 +100,7 @@ func TestSanitizeDocxBodyRejectsScript(t *testing.T) {
 
 func TestEnsureSkillArtifactsSkipsCodeBody(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("DE_SANDBOX_ARTIFACT_DIR", dir)
+	t.Setenv("QZDA_SANDBOX_ARTIFACT_DIR", dir)
 	missing := "abc123-test.docx"
 	output := "下载链接：/api/skill-artifacts/" + missing
 	got := ensureSkillArtifactsInOutput(output, "测试", "from docx import Document")
@@ -120,7 +120,7 @@ func TestInferDocxTitleFromMessage(t *testing.T) {
 
 func TestEnsureSkillArtifactsDoesNotCreateWithoutLink(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("DE_SANDBOX_ARTIFACT_DIR", dir)
+	t.Setenv("QZDA_SANDBOX_ARTIFACT_DIR", dir)
 	output := "请下载附件"
 	got := ensureSkillArtifactsInOutput(output, "招聘岗位模板", "一、基本信息\n岗位名称：人事专员")
 	if got != output {
@@ -134,7 +134,7 @@ func TestEnsureSkillArtifactsDoesNotCreateWithoutLink(t *testing.T) {
 
 func TestEnsureSkillArtifactsInOutput(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("DE_SANDBOX_ARTIFACT_DIR", dir)
+	t.Setenv("QZDA_SANDBOX_ARTIFACT_DIR", dir)
 	missing := "abc123-招聘岗位模板.docx"
 	output := "已生成 Word 文档\n下载链接：/api/skill-artifacts/" + missing
 	got := ensureSkillArtifactsInOutput(output, "招聘岗位模板", "一、基本信息\n岗位名称：人事专员")
@@ -193,7 +193,7 @@ func TestResolveDocxBodyForTurnPrefersAssistant(t *testing.T) {
 
 func TestEnsureSkillArtifactsSyncsPlaceholderDocx(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("DE_SANDBOX_ARTIFACT_DIR", dir)
+	t.Setenv("QZDA_SANDBOX_ARTIFACT_DIR", dir)
 	storage := "abc123-招聘岗位模板.docx"
 	placeholder := "title=招聘模板, content=按检索结果整理的可编辑招聘模板正文"
 	if _, _, err := generateDocxArtifactLocal("招聘岗位模板", placeholder); err != nil {

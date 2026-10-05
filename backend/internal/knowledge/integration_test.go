@@ -474,7 +474,7 @@ func TestK7_PackagesListAndCreate(t *testing.T) {
 // Deviation note: the plan listed "/publish" generically. The
 // canonical path shape is /api/knowledge/packages/{id}/{action}; we
 // use {action}=publish against a builtin seed so no SoD countersign
-// or eval-recall gate blocks the publish in a non-DE_ENV=production
+// or eval-recall gate blocks the publish in a non-QZDA_ENV=production
 // test env.
 func TestK8_PackagePublish(t *testing.T) {
 	srv, st := newServer(t)
@@ -989,7 +989,7 @@ func newServerConn(t *testing.T) *server.Server {
 // / TestC9_Unauthorized (M02) precedent.
 func TestK17_Unauthorized(t *testing.T) {
 	srv, _ := newServer(t)
-	t.Setenv("DE_BAN_MOCK_TOKEN", "")
+	t.Setenv("QZDA_BAN_MOCK_TOKEN", "")
 	rr := doRequest(t, srv, http.MethodGet, "/api/knowledge/docs", "", nil)
 	if rr.Code != http.StatusUnauthorized {
 		t.Fatalf("want 401, got %d body=%s", rr.Code, rr.Body.String())

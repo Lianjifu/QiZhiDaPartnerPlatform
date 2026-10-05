@@ -104,7 +104,7 @@ func (s *Service) StreamLLMForCopilot(ctx context.Context, r *http.Request, ws, 
 }
 
 // capBaseURL returns the Cap sidecar base URL (CapBaseURL Deps field, with
-// sensible default fallback). Reads DE_CAP_URL (the canonical var consumed
+// sensible default fallback). Reads QZDA_CAP_URL (the canonical var consumed
 // by the Copilot Cap-hop path) via the Deps.CapBaseURL callback so tests
 // can stub it. Falls back to http://127.0.0.1:8102 (matches the pre-M08
 // P2 behaviour).

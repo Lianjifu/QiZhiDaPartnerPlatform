@@ -119,12 +119,12 @@ func intFromAny(v any, def int) int {
 	return def
 }
 
-// builtinSkillsRoot 解析内置技能目录：先看 DE_BUILTIN_SKILLS_DIR，再按三种常见布局探测。
+// builtinSkillsRoot 解析内置技能目录：先看 QZDA_BUILTIN_SKILLS_DIR，再按三种常见布局探测。
 // builtinSkillsRoot resolves the directory containing the bundled builtin
-// skills. Honors DE_BUILTIN_SKILLS_DIR override, otherwise probes the
+// skills. Honors QZDA_BUILTIN_SKILLS_DIR override, otherwise probes the
 // three common layouts (cwd-relative + workspace-relative).
 func builtinSkillsRoot() string {
-	if v := strings.TrimSpace(os.Getenv("DE_BUILTIN_SKILLS_DIR")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("QZDA_BUILTIN_SKILLS_DIR")); v != "" {
 		return v
 	}
 	candidates := []string{

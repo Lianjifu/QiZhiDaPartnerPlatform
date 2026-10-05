@@ -80,19 +80,19 @@ func hasCapability(caps []string, want string) bool {
 // capBaseURL returns the Cap sidecar base URL. Used by the Copilot
 // (M02), peer-fetch, cap-delegate, handlers_internal modules — kept here
 // because the M08 models package Deps.CapBaseURL callback wants the
-// same source of truth. Defaults to localhost:8088 when DE_CAP_BASE_URL
+// same source of truth. Defaults to localhost:8088 when QZDA_CAP_BASE_URL
 // is unset (matches the pre-M08 P2 behaviour).
 func capBaseURL() string {
 	return capBaseURLFromEnv()
 }
 
 // copilotStreamTimeout returns the overall Copilot harness SSE budget
-// (multi-step ReAct + tools). Tunable via DE_COPILOT_STREAM_TIMEOUT.
+// (multi-step ReAct + tools). Tunable via QZDA_COPILOT_STREAM_TIMEOUT.
 // Kept here because peer.go's HTTP client timeout and handlers_c.go's
 // runtime-loop SSE consumer both need the same budget.
 func copilotStreamTimeout() time.Duration {
 	sec := 300
-	if v := strings.TrimSpace(os.Getenv("DE_COPILOT_STREAM_TIMEOUT")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("QZDA_COPILOT_STREAM_TIMEOUT")); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			sec = n
 		}
@@ -128,7 +128,7 @@ func formatModelInvokeUserMessage(err error) string {
 		strings.Contains(low, "client.timeout exceeded"),
 		strings.Contains(low, "i/o timeout"),
 		(strings.Contains(low, "timeout") && !strings.Contains(low, "timed out waiting for lock")):
-		return "模型调用超时：供应商在限定时间内未返回。请到「模型中心」探测连通性与密钥，或将 DE_MODEL_CANDIDATE_TIMEOUT 调至 45–60 后重启 qzda-app/qzda-cap。"
+		return "模型调用超时：供应商在限定时间内未返回。请到「模型中心」探测连通性与密钥，或将 QZDA_MODEL_CANDIDATE_TIMEOUT 调至 45–60 后重启 qzda-app/qzda-cap。"
 	case strings.Contains(low, "no model endpoint"),
 		strings.Contains(low, "empty model"),
 		strings.Contains(low, "model not found"),
@@ -234,12 +234,12 @@ func candidateAttemptTimeout() time.Duration {
 	return candidateAttemptTimeoutFromEnv()
 }
 
-// candidateAttemptTimeoutFromEnv reads DE_MODEL_CANDIDATE_TIMEOUT (default
+// candidateAttemptTimeoutFromEnv reads QZDA_MODEL_CANDIDATE_TIMEOUT (default
 // 45s) — the implementation backing both candidateAttemptTimeout and the
 // models.streamLocalCandidates internal default.
 func candidateAttemptTimeoutFromEnv() time.Duration {
 	sec := 45
-	if v := strings.TrimSpace(os.Getenv("DE_MODEL_CANDIDATE_TIMEOUT")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("QZDA_MODEL_CANDIDATE_TIMEOUT")); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			sec = n
 		}

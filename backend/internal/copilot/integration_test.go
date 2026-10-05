@@ -384,7 +384,7 @@ func TestC7_InternalPostTurn(t *testing.T) {
 
 // TestC8_RateLimit floods the copilot stream endpoint with rapid POSTs
 // to trip the per-(workspace,user) rate-limit bucket. The default config
-// (DE_COPILOT_RPM=30) gives burst=30, so 31 rapid calls guarantee a 429.
+// (QZDA_COPILOT_RPM=30) gives burst=30, so 31 rapid calls guarantee a 429.
 //
 // Deviation note: the task spec suggests testing /api/copilot/conversations
 // (the create endpoint) but that endpoint has no rate limit — only the
@@ -416,7 +416,7 @@ func TestC8_RateLimit(t *testing.T) {
 // requests with 401, mirroring TestProtectedRouteReturns401WithoutToken.
 func TestC9_Unauthorized(t *testing.T) {
 	srv, _ := newServer(t)
-	t.Setenv("DE_BAN_MOCK_TOKEN", "")
+	t.Setenv("QZDA_BAN_MOCK_TOKEN", "")
 	rr := doRequest(t, srv, http.MethodGet, "/api/copilot/conversations", "", nil)
 	if rr.Code != http.StatusUnauthorized {
 		t.Fatalf("want 401, got %d body=%s", rr.Code, rr.Body.String())

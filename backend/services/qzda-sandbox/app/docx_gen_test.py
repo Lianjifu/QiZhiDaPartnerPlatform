@@ -60,7 +60,7 @@ def test_accepts_plain_text_body(tmp_path, monkeypatch):
     使用 ``tmp_path`` + ``monkeypatch`` 把制品目录指向临时目录,
     避免污染真实文件系统;``downloadName`` 应包含标题中文。
     """
-    monkeypatch.setenv("DE_SANDBOX_ARTIFACT_DIR", str(tmp_path))
+    monkeypatch.setenv("QZDA_SANDBOX_ARTIFACT_DIR", str(tmp_path))
     result = build_docx_artifact(
         {
             "action": "generate_docx",

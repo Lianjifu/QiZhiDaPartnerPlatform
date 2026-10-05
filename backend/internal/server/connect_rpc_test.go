@@ -98,7 +98,7 @@ func TestConnectJSONGatewayPlatformListWorkspaces(t *testing.T) {
 }
 
 func TestConnectRPCStreamTurnUsesHarness(t *testing.T) {
-	t.Setenv("DE_RUNTIME_MODE", "local")
+	t.Setenv("QZDA_RUNTIME_MODE", "local")
 	h := server.New(store.New()).Handler()
 	client := collabv1connect.NewCollabServiceClient(&http.Client{Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
 		req.Header.Set("Authorization", "Bearer mock-admin-token")
@@ -172,7 +172,7 @@ func TestConnectRPCReplayTurnNotFound(t *testing.T) {
 }
 
 func TestConnectRPCRuntimeRun(t *testing.T) {
-	t.Setenv("DE_RUNTIME_MODE", "local")
+	t.Setenv("QZDA_RUNTIME_MODE", "local")
 	h := server.New(store.New()).Handler()
 	client := runtimev1connect.NewRuntimeServiceClient(&http.Client{Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
 		req.Header.Set("Authorization", "Bearer mock-admin-token")
@@ -212,7 +212,7 @@ func TestConnectRPCRuntimeRun(t *testing.T) {
 }
 
 func TestConnectJSONGatewayRuntimeRun(t *testing.T) {
-	t.Setenv("DE_RUNTIME_MODE", "local")
+	t.Setenv("QZDA_RUNTIME_MODE", "local")
 	h := server.New(store.New()).Handler()
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/connect/qzda.runtime.v1.RuntimeService/Run",

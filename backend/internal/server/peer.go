@@ -14,7 +14,7 @@ import (
 )
 
 func collabBaseURL() string {
-	if v := strings.TrimSpace(os.Getenv("DE_COLLAB_URL")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("QZDA_COLLAB_URL")); v != "" {
 		return strings.TrimRight(v, "/")
 	}
 	return "http://127.0.0.1:8101"

@@ -17,23 +17,23 @@ import (
 
 // initMultimodal builds the registry + registers the built-in stub
 // providers. Real providers (Tesseract, Whisper, vendor SDKs) plug in
-// here when DE_MULTIMODAL_OCR / DE_MULTIMODAL_ASR are configured.
+// here when QZDA_MULTIMODAL_OCR / QZDA_MULTIMODAL_ASR are configured.
 func (s *Server) initMultimodal() {
 	r := multimodal.New()
-	r.SetCacheDir(strings.TrimSpace(lookupEnv("DE_MULTIMODAL_CACHE_DIR")))
-	if dir := strings.TrimSpace(lookupEnv("DE_MULTIMODAL_CACHE_DIR")); dir != "" {
+	r.SetCacheDir(strings.TrimSpace(lookupEnv("QZDA_MULTIMODAL_CACHE_DIR")))
+	if dir := strings.TrimSpace(lookupEnv("QZDA_MULTIMODAL_CACHE_DIR")); dir != "" {
 		log.Printf("multimodal: cache dir=%s", dir)
 	}
 
 	// Stub OCR provider: deterministic, no external dep. The
-	// DE_MULTIMODAL_OCR switch (off | stub | tesseract) decides what
+	// QZDA_MULTIMODAL_OCR switch (off | stub | tesseract) decides what
 	// runs at boot. Default "off" = no provider registered.
-	modeOCR := strings.ToLower(strings.TrimSpace(lookupEnv("DE_MULTIMODAL_OCR")))
+	modeOCR := strings.ToLower(strings.TrimSpace(lookupEnv("QZDA_MULTIMODAL_OCR")))
 	if modeOCR == "stub" {
 		r.Register(&ocrStubProvider{})
 		log.Printf("multimodal: OCR provider=stub (no real extraction)")
 	}
-	modeASR := strings.ToLower(strings.TrimSpace(lookupEnv("DE_MULTIMODAL_ASR")))
+	modeASR := strings.ToLower(strings.TrimSpace(lookupEnv("QZDA_MULTIMODAL_ASR")))
 	if modeASR == "stub" {
 		r.Register(&asrStubProvider{})
 		log.Printf("multimodal: ASR provider=stub (no real extraction)")
@@ -120,7 +120,7 @@ func (s *Server) multimodalExtractHandler(w http.ResponseWriter, r *http.Request
 }
 
 // ocrStubProvider echoes input bytes as text. Documented in ADR-026
-// as the "DE_MULTIMODAL_OCR=stub" mode used in CI and dev.
+// as the "QZDA_MULTIMODAL_OCR=stub" mode used in CI and dev.
 type ocrStubProvider struct{}
 
 func (p *ocrStubProvider) Name() string                  { return "ocr-stub" }

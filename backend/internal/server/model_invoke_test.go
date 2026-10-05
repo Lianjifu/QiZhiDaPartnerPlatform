@@ -26,7 +26,7 @@ func TestJoinChatURL(t *testing.T) {
 }
 
 func TestStreamChatOpenAICompatible(t *testing.T) {
-	t.Setenv("DE_MODEL_ALLOW_PRIVATE", "1")
+	t.Setenv("QZDA_MODEL_ALLOW_PRIVATE", "1")
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/chat/completions", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
@@ -134,7 +134,7 @@ func seedLocalChatProvider(st *store.Store, baseURL string) {
 }
 
 func TestModelInvokeStreamHandler(t *testing.T) {
-	t.Setenv("DE_MODEL_ALLOW_PRIVATE", "1")
+	t.Setenv("QZDA_MODEL_ALLOW_PRIVATE", "1")
 	muxProvider := http.NewServeMux()
 	muxProvider.HandleFunc("/v1/chat/completions", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -168,7 +168,7 @@ func TestModelInvokeStreamHandler(t *testing.T) {
 }
 
 func TestCopilotStreamUsesModelInvoke(t *testing.T) {
-	t.Setenv("DE_MODEL_ALLOW_PRIVATE", "1")
+	t.Setenv("QZDA_MODEL_ALLOW_PRIVATE", "1")
 	muxProvider := http.NewServeMux()
 	muxProvider.HandleFunc("/v1/chat/completions", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
@@ -209,8 +209,8 @@ func TestCopilotStreamUsesModelInvoke(t *testing.T) {
 }
 
 func TestCopilotStreamEmbeddedFallback(t *testing.T) {
-	t.Setenv("DE_EMBEDDED_CHAT", "1")
-	t.Setenv("DE_MODEL_CANDIDATE_TIMEOUT", "1")
+	t.Setenv("QZDA_EMBEDDED_CHAT", "1")
+	t.Setenv("QZDA_MODEL_CANDIDATE_TIMEOUT", "1")
 	st := store.New()
 	st.Lock()
 	st.ModelProviders = nil // force embedded path
@@ -242,8 +242,8 @@ func TestCopilotStreamEmbeddedFallback(t *testing.T) {
 }
 
 func TestCopilotStreamAllowsMissingEmployee(t *testing.T) {
-	t.Setenv("DE_EMBEDDED_CHAT", "1")
-	t.Setenv("DE_MODEL_CANDIDATE_TIMEOUT", "1")
+	t.Setenv("QZDA_EMBEDDED_CHAT", "1")
+	t.Setenv("QZDA_MODEL_CANDIDATE_TIMEOUT", "1")
 	st := store.New()
 	st.Lock()
 	st.ModelProviders = nil

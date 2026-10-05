@@ -18,17 +18,17 @@ func isCMDBTool(name string) bool {
 }
 
 func cmdbExternalURL() string {
-	return strings.TrimSpace(os.Getenv("DE_CMDB_URL"))
+	return strings.TrimSpace(os.Getenv("QZDA_CMDB_URL"))
 }
 
 func cmdbRequireExternal() bool {
-	v := strings.ToLower(strings.TrimSpace(os.Getenv("DE_CMDB_REQUIRE_EXTERNAL")))
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("QZDA_CMDB_REQUIRE_EXTERNAL")))
 	return v == "1" || v == "true" || v == "yes"
 }
 
 // runCMDBLookup is a read-only asset/CI lookup for Copilot tools named like CMDB.
-// Prefer DE_CMDB_URL when set; otherwise search the platform catalog (knowledge graph + demo CIs).
-// When DE_CMDB_REQUIRE_EXTERNAL=1 and URL is unset, returns unavailable (honest failure).
+// Prefer QZDA_CMDB_URL when set; otherwise search the platform catalog (knowledge graph + demo CIs).
+// When QZDA_CMDB_REQUIRE_EXTERNAL=1 and URL is unset, returns unavailable (honest failure).
 func (s *Server) runCMDBLookup(ctx toolRunContext, t *registeredTool, call toolCallRequest, started time.Time) toolExecResult {
 	query := strings.TrimSpace(coalesce(
 		str(call.Args["query"]),
@@ -47,7 +47,7 @@ func (s *Server) runCMDBLookup(ctx toolRunContext, t *registeredTool, call toolC
 			Status: "unavailable", DurationMs: int(time.Since(started).Milliseconds()),
 			Permission: "unavailable",
 			Error:      "CMDB 外部依赖未配置",
-			Output:     "工具「" + t.Name + "」标记为需外部 CMDB（DE_CMDB_REQUIRE_EXTERNAL=1），但未设置 DE_CMDB_URL。",
+			Output:     "工具「" + t.Name + "」标记为需外部 CMDB（QZDA_CMDB_REQUIRE_EXTERNAL=1），但未设置 QZDA_CMDB_URL。",
 		}
 	}
 

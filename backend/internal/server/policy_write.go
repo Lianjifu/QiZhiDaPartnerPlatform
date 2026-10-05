@@ -9,7 +9,7 @@ import (
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
-// evaluateWrite runs policy (DE_POLICY_URL → qzda-sys when set) and audits the decision.
+// evaluateWrite runs policy (QZDA_POLICY_URL → qzda-sys when set) and audits the decision.
 func (s *Server) evaluateWrite(r *http.Request, resource, action string, extra policy.Input) error {
 	s.Store.Lock()
 	defer s.Store.Unlock()

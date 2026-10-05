@@ -20,7 +20,7 @@ type OIDCConfig struct {
 	ClientSecret  string
 	RedirectURL   string
 	Enabled       bool
-	AllowDevCodes bool // DE_OIDC_ALLOW_DEV_CODES=1 → code=admin|user|audit for local demos
+	AllowDevCodes bool // QZDA_OIDC_ALLOW_DEV_CODES=1 → code=admin|user|audit for local demos
 	HTTPClient    *http.Client
 	// Optional overrides (tests / non-standard IdPs).
 	TokenURL   string
@@ -29,18 +29,18 @@ type OIDCConfig struct {
 }
 
 func LoadOIDC() OIDCConfig {
-	issuer := strings.TrimSpace(os.Getenv("DE_OIDC_ISSUER"))
+	issuer := strings.TrimSpace(os.Getenv("QZDA_OIDC_ISSUER"))
 	return OIDCConfig{
 		Issuer:        issuer,
-		ClientID:      os.Getenv("DE_OIDC_CLIENT_ID"),
-		ClientSecret:  os.Getenv("DE_OIDC_CLIENT_SECRET"),
-		RedirectURL:   envOr("DE_OIDC_REDIRECT_URL", "http://127.0.0.1:8089/api/auth/oidc/callback"),
+		ClientID:      os.Getenv("QZDA_OIDC_CLIENT_ID"),
+		ClientSecret:  os.Getenv("QZDA_OIDC_CLIENT_SECRET"),
+		RedirectURL:   envOr("QZDA_OIDC_REDIRECT_URL", "http://127.0.0.1:8089/api/auth/oidc/callback"),
 		Enabled:       issuer != "",
-		AllowDevCodes: os.Getenv("DE_OIDC_ALLOW_DEV_CODES") == "1",
+		AllowDevCodes: os.Getenv("QZDA_OIDC_ALLOW_DEV_CODES") == "1",
 		HTTPClient:    &http.Client{Timeout: 15 * time.Second},
-		TokenURL:      strings.TrimSpace(os.Getenv("DE_OIDC_TOKEN_URL")),
-		UserInfoURL:   strings.TrimSpace(os.Getenv("DE_OIDC_USERINFO_URL")),
-		AuthPath:      envOr("DE_OIDC_AUTH_PATH", "/authorize"),
+		TokenURL:      strings.TrimSpace(os.Getenv("QZDA_OIDC_TOKEN_URL")),
+		UserInfoURL:   strings.TrimSpace(os.Getenv("QZDA_OIDC_USERINFO_URL")),
+		AuthPath:      envOr("QZDA_OIDC_AUTH_PATH", "/authorize"),
 	}
 }
 
@@ -62,7 +62,7 @@ func (c OIDCConfig) client() *http.Client {
 // Prefers OpenID discovery (Authentik/Dex); falls back to issuer+AuthPath.
 func (c OIDCConfig) AuthURL(state string) (string, error) {
 	if !c.Enabled {
-		return "", errors.New("OIDC 未配置：设置 DE_OIDC_ISSUER 指向 Authentik/Dex")
+		return "", errors.New("OIDC 未配置：设置 QZDA_OIDC_ISSUER 指向 Authentik/Dex")
 	}
 	if state == "" {
 		return "", errors.New("缺少 OIDC state")

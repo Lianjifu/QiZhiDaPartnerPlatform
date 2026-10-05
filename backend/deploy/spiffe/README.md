@@ -10,7 +10,7 @@ make certs            # 长周期（开发）
 make certs-rotate     # 叶子证书 TTL=1 天（保留 CA）
 ```
 
-默认 trust domain：`de.local`（可用 `DE_SPIFFE_TRUST_DOMAIN` 覆盖）。
+默认 trust domain：`de.local`（可用 `QZDA_SPIFFE_TRUST_DOMAIN` 覆盖）。
 
 | 身份 | SPIFFE ID |
 |------|-----------|

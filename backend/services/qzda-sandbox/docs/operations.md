@@ -33,9 +33,9 @@ Cgroup 层(`app/main.py:_pids_limit / _memory_limit_bytes`,
 | | Default env | 含义 |
 |---|---|---|
 | Container pid limit | compose `pids_limit: 128` | 全容器进程数 |
-| Per-exec NPROC | `DE_SANDBOX_DEFAULT_PIDS=64` | `prlimit(2)` 派发上限 |
-| Per-exec CPU | `DE_SANDBOX_DEFAULT_CPU_SECS=30` | 超时触发 SIGXCPU |
-| Per-exec AS | `DE_SANDBOX_DEFAULT_MEM_MB=512` | 虚拟地址上限 |
+| Per-exec NPROC | `QZDA_SANDBOX_DEFAULT_PIDS=64` | `prlimit(2)` 派发上限 |
+| Per-exec CPU | `QZDA_SANDBOX_DEFAULT_CPU_SECS=30` | 超时触发 SIGXCPU |
+| Per-exec AS | `QZDA_SANDBOX_DEFAULT_MEM_MB=512` | 虚拟地址上限 |
 
 Healthz probe cadence(Compose):
 
@@ -66,7 +66,7 @@ runsc install
 - 读 `/proc/version`,含 `gvisor` 字串 → runsc 容器
 - 读 `/dev/kvm` 决定 `runsc-kvm` / `runsc-ptrace`
 - 读 `/proc/1/cmdline` 兜底识别 `runsc-kvm` / `runsc` / `runc` / 兜底 `process`
-- 镜像入口 `docker-entrypoint.sh` 探测后把结果写到 `DE_SANDBOX_RUNTIME_DETECTED`
+- 镜像入口 `docker-entrypoint.sh` 探测后把结果写到 `QZDA_SANDBOX_RUNTIME_DETECTED`
 
 **macOS / 无 KVM host** — 走 `runsc-ptrace`,性能差但稳定。Linux + `/dev/kvm` 暴露
 则走 `runsc-kvm`,+200ms 启动开销,syscall 层拦截。
@@ -85,7 +85,7 @@ runsc install
 ## Rate limit 观测
 
 [`app/rate_limit.py`](../app/rate_limit.py) 实现 token-bucket,per
-`(workspaceId, actorId)` + per-IP,滑动 60s,默认 `DE_SANDBOX_RATE_LIMIT_PER_MIN=60`。
+`(workspaceId, actorId)` + per-IP,滑动 60s,默认 `QZDA_SANDBOX_RATE_LIMIT_PER_MIN=60`。
 
 指标 `rate_limit_rejected_total{scope}`(scope ∈ ws / actor / ip)。
 
@@ -97,7 +97,7 @@ Scrape target: `qzda-sandbox:8093/metrics`,已在 `backend/deploy/obs/prometheus
 OTel:
 
 - `OTEL_EXPORTER_OTLP_ENDPOINT` 环境变量设置后发远端
-- correlation_id 通过 OTel span attribute + 子进程 env (`DE_SANDBOX_CORRELATION_ID`)
+- correlation_id 通过 OTel span attribute + 子进程 env (`QZDA_SANDBOX_CORRELATION_ID`)
   端到端 trace
 
 ## 常见 footgun
@@ -106,7 +106,7 @@ OTel:
 | --- | --- | --- |
 | `lsof -i :8093` 报两个 listener | host `services/qzda-sandbox/main.py` 与容器 uvicorn 都起了 8093 | 杀 host,只用容器(详细见 auto-memory `sandbox_port_conflict.md`) |
 | `/v1/execute` 始终 401 `runToken expired` | 控制面与沙箱时钟漂移 > 60s | ntpdate / chrony 对齐 |
-| `DE_SANDBOX_SANDBOX=gvisor-local` 沙箱降级 `process` | 没设 runsc | 见上文 *gVisor 启用* |
+| `QZDA_SANDBOX_SANDBOX=gvisor-local` 沙箱降级 `process` | 没设 runsc | 见上文 *gVisor 启用* |
 | `sealelf: not found` 容器启动失败 | Dockerfile builder stage 缺 `libc6-dev`,本机 `Makefile` 没跑 `make bake` | `make bake` 重 build |
 | `egressProxyUp: false` 持续 | 127.0.0.1:8080 起不来 | 检查 `EgressProxy.start()` 日志;`lsof -i :8080` 看端口冲突 |
 | `skill package signature check failed` | builtin / 用户上传包签名不匹配 | 重签(`cmd/sign-skill`)或重传原 `.skill` 包 |

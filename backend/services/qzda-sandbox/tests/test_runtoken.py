@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.sandbox import verify_run_token  # noqa: E402
 
-os.environ.setdefault("DE_SANDBOX_RUN_SECRET", "test-secret")
+os.environ.setdefault("QZDA_SANDBOX_RUN_SECRET", "test-secret")
 
 
 def mint(skill: str, ws: str, actor: str, exp: int) -> str:

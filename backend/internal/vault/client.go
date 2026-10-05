@@ -29,9 +29,9 @@ type Client struct {
 
 func NewFromEnv() *Client {
 	return &Client{
-		addr:  strings.TrimSpace(os.Getenv("DE_VAULT_ADDR")),
-		token: strings.TrimSpace(os.Getenv("DE_VAULT_TOKEN")),
-		mount: envOr("DE_VAULT_KV_MOUNT", "secret"),
+		addr:  strings.TrimSpace(os.Getenv("QZDA_VAULT_ADDR")),
+		token: strings.TrimSpace(os.Getenv("QZDA_VAULT_TOKEN")),
+		mount: envOr("QZDA_VAULT_KV_MOUNT", "secret"),
 		http:  &http.Client{Timeout: 10 * time.Second},
 		stub:  map[string]string{},
 	}
@@ -140,7 +140,7 @@ func (c *Client) Resolve(ctx context.Context, ref string) (string, error) {
 		return "", errors.New("凭据未找到: " + ref)
 	}
 	if c.token == "" {
-		return "", errors.New("DE_VAULT_TOKEN 未配置")
+		return "", errors.New("QZDA_VAULT_TOKEN 未配置")
 	}
 	url := strings.TrimRight(c.addr, "/") + "/v1/" + c.mount + "/data/" + path
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)

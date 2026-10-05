@@ -7,9 +7,9 @@ import (
 )
 
 // EmbeddedChatEnabled is the last-resort local chat when no remote provider works.
-// Disable with DE_EMBEDDED_CHAT=0 (production with mandatory external LLM).
+// Disable with QZDA_EMBEDDED_CHAT=0 (production with mandatory external LLM).
 func EmbeddedChatEnabled() bool {
-	v := strings.TrimSpace(os.Getenv("DE_EMBEDDED_CHAT"))
+	v := strings.TrimSpace(os.Getenv("QZDA_EMBEDDED_CHAT"))
 	if v == "" {
 		return true
 	}

@@ -17,7 +17,7 @@ help:
 	@echo "Env knobs (override on the command line):"
 	@echo "  SKILL_DIR    builtin skills dir   [backend/builtin/skills]"
 	@echo "  MANIFEST      manifest.json path    [backend/builtin/skills/manifest.json]"
-	@echo "  DE_STACK      monolith | coarse    [monolith]"
+	@echo "  QZDA_STACK      monolith | coarse    [monolith]"
 
 # ---------- Backend ----------
 
@@ -54,14 +54,14 @@ ci-frontend:
 # qzda-app :8100 + sandbox :8093 + Vite :5173. Wraps the launchd-supervised
 # restart-stack.sh so the stack survives transient crashes.
 #
-# DE_STACK=coarse switches to the split qzda-sys / qzda-collab / qzda-cap
+# QZDA_STACK=coarse switches to the split qzda-sys / qzda-collab / qzda-cap
 # topology. See docs/数字伙伴平台-架构文档.md.
 
-DE_STACK ?= monolith
-export DE_STACK
+QZDA_STACK ?= monolith
+export QZDA_STACK
 
 run-app:
-	DE_STACK=$(DE_STACK) ./scripts/dev-stack/restart-stack.sh start
+	QZDA_STACK=$(QZDA_STACK) ./scripts/dev-stack/restart-stack.sh start
 
 run-app-stop:
 	./scripts/dev-stack/restart-stack.sh stop

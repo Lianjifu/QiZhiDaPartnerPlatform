@@ -15,7 +15,7 @@ if __name__ == "__main__":
 
     from app.main import BACKEND, INDEX  # noqa: F401
 
-    host = os.environ.get("DE_BIND_HOST", "127.0.0.1")
-    port = int(os.environ.get("DE_BIND_PORT", "8092") or "8092")
+    host = os.environ.get("QZDA_BIND_HOST", "127.0.0.1")
+    port = int(os.environ.get("QZDA_BIND_PORT", "8092") or "8092")
     print(f"qzda-rag on http://{host}:{port} backend={BACKEND}")
     uvicorn.run("app.main:app", host=host, port=port, reload=False)

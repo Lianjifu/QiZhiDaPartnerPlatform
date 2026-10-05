@@ -30,9 +30,9 @@ func skillRunSecret() string {
 	// 则返回 "",由 MintRunToken / VerifyRunToken 在启动期调用者那里
 	// 决定是否 panic(便于 compose / k8s 立刻重启,而不是"先起来等 token 再挂")。
 	//
-	// 1. DE_SANDBOX_RUN_SECRET_FILE(Docker secrets 长语法 mount,默认 /etc/qzda/skill-run-secret)
-	// 2. DE_SANDBOX_RUN_SECRET 环境变量 — 拒绝硬编码占位 "qzda-skill-run-dev"
-	if path := os.Getenv("DE_SANDBOX_RUN_SECRET_FILE"); path != "" {
+	// 1. QZDA_SANDBOX_RUN_SECRET_FILE(Docker secrets 长语法 mount,默认 /etc/qzda/skill-run-secret)
+	// 2. QZDA_SANDBOX_RUN_SECRET 环境变量 — 拒绝硬编码占位 "qzda-skill-run-dev"
+	if path := os.Getenv("QZDA_SANDBOX_RUN_SECRET_FILE"); path != "" {
 		if data, err := os.ReadFile(path); err == nil {
 			v := strings.TrimSpace(string(data))
 			if v != "" {
@@ -40,7 +40,7 @@ func skillRunSecret() string {
 			}
 		}
 	}
-	if env := strings.TrimSpace(os.Getenv("DE_SANDBOX_RUN_SECRET")); env != "" && env != "qzda-skill-run-dev" {
+	if env := strings.TrimSpace(os.Getenv("QZDA_SANDBOX_RUN_SECRET")); env != "" && env != "qzda-skill-run-dev" {
 		return env
 	}
 	return ""

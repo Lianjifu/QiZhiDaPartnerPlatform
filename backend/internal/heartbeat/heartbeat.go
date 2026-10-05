@@ -15,7 +15,7 @@
 //   - lastSeen is wall-clock UTC; clients never set it directly. The
 //     middleware overwrites on every request — clients cannot keep
 //     themselves "online" by lying about timestamps.
-//   - stale after 3× the configured interval (or DE_HEARTBEAT_STALE if
+//   - stale after 3× the configured interval (or QZDA_HEARTBEAT_STALE if
 //     set), so a missed beat or two doesn't drop presence.
 //   - SSE subscribers are non-blocking — a slow consumer drops events,
 //     not the writer. Documented in the subscription helper.

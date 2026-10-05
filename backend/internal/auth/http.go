@@ -90,9 +90,9 @@ type loginBody struct {
 // Login is the password / OIDC-gated login handler.
 //
 // Behavior (preserved byte-for-byte from the previous server.login):
-//   - DE_FORCE_OIDC=1 → 403 with "请使用 OIDC".
+//   - QZDA_FORCE_OIDC=1 → 403 with "请使用 OIDC".
 //   - Missing email/password → 400 with "缺少凭据".
-//   - Returns a stable mock token for FE smoke; production (DE_BAN_MOCK_TOKEN)
+//   - Returns a stable mock token for FE smoke; production (QZDA_BAN_MOCK_TOKEN)
 //     issues JWT instead via auth.Sign (unless caller already prefers JWT via
 //     x-prefer-jwt: 1 header).
 //   - Writes a "登录" audit row on success.
@@ -120,7 +120,7 @@ func (h *Handler) Login(r *http.Request) (any, error) {
 		TenantID: "tenant-acme", WorkspaceID: ws[0], WorkspaceIDs: ws,
 		EnvironmentScopes: scopes, Permissions: RolePermissions(role), MFAEnabled: true,
 	}
-	// Prefer stable mock tokens for FE smoke; production (DE_BAN_MOCK_TOKEN) issues JWT only.
+	// Prefer stable mock tokens for FE smoke; production (QZDA_BAN_MOCK_TOKEN) issues JWT only.
 	token := "mock-user-token"
 	switch role {
 	case "admin":
@@ -154,7 +154,7 @@ func (h *Handler) OIDCLogin(r *http.Request) (any, error) {
 	if h.OIDC == nil || !h.OIDC.Enabled {
 		return map[string]any{
 			"enabled":      false,
-			"hint":         "设置 DE_OIDC_ISSUER / DE_OIDC_CLIENT_ID 后启用 Authentik/Dex OIDC",
+			"hint":         "设置 QZDA_OIDC_ISSUER / QZDA_OIDC_CLIENT_ID 后启用 Authentik/Dex OIDC",
 			"stubCallback": "/api/auth/oidc/callback?code=admin&state=" + state,
 			"state":        state,
 		}, nil

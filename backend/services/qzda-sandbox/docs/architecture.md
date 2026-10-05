@@ -18,7 +18,7 @@ app/main.py         FastAPI 入口 + 路由(/healthz、/v1/execute、/v1/artifac
    │              ├── libqzda_egress.so     LD_PRELOAD — 非环回 connect 重定向到代理
    │              ├── /tmp/qzda-bootstrap/sitecustomize.py
    │              │     Python 子进程 DnsGate(phase 2:空 allowlist 仍安装)
-   │              │     + audit_hooks.install_audit_hooks()(DE_SANDBOX_AUDIT=1 时)
+   │              │     + audit_hooks.install_audit_hooks()(QZDA_SANDBOX_AUDIT=1 时)
    │              └── preexec_fn=make_preexec()     prlimit(RLIMIT_NPROC/AS/CPU)
    │
    ├─► app/egress_proxy.py      阶段 2 — 常驻 127.0.0.1:8080 stdlib 出口代理
@@ -52,16 +52,16 @@ PR2 (`7ed63a9`) 把这一路关死:
 ## RunToken 流(数字标号与 [`app/main.py:183`](../app/main.py) 一致)
 
 1. **签发** — Go 控制面 `qzda-app` 在 `internal/auth/runtoken.go` 用共享 HMAC 密钥
-   (`DE_SANDBOX_RUN_SECRET`)签 `v1.<payload>.<sig>`,claims 含 `workspaceId` /
+   (`QZDA_SANDBOX_RUN_SECRET`)签 `v1.<payload>.<sig>`,claims 含 `workspaceId` /
    `skillId` / `allowedEgress` / `exp`。
 2. **调用** — 调用方 `POST /v1/execute` 带 body JSON + 上述 token。
 3. **rate limit** — `app/rate_limit.py` 在鉴权前先 hit 一次(防止假 token 真 flood)。
 5. **HMAC 验证** — [`app/main.py:245`](../app/main.py) 调
    [`app/sandbox.py:verify_run_token`](../app/sandbox.py);`iat` ±60s,`exp` 未过期。
-6. **进程环境隔离** — [`app/main.py:265`](../app/main.py) 二次过滤 `DE_DATABASE_URL`
+6. **进程环境隔离** — [`app/main.py:265`](../app/main.py) 二次过滤 `QZDA_DATABASE_URL`
    等控制面变量;`denyControlPlane=False` 显式拒绝。
 7. **网络隔离探测** — [`app/main.py:272`](../app/main.py) 调
-   [`control_plane_probe`](../app/sandbox.py);`DE_SANDBOX_REQUIRE_ISOLATION=1` 时
+   [`control_plane_probe`](../app/sandbox.py);`QZDA_SANDBOX_REQUIRE_ISOLATION=1` 时
    PG/Redis 可达 → 403。
 8. **skill 包签名** — 阶段 4 #3,见 [`app/sign_verify.py`](../app/sign_verify.py) +
    `signing/README.md`。
@@ -93,9 +93,9 @@ PR2 (`7ed63a9`) 把这一路关死:
 
 | Limit | 用途 | 默认(env) |
 |---|---|---|
-| `RLIMIT_NPROC` | 防 fork bomb | `DE_SANDBOX_DEFAULT_PIDS=64` |
-| `RLIMIT_CPU` | 超时由 SIGXCPU 触发 | `DE_SANDBOX_DEFAULT_CPU_SECS=30` |
-| `RLIMIT_AS` | 虚拟地址上限(不是 RSS,够用) | `DE_SANDBOX_DEFAULT_MEM_MB=512` |
+| `RLIMIT_NPROC` | 防 fork bomb | `QZDA_SANDBOX_DEFAULT_PIDS=64` |
+| `RLIMIT_CPU` | 超时由 SIGXCPU 触发 | `QZDA_SANDBOX_DEFAULT_CPU_SECS=30` |
+| `RLIMIT_AS` | 虚拟地址上限(不是 RSS,够用) | `QZDA_SANDBOX_DEFAULT_MEM_MB=512` |
 
 子进程被 SIGKILL=`-9` / SIGTERM=`-15` / SIGXCPU=`24` 杀掉时,
 [`app/sandbox.py:413-421`](../app/sandbox.py) 在响应里写 `rlimit_killed=true`
@@ -120,5 +120,5 @@ PR2 (`7ed63a9`) 把这一路关死:
   - `rate_limit_rejected_total{scope}`
   - `egress_proxy_up`(gauge)
 - **OTel** — `OTEL_EXPORTER_OTLP_ENDPOINT` 配则发远端 collector;否则 console 导出。
-- **CorrelationId** — 透传到 OTel span、子进程 env (`DE_SANDBOX_CORRELATION_ID`),
+- **CorrelationId** — 透传到 OTel span、子进程 env (`QZDA_SANDBOX_CORRELATION_ID`),
   端到端 trace 一致。

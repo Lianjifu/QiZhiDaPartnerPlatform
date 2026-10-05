@@ -70,8 +70,8 @@ func TestWecomWebhookReusesSessionForSameUser(t *testing.T) {
 }
 
 func TestProductionEmployeeApproveRequiresDualApproval(t *testing.T) {
-	t.Setenv("DE_ENV", "production")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "production")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	h := server.New(store.New()).Handler()
 
 	rr := httptest.NewRecorder()
@@ -100,8 +100,8 @@ func TestProductionEmployeeApproveRequiresDualApproval(t *testing.T) {
 }
 
 func TestProductionRoutingPublishPendingThenSoD(t *testing.T) {
-	t.Setenv("DE_ENV", "production")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "production")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	h := server.New(store.New()).Handler()
 
 	// Admin publish: no second admin required — goes live immediately.
@@ -133,8 +133,8 @@ func TestProductionRoutingPublishPendingThenSoD(t *testing.T) {
 }
 
 func TestProductionUserRoutingPublishNeedsAdmin(t *testing.T) {
-	t.Setenv("DE_ENV", "production")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "production")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	st := store.New()
 	st.Lock()
 	for _, p := range st.RoutingPolicies {
@@ -207,9 +207,9 @@ func TestWorkflowPublishAsSkillRequiresPublishedTrial(t *testing.T) {
 }
 
 func TestTemporalFailClosedInProduction(t *testing.T) {
-	t.Setenv("DE_ENV", "production")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
-	t.Setenv("DE_TEMPORAL_HOST", "127.0.0.1:1")
+	t.Setenv("QZDA_ENV", "production")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_TEMPORAL_HOST", "127.0.0.1:1")
 	h := server.New(store.New()).Handler()
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/workflows/run", bytes.NewBufferString(`{"workflowId":"wf1"}`))
@@ -226,8 +226,8 @@ func TestTemporalFailClosedInProduction(t *testing.T) {
 }
 
 func TestProductionBudgetHardGate(t *testing.T) {
-	t.Setenv("DE_ENV", "production")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "production")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	st := store.New()
 	st.Lock()
 	st.ModelBudgets = []map[string]any{
@@ -269,8 +269,8 @@ func TestOpsOverviewGovernanceHonestCounts(t *testing.T) {
 }
 
 func TestProductionKnowledgePublishPendingThenSoD(t *testing.T) {
-	t.Setenv("DE_ENV", "production")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "production")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	h := server.New(store.New()).Handler()
 
 	// Admin publish knowledge: immediate, no peer wait.
@@ -331,8 +331,8 @@ func knowledgeSliceMapsForTest(v any) []map[string]any {
 }
 
 func TestProductionEmployeeSubmitAdminDirectRelease(t *testing.T) {
-	t.Setenv("DE_ENV", "production")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "production")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	st := store.New()
 	st.Lock()
 	for _, e := range st.Employees {
@@ -364,8 +364,8 @@ func TestProductionEmployeeSubmitAdminDirectRelease(t *testing.T) {
 }
 
 func TestProductionEmployeeSubmitNonAdminStaysPending(t *testing.T) {
-	t.Setenv("DE_ENV", "production")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "production")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	st := store.New()
 	st.Lock()
 	for _, e := range st.Employees {

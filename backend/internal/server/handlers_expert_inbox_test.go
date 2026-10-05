@@ -94,8 +94,8 @@ func num(v any) int {
 }
 
 func TestExpertInboxListEmpty(t *testing.T) {
-	t.Setenv("DE_ENV", "test")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "test")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	h := server.New(store.New()).Handler()
 	rr := inboxGet(t, h, "/api/expert-inbox", "mock-admin-token", "w1")
 	if rr.Code != 200 {
@@ -135,8 +135,8 @@ func seedExpertInbox(t *testing.T, st *store.Store, wsID string, n int, statuses
 }
 
 func TestExpertInboxListFiltersAndCountsPending(t *testing.T) {
-	t.Setenv("DE_ENV", "test")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "test")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	st := store.New()
 	ensureExpertInboxSeeded(st)
 	seedExpertInbox(t, st, "w1", 5) // all pending
@@ -168,8 +168,8 @@ func TestExpertInboxListFiltersAndCountsPending(t *testing.T) {
 }
 
 func TestExpertInboxListIsolatesByWorkspace(t *testing.T) {
-	t.Setenv("DE_ENV", "test")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "test")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	st := store.New()
 	ensureExpertInboxSeeded(st)
 	seedExpertInbox(t, st, "w1", 3)
@@ -190,8 +190,8 @@ func TestExpertInboxListIsolatesByWorkspace(t *testing.T) {
 }
 
 func TestExpertInboxListRejectsNonWriter(t *testing.T) {
-	t.Setenv("DE_ENV", "test")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "test")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	h := server.New(store.New()).Handler()
 	rr := inboxGet(t, h, "/api/expert-inbox", "mock-user-token", "w1")
 	if rr.Code != 403 {
@@ -200,8 +200,8 @@ func TestExpertInboxListRejectsNonWriter(t *testing.T) {
 }
 
 func TestExpertInboxCreateAndApproveFlow(t *testing.T) {
-	t.Setenv("DE_ENV", "test")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "test")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	st := store.New()
 	ensureExpertInboxSeeded(st)
 	h := server.New(st).Handler()
@@ -264,8 +264,8 @@ func TestExpertInboxCreateAndApproveFlow(t *testing.T) {
 }
 
 func TestExpertInboxReviewAllThreeDecisions(t *testing.T) {
-	t.Setenv("DE_ENV", "test")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "test")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	st := store.New()
 	ensureExpertInboxSeeded(st)
 	ids := seedExpertInbox(t, st, "w1", 3)
@@ -296,8 +296,8 @@ func TestExpertInboxReviewAllThreeDecisions(t *testing.T) {
 }
 
 func TestExpertInboxReviewRejectsDoubleDecision(t *testing.T) {
-	t.Setenv("DE_ENV", "test")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "test")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	st := store.New()
 	ensureExpertInboxSeeded(st)
 	ids := seedExpertInbox(t, st, "w1", 1)
@@ -318,8 +318,8 @@ func TestExpertInboxReviewRejectsDoubleDecision(t *testing.T) {
 }
 
 func TestExpertInboxReviewRejectsBadDecision(t *testing.T) {
-	t.Setenv("DE_ENV", "test")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "test")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	st := store.New()
 	ensureExpertInboxSeeded(st)
 	ids := seedExpertInbox(t, st, "w1", 1)
@@ -334,8 +334,8 @@ func TestExpertInboxReviewRejectsBadDecision(t *testing.T) {
 }
 
 func TestExpertInboxReviewRejectsCrossWorkspace(t *testing.T) {
-	t.Setenv("DE_ENV", "test")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "test")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	st := store.New()
 	ensureExpertInboxSeeded(st)
 	ids := seedExpertInbox(t, st, "w1", 1)
@@ -350,8 +350,8 @@ func TestExpertInboxReviewRejectsCrossWorkspace(t *testing.T) {
 }
 
 func TestExpertInboxRejectsEmptyTitle(t *testing.T) {
-	t.Setenv("DE_ENV", "test")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "test")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	h := server.New(store.New()).Handler()
 	rr := inboxPost(t, h, "/api/expert-inbox", "mock-admin-token", "w1", map[string]any{
 		"title": "",
@@ -362,8 +362,8 @@ func TestExpertInboxRejectsEmptyTitle(t *testing.T) {
 }
 
 func TestExpertInboxRejectsBadSeverity(t *testing.T) {
-	t.Setenv("DE_ENV", "test")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "test")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	h := server.New(store.New()).Handler()
 	rr := inboxPost(t, h, "/api/expert-inbox", "mock-admin-token", "w1", map[string]any{
 		"title":    "x",
@@ -375,8 +375,8 @@ func TestExpertInboxRejectsBadSeverity(t *testing.T) {
 }
 
 func TestExpertInboxRejectsTraversalInPath(t *testing.T) {
-	t.Setenv("DE_ENV", "test")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "test")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	h := server.New(store.New()).Handler()
 	rr := inboxPost(t, h, "/api/expert-inbox/..%2Fetc%2Fpasswd/review", "mock-admin-token", "w1", map[string]any{
 		"decision": "approve",
@@ -387,8 +387,8 @@ func TestExpertInboxRejectsTraversalInPath(t *testing.T) {
 }
 
 func TestExpertInboxRejectsNoteTooLong(t *testing.T) {
-	t.Setenv("DE_ENV", "test")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "test")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	st := store.New()
 	ensureExpertInboxSeeded(st)
 	ids := seedExpertInbox(t, st, "w1", 1)
@@ -407,8 +407,8 @@ func TestExpertInboxRejectsNoteTooLong(t *testing.T) {
 // TestExpertInboxEmitsAuditOnReview verifies that the audit row is
 // recorded with action "审核 ExpertInbox 项" and the reviewer name.
 func TestExpertInboxEmitsAuditOnReview(t *testing.T) {
-	t.Setenv("DE_ENV", "test")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "test")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	st := store.New()
 	ensureExpertInboxSeeded(st)
 	ids := seedExpertInbox(t, st, "w1", 1)
@@ -445,8 +445,8 @@ func TestExpertInboxEmitsAuditOnReview(t *testing.T) {
 // TestExpertInboxMetricGaugeAfterList confirms the gauge publishes the
 // pending count after a list call. Per-workspace.
 func TestExpertInboxMetricGaugeAfterList(t *testing.T) {
-	t.Setenv("DE_ENV", "test")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "test")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	st := store.New()
 	ensureExpertInboxSeeded(st)
 	seedExpertInbox(t, st, "w1", 4)
@@ -473,8 +473,8 @@ func TestExpertInboxMetricGaugeAfterList(t *testing.T) {
 // TestExpertInboxConcurrentDecisions: two concurrent reviews on the
 // same item must not both succeed (only one wins).
 func TestExpertInboxConcurrentDecisions(t *testing.T) {
-	t.Setenv("DE_ENV", "test")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "test")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	st := store.New()
 	ensureExpertInboxSeeded(st)
 	ids := seedExpertInbox(t, st, "w1", 1)

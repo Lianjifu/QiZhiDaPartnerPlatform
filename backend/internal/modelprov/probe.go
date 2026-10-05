@@ -39,7 +39,7 @@ type Client struct {
 
 func NewClient() *Client {
 	sec := 8
-	if v := strings.TrimSpace(os.Getenv("DE_MODEL_PROBE_TIMEOUT")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("QZDA_MODEL_PROBE_TIMEOUT")); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			sec = n
 		}
@@ -145,7 +145,7 @@ func applyAuthHeaders(req *http.Request, protocol, apiKey string) {
 }
 
 // Discover lists models from the remote endpoint.
-// Catalog fallback only when DE_MODEL_DISCOVER_FALLBACK=1 (default: off — real providers only).
+// Catalog fallback only when QZDA_MODEL_DISCOVER_FALLBACK=1 (default: off — real providers only).
 func (c *Client) Discover(ctx context.Context, protocol, baseURL, apiKey, apiVersion string) (DiscoverResult, error) {
 	baseURL = strings.TrimSpace(baseURL)
 	if baseURL == "" {
@@ -177,7 +177,7 @@ func (c *Client) Discover(ctx context.Context, protocol, baseURL, apiKey, apiVer
 }
 
 func discoverFallbackEnabled() bool {
-	v := strings.TrimSpace(os.Getenv("DE_MODEL_DISCOVER_FALLBACK"))
+	v := strings.TrimSpace(os.Getenv("QZDA_MODEL_DISCOVER_FALLBACK"))
 	return v == "1" || strings.EqualFold(v, "true")
 }
 

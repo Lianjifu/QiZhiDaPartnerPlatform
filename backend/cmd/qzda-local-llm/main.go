@@ -18,7 +18,7 @@ import (
 // Default listen: 127.0.0.1:18080 (matches seed "Local Mock LLM").
 
 func main() {
-	addr := strings.TrimSpace(os.Getenv("DE_LOCAL_LLM_ADDR"))
+	addr := strings.TrimSpace(os.Getenv("QZDA_LOCAL_LLM_ADDR"))
 	if addr == "" {
 		addr = "127.0.0.1:18080"
 	}

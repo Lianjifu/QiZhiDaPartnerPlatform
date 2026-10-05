@@ -176,9 +176,9 @@ func (s *Server) channelControlInbound(r *http.Request) (any, error) {
 	return out, nil
 }
 
-// channelPublicBaseURL builds absolute webhook URL hint for UI (optional env DE_PUBLIC_BASE_URL).
+// channelPublicBaseURL builds absolute webhook URL hint for UI (optional env QZDA_PUBLIC_BASE_URL).
 func channelPublicBaseURL() string {
-	return strings.TrimRight(strings.TrimSpace(lookupEnv("DE_PUBLIC_BASE_URL")), "/")
+	return strings.TrimRight(strings.TrimSpace(lookupEnv("QZDA_PUBLIC_BASE_URL")), "/")
 }
 
 // enrichFeishuDeployPublicURL kept as alias for older call sites / tests.

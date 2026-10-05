@@ -9,7 +9,7 @@ import (
 )
 
 func TestSPIFFEID(t *testing.T) {
-	t.Setenv("DE_SPIFFE_TRUST_DOMAIN", "acme.test")
+	t.Setenv("QZDA_SPIFFE_TRUST_DOMAIN", "acme.test")
 	if got := SPIFFEID("qzda-sys"); got != "spiffe://acme.test/ns/default/sa/qzda-sys" {
 		t.Fatalf("got %s", got)
 	}

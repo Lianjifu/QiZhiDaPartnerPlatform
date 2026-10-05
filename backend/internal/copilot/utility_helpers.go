@@ -121,11 +121,11 @@ const (
 	runtimeModeRemote = "remote"
 )
 
-// runtimeMode 根据 DE_RUNTIME_MODE 返回当前运行时模式（local / remote）。
+// runtimeMode 根据 QZDA_RUNTIME_MODE 返回当前运行时模式（local / remote）。
 // runtimeMode returns the current runtime mode ("local" or "remote") based
-// on DE_RUNTIME_MODE. Mirrors server.runtimeMode.
+// on QZDA_RUNTIME_MODE. Mirrors server.runtimeMode.
 func runtimeMode() string {
-	switch strings.ToLower(strings.TrimSpace(lookupEnv("DE_RUNTIME_MODE"))) {
+	switch strings.ToLower(strings.TrimSpace(lookupEnv("QZDA_RUNTIME_MODE"))) {
 	case "remote", "sidecar", "python":
 		return runtimeModeRemote
 	default:

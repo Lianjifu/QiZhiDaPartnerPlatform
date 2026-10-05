@@ -1321,7 +1321,7 @@ func (s *Server) skillTest(r *http.Request, id *auth.Identity, ws, skillID strin
 			return nil, apperr.Unavailable(apperr.RuntimeUnavailable, "技能运行时不可用: "+runtimeErr.Error())
 		}
 		mode = "policy-sim"
-		output = "+SIM\n" + skillName + " v" + skillVersion + " 策略校验通过；sandbox 不可达，已使用本地模拟（DE_SANDBOX_TEST_SIM=1）。\ncommand=" + command
+		output = "+SIM\n" + skillName + " v" + skillVersion + " 策略校验通过；sandbox 不可达，已使用本地模拟（QZDA_SANDBOX_TEST_SIM=1）。\ncommand=" + command
 		if pkgPayload != nil {
 			output += "\npackage=" + str(pkgPayload["packagePath"])
 			if boolFrom(pkgPayload["hasScripts"]) {

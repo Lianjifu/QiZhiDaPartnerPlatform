@@ -45,7 +45,7 @@ func chatTimeout(req ChatRequest) time.Duration {
 		return req.Timeout
 	}
 	sec := 60
-	if v := strings.TrimSpace(os.Getenv("DE_MODEL_CHAT_TIMEOUT")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("QZDA_MODEL_CHAT_TIMEOUT")); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			sec = n
 		}
@@ -365,20 +365,20 @@ func extractAnthropicContent(raw []byte) (string, error) {
 	return b.String(), nil
 }
 
-// EnvFallbackRequest builds a ChatRequest from DE_LLM_* when providers are unavailable.
+// EnvFallbackRequest builds a ChatRequest from QZDA_LLM_* when providers are unavailable.
 func EnvFallbackRequest(prompt string) (ChatRequest, bool) {
-	base := strings.TrimSpace(os.Getenv("DE_LLM_BASE_URL"))
+	base := strings.TrimSpace(os.Getenv("QZDA_LLM_BASE_URL"))
 	if base == "" {
 		return ChatRequest{}, false
 	}
-	model := strings.TrimSpace(os.Getenv("DE_LLM_MODEL"))
+	model := strings.TrimSpace(os.Getenv("QZDA_LLM_MODEL"))
 	if model == "" {
 		model = "gpt-4o-mini"
 	}
 	return ChatRequest{
 		Protocol: "openai_compatible",
 		BaseURL:  base,
-		APIKey:   strings.TrimSpace(os.Getenv("DE_LLM_API_KEY")),
+		APIKey:   strings.TrimSpace(os.Getenv("QZDA_LLM_API_KEY")),
 		Model:    model,
 		System:   "You are a digital-employee runtime assistant for enterprise SRE/collaboration.",
 		Messages: []ChatMessage{{Role: "user", Content: prompt}},

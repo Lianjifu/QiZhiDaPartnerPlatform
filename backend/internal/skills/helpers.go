@@ -179,7 +179,7 @@ func envOr(key, def string) string {
 // productionLikeEnv reports whether the runtime env is staging/production
 // (used by the sandbox-test sim gate). Mirrors server.productionLikeEnv.
 func productionLikeEnv() bool {
-	return lookupEnv("DE_ENV") == "production" || lookupEnv("DE_ENV") == "staging"
+	return lookupEnv("QZDA_ENV") == "production" || lookupEnv("QZDA_ENV") == "staging"
 }
 
 // timeNow is a tiny seam so tests can stub clock.

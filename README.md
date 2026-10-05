@@ -324,7 +324,7 @@ flowchart TB
 | [`docs/数字伙伴平台-架构文档.md`](docs/数字伙伴平台-架构文档.md) | L0 / L1 / L2 产品与领域架构 |
 | [`docs/后端架构规划.md`](docs/后端架构规划.md) | 服务边界与演进阶段 |
 | [`backend/deploy/topology-split.md`](backend/deploy/topology-split.md) | monolith 拓扑说明 |
-| [`docs/环境与数据模式.md`](docs/环境与数据模式.md) | `DE_ENV`、Persist、办公开箱冷启动 |
+| [`docs/环境与数据模式.md`](docs/环境与数据模式.md) | `QZDA_ENV`、Persist、办公开箱冷启动 |
 
 ### 文档分层
 
@@ -501,7 +501,7 @@ sequenceDiagram
 |------|------|
 | **鉴权与角色** | Token + 工作区头；RBAC：`admin` / `user` / `auditor` |
 | **持久化** | 控制面内存 + PG 快照；硬删须 `PersistDelete(Sync)`，仅 `Persist` 不会删掉旧行 |
-| **环境** | `DE_ENV=development` 默认联调（空库 + hydrate，不灌 ACME seed）；`demo` 仅内存 |
+| **环境** | `QZDA_ENV=development` 默认联调（空库 + hydrate，不灌 ACME seed）；`demo` 仅内存 |
 | **运营聚合** | `/api/home/*`、`/api/operations/overview` 为 live-aggregate；成本仅认 UsageMeters，否则 `—` |
 | **办公开箱** | 冷启动 ensure 知识包 / `autoInstall` 岗位包 / Certified 流程 / `de-office`；个人模板 `wft-user-*` 不覆盖 |
 | **本机二进制** | LaunchAgent 读 `backend/bin/qzda-*`；改 Go 后须 `make build` 再 kickstart |
@@ -551,7 +551,7 @@ qizhida-partner-platform/
 | `backend/cmd/qzda-app` | monolith 主进程入口（sys + collab + cap） |
 | `backend/builtin/` | 冷启动由 `EnsureBuiltin*` 装载；见各子目录 README |
 | `backend/bin/` | 本机常驻栈二进制；改 Go 后须 `make build` |
-| `scripts/dev-stack/` | LaunchAgent 联调（默认 `DE_STACK=monolith`） |
+| `scripts/dev-stack/` | LaunchAgent 联调（默认 `QZDA_STACK=monolith`） |
 | `docs/images/` | README 内联概念图与产品截图 |
 
 出厂包入口：[`backend/builtin/workflows/README.md`](backend/builtin/workflows/README.md) · [`backend/builtin/knowledge/office/README.md`](backend/builtin/knowledge/office/README.md) · [`backend/builtin/scenarios/office/README.md`](backend/builtin/scenarios/office/README.md) · [`backend/README.md`](backend/README.md)。
@@ -614,7 +614,7 @@ cd backend && make build
 launchctl kickstart -k "gui/$(id -u)/com.qizhida.dev-stack"
 ```
 
-脚本：[`scripts/dev-stack/run-stack.sh`](scripts/dev-stack/run-stack.sh)（默认 `DE_STACK=monolith`，`DE_ENV=development`）。
+脚本：[`scripts/dev-stack/run-stack.sh`](scripts/dev-stack/run-stack.sh)（默认 `QZDA_STACK=monolith`，`QZDA_ENV=development`）。
 
 > 仓库外的 LaunchAgent 文件位于 `~/Library/LaunchAgents/com.qizhida.dev-stack.plist`(Phase 3 已迁移;升级到 main 前请确认)。详见 [`backend/deploy/MIGRATION-de-to-qzda.md`](backend/deploy/MIGRATION-de-to-qzda.md)。
 
@@ -636,7 +636,7 @@ VITE_API_BASE=
 | `audit@` | auditor | 治理 / 审计只读 |
 | 其他 | user | 协作与任务；写操作须管理员审批 |
 
-默认 `DE_BAN_MOCK_TOKEN=1` 禁止 `mock-*-token`；需 mock 身份时设 `DE_ALLOW_DEMO_TOKEN=1`。业务按 `x-workspace-id` 隔离。
+默认 `QZDA_BAN_MOCK_TOKEN=1` 禁止 `mock-*-token`；需 mock 身份时设 `QZDA_ALLOW_DEMO_TOKEN=1`。业务按 `x-workspace-id` 隔离。
 
 ---
 
@@ -655,7 +655,7 @@ cd ../backend && make test && make test-python && make smoke-monolith
 | 数据像空库 / 版本不对 | 确认 `127.0.0.1:5432` 为 Docker `qzda-postgres` 16.x |
 | 办公模板 / 知识包缺失 | `make build` 并重启，确认 `EnsureBuiltin*` |
 | Go 改了不生效 | 未写入 `backend/bin` 或未重启栈 |
-| `E_IDENTITY_MOCK_FORBIDDEN` | `DE_ALLOW_DEMO_TOKEN=1` 或真实登录 |
+| `E_IDENTITY_MOCK_FORBIDDEN` | `QZDA_ALLOW_DEMO_TOKEN=1` 或真实登录 |
 | `healthz` 失败 | 先起 PG/Redis 与 gateway |
 
 ---
@@ -664,7 +664,7 @@ cd ../backend && make test && make test-python && make smoke-monolith
 
 | 文档 | 用途 |
 |------|------|
-| [`docs/环境与数据模式.md`](docs/环境与数据模式.md) | `DE_ENV`、Postgres、硬删除、岗位包、办公开箱 |
+| [`docs/环境与数据模式.md`](docs/环境与数据模式.md) | `QZDA_ENV`、Postgres、硬删除、岗位包、办公开箱 |
 | [`docs/数字伙伴平台-功能模块文档.md`](docs/数字伙伴平台-功能模块文档.md) | 模块 Tab / 路由 / 成熟度 |
 | [`docs/数字伙伴平台-架构文档.md`](docs/数字伙伴平台-架构文档.md) | L0 / L1 / L2 |
 | [`docs/后端架构规划.md`](docs/后端架构规划.md) · [`docs/后端单进程方案.md`](docs/后端单进程方案.md) | 后端演进 |
@@ -715,7 +715,7 @@ flowchart LR
 | **流程生产化** | Temporal Worker 常驻；失败切换与双签节点落盘 | 协同 |
 | **检索生产化** | Milvus + 评测流水线；记忆 TTL / 日提炼调度 | 协同 |
 | **执行隔离** | gVisor / runsc 全量技能沙箱 | 可信 |
-| **可观测与多活** | 统一观测栈；`DE_REPLICA_MODE` / 从库只读深化 | 可度量 |
+| **可观测与多活** | 统一观测栈；`QZDA_REPLICA_MODE` / 从库只读深化 | 可度量 |
 | **协作深化** | 多 Agent / A2A；Open API 嵌入；渠道入站扩展 | 协同 |
 
 ### 远期

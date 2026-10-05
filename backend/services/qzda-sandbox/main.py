@@ -15,8 +15,8 @@ if __name__ == "__main__":
     from app.sandbox import sandbox_mode, strip_forbidden_env
 
     strip_forbidden_env()
-    os.environ.setdefault("DE_SANDBOX_REQUIRE_ISOLATION", "0")
-    host = os.environ.get("DE_BIND_HOST", "127.0.0.1")
-    port = int(os.environ.get("DE_BIND_PORT", "8093") or "8093")
+    os.environ.setdefault("QZDA_SANDBOX_REQUIRE_ISOLATION", "0")
+    host = os.environ.get("QZDA_BIND_HOST", "127.0.0.1")
+    port = int(os.environ.get("QZDA_BIND_PORT", "8093") or "8093")
     print(f"qzda-sandbox on http://{host}:{port} sandbox={sandbox_mode()} (no control-plane DSN)")
     uvicorn.run("app.main:app", host=host, port=port, reload=False)

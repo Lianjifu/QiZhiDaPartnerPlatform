@@ -41,7 +41,7 @@ var (
 // builtin workflow packs. Walks up from cwd so the same code works in
 // `backend/...` test runs and in the production container.
 func builtinWorkflowsRoot() string {
-	if v := strings.TrimSpace(os.Getenv("DE_BUILTIN_WORKFLOWS_DIR")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("QZDA_BUILTIN_WORKFLOWS_DIR")); v != "" {
 		return v
 	}
 	candidates := []string{

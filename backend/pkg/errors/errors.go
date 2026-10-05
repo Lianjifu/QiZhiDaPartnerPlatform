@@ -124,7 +124,7 @@ const (
 	ExpertInboxNotFound Code = "E_EXPERT_INBOX_NOT_FOUND"
 	ExpertInboxInvalid  Code = "E_EXPERT_INBOX_INVALID"
 
-	// Session sync disabled (DE_SESSION_SYNC_ENABLED=false)
+	// Session sync disabled (QZDA_SESSION_SYNC_ENABLED=false)
 	SessionSyncDisabled Code = "E_SESSION_SYNC_DISABLED"
 )
 

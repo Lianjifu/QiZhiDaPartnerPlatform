@@ -468,7 +468,7 @@ func normalizeRetrieveHitList(v any) []map[string]any {
 // minting their own http.Client.
 //
 // Returns nil when:
-//   - no RAG URL is configured (DE_RAG_URL=""),
+//   - no RAG URL is configured (QZDA_RAG_URL=""),
 //   - the workspace has no published corpus (skips the sidecar so
 //     its process-global INDEX can't leak demo seeds), or
 //   - the sidecar is unreachable / returned non-2xx.

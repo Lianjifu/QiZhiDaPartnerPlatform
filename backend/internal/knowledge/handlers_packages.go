@@ -381,7 +381,7 @@ func (s *Service) KnowledgePackageAction(r *http.Request) (any, error) {
 }
 
 // requirePackageEvalSetLocked — guard that the package has been through
-// the evaluation gate (recall ≥ DE_EVAL_RECALL_MIN OR pending approval
+// the evaluation gate (recall ≥ QZDA_EVAL_RECALL_MIN OR pending approval
 // bypass). In production this is the SoD-adjacent gate that prevents
 // pushing a knowledge package to /api/copilot until the eval set
 // proves recall ≥ 70%. Mirrors the legacy
@@ -429,11 +429,11 @@ func (s *Service) requirePackageEvalSetLocked(ws, pkgID string) error {
 }
 
 // evalRecallMin returns the minimum recall (0..1) the eval gate demands
-// in production. Reads DE_EVAL_RECALL_MIN; defaults to 0.7 in
+// in production. Reads QZDA_EVAL_RECALL_MIN; defaults to 0.7 in
 // production, 0 elsewhere (gate skipped). Mirrors the legacy
 // server.evalRecallMin in eval_gate.go.
 func evalRecallMin() float64 {
-	v := strings.TrimSpace(os.Getenv("DE_EVAL_RECALL_MIN"))
+	v := strings.TrimSpace(os.Getenv("QZDA_EVAL_RECALL_MIN"))
 	if v == "" {
 		if isProdEnv() {
 			return 0.7
@@ -450,13 +450,13 @@ func evalRecallMin() float64 {
 	return n
 }
 
-// isProdEnv reports whether DE_ENV is "production" or "prod". The
+// isProdEnv reports whether QZDA_ENV is "production" or "prod". The
 // full server-side productionLikeEnv() also considers other signals
 // (AUTH_REQUIRED, ...); for the eval gate in production, the env var
 // check is sufficient and lets this helper stay inside the
 // knowledge package without an extra Deps call.
 func isProdEnv() bool {
-	switch strings.ToLower(strings.TrimSpace(os.Getenv("DE_ENV"))) {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("QZDA_ENV"))) {
 	case "production", "prod":
 		return true
 	}

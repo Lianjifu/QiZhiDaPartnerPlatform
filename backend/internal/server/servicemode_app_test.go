@@ -35,7 +35,7 @@ func TestModeAppAcceptsCanonicalRoutes(t *testing.T) {
 }
 
 func TestModeAppInProcessPostTurn(t *testing.T) {
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "1")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "1")
 	st := store.New()
 	srv := New(st)
 	srv.Mode = ModeApp

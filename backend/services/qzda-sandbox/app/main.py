@@ -126,7 +126,7 @@ def healthz() -> dict[str, Any]:
         "sandbox": runtime,
         "runtime": runtime,                   # 向后兼容
         "runscBinary": runsc_present(),
-        "runscRequested": (os.environ.get("DE_SANDBOX_SANDBOX") or "").strip() == "runsc",
+        "runscRequested": (os.environ.get("QZDA_SANDBOX_SANDBOX") or "").strip() == "runsc",
         "controlPlaneReachable": not probe["isolated"],
         "isolation": probe,
         "runTokenRequired": True,
@@ -202,7 +202,7 @@ async def execute(request: Request) -> JSONResponse:
     4. 阶段 4 #3:**skill 包签名** — 跑真正脚本前验 ``.signed`` marker
     (含 SKILL.md sha256 比对),失败 → 403。
     5. 二次校验进程环境无控制面 DSN 残留,以及 ``denyControlPlane`` 未被显式置 False。
-    6. 主动探测 PG/Redis 可达性;``DE_SANDBOX_REQUIRE_ISOLATION=1`` 时不允许联通。
+    6. 主动探测 PG/Redis 可达性;``QZDA_SANDBOX_REQUIRE_ISOLATION=1`` 时不允许联通。
     7. 若是 DOCX 请求 → 走内置 ``build_docx_artifact``(不启子进程)。
     8. 否则走 ``run_package_script`` 同步执行,执行成功后再 ``harvest_office_artifact``
        扫描包内新生成的 Office 制品,把 ``downloadPath`` 合并进响应。
@@ -270,7 +270,7 @@ async def execute(request: Request) -> JSONResponse:
                 )
             # 第 3 步:网络隔离探测;Docker 镜像默认开启强制隔离
             probe = control_plane_probe()
-            if not probe["isolated"] and os.environ.get("DE_SANDBOX_REQUIRE_ISOLATION", "1") == "1":
+            if not probe["isolated"] and os.environ.get("QZDA_SANDBOX_REQUIRE_ISOLATION", "1") == "1":
                 return JSONResponse(
                     status_code=403,
                     content={

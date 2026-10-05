@@ -9,13 +9,13 @@
 | qzda-gateway | 8089 | Envoy `envoy.monolith.yaml` 或 dev `services/qzda-gateway/main.py` |
 | **qzda-app** | 8100 | **sys + collab + cap + workflow**（`ModeApp` / `DomainAll`） |
 | qzda-sandbox | 8093 | 技能沙箱执行（必须独立） |
-| qzda-agent-runtime | 8091 | Python sidecar，按需（`DE_RUNTIME_MODE=remote`） |
+| qzda-agent-runtime | 8091 | Python sidecar，按需（`QZDA_RUNTIME_MODE=remote`） |
 | qzda-rag | 8092 | Python sidecar，按需 |
-| Temporal worker | (进程内) | `DE_WORKFLOW_WORKER=1 DE_TEMPORAL_HOST=...` 时由 qzda-app 启动 goroutine |
+| Temporal worker | (进程内) | `QZDA_WORKFLOW_WORKER=1 QZDA_TEMPORAL_HOST=...` 时由 qzda-app 启动 goroutine |
 
 `qzda-app` 单进程内同时挂载 sys / collab / employee / cap / workflow 全部域逻辑。所有 collection 由 `DomainAll` 单一写域拥有；`CanWrite(collection)` 永远返回 true。
 
-可选 Temporal worker：`make compose-up-monolith-workflow` 或 `DE_WITH_WORKFLOW=1 scripts/dev-stack/run-stack.sh`。
+可选 Temporal worker：`make compose-up-monolith-workflow` 或 `QZDA_WITH_WORKFLOW=1 scripts/dev-stack/run-stack.sh`。
 
 ```bash
 cd backend && make compose-up-monolith
@@ -60,7 +60,7 @@ cd backend && make compose-up-monolith   # 默认
 - `ServiceMode` 仅 `ModeApp`（运行态）+ `ModeAll`（测试态）。`ParseServiceMode` 接受旧值 `sys` / `collab` / `cap` / `workflow` 全部归 `ModeApp`，向后兼容。
 - 策略评估在 qzda-app 进程内由 `internal/policy.Engine` 直接处理；`/api/zero-trust/evaluate` 与 `/v1/evaluate` 都走本进程。
 - 审计写入：本进程本地 sink（PG / Redis / Kafka / OpenSearch），组合输出。
-- 多活最小集：`DE_REPLICA_MODE=standby` 拒写；standby 优先 `DE_DATABASE_REPLICA_URL`；`pg_is_in_recovery()` 为真则强制 standby。可选 `make compose-up-replica` 起本机从库 `:5433`。不上 cn-east/south 双活 K8s。
+- 多活最小集：`QZDA_REPLICA_MODE=standby` 拒写；standby 优先 `QZDA_DATABASE_REPLICA_URL`；`pg_is_in_recovery()` 为真则强制 standby。可选 `make compose-up-replica` 起本机从库 `:5433`。不上 cn-east/south 双活 K8s。
 
 ## 未来切分路径（按需触发）
 
@@ -69,7 +69,7 @@ cd backend && make compose-up-monolith   # 默认
 | 触发条件 | 拆出动作 |
 |----------|----------|
 | workflow 编排延迟抖动 | 把 Temporal worker 拆出到独立 `qzda-workflow` 二进制 |
-| Python Harness 远程化需要常驻进程 | `qzda-agent-runtime` 必起，`DE_RUNTIME_MODE=remote` |
+| Python Harness 远程化需要常驻进程 | `qzda-agent-runtime` 必起，`QZDA_RUNTIME_MODE=remote` |
 | 沙箱执行排队 / 资源占用上升 | 把 `qzda-sandbox` 横向扩多实例 |
 
 每次拆分复用同套六边形包：`internal/server` → `internal/{platform,policy,audit,collab,cap,workflow}`，handler 不改、契约不变。详见 [`docs/后端单进程方案.md`](../../docs/后端单进程方案.md)。

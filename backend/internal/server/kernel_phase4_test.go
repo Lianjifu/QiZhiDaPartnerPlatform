@@ -67,8 +67,8 @@ func TestDingtalkWebhookReusesSessionForSameConversation(t *testing.T) {
 }
 
 func TestProductionHighRiskEmployeeRequiresCountersign(t *testing.T) {
-	t.Setenv("DE_ENV", "production")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "production")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	st := store.New()
 	st.Lock()
 	for _, e := range st.Employees {
@@ -123,8 +123,8 @@ func TestProductionHighRiskEmployeeRequiresCountersign(t *testing.T) {
 }
 
 func TestProductionEvalSetGateBlocksKnowledgePublish(t *testing.T) {
-	t.Setenv("DE_ENV", "production")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "production")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	h := server.New(store.New()).Handler()
 
 	rr := httptest.NewRecorder()
@@ -161,8 +161,8 @@ func TestProductionEvalSetGateBlocksKnowledgePublish(t *testing.T) {
 }
 
 func TestProductionEvolveApproveRequiresSoD(t *testing.T) {
-	t.Setenv("DE_ENV", "production")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "production")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	st := store.New()
 	st.Lock()
 	st.EvolveCands = append(st.EvolveCands, map[string]any{
@@ -194,8 +194,8 @@ func TestProductionEvolveApproveRequiresSoD(t *testing.T) {
 }
 
 func TestProductionAdminEvolveSelfApproveAllowed(t *testing.T) {
-	t.Setenv("DE_ENV", "production")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "production")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	st := store.New()
 	st.Lock()
 	st.EvolveCands = append(st.EvolveCands, map[string]any{
@@ -217,8 +217,8 @@ func TestProductionAdminEvolveSelfApproveAllowed(t *testing.T) {
 }
 
 func TestReplicaStandbyRejectsWrites(t *testing.T) {
-	t.Setenv("DE_REPLICA_MODE", "standby")
-	t.Setenv("DE_INSTANCE_ID", "node-b")
+	t.Setenv("QZDA_REPLICA_MODE", "standby")
+	t.Setenv("QZDA_INSTANCE_ID", "node-b")
 	h := server.New(store.New()).Handler()
 
 	rr := httptest.NewRecorder()
@@ -276,8 +276,8 @@ func TestReplicaForcedRejectsWrites(t *testing.T) {
 }
 
 func TestProductionRestrictedRoutingRequiresCountersign(t *testing.T) {
-	t.Setenv("DE_ENV", "production")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "production")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	st := store.New()
 	st.Lock()
 	st.RoutingPolicies = append(st.RoutingPolicies, map[string]any{
@@ -334,8 +334,8 @@ func TestProductionRestrictedRoutingRequiresCountersign(t *testing.T) {
 }
 
 func TestProductionAdminRestrictedRoutingDirectPublish(t *testing.T) {
-	t.Setenv("DE_ENV", "production")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "production")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	h := server.New(store.New()).Handler()
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/model-routing/policies", bytes.NewBufferString(
@@ -375,8 +375,8 @@ func TestProductionAdminRestrictedRoutingDirectPublish(t *testing.T) {
 }
 
 func TestProductionWorkflowSkillPublishRequiresSoD(t *testing.T) {
-	t.Setenv("DE_ENV", "production")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "production")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	st := store.New()
 	h := server.New(st).Handler()
 

@@ -11,14 +11,14 @@ import (
 
 func TestServerStoreBackendSQLiteHook(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("DE_ENV", "test")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
-	t.Setenv("DE_STORE_BACKEND", "sqlite")
-	t.Setenv("DE_SQLITE_PATH", filepath.Join(dir, "kv.db"))
+	t.Setenv("QZDA_ENV", "test")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_STORE_BACKEND", "sqlite")
+	t.Setenv("QZDA_SQLITE_PATH", filepath.Join(dir, "kv.db"))
 
 	s := server.New(store.New())
 	if s.SQLite == nil {
-		t.Fatal("SQLite hooks not initialized despite DE_STORE_BACKEND=sqlite")
+		t.Fatal("SQLite hooks not initialized despite QZDA_STORE_BACKEND=sqlite")
 	}
 
 	s.Store.Lock()
@@ -40,23 +40,23 @@ func TestServerStoreBackendSQLiteHook(t *testing.T) {
 }
 
 func TestServerStoreBackendDefaultIsMemory(t *testing.T) {
-	t.Setenv("DE_ENV", "test")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
-	t.Setenv("DE_STORE_BACKEND", "")
+	t.Setenv("QZDA_ENV", "test")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_STORE_BACKEND", "")
 	s := server.New(store.New())
 	if s.SQLite != nil {
-		t.Fatal("SQLite should be nil when DE_STORE_BACKEND is unset")
+		t.Fatal("SQLite should be nil when QZDA_STORE_BACKEND is unset")
 	}
 }
 
 func TestServerStoreBackendBadPathFallsBack(t *testing.T) {
-	t.Setenv("DE_ENV", "test")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
-	t.Setenv("DE_STORE_BACKEND", "sqlite")
+	t.Setenv("QZDA_ENV", "test")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_STORE_BACKEND", "sqlite")
 	// /dev/null is a valid file but not a directory; providing a directory
 	// path that cannot host a database should make open fail and the
 	// server should fall back to in-memory rather than panic.
-	t.Setenv("DE_SQLITE_PATH", "/dev/null/impossible.db")
+	t.Setenv("QZDA_SQLITE_PATH", "/dev/null/impossible.db")
 	s := server.New(store.New())
 	if s.SQLite != nil {
 		t.Fatalf("SQLite should be nil after open failure, got %+v", s.SQLite)

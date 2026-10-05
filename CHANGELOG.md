@@ -5,6 +5,29 @@
 
 ---
 
+## Unreleased — 环境变量前缀重命名 `DE_*` → `QZDA_*`
+
+> Brand phase 4 — 把上一轮刻意保留的 138 个 `DE_*` ops 命名空间环境变量统一
+> 改成 `QZDA_*`, 与 `de-* → qzda-*` 服务前缀对齐。
+
+### Breaking change（运维迁移清单）
+
+- **138 个 env 变量批量改名**：`DE_ENV` → `QZDA_ENV`、`DE_ALLOW_MOCK_IDENTITY` → `QZDA_ALLOW_MOCK_IDENTITY`、`DE_BAN_MOCK_TOKEN` → `QZDA_BAN_MOCK_TOKEN`、`DE_REQUIRE_SKILL_SIGNATURE` → `QZDA_REQUIRE_SKILL_SIGNATURE`、`DE_SANDBOX_RUNTIME_URL` → `QZDA_SANDBOX_RUNTIME_URL`、`DE_RAG_URL` → `QZDA_RAG_URL`、`DE_COLLAB_URL` → `QZDA_COLLAB_URL`、`DE_TEMPORAL_HOST` → `QZDA_TEMPORAL_HOST`、`DE_COPILOT_*` → `QZDA_COPILOT_*`、`DE_LLM_*` → `QZDA_LLM_*`、`DE_OIDC_*` → `QZDA_OIDC_*`、`DE_SANDBOX_*` → `QZDA_SANDBOX_*`、`DE_BUILTIN_*` → `QZDA_BUILTIN_*` 等共 138 项（详见 `git diff HEAD~1 -- backend/internal` 完整列表）。
+- **覆盖范围**：`backend/internal/**/*.go`（139 文件）+ `backend/services/**/*.py`（38 文件）+ `scripts/dev-stack/*.sh`（3 文件）+ `backend/Makefile` / `Dockerfile` / `services/*/Dockerfile` + `backend/deploy/compose.yml` / `.env*` + `~/Library/LaunchAgents/com.qizhida.dev-stack.plist`。
+- **未变更**：`backend/deploy/MIGRATION-de-to-qzda.md` 不改（历史记录）、`CHANGELOG.md` 旧条目不改（历史记录）、`backend/gen/qzda/**/*.pb.go` 不改（protobuf 自动生成，无 env 变量）、`backend/internal/auth/env.go` 的 `BanMockToken()` / `ForceOIDCLogin()` 等函数名（这些是 Go 标识符，与 env 变量解耦）。
+
+### 运维部署
+
+- `scripts/dev-stack/restart-stack.sh restart` 一次拉起即可，新 keeper 已自动从 `./keeper.log` 读取新 `QZDA_*` 变量。
+- 生产 / staging 在 K8s ConfigMap / Helm values / systemd unit 里把 `DE_*` → `QZDA_*` 同名映射即可，无需重新理解语义。
+
+### 验证
+
+- `go build ./...` 通过（v1.5 后端在 env rename 后首轮完整编译通过）
+- `scripts/dev-stack/restart-stack.sh restart` 后 `:8089 :8100 :5173` 三端口 200，`/api/auth/login` → `/api/skills` 端到端通。
+
+---
+
 ## Unreleased — 品牌标识：咬合方块 VI
 
 > 图形标改为紫橙圆角方块层叠咬合；顶栏字标上下排列；登录页白底锁合；README 收录标识资产。

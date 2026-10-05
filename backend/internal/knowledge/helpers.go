@@ -303,9 +303,9 @@ func scopeViewerFromIdentity(id *auth.Identity, ws string) scope.Viewer {
 }
 
 // knowledgeBlobDir resolves the per-workspace blob directory. Defaults
-// to ./data/knowledge-blobs/<ws>; override with DE_KNOWLEDGE_BLOB_DIR.
+// to ./data/knowledge-blobs/<ws>; override with QZDA_KNOWLEDGE_BLOB_DIR.
 func (s *Service) knowledgeBlobDir(ws string) string {
-	root := os.Getenv("DE_KNOWLEDGE_BLOB_DIR")
+	root := os.Getenv("QZDA_KNOWLEDGE_BLOB_DIR")
 	if root == "" {
 		root = filepath.Join("data", "knowledge-blobs")
 	}

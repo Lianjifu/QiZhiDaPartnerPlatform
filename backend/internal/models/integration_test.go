@@ -238,10 +238,10 @@ func TestT2_CreateProvider(t *testing.T) {
 // discoverRemote loop should parse {data:[…]} into the Models slice
 // and return a non-empty list.
 //
-// DE_MODEL_ALLOW_PRIVATE=1 lets ValidateBaseURL accept the test
+// QZDA_MODEL_ALLOW_PRIVATE=1 lets ValidateBaseURL accept the test
 // server's 127.0.0.1 loopback URL.
 func TestT3_DiscoverModels(t *testing.T) {
-	t.Setenv("DE_MODEL_ALLOW_PRIVATE", "1")
+	t.Setenv("QZDA_MODEL_ALLOW_PRIVATE", "1")
 	srv, _ := newServer(t)
 	stub := llmStubServer(t, `{"data":[{"id":"stub-model-a","object":"model"},{"id":"stub-model-b","object":"model"}]}`)
 	defer stub.Close()
@@ -274,7 +274,7 @@ func TestT3_DiscoverModels(t *testing.T) {
 // → handler returns status="healthy" + latencyMs. We assert the 200
 // + status + protocol echo.
 func TestT4_TestConnection(t *testing.T) {
-	t.Setenv("DE_MODEL_ALLOW_PRIVATE", "1")
+	t.Setenv("QZDA_MODEL_ALLOW_PRIVATE", "1")
 	srv, _ := newServer(t)
 	stub := llmStubServer(t, `{"object":"list"}`)
 	defer stub.Close()
@@ -776,7 +776,7 @@ func TestT15_LegacyAlias(t *testing.T) {
 // module integration tests.
 func TestT16_Unauthorized(t *testing.T) {
 	srv, _ := newServer(t)
-	t.Setenv("DE_BAN_MOCK_TOKEN", "")
+	t.Setenv("QZDA_BAN_MOCK_TOKEN", "")
 	rr := doRequest(t, srv, http.MethodGet, "/api/model-providers", "", nil)
 	if rr.Code != http.StatusUnauthorized {
 		t.Fatalf("want 401, got %d body=%s", rr.Code, rr.Body.String())

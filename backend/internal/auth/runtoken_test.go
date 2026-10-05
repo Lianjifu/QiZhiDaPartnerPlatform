@@ -11,7 +11,7 @@ import (
 )
 
 func TestMintVerifyRunToken(t *testing.T) {
-	t.Setenv("DE_SANDBOX_RUN_SECRET", "test-secret")
+	t.Setenv("QZDA_SANDBOX_RUN_SECRET", "test-secret")
 	tok := MintRunToken("sk1", "w1", "u1", []string{"wttr.in", " API.weather.gov "}, time.Minute)
 	claims, err := VerifyRunToken(tok)
 	if err != nil {
@@ -32,7 +32,7 @@ func TestMintVerifyRunToken(t *testing.T) {
 }
 
 func TestMintVerifyRunTokenEmptyEgress(t *testing.T) {
-	t.Setenv("DE_SANDBOX_RUN_SECRET", "test-secret")
+	t.Setenv("QZDA_SANDBOX_RUN_SECRET", "test-secret")
 	// 显式空 allowlist (deny-all) 也要正确序列化与回放
 	tok := MintRunToken("sk1", "w1", "u1", nil, time.Minute)
 	claims, err := VerifyRunToken(tok)
@@ -45,7 +45,7 @@ func TestMintVerifyRunTokenEmptyEgress(t *testing.T) {
 }
 
 func TestVerifyRunTokenExpired(t *testing.T) {
-	t.Setenv("DE_SANDBOX_RUN_SECRET", "test-secret")
+	t.Setenv("QZDA_SANDBOX_RUN_SECRET", "test-secret")
 	// Craft expired claims (MintRunToken coerces non-positive TTL to 5m).
 	claims := RunTokenClaims{SkillID: "sk1", WorkspaceID: "w1", ActorID: "u1", Exp: time.Now().UTC().Add(-time.Minute).Unix()}
 	raw, _ := json.Marshal(claims)
@@ -61,7 +61,7 @@ func TestVerifyRunTokenExpired(t *testing.T) {
 func TestRunTokenClaimsBackwardCompat(t *testing.T) {
 	// 阶段 2 之前签发的 token (没有 allowedEgress 字段) 仍要能验证通过,
 	// 只是 AllowedEgress 解析为空切片。防止阶段 1 之前部署的存量 token 失效。
-	t.Setenv("DE_SANDBOX_RUN_SECRET", "test-secret")
+	t.Setenv("QZDA_SANDBOX_RUN_SECRET", "test-secret")
 	claims := RunTokenClaims{SkillID: "sk1", WorkspaceID: "w1", ActorID: "u1", Exp: time.Now().UTC().Add(time.Minute).Unix()}
 	raw, _ := json.Marshal(claims)
 	payload := base64.RawURLEncoding.EncodeToString(raw)

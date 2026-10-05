@@ -6,9 +6,9 @@ script can `python3 services/qzda-gateway/main.py` and a container
 can `CMD ["python3", "main.py"]` with no extra wiring.
 
 Env (all optional):
-  DE_BIND_HOST      — listen host (default 127.0.0.1)
-  DE_BIND_PORT      — listen port for this proxy (default 8089)
-  DE_BACKEND_PORT   — upstream qzda-app port (default 8100)
+  QZDA_BIND_HOST      — listen host (default 127.0.0.1)
+  QZDA_BIND_PORT      — listen port for this proxy (default 8089)
+  QZDA_BACKEND_PORT   — upstream qzda-app port (default 8100)
 """
 from __future__ import annotations
 
@@ -126,9 +126,9 @@ class GatewayHandler(BaseHTTPRequestHandler):
 
 
 def main() -> None:
-    host = os.environ.get("DE_BIND_HOST", "127.0.0.1")
-    port = int(os.environ.get("DE_BIND_PORT", "8089") or "8089")
-    backend_port = int(os.environ.get("DE_BACKEND_PORT", "8100") or "8100")
+    host = os.environ.get("QZDA_BIND_HOST", "127.0.0.1")
+    port = int(os.environ.get("QZDA_BIND_PORT", "8089") or "8089")
+    backend_port = int(os.environ.get("QZDA_BACKEND_PORT", "8100") or "8100")
     GatewayHandler.backend_port = backend_port
     print(f"qzda-gateway on http://{host}:{port} → 127.0.0.1:{backend_port}", flush=True)
     try:

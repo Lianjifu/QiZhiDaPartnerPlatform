@@ -35,7 +35,7 @@ func (s *Service) capabilityCatalogAligned(r *http.Request) (any, error) {
 			skills, tools, knowledge, channels, models = peerSkills, peerTools, peerKnowledge, peerChannels, peerModels
 		}
 	}
-	if s.Deps.FetchWorkflowCatalogParts != nil && strings.TrimSpace(os.Getenv("DE_WORKFLOW_URL")) != "" {
+	if s.Deps.FetchWorkflowCatalogParts != nil && strings.TrimSpace(os.Getenv("QZDA_WORKFLOW_URL")) != "" {
 		peerWF, err := s.Deps.FetchWorkflowCatalogParts(r, ws)
 		if err == nil {
 			workflows = peerWF

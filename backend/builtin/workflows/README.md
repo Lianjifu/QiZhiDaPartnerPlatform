@@ -44,6 +44,6 @@
 
 每个目录含 `template.json`（元数据 + graph + connectors + knowledgePackageIds + requiredSkills + fixtures）与 `README.md`。
 
-环境变量 `DE_BUILTIN_WORKFLOWS_DIR` 可覆盖加载根路径。
+环境变量 `QZDA_BUILTIN_WORKFLOWS_DIR` 可覆盖加载根路径。
 
 装载：`EnsureBuiltinWorkflowsReady`（保留个人模板 `wft-user-*`）。控制台默认部门筛「办公通用」；「全部」平铺分页。详见 [环境与数据模式](../../../docs/环境与数据模式.md)。

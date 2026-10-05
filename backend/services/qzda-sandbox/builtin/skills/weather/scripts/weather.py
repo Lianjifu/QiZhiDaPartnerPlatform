@@ -18,7 +18,7 @@ import urllib.error
 import urllib.request
 
 # SKILL.md front-matter 中声明的域名,与 Python 沙箱注入的
-# DE_SANDBOX_ALLOWED_EGRESS 列表一致。子进程 bootstrap 还会把
+# QZDA_SANDBOX_ALLOWED_EGRESS 列表一致。子进程 bootstrap 还会把
 # socket.getaddrinfo monkey-patch 掉,IP literal 也走不了。
 ALLOWED_HOST = "wttr.in"
 DEFAULT_TIMEOUT = 10.0
@@ -72,7 +72,7 @@ def main(argv: list[str]) -> int:
         json.dumps(
             {
                 "city": city,
-                "allowedEgress": os.environ.get("DE_SANDBOX_ALLOWED_EGRESS", ""),
+                "allowedEgress": os.environ.get("QZDA_SANDBOX_ALLOWED_EGRESS", ""),
                 "httpsProxy": os.environ.get("HTTPS_PROXY", ""),
             },
             ensure_ascii=False,

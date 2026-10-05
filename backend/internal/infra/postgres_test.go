@@ -6,13 +6,13 @@ import (
 )
 
 func TestResolveDatabaseURLStandbyPrefersReplica(t *testing.T) {
-	t.Setenv("DE_DATABASE_URL", "postgres://de:de@primary:5432/digital_employee")
-	t.Setenv("DE_DATABASE_REPLICA_URL", "postgres://de:de@replica:5432/digital_employee")
-	t.Setenv("DE_REPLICA_MODE", "active")
+	t.Setenv("QZDA_DATABASE_URL", "postgres://de:de@primary:5432/digital_employee")
+	t.Setenv("QZDA_DATABASE_REPLICA_URL", "postgres://de:de@replica:5432/digital_employee")
+	t.Setenv("QZDA_REPLICA_MODE", "active")
 	if got := ResolveDatabaseURL(); got != "postgres://de:de@primary:5432/digital_employee" {
 		t.Fatalf("active primary %s", got)
 	}
-	t.Setenv("DE_REPLICA_MODE", "standby")
+	t.Setenv("QZDA_REPLICA_MODE", "standby")
 	if got := ResolveDatabaseURL(); got != "postgres://de:de@replica:5432/digital_employee" {
 		t.Fatalf("standby replica %s", got)
 	}

@@ -6,7 +6,7 @@
 |----|------|
 | **本地拓扑** | **monolith**：`qzda-gateway:8089` → `qzda-app:8100` + `qzda-sandbox:8093` |
 | **数据** | Docker Postgres 16 + Redis；禁止 Homebrew 抢占 `5432` |
-| **环境** | `DE_ENV=development`（空库 hydrate，不灌 ACME seed） |
+| **环境** | `QZDA_ENV=development`（空库 hydrate，不灌 ACME seed） |
 
 配套文档：
 
@@ -16,7 +16,7 @@
 | [docs/后端单进程方案.md](../docs/后端单进程方案.md) | 单进程 + 未来切分路径 |
 | [deploy/topology-split.md](deploy/topology-split.md) | monolith 拓扑说明 |
 | [deploy/MIGRATION-de-to-qzda.md](deploy/MIGRATION-de-to-qzda.md) | Phase 3 外部集成迁移指南(OIDC client / Kafka 包名 / SPIFFE trust domain) |
-| [docs/环境与数据模式.md](../docs/环境与数据模式.md) | `DE_ENV`、Persist、办公开箱 |
+| [docs/环境与数据模式.md](../docs/环境与数据模式.md) | `QZDA_ENV`、Persist、办公开箱 |
 | [api/routes.md](api/routes.md) | HTTP 路由契约 |
 | [../CHANGELOG.md](../CHANGELOG.md) | 三阶段品牌迁移总账 |
 
@@ -42,7 +42,7 @@
 ## 架构总览
 
 **控制面管可信与编排，执行面跑推理与工具，网关统一入口。**  
-`qzda-app` 是单进程 monolith：sys / collab / cap / workflow 域逻辑共存于同一 Go 进程，`ModeApp` / `DomainAll` 吸收所有 collection。Temporal worker 可作为进程内 goroutine 启动（`DE_WORKFLOW_WORKER=1`）。
+`qzda-app` 是单进程 monolith：sys / collab / cap / workflow 域逻辑共存于同一 Go 进程，`ModeApp` / `DomainAll` 吸收所有 collection。Temporal worker 可作为进程内 goroutine 启动（`QZDA_WORKFLOW_WORKER=1`）。
 
 ```mermaid
 flowchart TB
@@ -202,8 +202,8 @@ sequenceDiagram
   APP--)AUD: AuditEvent · UsageMeter（异步）
 ```
 
-`DE_RUNTIME_MODE=local`（默认）：进程内 Harness。  
-`DE_RUNTIME_MODE=remote`：回合经 `qzda-agent-runtime` `POST /v1/run` SSE。  
+`QZDA_RUNTIME_MODE=local`（默认）：进程内 Harness。  
+`QZDA_RUNTIME_MODE=remote`：回合经 `qzda-agent-runtime` `POST /v1/run` SSE。  
 完整扇出见 [docs/后端架构规划.md](../docs/后端架构规划.md) §3.3。
 
 ---
@@ -213,7 +213,7 @@ sequenceDiagram
 | 单元 | 端口 | 说明 |
 |------|------|------|
 | **qzda-gateway** | 8089 | Python 代理 `services/qzda-gateway/main.py`；健康检查 `/healthz` |
-| **qzda-app** | 8100 | **monolith 单进程**：sys + collab + cap + workflow,可设 `DE_WORKFLOW_WORKER=1` 启用进程内 Temporal worker |
+| **qzda-app** | 8100 | **monolith 单进程**：sys + collab + cap + workflow,可设 `QZDA_WORKFLOW_WORKER=1` 启用进程内 Temporal worker |
 | **qzda-sandbox** | 8093 | 技能沙箱（**必须**） |
 | qzda-agent / qzda-rag | 8091–8092 | Python sidecar,按需 |
 
@@ -221,7 +221,7 @@ sequenceDiagram
 
 - 策略评估在 qzda-app 进程内由 `internal/policy.Engine` 处理；`/api/zero-trust/evaluate` 与 `/v1/evaluate` 都直接走本进程
 - 审计写入本进程本地 sink（PG / Redis / Kafka / OpenSearch）
-- 多活最小集：`DE_REPLICA_MODE=standby` 拒写；优先 `DE_DATABASE_REPLICA_URL`（`make compose-up-replica` → `:5433`）
+- 多活最小集：`QZDA_REPLICA_MODE=standby` 拒写；优先 `QZDA_DATABASE_REPLICA_URL`（`make compose-up-replica` → `:5433`）
 
 ---
 
@@ -302,7 +302,7 @@ VITE_API_BASE=
 | `audit@` | auditor | 治理 / 审计只读 |
 | 其他 | user | 写操作须管理员审批 |
 
-演示 token（`mock-*-token`）需 `DE_ALLOW_DEMO_TOKEN=1` 或 `DE_BAN_MOCK_TOKEN=0`。LaunchAgent 默认 `DE_BAN_MOCK_TOKEN=1`。
+演示 token（`mock-*-token`）需 `QZDA_ALLOW_DEMO_TOKEN=1` 或 `QZDA_BAN_MOCK_TOKEN=0`。LaunchAgent 默认 `QZDA_BAN_MOCK_TOKEN=1`。
 
 改 Go 后：
 
@@ -327,7 +327,7 @@ launchctl kickstart -k "gui/$(id -u)/com.qizhida.dev-stack"
 单进程调试：
 
 ```bash
-make run-app              # :8100 monolith · DE_ENV=development
+make run-app              # :8100 monolith · QZDA_ENV=development
 make run-app-workflow     # :8100 monolith + 进程内 Temporal worker
 make run-demo             # 内存 ACME seed，不写 PG
 make run-dev              # infra-env + run-app
@@ -347,7 +347,7 @@ make skill                # :8093 沙箱
 | `EnsureBuiltinSkillsReady` | 技能目录 + 各工作区 `autoInstall` 岗位包（`general` / `office`） |
 | `EnsureBuiltinKnowledgeReady` | `kp.office.*` 知识包 → published |
 | `EnsureBuiltinWorkflowsReady` | `wf.office.*` + 部门 Certified + 高级库；不覆盖 `wft-user-*` |
-| 可选 `DE_ENSURE_GENERAL=1` | 补通用员工；办公助手 `de-office` 同路径 |
+| 可选 `QZDA_ENSURE_GENERAL=1` | 补通用员工；办公助手 `de-office` 同路径 |
 
 源码：`builtin/{knowledge,skills,workflows,scenarios}/`。说明见各子目录 README 与 [环境与数据模式](../docs/环境与数据模式.md)。
 
@@ -359,7 +359,7 @@ make skill                # :8093 沙箱
 
 | 模式 | 行为 |
 |------|------|
-| `DE_ENV=demo` | 内存 store，不 Persist |
+| `QZDA_ENV=demo` | 内存 store，不 Persist |
 | `development`+ | PG hydrate；Upsert 写回；**硬删必须 `PersistDelete(Sync)`** |
 
 多数集合是 Upsert：只改内存再 `Persist` **不会**删掉 PG 旧行。会话删除须 Sync 覆盖 sessions + conversations + messages + context_snapshots。知识 / 模型供应商 / 渠道 / 技能卸载 / 个人流程模板（`workflow_templates`）等同理。记忆为软删（`revoked`）。
@@ -367,7 +367,7 @@ make skill                # :8093 沙箱
 清理历史 ACME seed：
 
 ```bash
-psql "$DE_DATABASE_URL" -f scripts/purge-demo-seed-ids.sql
+psql "$QZDA_DATABASE_URL" -f scripts/purge-demo-seed-ids.sql
 # 或 make db-reset-dev（危险：丢全部数据）
 ```
 
@@ -403,26 +403,26 @@ psql "$DE_DATABASE_URL" -f scripts/purge-demo-seed-ids.sql
 
 | 变量 | 说明 |
 |------|------|
-| `DE_ENV` | `demo` \| `development`（默认）\| `staging` \| `production` |
-| `DE_BAN_MOCK_TOKEN` / `DE_BAN_DEMO_TOKEN` | 禁止 mock token；**不**触发双人审批 |
-| `DE_ALLOW_DEMO_TOKEN` | `development` 下显式允许演示 token |
-| `DE_DATABASE_URL` / `DE_REDIS_URL` | PG / Redis |
-| `DE_APP_ADDR` / `DE_LISTEN_ADDR` | monolith 监听（默认 `:8100`） |
-| `DE_SERVICE` | 兼容字段，归 `app`；旧值（`sys` / `collab` / `cap` / `workflow`）也归 `app` |
-| `DE_DATABASE_REPLICA_URL` | standby 从库；本机 `compose-up-replica` → `:5433` |
-| `DE_AGENT_RUNTIME_URL` / `DE_RAG_URL` / `DE_SANDBOX_RUNTIME_URL` | 侧车 |
-| `DE_RUNTIME_MODE` | `local`（默认）或 `remote` |
-| `DE_RUNTIME_FAILOVER_LOCAL` | 非生产 remote 失败可回落 local |
-| `DE_SANDBOX_TEST_SIM` | 开发默认开；生产强制关 |
-| `DE_SANDBOX_RUN_SECRET` | RunToken HMAC |
-| `DE_TEMPORAL_HOST` | 非空则启用进程内 Temporal worker；生产/staging 默认 fail-closed |
-| `DE_WORKFLOW_WORKER` | `1` 启用 qzda-app 进程内 Temporal worker（需 `DE_TEMPORAL_HOST`） |
-| `DE_MODEL_BUDGET_ENFORCE` | 用量硬门禁；生产默认开 |
-| `DE_REPLICA_MODE` | `active`（默认）或 `standby` |
-| `DE_INSTANCE_ID` | 实例标识 |
-| `DE_EVAL_RECALL_MIN` / `DE_EVAL_SCORE_MIN` | 生产评测门禁 |
-| `DE_ENSURE_GENERAL` | `1` 时非 demo 也可补通用员工 |
-| `DE_BUILTIN_WORKFLOWS_DIR` | 覆盖流程包路径 |
+| `QZDA_ENV` | `demo` \| `development`（默认）\| `staging` \| `production` |
+| `QZDA_BAN_MOCK_TOKEN` / `QZDA_BAN_DEMO_TOKEN` | 禁止 mock token；**不**触发双人审批 |
+| `QZDA_ALLOW_DEMO_TOKEN` | `development` 下显式允许演示 token |
+| `QZDA_DATABASE_URL` / `QZDA_REDIS_URL` | PG / Redis |
+| `QZDA_APP_ADDR` / `QZDA_LISTEN_ADDR` | monolith 监听（默认 `:8100`） |
+| `QZDA_SERVICE` | 兼容字段，归 `app`；旧值（`sys` / `collab` / `cap` / `workflow`）也归 `app` |
+| `QZDA_DATABASE_REPLICA_URL` | standby 从库；本机 `compose-up-replica` → `:5433` |
+| `QZDA_AGENT_RUNTIME_URL` / `QZDA_RAG_URL` / `QZDA_SANDBOX_RUNTIME_URL` | 侧车 |
+| `QZDA_RUNTIME_MODE` | `local`（默认）或 `remote` |
+| `QZDA_RUNTIME_FAILOVER_LOCAL` | 非生产 remote 失败可回落 local |
+| `QZDA_SANDBOX_TEST_SIM` | 开发默认开；生产强制关 |
+| `QZDA_SANDBOX_RUN_SECRET` | RunToken HMAC |
+| `QZDA_TEMPORAL_HOST` | 非空则启用进程内 Temporal worker；生产/staging 默认 fail-closed |
+| `QZDA_WORKFLOW_WORKER` | `1` 启用 qzda-app 进程内 Temporal worker（需 `QZDA_TEMPORAL_HOST`） |
+| `QZDA_MODEL_BUDGET_ENFORCE` | 用量硬门禁；生产默认开 |
+| `QZDA_REPLICA_MODE` | `active`（默认）或 `standby` |
+| `QZDA_INSTANCE_ID` | 实例标识 |
+| `QZDA_EVAL_RECALL_MIN` / `QZDA_EVAL_SCORE_MIN` | 生产评测门禁 |
+| `QZDA_ENSURE_GENERAL` | `1` 时非 demo 也可补通用员工 |
+| `QZDA_BUILTIN_WORKFLOWS_DIR` | 覆盖流程包路径 |
 
 ---
 

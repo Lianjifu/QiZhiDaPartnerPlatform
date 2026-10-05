@@ -9,7 +9,7 @@ import (
 )
 
 func evalRecallMin() float64 {
-	v := strings.TrimSpace(os.Getenv("DE_EVAL_RECALL_MIN"))
+	v := strings.TrimSpace(os.Getenv("QZDA_EVAL_RECALL_MIN"))
 	if v == "" {
 		if productionLikeEnv() {
 			return 0.7
@@ -27,7 +27,7 @@ func evalRecallMin() float64 {
 }
 
 func evalScoreMin() float64 {
-	v := strings.TrimSpace(os.Getenv("DE_EVAL_SCORE_MIN"))
+	v := strings.TrimSpace(os.Getenv("QZDA_EVAL_SCORE_MIN"))
 	if v == "" {
 		if productionLikeEnv() {
 			return 80

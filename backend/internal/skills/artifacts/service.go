@@ -29,17 +29,17 @@ type Service struct {
 	IdentityFrom func(r *http.Request) *auth.Identity
 }
 
-// artifactPolicy reads DE_ARTIFACT_MAX_BYTES + DE_ARTIFACT_REQUIRE_AUTH
+// artifactPolicy reads QZDA_ARTIFACT_MAX_BYTES + QZDA_ARTIFACT_REQUIRE_AUTH
 // and returns the gate configuration for /api/skill-artifacts/*. Mirrors
 // the legacy server.Server.artifactPolicy (server.go L1277).
 func (s *Service) artifactPolicy() *gateway.ArtifactPolicy {
 	p := gateway.DefaultArtifactPolicy()
-	if v := strings.TrimSpace(os.Getenv("DE_ARTIFACT_MAX_BYTES")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("QZDA_ARTIFACT_MAX_BYTES")); v != "" {
 		if n, err := strconv.ParseInt(v, 10, 64); err == nil && n > 0 {
 			p.MaxBytes = n
 		}
 	}
-	if envFlagFalse("DE_ARTIFACT_REQUIRE_AUTH") {
+	if envFlagFalse("QZDA_ARTIFACT_REQUIRE_AUTH") {
 		p.RequireAuth = false
 	}
 	return p

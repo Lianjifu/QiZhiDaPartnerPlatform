@@ -21,7 +21,7 @@ import (
 )
 
 func TestMockTokenForbiddenWhenBanMock(t *testing.T) {
-	t.Setenv("DE_BAN_MOCK_TOKEN", "1")
+	t.Setenv("QZDA_BAN_MOCK_TOKEN", "1")
 	h := server.New(store.New()).Handler()
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/workspaces", nil)
@@ -36,7 +36,7 @@ func TestMockTokenForbiddenWhenBanMock(t *testing.T) {
 }
 
 func TestMockHeadersForbiddenWhenAllowMockIdentityFalse(t *testing.T) {
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "0")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "0")
 	h := server.New(store.New()).Handler()
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/workspaces", nil)
@@ -52,8 +52,8 @@ func TestMockHeadersForbiddenWhenAllowMockIdentityFalse(t *testing.T) {
 }
 
 func TestMockTokenAllowedWithEscapeHatch(t *testing.T) {
-	t.Setenv("DE_BAN_MOCK_TOKEN", "1")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_BAN_MOCK_TOKEN", "1")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	h := server.New(store.New()).Handler()
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/workspaces", nil)
@@ -65,7 +65,7 @@ func TestMockTokenAllowedWithEscapeHatch(t *testing.T) {
 }
 
 func TestProductionEnvRejectsMockToken(t *testing.T) {
-	t.Setenv("DE_ENV", "production")
+	t.Setenv("QZDA_ENV", "production")
 	h := server.New(store.New()).Handler()
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/workspaces", nil)

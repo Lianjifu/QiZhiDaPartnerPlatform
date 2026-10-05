@@ -132,12 +132,12 @@ func (s *Server) runtimeWebSearch(ctx toolRunContext, call toolCallRequest, star
 	if query == "" {
 		return toolExecResult{Status: "failed", Error: "缺少 query", DurationMs: int(time.Since(started).Milliseconds())}
 	}
-	apiKey := strings.TrimSpace(os.Getenv("DE_WEB_SEARCH_API_KEY"))
+	apiKey := strings.TrimSpace(os.Getenv("QZDA_WEB_SEARCH_API_KEY"))
 	if apiKey == "" {
-		return toolExecResult{Status: "unavailable", Error: "未配置 DE_WEB_SEARCH_API_KEY",
-			Output: "web_search 需要配置 DE_WEB_SEARCH_API_KEY（Tavily 或兼容 API）", DurationMs: int(time.Since(started).Milliseconds())}
+		return toolExecResult{Status: "unavailable", Error: "未配置 QZDA_WEB_SEARCH_API_KEY",
+			Output: "web_search 需要配置 QZDA_WEB_SEARCH_API_KEY（Tavily 或兼容 API）", DurationMs: int(time.Since(started).Milliseconds())}
 	}
-	endpoint := coalesce(os.Getenv("DE_WEB_SEARCH_URL"), "https://api.tavily.com/search")
+	endpoint := coalesce(os.Getenv("QZDA_WEB_SEARCH_URL"), "https://api.tavily.com/search")
 	body, _ := json.Marshal(map[string]any{"query": query, "max_results": 5})
 	req, err := http.NewRequestWithContext(ctx.Request.Context(), http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {

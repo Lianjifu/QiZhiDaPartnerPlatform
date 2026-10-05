@@ -6,7 +6,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 BACKEND="$ROOT/backend"
 COMPOSE=(docker compose -f "$BACKEND/deploy/compose.yml")
-DB_URL="${DE_DATABASE_URL:-postgres://de:de@127.0.0.1:5432/digital_employee?sslmode=disable}"
+DB_URL="${QZDA_DATABASE_URL:-postgres://de:de@127.0.0.1:5432/digital_employee?sslmode=disable}"
 
 listening_pids() {
   /usr/sbin/lsof -tiTCP:5432 -sTCP:LISTEN 2>/dev/null || true

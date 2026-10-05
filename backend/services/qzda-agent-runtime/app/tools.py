@@ -20,7 +20,7 @@ def retrieve_published(
     docs: list[Any] | None = None,
     timeout: float = 3.0,
 ) -> dict[str, Any]:
-    base = (rag_url or env("DE_RAG_URL") or "http://127.0.0.1:8092").rstrip("/")
+    base = (rag_url or env("QZDA_RAG_URL") or "http://127.0.0.1:8092").rstrip("/")
     payload: dict[str, Any] = {"query": query, "correlationId": correlation_id, "publishedOnly": True}
     if docs is not None:
         payload["docs"] = docs

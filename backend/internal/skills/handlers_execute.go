@@ -117,7 +117,7 @@ func (s *Service) callSandbox(body map[string]any) (map[string]any, error) {
 	}
 	client := &http.Client{Timeout: time.Duration(timeoutSec) * time.Second}
 	payload, _ := json.Marshal(body)
-	resp, err := client.Post(envOr("DE_SANDBOX_RUNTIME_URL", "http://127.0.0.1:8093")+"/v1/execute", "application/json", strings.NewReader(string(payload)))
+	resp, err := client.Post(envOr("QZDA_SANDBOX_RUNTIME_URL", "http://127.0.0.1:8093")+"/v1/execute", "application/json", strings.NewReader(string(payload)))
 	if err != nil {
 		return nil, err
 	}
@@ -139,6 +139,6 @@ func skillTestSimEnabled() bool {
 	if productionLikeEnv() {
 		return false
 	}
-	v := strings.ToLower(strings.TrimSpace(envOr("DE_SANDBOX_TEST_SIM", "1")))
+	v := strings.ToLower(strings.TrimSpace(envOr("QZDA_SANDBOX_TEST_SIM", "1")))
 	return v == "1" || v == "true" || v == "yes"
 }

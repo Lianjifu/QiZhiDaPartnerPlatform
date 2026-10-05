@@ -30,7 +30,7 @@
 //
 // Mock strategy:
 //   - The executeSkill handler dispatches to a Python sandbox via
-//     DE_SANDBOX_RUNTIME_URL (default 127.0.0.1:8093). S11 swaps that
+//     QZDA_SANDBOX_RUNTIME_URL (default 127.0.0.1:8093). S11 swaps that
 //     env var to a local httptest server that mimics the sandbox
 //     response envelope — no subprocess is spawned.
 //   - S15 wires a mock Signer into Service.Signer to prove the
@@ -307,7 +307,7 @@ func assertMockSignerWired(t *testing.T, mock *mockSigner) {
 // sandboxStubServer answers POST /v1/execute with the canned
 // execute envelope the M09 handler expects: ok=true + stdout +
 // durationMs. The HTTP execute path (handlers_execute.go L120)
-// POSTs to envOr("DE_SANDBOX_RUNTIME_URL", "http://127.0.0.1:8093")
+// POSTs to envOr("QZDA_SANDBOX_RUNTIME_URL", "http://127.0.0.1:8093")
 // + "/v1/execute" — we mirror that path shape exactly.
 func sandboxStubServer(t *testing.T) *httptest.Server {
 	t.Helper()
@@ -580,7 +580,7 @@ func TestS7_GeneralPackAndPacks(t *testing.T) {
 	// applyGeneralPack call installs the canonical weather /
 	// summarize / docx set. Without this, builtinSkillsRoot() falls
 	// back to ./backend/builtin/skills which doesn't exist in tests.
-	t.Setenv("DE_BUILTIN_SKILLS_DIR", findRealBuiltinSkillsDir(t))
+	t.Setenv("QZDA_BUILTIN_SKILLS_DIR", findRealBuiltinSkillsDir(t))
 	srv, st := newServer(t)
 	tok := adminTok(t)
 
@@ -754,17 +754,17 @@ func TestS10_Audit(t *testing.T) {
 }
 
 // ----------------------------------------------------------------------
-// S11 — POST /api/skills/execute: 200 (mock harness via DE_SANDBOX_RUNTIME_URL)
+// S11 — POST /api/skills/execute: 200 (mock harness via QZDA_SANDBOX_RUNTIME_URL)
 // ----------------------------------------------------------------------
 
 // TestS11_ExecuteSkillMock verifies the execute endpoint round-trips
 // through a mock sandbox (httptest.Server responding to /v1/execute)
 // without spawning a real Python subprocess. The env override
-// DE_SANDBOX_RUNTIME_URL is the seam handlers_execute.go L120 reads.
+// QZDA_SANDBOX_RUNTIME_URL is the seam handlers_execute.go L120 reads.
 func TestS11_ExecuteSkillMock(t *testing.T) {
 	srv, st := newServer(t)
 	sandbox := sandboxStubServer(t)
-	t.Setenv("DE_SANDBOX_RUNTIME_URL", sandbox.URL)
+	t.Setenv("QZDA_SANDBOX_RUNTIME_URL", sandbox.URL)
 	seedSkillForExec(t, st, "sk-s11-1", "S11 weather", "skill")
 
 	body := []byte(`{"skillId":"sk-s11-1","command":"echo S11","input":"S11","timeoutSec":10}`)
@@ -884,7 +884,7 @@ func TestS14_BuiltinLoader(t *testing.T) {
 	// Try to enable the real builtin skills dir; fall back to
 	// manifest-only seeding when it is absent (CI / minimal envs).
 	if dir := findRealBuiltinSkillsDir(t); dir != "" {
-		t.Setenv("DE_BUILTIN_SKILLS_DIR", dir)
+		t.Setenv("QZDA_BUILTIN_SKILLS_DIR", dir)
 	}
 
 	srv.EnsureBuiltinSkillsReady()
@@ -1207,7 +1207,7 @@ func TestS17_CrossModuleAgentBind(t *testing.T) {
 // / TestP13_Unauthorized (M05) precedent.
 func TestS18_Unauthorized(t *testing.T) {
 	srv, _ := newServer(t)
-	t.Setenv("DE_BAN_MOCK_TOKEN", "")
+	t.Setenv("QZDA_BAN_MOCK_TOKEN", "")
 	rr := doRequest(t, srv, http.MethodGet, "/api/skills", "", nil)
 	if rr.Code != http.StatusUnauthorized {
 		t.Fatalf("want 401, got %d body=%s", rr.Code, rr.Body.String())

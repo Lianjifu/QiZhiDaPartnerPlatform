@@ -142,7 +142,7 @@ func containsAnyFold(msg, lower string, needles ...string) bool {
 //   - 在 [floor, requested] 区间内，按预设降级顺序找第一份已发布的 policy
 //     （P0→P0/P1/P2/P3，P1→P1/P2/P3/P0...）保证至少有一个可用模型
 //
-// Demo model alias（DE_DEMO_MODEL_ALIASES 注册的那些）即使被显式指定，
+// Demo model alias（QZDA_DEMO_MODEL_ALIASES 注册的那些）即使被显式指定，
 // 也会被 IsDemoModelAliasFn 拦截、强制走 policy 查找——避免 demo 模型
 // 被错用到生产回合。
 func (s *Service) resolveModelByPolicyLevel(ws, requested, level, riskLevel string) (modelID, policyID, usedLevel string) {

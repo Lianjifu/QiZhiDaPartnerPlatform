@@ -22,7 +22,7 @@ const (
 	PolicyWorkspace
 )
 
-// skillSignaturePolicy reads DE_REQUIRE_SKILL_SIGNATURE and returns the
+// skillSignaturePolicy reads QZDA_REQUIRE_SKILL_SIGNATURE and returns the
 // policy the server enforces at skill import time.
 //
 // Recognized values:
@@ -32,14 +32,14 @@ const (
 //	workspace / strict     → PolicyWorkspace
 //	(empty)                → PolicyAny (W1-D2 back-compat default)
 //
-// In a production-like environment (DE_ENV=staging|production), PolicyOff
+// In a production-like environment (QZDA_ENV=staging|production), PolicyOff
 // is auto-promoted to PolicyWorkspace — operators cannot accidentally run
 // an unsigned-import server in prod.
 //
 // Back-compat note: skillSignatureRequired (defined in builtin_skills.go)
 // delegates to this function — keep that single source of truth.
 func skillSignaturePolicy() SkillSignaturePolicy {
-	raw := strings.ToLower(strings.TrimSpace(os.Getenv("DE_REQUIRE_SKILL_SIGNATURE")))
+	raw := strings.ToLower(strings.TrimSpace(os.Getenv("QZDA_REQUIRE_SKILL_SIGNATURE")))
 	switch raw {
 	case "", "any", "enabled", "true", "on":
 		return PolicyAny

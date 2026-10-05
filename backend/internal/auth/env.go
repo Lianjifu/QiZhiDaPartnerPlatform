@@ -9,17 +9,17 @@ import (
 )
 
 // ForceOIDCLogin reports whether password login must be rejected.
-// True when DE_FORCE_OIDC=1, or when DE_BAN_MOCK_TOKEN=1 unless
-// DE_ALLOW_PASSWORD_LOGIN=1 (local escape hatch). The default (no env)
+// True when QZDA_FORCE_OIDC=1, or when QZDA_BAN_MOCK_TOKEN=1 unless
+// QZDA_ALLOW_PASSWORD_LOGIN=1 (local escape hatch). The default (no env)
 // keeps password login enabled for demo / development.
 func ForceOIDCLogin() bool {
-	if v := strings.TrimSpace(os.Getenv("DE_FORCE_OIDC")); v == "1" || strings.EqualFold(v, "true") {
+	if v := strings.TrimSpace(os.Getenv("QZDA_FORCE_OIDC")); v == "1" || strings.EqualFold(v, "true") {
 		return true
 	}
 	if !BanMockToken() {
 		return false
 	}
-	allow := strings.TrimSpace(os.Getenv("DE_ALLOW_PASSWORD_LOGIN"))
+	allow := strings.TrimSpace(os.Getenv("QZDA_ALLOW_PASSWORD_LOGIN"))
 	return !(allow == "1" || strings.EqualFold(allow, "true"))
 }
 

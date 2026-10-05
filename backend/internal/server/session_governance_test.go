@@ -67,7 +67,7 @@ func TestReasoningEffortGuidance(t *testing.T) {
 }
 
 func TestContentSafetyRedact(t *testing.T) {
-	t.Setenv("DE_CONTENT_SAFETY", "redact")
+	t.Setenv("QZDA_CONTENT_SAFETY", "redact")
 	r := copilot.ApplyContentSafety("联系我 13800138000")
 	if !r.Redacted || r.Blocked {
 		t.Fatalf("expected redact: %+v", r)

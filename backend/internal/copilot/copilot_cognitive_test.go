@@ -66,9 +66,9 @@ func TestLoadCognitiveDigest(t *testing.T) {
 		if _, err := os.Stat(root); err != nil {
 			t.Skip("builtin skills not found from test cwd")
 		}
-		t.Setenv("DE_BUILTIN_SKILLS_DIR", root)
+		t.Setenv("QZDA_BUILTIN_SKILLS_DIR", root)
 	} else {
-		t.Setenv("DE_BUILTIN_SKILLS_DIR", root)
+		t.Setenv("QZDA_BUILTIN_SKILLS_DIR", root)
 	}
 	text := loadCognitiveDigest("general-logic-thinking-assistant")
 	if !strings.Contains(text, "逻辑思考") {

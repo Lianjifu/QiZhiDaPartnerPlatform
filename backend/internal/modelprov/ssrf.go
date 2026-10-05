@@ -10,7 +10,7 @@ import (
 
 // AllowPrivateEndpoints enables loopback/private IP targets (e.g. internal ollama).
 func AllowPrivateEndpoints() bool {
-	v := strings.TrimSpace(os.Getenv("DE_MODEL_ALLOW_PRIVATE"))
+	v := strings.TrimSpace(os.Getenv("QZDA_MODEL_ALLOW_PRIVATE"))
 	return v == "1" || strings.EqualFold(v, "true")
 }
 

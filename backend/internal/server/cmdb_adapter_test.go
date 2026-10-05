@@ -24,8 +24,8 @@ func TestCMDBLookupPlatformCatalog(t *testing.T) {
 }
 
 func TestCMDBLookupRequireExternalUnavailable(t *testing.T) {
-	t.Setenv("DE_CMDB_REQUIRE_EXTERNAL", "1")
-	_ = os.Unsetenv("DE_CMDB_URL")
+	t.Setenv("QZDA_CMDB_REQUIRE_EXTERNAL", "1")
+	_ = os.Unsetenv("QZDA_CMDB_URL")
 	s := New(store.New())
 	tool := &registeredTool{Name: "CMDB", Key: "tool:cmdb", Kind: "tool"}
 	res := s.runCMDBLookup(toolRunContext{WorkspaceID: "w1"}, tool, toolCallRequest{Args: map[string]any{"query": "x"}}, time.Now())

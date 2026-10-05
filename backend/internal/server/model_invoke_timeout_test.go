@@ -9,16 +9,16 @@ import (
 )
 
 func TestCandidateAttemptTimeoutDefault(t *testing.T) {
-	t.Setenv("DE_MODEL_CANDIDATE_TIMEOUT", "")
+	t.Setenv("QZDA_MODEL_CANDIDATE_TIMEOUT", "")
 	d := candidateAttemptTimeout()
 	if d != 45*time.Second {
 		t.Fatalf("default want 45s, got %v", d)
 	}
-	t.Setenv("DE_MODEL_CANDIDATE_TIMEOUT", "60")
+	t.Setenv("QZDA_MODEL_CANDIDATE_TIMEOUT", "60")
 	if candidateAttemptTimeout() != 60*time.Second {
 		t.Fatalf("override")
 	}
-	t.Setenv("DE_MODEL_CANDIDATE_TIMEOUT", "2")
+	t.Setenv("QZDA_MODEL_CANDIDATE_TIMEOUT", "2")
 	if candidateAttemptTimeout() != 5*time.Second {
 		t.Fatalf("floor 5s, got %v", candidateAttemptTimeout())
 	}
@@ -52,7 +52,7 @@ func TestClampAttemptToParent(t *testing.T) {
 }
 
 func TestCopilotStreamTimeoutDefault(t *testing.T) {
-	t.Setenv("DE_COPILOT_STREAM_TIMEOUT", "")
+	t.Setenv("QZDA_COPILOT_STREAM_TIMEOUT", "")
 	if copilotStreamTimeout() != 300*time.Second {
 		t.Fatalf("got %v", copilotStreamTimeout())
 	}

@@ -10,7 +10,7 @@ Phase 3(commit `e978e14`)把所有运行时标识符从旧 `de-*` 前缀改为�
 
 ### 影响范围
 - Authentik blueprint / Dex static client / Okta / Keycloak 等 IdP 中注册的 client_id `de-core` 必须改名或重新签发。
-- 控制面前端(Vite 模式)通过 `VITE_OIDC_CLIENT_ID` / `DE_OIDC_CLIENT_ID` 等环境变量读取该值,**控制面与前端代码已同步使用 `qzda-core`**,但 IdP 端的 client 记录是租户配置,不在仓库内。
+- 控制面前端(Vite 模式)通过 `VITE_OIDC_CLIENT_ID` / `QZDA_OIDC_CLIENT_ID` 等环境变量读取该值,**控制面与前端代码已同步使用 `qzda-core`**,但 IdP 端的 client 记录是租户配置,不在仓库内。
 
 ### 迁移步骤(以 Authentik 为例)
 
@@ -163,4 +163,4 @@ git revert 1fd8c65 e978e14 bff4946
 
 回滚后:
 - 旧 `de_*` 命名空间立即生效(Kafka topic、OIDC client、SPIFFE 端点等外部集成需同步切回)
-- DB 角色 / `DE_*` env vars / DB name `digital_employee` 不需要回滚(从未迁移)
+- DB 角色 / `QZDA_*` env vars / DB name `digital_employee` 不需要回滚(从未迁移)

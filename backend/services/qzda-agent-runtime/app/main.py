@@ -14,7 +14,7 @@ app = FastAPI(title="qzda-agent-runtime", version="1.0.0")
 
 
 def _allow_stub() -> bool:
-    v = (env("DE_ALLOW_RUNTIME_STUB") or "").strip().lower()
+    v = (env("QZDA_ALLOW_RUNTIME_STUB") or "").strip().lower()
     return v in ("1", "true", "yes")
 
 
@@ -25,7 +25,7 @@ def _sse(event: str, payload: dict[str, Any]) -> str:
 @app.get("/healthz")
 @app.get("/")
 def healthz() -> dict[str, str]:
-    if env("DE_LLM_BASE_URL"):
+    if env("QZDA_LLM_BASE_URL"):
         mode = "openai-compatible"
     elif _allow_stub():
         mode = "stub"
@@ -61,7 +61,7 @@ async def invoke(request: Request) -> Any:
             status_code=503,
             content={
                 "error": "E_RUNTIME_UNAVAILABLE",
-                "message": "Set DE_LLM_BASE_URL (and optional DE_LLM_API_KEY / DE_LLM_MODEL), or DE_ALLOW_RUNTIME_STUB=1 for legacy stub.",
+                "message": "Set QZDA_LLM_BASE_URL (and optional QZDA_LLM_API_KEY / QZDA_LLM_MODEL), or QZDA_ALLOW_RUNTIME_STUB=1 for legacy stub.",
                 "provider": "none",
             },
         )
@@ -95,7 +95,7 @@ async def run(request: Request) -> Any:
                 status_code=503,
                 content={
                     "error": "E_RUNTIME_UNAVAILABLE",
-                    "message": "agent-runtime has no LLM; set DE_LLM_BASE_URL or DE_ALLOW_RUNTIME_STUB=1",
+                    "message": "agent-runtime has no LLM; set QZDA_LLM_BASE_URL or QZDA_ALLOW_RUNTIME_STUB=1",
                     "correlationId": corr,
                 },
             )

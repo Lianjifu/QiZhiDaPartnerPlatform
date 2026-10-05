@@ -11,8 +11,8 @@ import (
 )
 
 func TestVaultKeysAdminAllowed(t *testing.T) {
-	t.Setenv("DE_ENV", "test")
-	t.Setenv("DE_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_ENV", "test")
+	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
 	h := server.New(store.New()).Handler()
 
 	req := httptest.NewRequest(http.MethodGet, "/api/vault/keys", nil)

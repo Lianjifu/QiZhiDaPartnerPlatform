@@ -18,7 +18,7 @@ var skillExternalBins = map[string][]string{
 }
 
 func skillRuntimeBinDir() string {
-	if v := strings.TrimSpace(os.Getenv("DE_BUILTIN_SKILL_BIN")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("QZDA_BUILTIN_SKILL_BIN")); v != "" {
 		return v
 	}
 	return filepath.Join(builtinSkillsRoot(), "runtime", "bin")

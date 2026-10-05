@@ -258,7 +258,7 @@ func (s *Service) resolveProviderCredential(ctx context.Context, credRef string)
 			return val
 		}
 	}
-	// DE_BAN_MOCK_TOKEN 只禁 mock 身份，不能挡住本地 model_secrets。
+	// QZDA_BAN_MOCK_TOKEN 只禁 mock 身份，不能挡住本地 model_secrets。
 	// 真实 staging/prod 才强制只走 Vault。
 	if vaultRequiredForCredentials() {
 		return ""
@@ -477,7 +477,7 @@ func (s *Service) DiscoverModels(r *http.Request) (any, error) {
 			msg = "拉取模型鉴权失败，请检查 API Key 与协议是否匹配"
 		} else if strings.Contains(err.Error(), "ssrf") || strings.Contains(err.Error(), "private") {
 			code = apperr.EgressBlocked
-			msg = "目标地址被安全策略拦截（内网地址需设置 DE_MODEL_ALLOW_PRIVATE=1）"
+			msg = "目标地址被安全策略拦截（内网地址需设置 QZDA_MODEL_ALLOW_PRIVATE=1）"
 		} else if strings.Contains(err.Error(), "empty") {
 			msg = "供应商返回空模型列表，请确认 Base URL / 协议是否正确"
 		}

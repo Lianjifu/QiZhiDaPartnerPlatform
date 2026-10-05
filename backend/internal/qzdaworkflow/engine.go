@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// Engine is a local Temporal-shaped worker. When DE_TEMPORAL_HOST is set,
+// Engine is a local Temporal-shaped worker. When QZDA_TEMPORAL_HOST is set,
 // StartTrial prefers the Temporal frontend (see temporal.go + qzda-workflow).
 type Engine struct {
 	mu           sync.Mutex
@@ -33,7 +33,7 @@ type Run struct {
 func New() *Engine {
 	return &Engine{
 		runs:         map[string]*Run{},
-		temporalHost: strings.TrimSpace(os.Getenv("DE_TEMPORAL_HOST")),
+		temporalHost: strings.TrimSpace(os.Getenv("QZDA_TEMPORAL_HOST")),
 	}
 }
 
@@ -42,18 +42,18 @@ func (e *Engine) TemporalConfigured() bool {
 }
 
 // ErrTemporalUnavailable is returned when Temporal is configured but unreachable
-// and fail-closed is on (production / DE_TEMPORAL_FAIL_CLOSED).
+// and fail-closed is on (production / QZDA_TEMPORAL_FAIL_CLOSED).
 var ErrTemporalUnavailable = errors.New("temporal unavailable")
 
 func temporalFailClosed() bool {
-	v := strings.TrimSpace(os.Getenv("DE_TEMPORAL_FAIL_CLOSED"))
+	v := strings.TrimSpace(os.Getenv("QZDA_TEMPORAL_FAIL_CLOSED"))
 	if v == "1" || strings.EqualFold(v, "true") {
 		return true
 	}
 	if v == "0" || strings.EqualFold(v, "false") {
 		return false
 	}
-	env := strings.ToLower(strings.TrimSpace(os.Getenv("DE_ENV")))
+	env := strings.ToLower(strings.TrimSpace(os.Getenv("QZDA_ENV")))
 	if env == "" {
 		env = strings.ToLower(strings.TrimSpace(os.Getenv("GO_ENV")))
 	}

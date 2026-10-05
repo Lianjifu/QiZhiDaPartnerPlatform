@@ -299,8 +299,8 @@ func TestSkillCenterP2PolicySupplyIsolation(t *testing.T) {
 }
 
 func TestSkillCenterP3RuntimeSimGovernance(t *testing.T) {
-	t.Setenv("DE_SANDBOX_RUNTIME_URL", "http://127.0.0.1:1")
-	t.Setenv("DE_SANDBOX_TEST_SIM", "1")
+	t.Setenv("QZDA_SANDBOX_RUNTIME_URL", "http://127.0.0.1:1")
+	t.Setenv("QZDA_SANDBOX_TEST_SIM", "1")
 	h := server.New(store.New()).Handler()
 
 	rr := knowledgeDo(t, h, http.MethodPatch, "/api/skills/sk-sandbox/runtime", "mock-admin-token",
@@ -341,7 +341,7 @@ func TestSkillCenterP3RuntimeSimGovernance(t *testing.T) {
 		t.Fatalf("expected [REDACTED] in masked output: %s", out)
 	}
 
-	t.Setenv("DE_SANDBOX_TEST_SIM", "0")
+	t.Setenv("QZDA_SANDBOX_TEST_SIM", "0")
 	rr = knowledgeDo(t, h, http.MethodPost, "/api/skills/sk-sandbox/test", "mock-admin-token",
 		`{"command":"echo ok"}`)
 	if rr.Code == 200 {
@@ -349,7 +349,7 @@ func TestSkillCenterP3RuntimeSimGovernance(t *testing.T) {
 	}
 
 	// rate limit immediate effect on a clean skill after governance PATCH
-	t.Setenv("DE_SANDBOX_TEST_SIM", "1")
+	t.Setenv("QZDA_SANDBOX_TEST_SIM", "1")
 	rr = knowledgeDo(t, h, http.MethodPatch, "/api/skills/sk-sandbox/governance", "mock-admin-token",
 		`{"rateLimitPerMinute":1}`)
 	if rr.Code != 200 {

@@ -50,7 +50,7 @@ func TestBuildSegmentsFromTurnSegmentedConversational(t *testing.T) {
 }
 
 func TestBuildSegmentsFromTurnArtifactBubble(t *testing.T) {
-	t.Setenv("DE_COPILOT_ARTIFACT_SEGMENT", "1")
+	t.Setenv("QZDA_COPILOT_ARTIFACT_SEGMENT", "1")
 	full := "# 模板\n正文\n下载链接：/api/skill-artifacts/x-招聘岗位模板.docx"
 	segs := buildSegmentsFromTurn(full, reactTurnResult{}, replyModeSegmented, segmentPolicyDocument, "m1", func() string { return "m2" }, nil)
 	if len(segs) != 2 {
@@ -65,8 +65,8 @@ func TestBuildSegmentsFromTurnArtifactBubble(t *testing.T) {
 }
 
 func TestBuildSegmentsFromTurnArtifactInlineDefault(t *testing.T) {
-	t.Setenv("DE_COPILOT_ARTIFACT_SEGMENT", "0")
-	t.Setenv("DE_COPILOT_ARTIFACT_INLINE", "1")
+	t.Setenv("QZDA_COPILOT_ARTIFACT_SEGMENT", "0")
+	t.Setenv("QZDA_COPILOT_ARTIFACT_INLINE", "1")
 	full := "正文\n下载链接：/api/skill-artifacts/x-招聘岗位模板.docx"
 	segs := buildSegmentsFromTurn(full, reactTurnResult{}, replyModeSegmented, segmentPolicyDocument, "m1", func() string { return "m2" }, nil)
 	if len(segs) != 1 {
@@ -78,7 +78,7 @@ func TestBuildSegmentsFromTurnArtifactInlineDefault(t *testing.T) {
 }
 
 func TestReconcileSegmentsPreservesStreamedIDs(t *testing.T) {
-	t.Setenv("DE_COPILOT_ARTIFACT_SEGMENT", "1")
+	t.Setenv("QZDA_COPILOT_ARTIFACT_SEGMENT", "1")
 	streamed := []AssistantSegment{
 		{ID: "client-reply", Kind: segmentKindBody, Content: "old body"},
 		{ID: "client-reply_artifact", Kind: segmentKindArtifact, Content: "old art"},
