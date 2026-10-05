@@ -118,6 +118,32 @@ export default function SkillsDetailPage() {
       }
     : null;
 
+  const [testRunnerOpen, setTestRunnerOpen] = useState(false);
+  const [testCmd, setTestCmd] = useState('');
+  const [testOutputs, setTestOutputs] = useState<Array<{ cmd: string; out: string; ms: number; tone: 'success' | 'error' | 'info' }>>([]);
+  const testSkillMutation = useApiMutation<any, { id: string; command: string }>(({ id: skillId }) => `/api/skills/${skillId}/test`, {
+    onError: (err) => setNotice(err instanceof Error ? err.message : '沙箱测试失败'),
+  });
+  const handleRunTest = () => {
+    if (!activeResolved || !testCmd.trim()) return;
+    const cmd = testCmd.trim();
+    testSkillMutation.mutate({ id: activeResolved.id, command: cmd }, {
+      onSuccess: (result) => {
+        setTestOutputs((prev) => [{
+          cmd,
+          out: [
+            String(result.output ?? ''),
+            result.runtime ? `runtime=${result.runtime}` : '',
+            result.sim ? 'mode=policy-sim（runtime 不可达）' : '',
+            result.correlationId ? `corr=${result.correlationId}` : '',
+          ].filter(Boolean).join('\n'),
+          ms: Number(result.durationMs ?? 0),
+          tone: (result.status === 'success' ? 'success' : 'error') as 'success' | 'error',
+        }, ...prev].slice(0, 6));
+      },
+    });
+  };
+
   const governanceMutation = useApiMutation<SkillGovernancePolicy, Partial<SkillGovernancePolicy>>(
     () => `/api/skills/${id}/governance`,
     {
@@ -253,12 +279,12 @@ export default function SkillsDetailPage() {
           ) : (
             <RuntimePanel
               active={activeResolved}
-              testRunnerOpen={false}
-              setTestRunnerOpen={() => undefined}
-              testCmd=""
-              setTestCmd={() => undefined}
-              testOutputs={[]}
-              handleRunTest={() => undefined}
+              testRunnerOpen={testRunnerOpen}
+              setTestRunnerOpen={setTestRunnerOpen}
+              testCmd={testCmd}
+              setTestCmd={setTestCmd}
+              testOutputs={testOutputs}
+              handleRunTest={handleRunTest}
               trace={trace}
               skillAudit={skillAudit}
               canWrite={canWrite}
