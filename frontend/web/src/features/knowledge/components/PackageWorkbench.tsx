@@ -8,7 +8,7 @@ import { packageStatusLabel, packageStatusTone } from '@/features/knowledge/know
 
 type PackageStatusFilter = 'all' | KnowledgePackage['status'];
 
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 16;
 
 function buildPageList(current: number, total: number): (number | '…')[] {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
@@ -115,9 +115,7 @@ export function PackageWorkbench({
         <>
           <div className="wf-tpl-pagebar">
             <span>共 {filtered.length} 个知识包</span>
-            {totalPages > 1 && (
-              <span className="wf-tpl-pagebar__page">第 {safePage} / {totalPages} 页 · 每页 {PAGE_SIZE} 个</span>
-            )}
+            <span className="wf-tpl-pagebar__page">第 {safePage} / {totalPages} 页 · 每页 {PAGE_SIZE} 个</span>
           </div>
           <div className="wf-tpl-grid">
             {paged.map((item) => {
@@ -173,35 +171,33 @@ export function PackageWorkbench({
               );
             })}
           </div>
-          {totalPages > 1 && (
-            <nav className="wf-tpl-pager" aria-label="知识包分页">
-              <Button size="sm" variant="secondary" disabled={safePage <= 1} onClick={() => setPage(1)} title="首页">
-                <ChevronLeft className="h-3.5 w-3.5" /><ChevronLeft className="-ml-2 h-3.5 w-3.5" />
-              </Button>
-              <Button size="sm" variant="secondary" disabled={safePage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>上一页</Button>
-              <div className="wf-tpl-pager__pages">
-                {buildPageList(safePage, totalPages).map((n, i) =>
-                  n === '…' ? (
-                    <span key={`gap-${i}`} className="wf-tpl-pager__gap">…</span>
-                  ) : (
-                    <button
-                      key={n}
-                      type="button"
-                      className={cn('wf-tpl-pager__btn', n === safePage && 'is-active')}
-                      onClick={() => setPage(n)}
-                      aria-current={n === safePage ? 'page' : undefined}
-                    >
-                      {n}
-                    </button>
-                  ),
-                )}
-              </div>
-              <Button size="sm" variant="secondary" disabled={safePage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>下一页</Button>
-              <Button size="sm" variant="secondary" disabled={safePage >= totalPages} onClick={() => setPage(totalPages)} title="末页">
-                <ChevronRight className="h-3.5 w-3.5" /><ChevronRight className="-ml-2 h-3.5 w-3.5" />
-              </Button>
-            </nav>
-          )}
+          <nav className="wf-tpl-pager" aria-label="知识包分页">
+            <Button size="sm" variant="secondary" disabled={safePage <= 1} onClick={() => setPage(1)} title="首页">
+              <ChevronLeft className="h-3.5 w-3.5" /><ChevronLeft className="-ml-2 h-3.5 w-3.5" />
+            </Button>
+            <Button size="sm" variant="secondary" disabled={safePage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>上一页</Button>
+            <div className="wf-tpl-pager__pages">
+              {buildPageList(safePage, totalPages).map((n, i) =>
+                n === '…' ? (
+                  <span key={`gap-${i}`} className="wf-tpl-pager__gap">…</span>
+                ) : (
+                  <button
+                    key={n}
+                    type="button"
+                    className={cn('wf-tpl-pager__btn', n === safePage && 'is-active')}
+                    onClick={() => setPage(n)}
+                    aria-current={n === safePage ? 'page' : undefined}
+                  >
+                    {n}
+                  </button>
+                ),
+              )}
+            </div>
+            <Button size="sm" variant="secondary" disabled={safePage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>下一页</Button>
+            <Button size="sm" variant="secondary" disabled={safePage >= totalPages} onClick={() => setPage(totalPages)} title="末页">
+              <ChevronRight className="h-3.5 w-3.5" /><ChevronRight className="-ml-2 h-3.5 w-3.5" />
+            </Button>
+          </nav>
         </>
       )}
 
