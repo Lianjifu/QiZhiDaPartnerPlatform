@@ -106,7 +106,7 @@ export function WorkflowsTabSkills({ c }: { c: WorkflowsController }) {
                 <Sparkles className="h-3.5 w-3.5" />发布为流程技能
               </Button>
               <Button variant="outline" onClick={c.runWorkflow} disabled={!c.canExecute || c.isDirty}>运行前校验</Button>
-              <Link to="/skills?tab=workflowSkills" className="wf-publish__ghost">
+              <Link to="/skills?tab=governance" className="wf-publish__ghost">
                 技能治理 <ArrowUpRight className="h-3.5 w-3.5" />
               </Link>
               {c.skillGateHint && <p className="wf-publish__actions-note">{c.skillGateHint}</p>}

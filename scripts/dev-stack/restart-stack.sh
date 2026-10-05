@@ -32,6 +32,29 @@ probe() {
   launchctl list | grep qizhida || echo "  (supervisor not loaded)"
 }
 
+wait_down() {
+  local timeout="${1:-20}"
+  local i
+  echo "waiting for :8089 :8100 to free..."
+  for i in $(seq 1 "$timeout"); do
+    local busy=0
+    for p in 8089 8100; do
+      if /usr/sbin/lsof -nP -iTCP:"$p" -sTCP:LISTEN >/dev/null 2>&1; then
+        busy=1
+      fi
+    done
+    if [ "$busy" = 0 ]; then
+      return 0
+    fi
+    sleep 1
+  done
+  echo "ports still busy; reclaiming leftovers"
+  for p in 8089 8100 8092 8093; do
+    /usr/sbin/lsof -tiTCP:"$p" -sTCP:LISTEN 2>/dev/null | while read pid; do kill -KILL "$pid" 2>/dev/null || true; done
+  done
+  sleep 1
+}
+
 wait_ready() {
   local timeout="${1:-30}"
   for i in $(seq 1 "$timeout"); do
@@ -54,7 +77,7 @@ case "${1:-restart}" in
     ;;
   stop)
     [ -f "$PLIST" ] && launchctl unload "$PLIST" 2>&1 || true
-    sleep 1
+    wait_down 20
     probe
     ;;
   start)
@@ -72,7 +95,7 @@ case "${1:-restart}" in
     if [ -f "$PLIST" ] && launchctl list | grep -q qizhida; then
       echo "unloading supervisor..."
       launchctl unload "$PLIST"
-      sleep 2
+      wait_down 20
     fi
     # Ensure infra is up (PG + Redis)
     echo "ensuring PG/Redis..."

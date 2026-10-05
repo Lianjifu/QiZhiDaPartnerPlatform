@@ -31,6 +31,7 @@ export function SkillsDetailModal({
   activeId, showDetails, onClose,
   installedRows, detailTab, setDetailTab,
   canWrite, onUninstall, onInstallOpen, onNotice,
+  hideShell = false,
 }: {
   activeId: string | null;
   showDetails: boolean;
@@ -42,6 +43,7 @@ export function SkillsDetailModal({
   onUninstall: (skill: SkillRow) => void;
   onInstallOpen: (skill: SkillRow) => void;
   onNotice: (msg: string) => void;
+  hideShell?: boolean;
 }) {
   const [detailDescExpanded, setDetailDescExpanded] = useState(false);
   const [showRuntimeConfig, setShowRuntimeConfig] = useState(false);
@@ -156,36 +158,19 @@ export function SkillsDetailModal({
     });
   };
 
-  return (
-    <Modal
-      open={showDetails}
-      onClose={onClose}
-      title={active ? `${active.name} · 技能详情` : '技能详情'}
-      description={activeInstalled ? '已纳管能力的使用范围、运行治理与变更追溯' : '评估制品的能力边界、兼容性、安全性与安装条件'}
-      size="lg"
-      bodyClassName="skill-detail-modal skill-detail-modal--split !overflow-hidden px-0 py-0"
-      panelClassName="max-w-[760px]"
-      footer={!activeInstalled && active ? (
-        <>
-          <Button variant="ghost" onClick={onClose}>关闭</Button>
-          <Button disabled={!canWrite} onClick={() => { onClose(); onInstallOpen(active); }}>
-            <ShieldCheck className="h-3.5 w-3.5" />预检并安装
-          </Button>
-        </>
-      ) : undefined}
-    >
-      {active ? (
+  const body = active ? (
         <>
           <div className="skill-detail-chrome">
+            {hideShell ? null : (
             <div className="skill-detail-hero">
               <div className="skill-detail-hero__top">
                 <div className={cn('skill-detail-hero__icon', active.kind === 'skill' ? 'is-skill' : active.kind === 'mcp' ? 'is-mcp' : 'is-tool')}>
-                  {(() => { const Icon = KIND_META[active.kind].icon; return <Icon className="h-5 w-5" />; })()}
+                  {(() => { const Icon = (KIND_META[active.kind] ?? KIND_META.skill).icon; return <Icon className="h-5 w-5" />; })()}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="skill-detail-hero__title-row">
                     <strong className="skill-detail-hero__name">{active.name}</strong>
-                    <span className="skill-detail-hero__meta-chip">{KIND_META[active.kind].label}</span>
+                    <span className="skill-detail-hero__meta-chip">{(KIND_META[active.kind] ?? KIND_META.skill).label}</span>
                     <span className="skill-detail-hero__meta-chip font-mono">v{active.version}</span>
                     {activeInstalled ? (
                       <span className={cn('knowledge-status-dot', (active.lifecycleStatus ?? 'enabled') === 'enabled' ? 'is-ready' : (active.lifecycleStatus === 'pending_approval' || active.lifecycleStatus === 'quarantined') ? 'is-failed' : 'is-indexing')}>
@@ -252,8 +237,9 @@ export function SkillsDetailModal({
                 </div>
               )}
             </div>
+            )}
 
-            {activeInstalled ? (
+            {activeInstalled && !hideShell ? (
               <div className="skill-detail-tabs" role="tablist" aria-label="技能详情分区">
                 {([
                   { key: 'overview', label: '概览与策略' },
@@ -304,9 +290,31 @@ export function SkillsDetailModal({
             </> : <StoreSkillDetail skill={active} detailTab={detailTab} setDetailTab={setDetailTab} />}
           </div>
         </>
-      ) : (
-        <EmptyState icon={Eye} title="选择一项技能查看详情" />
-      )}
+  ) : (
+    <EmptyState icon={Eye} title="选择一项技能查看详情" />
+  );
+
+  if (hideShell) return <div className="skill-detail-modal skill-detail-modal--split">{body}</div>;
+
+  return (
+    <Modal
+      open={showDetails}
+      onClose={onClose}
+      title={active ? `${active.name} · 技能详情` : '技能详情'}
+      description={activeInstalled ? '已纳管能力的使用范围、运行治理与变更追溯' : '评估制品的能力边界、兼容性、安全性与安装条件'}
+      size="lg"
+      bodyClassName="skill-detail-modal skill-detail-modal--split !overflow-hidden px-0 py-0"
+      panelClassName="max-w-[760px]"
+      footer={!activeInstalled && active ? (
+        <>
+          <Button variant="ghost" onClick={onClose}>关闭</Button>
+          <Button disabled={!canWrite} onClick={() => { onClose(); onInstallOpen(active); }}>
+            <ShieldCheck className="h-3.5 w-3.5" />预检并安装
+          </Button>
+        </>
+      ) : undefined}
+    >
+      {body}
     </Modal>
   );
 }

@@ -1,25 +1,11 @@
 /**
- * 技能中心 · 页面 shell（M09 P1 拆分）。
- *
- * 负责：
- *   - 顶部 hero（图标 / 标题 / 副标题 / 工作区徽标 / 只读徽标 / CTA 按钮）
- *   - operation notice（统一通知条）+ 类型筛选状态（typeFilters）
- *   - Tab 路由：workspace → SkillsTab.Catalog · store → SkillsTab.CatalogStore ·
- *     platformTools → SkillsTab.PlatformTools · workflowSkills → WorkflowSkillList ·
- *     integration → SkillsTab.Integration · governance → SkillsTab.Governance
- *
- * 不持有业务态；每个子页自管。状态提升到本页：tab、operationNotice、typeFilters。
- *
- * 默认导出（App.tsx lazy import 兼容）。
+ * 技能中心目录：技能资产 + 运行治理。接入与详情走独立页面。
  */
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { Badge, Button } from '@qzda/web-ui';
-import {
-  Cpu, GitBranch, Network, RefreshCw, ShieldCheck, Sparkles, Upload, Wrench,
-} from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Badge } from '@qzda/web-ui';
+import { ShieldCheck, Upload, Wrench } from 'lucide-react';
 import { cn } from '@qzda/web-utils';
-import type { Skill, WorkflowSkill } from '@qzda/web-types';
 import { useApiQuery } from '@/services/query';
 import { useAuthStore } from '@/stores/authStore';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
@@ -29,26 +15,32 @@ import {
   defaultSkillsTab, roleCanMutate, rolePageCopy, visibleSkillsTabs,
 } from '@/features/role-nav/role-nav';
 import { SkillsTabCatalog } from './SkillsTab.Catalog';
-import { CatalogStoreView } from './SkillsTab.CatalogStore';
-import { PlatformToolsWorkspace } from './SkillsTab.PlatformTools';
-import { WorkflowSkillList, PackInstallPanel } from './SkillsTab.Packages';
-import { IntegrationWorkspace } from './SkillsTab.Integration';
 import { GovernanceWorkspace } from './SkillsTab.Governance';
-import type { SkillCenterTab, SkillRow } from './SkillsShared';
+import type { CatalogTypeFilter, SkillCenterTab } from './SkillsShared';
 
-const VALID_TABS: SkillCenterTab[] = ['workspace', 'store', 'platformTools', 'workflowSkills', 'integration', 'governance'];
-const EMPTY_WORKFLOW_SKILLS: WorkflowSkill[] = [];
+const CATALOG_TABS: SkillCenterTab[] = ['workspace', 'governance'];
+const LEGACY_TAB_REDIRECT: Record<string, string> = {
+  store: '/skills/new?source=store',
+  platformTools: '/skills?filter=builtin',
+  integration: '/skills/new',
+  workflowSkills: '/workflows',
+};
+
+function parseCatalogFilter(raw: string | null): CatalogTypeFilter {
+  if (raw === 'builtin' || raw === 'skill' || raw === 'mcp' || raw === 'tool') return raw;
+  return 'all';
+}
 
 function resolveTab(raw: string | null, roleDefault: SkillCenterTab): SkillCenterTab {
   if (raw === 'atomic') return 'workspace';
-  if (raw && VALID_TABS.includes(raw as SkillCenterTab)) return raw as SkillCenterTab;
+  if (raw && CATALOG_TABS.includes(raw as SkillCenterTab)) return raw as SkillCenterTab;
   return roleDefault;
 }
 
 export default function SkillsPage() {
   const { t } = useT();
+  const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
-  const isAdmin = user?.role === 'admin';
   const pageCopy = rolePageCopy('skills', user?.role);
   const allowedTabs = visibleSkillsTabs(user?.role);
   const canWrite = Boolean(user?.permissions.includes('skill.write')) && roleCanMutate(user?.role);
@@ -61,8 +53,9 @@ export default function SkillsPage() {
     const resolved = resolveTab(initialTabRaw, preferred);
     return allowedTabs.includes(resolved) ? resolved : preferred;
   });
-  const [typeFilters, setTypeFilters] = useState<Record<'workspace' | 'store' | 'integration' | 'governance', 'all' | Skill['kind']>>({
-    workspace: initialTabRaw === 'atomic' ? 'skill' : 'all', store: 'all', integration: 'all', governance: 'all',
+  const [typeFilters, setTypeFilters] = useState<Record<'workspace' | 'governance', CatalogTypeFilter>>({
+    workspace: searchParams.get('filter') === 'builtin' || initialTabRaw === 'platformTools' ? 'builtin' : initialTabRaw === 'atomic' ? 'skill' : parseCatalogFilter(searchParams.get('filter')),
+    governance: 'all',
   });
   const [operationNotice, setOperationNotice] = useState<string | null>(null);
 
@@ -74,11 +67,12 @@ export default function SkillsPage() {
   );
   const attentionCount = (governanceHealthData ?? []).filter((h: any) => h.status === 'attention' || h.status === 'incident').length;
 
-  const { data: workflowSkillsData } = useApiQuery<WorkflowSkill[]>(['workflow-skills'], '/api/workflow-skills');
-  const workflowSkills = workflowSkillsData ?? EMPTY_WORKFLOW_SKILLS;
-
   useEffect(() => {
     const nextRaw = searchParams.get('tab');
+    if (nextRaw && LEGACY_TAB_REDIRECT[nextRaw]) {
+      navigate(LEGACY_TAB_REDIRECT[nextRaw], { replace: true });
+      return;
+    }
     const preferred = defaultSkillsTab(user?.role);
     const allowed = visibleSkillsTabs(user?.role);
     if (nextRaw === 'atomic') {
@@ -92,7 +86,9 @@ export default function SkillsPage() {
     const next = resolveTab(nextRaw, preferred);
     const resolved = allowed.includes(next) ? next : preferred;
     setTab((current) => (current === resolved ? current : resolved));
-  }, [searchParams, setSearchParams, user?.role]);
+    const filter = parseCatalogFilter(searchParams.get('filter'));
+    setTypeFilters((current) => (current.workspace === filter ? current : { ...current, workspace: filter }));
+  }, [searchParams, setSearchParams, user?.role, navigate]);
 
   const selectTab = (next: SkillCenterTab) => {
     setTab(next);
@@ -103,25 +99,12 @@ export default function SkillsPage() {
   };
 
   const skillTabs = [
-    { key: 'workspace' as const, labelKey: 'module.skills.tabs.workspace' as const, label: '技能资产', icon: Wrench, count: null },
-    { key: 'store' as const, labelKey: 'module.skills.tabs.store' as const, label: '技能商店', icon: Sparkles, count: null },
-    { key: 'platformTools' as const, labelKey: 'module.skills.tabs.platformTools' as const, label: '平台工具', icon: Cpu, count: 26 },
-    { key: 'workflowSkills' as const, labelKey: 'module.skills.tabs.workflowSkills', icon: GitBranch, count: workflowSkills.length },
-    { key: 'integration' as const, labelKey: 'module.skills.tabs.integration', icon: Network, count: null },
-    { key: 'governance' as const, labelKey: 'module.skills.tabs.governance', icon: ShieldCheck, count: attentionCount },
+    { key: 'workspace' as const, label: '技能资产', icon: Wrench, count: null as number | null },
+    { key: 'governance' as const, label: '运行治理', icon: ShieldCheck, count: attentionCount },
   ].filter((item) => allowedTabs.includes(item.key));
 
-  const tabSummary: Record<SkillCenterTab, string> = {
-    workspace: t('module.skills.summary.workspace'),
-    store: t('module.skills.summary.store'),
-    integration: t('module.skills.summary.integration'),
-    governance: t('module.skills.summary.governance'),
-    workflowSkills: t('module.skills.summary.workflowSkills'),
-    platformTools: '平台工具与运行时工具（通用岗位包）',
-  };
-
   return (
-    <div className="de-employee-page h-full min-w-0 overflow-y-auto overscroll-contain bg-[var(--bg-elevated)] p-3 md:p-4 lg:p-5">
+    <div className="de-employee-page h-full min-w-0 overflow-y-auto overscroll-contain bg-[var(--bg-elevated)] p-3 md:p-4 lg:p-5" data-testid="page-skills">
       <div className="space-y-3">
         <section className="de-employee-shell overflow-hidden rounded-xl bg-[var(--surface-1)]">
           <div className="flex items-start justify-between gap-4 px-4 py-3.5 md:px-5">
@@ -138,14 +121,9 @@ export default function SkillsPage() {
               <Badge tone="info">{workspaceName}</Badge>
               {!canWrite && <Badge tone="neutral">只读</Badge>}
               {canWrite && (
-                <>
-                  <button type="button" className="de-employee-btn de-employee-btn--primary" onClick={() => selectTab('integration')}>
-                    <Upload className="h-3.5 w-3.5" />{t('module.skills.cta.connect')}
-                  </button>
-                  <button type="button" className="de-employee-btn" onClick={() => selectTab('store')}>
-                    <Sparkles className="h-3.5 w-3.5" />{t('module.skills.cta.store')}
-                  </button>
-                </>
+                <button type="button" className="de-employee-btn de-employee-btn--primary" onClick={() => navigate('/skills/new')}>
+                  <Upload className="h-3.5 w-3.5" />{t('module.skills.cta.connect')}
+                </button>
               )}
             </div>
           </div>
@@ -155,12 +133,9 @@ export default function SkillsPage() {
               <button type="button" onClick={() => setOperationNotice(null)} className="text-[var(--brand)]">知道了</button>
             </div>
           )}
-          {tab !== 'workflowSkills' && tab !== 'integration' && tab !== 'governance' && (
-            <p className="px-4 pb-2 text-xs text-[var(--text-muted)] md:px-5">{tabSummary[tab]}</p>
-          )}
-          {tab === 'platformTools' && (
-            <p className="px-4 pb-2 text-xs text-[var(--text-muted)] md:px-5">{tabSummary[tab]}</p>
-          )}
+          <p className="px-4 pb-2 text-xs text-[var(--text-muted)] md:px-5">
+            {tab === 'governance' ? t('module.skills.summary.governance') : t('module.skills.summary.workspace')}
+          </p>
           <div className="px-4 md:px-5"><RoleReadonlyBanner className="mb-2 flex items-start gap-2 rounded-lg bg-[var(--info-bg)] px-3 py-2 text-[11px] leading-5 text-[var(--info)]" /></div>
           <div className="de-employee-tabs flex overflow-x-auto px-3" role="tablist" aria-label="技能中心分区">
             {skillTabs.map((item) => {
@@ -175,8 +150,8 @@ export default function SkillsPage() {
                   className={cn('de-employee-tab flex shrink-0 items-center gap-1.5 px-3 py-2.5 text-xs transition-colors', tab === item.key && 'is-active')}
                 >
                   <TabIcon className="h-3.5 w-3.5" />
-                  {('label' in item && item.label) ? item.label : t(item.labelKey)}
-                  {item.count != null && <Badge tone={(item.key as SkillCenterTab) === 'workspace' ? 'brand' : (item.key as SkillCenterTab) === 'workflowSkills' ? 'purple' : 'neutral'} className="ml-1">{item.count}</Badge>}
+                  {item.label}
+                  {item.count != null && <Badge tone="neutral" className="ml-1">{item.count}</Badge>}
                 </button>
               );
             })}
@@ -189,77 +164,22 @@ export default function SkillsPage() {
               canWrite={canWrite}
               onNotice={setOperationNotice}
               initialTypeFilter={typeFilters.workspace}
-              onTypeFilterChange={(next) => setTypeFilters((filters) => ({ ...filters, workspace: next }))}
+              onTypeFilterChange={(next) => {
+                setTypeFilters((filters) => ({ ...filters, workspace: next }));
+                const params = new URLSearchParams(searchParams);
+                if (next === 'all') params.delete('filter');
+                else params.set('filter', next);
+                setSearchParams(params, { replace: true });
+              }}
             />
-          )}
-          {tab === 'store' && (
-            <section className="de-employee-shell rounded-xl bg-[var(--surface-1)] p-4 md:p-5">
-              <StoreTabWithBridge
-                canWrite={canWrite}
-                isAdmin={isAdmin}
-                onNotice={setOperationNotice}
-                initialTypeFilter={typeFilters.store}
-                onTypeFilterChange={(next) => setTypeFilters((filters) => ({ ...filters, store: next }))}
-              />
-            </section>
-          )}
-          {tab === 'platformTools' && (
-            <section className="de-employee-shell rounded-xl bg-[var(--surface-1)] p-4 md:p-5">
-              <PlatformToolsWorkspace />
-            </section>
-          )}
-          {tab === 'workflowSkills' && (
-            <section className="de-employee-shell rounded-xl bg-[var(--surface-1)] p-4 md:p-5">
-              <WorkflowSkillList canWrite={canWrite} onNotice={(msg) => setOperationNotice(msg)} />
-              <div className="mt-4 border-t border-[var(--border)] pt-4">
-                <PackInstallPanel onInstalled={(msg) => setOperationNotice(msg)} />
-              </div>
-            </section>
-          )}
-          {tab === 'integration' && (
-            <section className="de-employee-shell rounded-xl bg-[var(--surface-1)] p-4 md:p-5">
-              <IntegrationWorkspace canWrite={canWrite} onImport={() => setOperationNotice('请通过工作区配置中的「能力接入」完成导入。')} onMcp={() => setOperationNotice('请通过工作区配置中的「MCP 接入」配置。')} onTool={() => setOperationNotice('请通过工作区配置中的「Tool 接入」配置。')} />
-            </section>
           )}
           {tab === 'governance' && (
             <section className="de-employee-shell rounded-xl bg-[var(--surface-1)] p-4 md:p-5">
-              <GovernanceWorkspace canWrite={canWrite} onOpenSkill={(id) => setOperationNotice(`请切换到「技能资产」查看技能 ${id} 详情。`)} />
+              <GovernanceWorkspace canWrite={canWrite} onOpenSkill={(id) => navigate(`/skills/${id}?step=runtime`)} />
             </section>
           )}
         </div>
       </div>
     </div>
-  );
-}
-
-/** 商店视图：bridges external catalog store view with shell-level installedRows state. */
-function StoreTabWithBridge({
-  canWrite, isAdmin, onNotice, initialTypeFilter, onTypeFilterChange,
-}: {
-  canWrite: boolean;
-  isAdmin: boolean;
-  onNotice: (msg: string) => void;
-  initialTypeFilter: 'all' | Skill['kind'];
-  onTypeFilterChange: (next: 'all' | Skill['kind']) => void;
-}) {
-  const [installedRows, setInstalledRows] = useState<SkillRow[]>([]);
-  const [storePage, setStorePage] = useState(1);
-  return (
-    <CatalogStoreView
-      installedRows={installedRows}
-      setInstalledRows={setInstalledRows}
-      canWrite={canWrite}
-      isAdmin={isAdmin}
-      onNotice={onNotice}
-      initialStorePage={storePage}
-      initialStoreSearchQ=""
-      initialStoreRiskFilter="all"
-      initialStoreChannelFilter="all"
-      initialStoreReleaseFilter="all"
-      initialCertifiedOnly={false}
-      initialTypeFilter={initialTypeFilter}
-      onTypeFilterChange={onTypeFilterChange}
-      onStorePageChange={setStorePage}
-    />
   );
 }

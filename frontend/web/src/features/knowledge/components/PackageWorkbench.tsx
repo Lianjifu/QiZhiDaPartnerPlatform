@@ -94,7 +94,7 @@ export function PackageWorkbench({
         <div className="wf-tpl-empty">
           <Boxes className="h-8 w-8 text-[var(--text-muted)]" />
           <p className="wf-tpl-empty__title">{packages.length === 0 ? '暂无知识包' : '没有匹配的知识包'}</p>
-          <p className="wf-tpl-empty__desc">{packages.length === 0 ? '把内容纳入可版本化的知识包后，再加工、评测并交付给数字伙伴。' : '调整关键词或状态后再试。'}</p>
+          <p className="wf-tpl-empty__desc">{packages.length === 0 ? '先创建知识包，再在包内上传文件或接入数据源，加工评测后交付给数字伙伴。' : '调整关键词或状态后再试。'}</p>
           {canWrite && packages.length === 0 && (
             <div className="mt-4"><Button size="sm" onClick={onCreate}>新建知识包</Button></div>
           )}

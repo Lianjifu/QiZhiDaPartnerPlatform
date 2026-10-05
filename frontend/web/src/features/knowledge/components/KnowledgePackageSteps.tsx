@@ -1,6 +1,6 @@
 import { type ReactNode, useMemo, useState } from 'react';
 import {
-  Activity, ArrowRight, Database, FileText, GitBranch, Layers, PlayCircle, Plus, Search, ShieldCheck,
+  Activity, ArrowRight, Database, FileText, GitBranch, Layers, PlayCircle, Search, ShieldCheck, Upload,
 } from 'lucide-react';
 import { Badge, Button, KpiCard } from '@qzda/web-ui';
 import type { KnowledgeDoc, KnowledgePackage, KnowledgeProcessingJob, KnowledgeSourceConnection } from '@qzda/web-types';
@@ -11,6 +11,8 @@ import {
 } from '@/features/knowledge/knowledge-ui';
 import type { KnowledgeController } from './useKnowledgeController';
 import { KnowledgeTabEval } from './KnowledgeTab.Eval';
+import { KnowledgeUploadForm } from './KnowledgeUploadForm';
+import { ConnectSourceFormView } from './ConnectSourceForm';
 
 function jobLabel(status: KnowledgeProcessingJob['status']) {
   if (status === 'succeeded') return { text: '已完成', tone: 'success' as const };
@@ -32,12 +34,13 @@ function StepHead({ title, desc, actions }: { title: string; desc: string; actio
 }
 
 export function PackageMembersStep({
-  c, pkg, docs, onAttach,
+  c, pkg, docs, ingest = 'upload', onIngest,
 }: {
   c: KnowledgeController;
   pkg: KnowledgePackage;
   docs: KnowledgeDoc[];
-  onAttach: () => void;
+  ingest?: 'upload' | 'source';
+  onIngest?: (next: 'upload' | 'source') => void;
 }) {
   const [q, setQ] = useState('');
   const ready = docs.filter((doc) => doc.status === 'ready' || doc.status === 'published');
@@ -48,16 +51,51 @@ export function PackageMembersStep({
     if (!needle) return true;
     return doc.title.toLowerCase().includes(needle) || doc.source.toLowerCase().includes(needle);
   });
+  const connecting = c.sourceMutation.isPending || c.sourceSyncMutation.isPending;
 
   return (
     <div className="knowledge-pkg-step">
       <StepHead
-        title="成员文档"
-        desc="查看与编辑本包已纳入的内容。新增文件或数据源请从知识中心入口进入。"
-        actions={c.canWrite ? (
-          <Button size="sm" variant="outline" onClick={onAttach}><Plus className="h-3.5 w-3.5" />调整纳管</Button>
-        ) : undefined}
+        title="添加内容"
+        desc="上传文件或接入数据源，纳入后进入加工处理。"
       />
+      {c.canWrite && (
+        <>
+          <div className="knowledge-pkg-ingest">
+            <button type="button" className={cn('knowledge-pkg-ingest__card', ingest === 'upload' && 'is-active')} onClick={() => onIngest?.('upload')}>
+              <span className="knowledge-pkg-ingest__icon"><Upload className="h-4 w-4" /></span>
+              <strong>上传文件</strong>
+              <small>Markdown / 文本直接纳入；PDF / Word 目前仅登记占位</small>
+            </button>
+            <button type="button" className={cn('knowledge-pkg-ingest__card', ingest === 'source' && 'is-active')} onClick={() => onIngest?.('source')}>
+              <span className="knowledge-pkg-ingest__icon"><Database className="h-4 w-4" /></span>
+              <strong>接入数据源</strong>
+              <small>Git / API / Webhook 同步后进入本包</small>
+            </button>
+          </div>
+          {ingest === 'upload' ? (
+            <KnowledgeUploadForm
+              canWrite={c.canWrite}
+              submitting={c.uploadMutation.isPending}
+              submitLabel="上传到本包"
+              onSubmit={(payload) => c.handleUploadDoc({ ...payload, packageId: pkg.id }, { stay: true })}
+            />
+          ) : (
+            <ConnectSourceFormView
+              compact
+              connecting={connecting}
+              onSubmit={(form) => { void c.connectSource({ ...form, packageId: pkg.id }); }}
+              footer={({ valid: sourceValid, submit }) => (
+                <div className="flex justify-end">
+                  <Button disabled={!sourceValid || connecting || !c.canWrite} onClick={submit}>
+                    {connecting ? '接入中…' : '接入到本包'}
+                  </Button>
+                </div>
+              )}
+            />
+          )}
+        </>
+      )}
       <div className="knowledge-pkg-kpis">
         <KpiCard label="文档" value={docs.length} sub="篇" icon={FileText} tone="brand" size="comfortable" />
         <KpiCard label="已就绪" value={ready.length} sub="篇" icon={ShieldCheck} tone="success" size="comfortable" />
@@ -72,7 +110,7 @@ export function PackageMembersStep({
         <span className="text-[11px] text-[var(--text-muted)]">{visible.length} / {docs.length}</span>
       </div>
       {visible.length === 0 ? (
-        <EmptyState icon={FileText} title={docs.length === 0 ? '尚未纳入文档' : '没有匹配文档'} description={docs.length === 0 ? '请从知识中心使用「上传内容」或「接入数据源」。也可在此调整已有文档的纳管。' : '换一个关键词再试。'} />
+        <EmptyState icon={FileText} title={docs.length === 0 ? '尚未纳入文档' : '没有匹配文档'} description={docs.length === 0 ? '在上方上传文件或接入数据源。' : '换一个关键词再试。'} />
       ) : (
         <div className="knowledge-pkg-docs">
           {visible.map((doc) => {
@@ -106,15 +144,15 @@ export function PackageProcessingStep({
   onGoEval: () => void;
   emptySourceHint?: string;
 }) {
-  const sources = c.sourceConnections;
+  const sources = c.sourceConnections.filter((item) => item.packageId === pkg.id);
   const failed = jobs.filter((job) => job.status === 'failed').length;
   const active = jobs.filter((job) => job.status === 'running' || job.status === 'queued').length;
 
   return (
     <div className="knowledge-pkg-step">
       <StepHead
-        title="加工"
-        desc="查看本包切片与索引作业，并可启动加工或同步已接入的数据源。"
+        title="加工处理"
+        desc="对本包内容切片并建立索引，也可同步已接入的数据源。"
         actions={c.canWrite ? (
           <Button size="sm" disabled={c.processPackageMutation.isPending} onClick={() => c.processPackageMutation.mutate({ id: pkg.id, strategy: 'semantic' })}>
             <Layers className="h-3.5 w-3.5" />启动加工
@@ -129,7 +167,7 @@ export function PackageProcessingStep({
       </div>
       <div className="knowledge-pkg-split">
         <section>
-          <h3>加工作业</h3>
+          <h3>加工任务</h3>
           {jobs.length === 0 ? (
             <EmptyState icon={Layers} title="还没有加工作业" description="纳管文档后点击「启动加工」。" />
           ) : (
@@ -162,7 +200,7 @@ export function PackageProcessingStep({
         <section>
           <h3>已接入数据源</h3>
           {sources.length === 0 ? (
-            <EmptyState icon={Database} title="没有已接入的数据源" description={emptySourceHint ?? '新增连接请从知识中心「接入数据源」入口进入。'} />
+            <EmptyState icon={Database} title="没有已接入的数据源" description={emptySourceHint ?? '请到「添加内容」接入数据源。'} />
           ) : (
             <div className="space-y-2">
               {sources.map((source: KnowledgeSourceConnection) => {
@@ -187,7 +225,7 @@ export function PackageProcessingStep({
         </section>
       </div>
       <button type="button" className="knowledge-pkg-next" onClick={onGoEval}>
-        加工完成后进入检索评测 <ArrowRight className="h-3.5 w-3.5" />
+        加工完成后进入检索验证 <ArrowRight className="h-3.5 w-3.5" />
       </button>
     </div>
   );
@@ -196,7 +234,7 @@ export function PackageProcessingStep({
 export function PackageEvalStep({ c, pkg, sourceDocIds }: { c: KnowledgeController; pkg: KnowledgePackage; sourceDocIds: string[] }) {
   return (
     <div className="knowledge-pkg-step">
-      <StepHead title="检索评测" desc="用真实问题验证本包证据覆盖与延迟，通过门禁后再发布版本。" />
+      <StepHead title="检索验证" desc="用真实问题检查本包能否召回证据，通过后再发布上线。" />
       <KnowledgeTabEval c={c} mode="retrieval" sourceDocIds={sourceDocIds} packageId={pkg.id} embedded />
     </div>
   );
@@ -205,7 +243,7 @@ export function PackageEvalStep({ c, pkg, sourceDocIds }: { c: KnowledgeControll
 export function PackageGraphStep({ c, pkg, sourceDocIds }: { c: KnowledgeController; pkg: KnowledgePackage; sourceDocIds: string[] }) {
   return (
     <div className="knowledge-pkg-step knowledge-pkg-step--fill">
-      <StepHead title="知识图谱" desc={`从「${pkg.name}」成员文档抽取实体与关系，供影响分析与混合召回。`} />
+      <StepHead title="知识图谱" desc={`从「${pkg.name}」已纳入的内容抽取实体与关联，便于影响分析与混合召回。`} />
       <KnowledgeTabEval c={c} mode="graph" sourceDocIds={sourceDocIds} packageId={pkg.id} embedded />
     </div>
   );
@@ -217,11 +255,11 @@ export function PackageVersionsStep({ c, pkg }: { c: KnowledgeController; pkg: K
   return (
     <div className="knowledge-pkg-step">
       <StepHead
-        title="版本与引用"
-        desc="发布稳定版本后，数字伙伴与工作流才能装配本包。"
-        actions={c.canWrite && pkg.status !== 'published' ? (
+        title="发布上线"
+        desc="发布版本后，数字伙伴与工作流才能引用本包。"
+        actions={c.canWrite ? (
           <Button size="sm" disabled={!gate.ok || c.publishPackageMutation.isPending} title={gate.reason} onClick={() => c.publishPackageMutation.mutate({ id: pkg.id })}>
-            <PlayCircle className="h-3.5 w-3.5" />发布版本
+            <PlayCircle className="h-3.5 w-3.5" />{pkg.status === 'published' ? '发布新版本' : '发布版本'}
           </Button>
         ) : undefined}
       />

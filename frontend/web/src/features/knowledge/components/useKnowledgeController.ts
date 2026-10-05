@@ -232,6 +232,13 @@ export function useKnowledgeController() {
       onError: (err) => setGovernanceNotice(err instanceof Error ? err.message : '纳管失败。'),
     },
   );
+  const updatePackageMutation = useApiMutation<KnowledgePackage, { id: string; name: string; description: string; domain: string; classification: KnowledgePackage['classification'] }>(
+    ({ id }) => `/api/knowledge/packages/${id}/update`,
+    {
+      onSuccess: (item) => setGovernanceNotice(`知识包「${item.name}」资料已更新。`),
+      onError: (err) => setGovernanceNotice(err instanceof Error ? err.message : '保存知识包资料失败。'),
+    },
+  );
   const deletePackageMutation = useApiMutation<{ id: string; deleted: boolean }, { id: string }>(
     ({ id }) => `/api/knowledge/packages/${id}/delete`,
     {
@@ -447,7 +454,7 @@ export function useKnowledgeController() {
     uploadMutation, reindexMutation, reviewMutation, deleteDocsMutation,
     retrieveMutation, rescoreMutation, sourceMutation, sourceSyncMutation,
     governanceMutation, createPackageMutation, publishPackageMutation,
-    processPackageMutation, attachPackageMutation, deletePackageMutation,
+    processPackageMutation, attachPackageMutation, updatePackageMutation, deletePackageMutation,
     retryJobMutation, evaluationMutation,
 
     // Handlers

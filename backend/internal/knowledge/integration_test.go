@@ -563,8 +563,23 @@ func TestK9_SourcesListCreateSync(t *testing.T) {
 		t.Fatalf("expected seeded builtin sources in list, got 0")
 	}
 
-	// POST (create a REST-API source)
-	body := []byte(`{"name":"K9 测试数据源","kind":"REST API","endpoint":"https://example.com/feed","schedule":"每 6 小时"}`)
+	// POST (create a REST-API source bound to a package)
+	rr = doRequest(t, srv, http.MethodPost, "/api/knowledge/packages", tok, []byte(`{"name":"K9 源归属包"}`))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("create package: want 200, got %d body=%s", rr.Code, rr.Body.String())
+	}
+	pkg := decodeData(t, decodeEnvelope(t, rr).Data)
+	pkgID := toStr(pkg["id"])
+	if pkgID == "" {
+		t.Fatalf("package id missing: %v", pkg)
+	}
+
+	rr = doRequest(t, srv, http.MethodPost, "/api/knowledge/sources", tok, []byte(`{"name":"K9 测试数据源","kind":"REST API","endpoint":"https://example.com/feed"}`))
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("create without package: want 400, got %d body=%s", rr.Code, rr.Body.String())
+	}
+
+	body := []byte(`{"name":"K9 测试数据源","kind":"REST API","endpoint":"https://example.com/feed","schedule":"每 6 小时","packageId":"` + pkgID + `"}`)
 	rr = doRequest(t, srv, http.MethodPost, "/api/knowledge/sources", tok, body)
 	if rr.Code != http.StatusOK {
 		t.Fatalf("create: want 200, got %d body=%s", rr.Code, rr.Body.String())

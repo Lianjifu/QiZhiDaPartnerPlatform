@@ -1,31 +1,26 @@
 /**
- * 知识包详情：成员、加工、评测、图谱、版本与引用。
+ * 知识包详情：基本信息、添加内容、加工、验证、图谱、发布。
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, PlayCircle } from 'lucide-react';
 import { Badge, Button } from '@qzda/web-ui';
 import { cn } from '@qzda/web-utils';
+import type { KnowledgePackage } from '@qzda/web-types';
 import { useKnowledgeController } from './useKnowledgeController';
 import { KnowledgeModals } from './KnowledgeModals';
-import { AttachDocsModal } from './AttachDocsModal';
 import { KnowledgeStudioRail } from './KnowledgeStudioRail';
+import { PackageIdentityForm } from './KnowledgePackageIdentity';
 import {
   PackageEvalStep, PackageGraphStep, PackageMembersStep, PackageProcessingStep, PackageVersionsStep,
 } from './KnowledgePackageSteps';
-import { packageReadyToPublish, packageStatusLabel, packageStatusTone } from '@/features/knowledge/knowledge-ui';
+import { packageReadyToPublish, packageStatusLabel, packageStatusTone, PACKAGE_LIFECYCLE_STEPS, type KnowledgePackageStep } from '@/features/knowledge/knowledge-ui';
 
-type PkgStep = 'members' | 'processing' | 'eval' | 'graph' | 'versions';
-const STEPS: Array<{ key: PkgStep; index: string; label: string; hint: string }> = [
-  { key: 'members', index: '01', label: '成员文档', hint: '查看与编辑' },
-  { key: 'processing', index: '02', label: '加工', hint: '切片与作业' },
-  { key: 'eval', index: '03', label: '检索评测', hint: '门禁与试检索' },
-  { key: 'graph', index: '04', label: '知识图谱', hint: '实体与关系' },
-  { key: 'versions', index: '05', label: '版本与引用', hint: '发布与装配' },
-];
+type PkgStep = KnowledgePackageStep;
+const STEPS = PACKAGE_LIFECYCLE_STEPS;
 
 function parseStep(raw: string | null): PkgStep {
-  if (raw === 'processing' || raw === 'eval' || raw === 'graph' || raw === 'versions') return raw;
+  if (raw === 'info' || raw === 'processing' || raw === 'eval' || raw === 'graph' || raw === 'versions') return raw;
   return 'members';
 }
 
@@ -35,15 +30,34 @@ export default function KnowledgePackagePage() {
   const navigate = useNavigate();
   const c = useKnowledgeController();
   const step = parseStep(params.get('step'));
+  const ingest = params.get('ingest') === 'source' ? 'source' : 'upload';
   const pkg = c.knowledgePackages.find((item) => item.id === id) ?? null;
-  const [attachOpen, setAttachOpen] = useState(false);
   const [railCollapsed, setRailCollapsed] = useState(false);
-  const go = (next: PkgStep) => setParams(next === 'members' ? {} : { step: next }, { replace: true });
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [domain, setDomain] = useState('SRE');
+  const [classification, setClassification] = useState<KnowledgePackage['classification']>('internal');
+
+  const go = (next: PkgStep, nextIngest?: 'upload' | 'source') => {
+    const nextParams = new URLSearchParams();
+    if (next !== 'members') nextParams.set('step', next);
+    const kind = nextIngest ?? (next === 'members' ? ingest : undefined);
+    if (next === 'members' && kind === 'source') nextParams.set('ingest', 'source');
+    setParams(nextParams, { replace: true });
+  };
   const stepIndex = STEPS.findIndex((item) => item.key === step);
 
   useEffect(() => {
     if (id) c.setHighlightedPackageId(id);
   }, [c.setHighlightedPackageId, id]);
+
+  useEffect(() => {
+    if (!pkg) return;
+    setName(pkg.name);
+    setDescription(pkg.description ?? '');
+    setDomain(pkg.domain);
+    setClassification(pkg.classification);
+  }, [pkg?.id, pkg?.name, pkg?.description, pkg?.domain, pkg?.classification]);
 
   const memberDocs = useMemo(() => {
     if (!pkg) return [];
@@ -58,6 +72,14 @@ export default function KnowledgePackagePage() {
   const readyCount = memberDocs.filter((doc) => doc.status === 'ready' || doc.status === 'published').length;
   const evals = pkg ? c.evaluations.filter((item) => item.packageId === pkg.id) : [];
   const lastEval = evals[0];
+  const memberIds = useMemo(() => new Set(memberDocs.map((doc) => doc.id)), [memberDocs]);
+  const graphCount = c.graphEntities.filter((item) => memberIds.has(item.sourceDocId)).length;
+  const identityDirty = pkg
+    ? name.trim() !== pkg.name
+      || (description.trim() !== (pkg.description ?? ''))
+      || domain !== pkg.domain
+      || classification !== pkg.classification
+    : false;
 
   return (
     <div className={cn('de-partner-wizard wf-studio', railCollapsed && 'is-rail-collapsed')} data-testid="page-knowledge-package">
@@ -71,9 +93,9 @@ export default function KnowledgePackagePage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {pkg && <Badge tone={packageStatusTone(pkg.status)}>{packageStatusLabel(pkg.status)}</Badge>}
-          {c.canWrite && pkg && pkg.status !== 'published' && (
+          {c.canWrite && pkg && (
             <Button size="sm" disabled={!gate.ok || c.publishPackageMutation.isPending} title={gate.reason} onClick={() => { c.publishPackageMutation.mutate({ id: pkg.id }); go('versions'); }}>
-              <PlayCircle className="h-3.5 w-3.5" />发布版本
+              <PlayCircle className="h-3.5 w-3.5" />{pkg.status === 'published' ? '发布新版本' : '发布版本'}
             </Button>
           )}
         </div>
@@ -87,25 +109,51 @@ export default function KnowledgePackagePage() {
           onSelect={go}
           steps={STEPS.map((item) => ({
             ...item,
-            status: item.key === 'members'
-              ? `${memberDocs.length} 篇 · ${readyCount} 就绪`
-              : item.key === 'processing'
-                ? (jobs.length ? `${jobs.length} 条作业` : '待启动')
-                : item.key === 'eval'
-                  ? (lastEval ? (lastEval.status === 'passed' ? '评测通过' : '需复核') : '待评测')
-                  : item.key === 'graph'
-                    ? `${c.graphEntities.length} 实体`
-                    : pkg?.currentVersion.version ?? '版本',
+            status: item.key === 'info'
+              ? packageStatusLabel(pkg?.status)
+              : item.key === 'members'
+                ? `${memberDocs.length} 篇已纳入${readyCount ? ` · ${readyCount} 可用` : ''}`
+                : item.key === 'processing'
+                  ? (jobs.length ? `${jobs.length} 项任务` : '尚未开始')
+                  : item.key === 'eval'
+                    ? (lastEval ? (lastEval.status === 'passed' ? '已通过' : '需再验证') : '尚未验证')
+                    : item.key === 'graph'
+                      ? (graphCount ? `${graphCount} 个实体` : '加工后生成')
+                      : pkg ? `当前 ${pkg.currentVersion.version}` : '未发布',
           }))}
         />
         <section className={cn('de-partner-wizard__main', 'wf-studio__main')}>
           <div className="h-full min-h-0 overflow-y-auto p-4 md:p-5">
             {!pkg ? (
               <div className="grid h-40 place-items-center text-xs text-[var(--text-muted)]">知识包不存在或无权访问。</div>
+            ) : step === 'info' ? (
+              <PackageIdentityForm
+                name={name}
+                description={description}
+                domain={domain}
+                classification={classification}
+                disabled={!c.canWrite}
+                onName={setName}
+                onDescription={setDescription}
+                onDomain={setDomain}
+                onClassification={setClassification}
+              />
             ) : step === 'members' ? (
-              <PackageMembersStep c={c} pkg={pkg} docs={memberDocs} onAttach={() => setAttachOpen(true)} />
+              <PackageMembersStep
+                c={c}
+                pkg={pkg}
+                docs={memberDocs}
+                ingest={ingest}
+                onIngest={(next) => go('members', next)}
+              />
             ) : step === 'processing' ? (
-              <PackageProcessingStep c={c} pkg={pkg} jobs={jobs} onGoEval={() => go('eval')} />
+              <PackageProcessingStep
+                c={c}
+                pkg={pkg}
+                jobs={jobs}
+                onGoEval={() => go('eval')}
+                emptySourceHint="请到「添加内容」接入数据源。"
+              />
             ) : step === 'eval' ? (
               <PackageEvalStep c={c} pkg={pkg} sourceDocIds={memberDocs.map((doc) => doc.id)} />
             ) : step === 'graph' ? (
@@ -117,27 +165,32 @@ export default function KnowledgePackagePage() {
         </section>
       </div>
       <footer className="wf-studio__foot">
-        <Button variant="ghost" onClick={() => (step === 'members' ? navigate('/knowledge') : go(STEPS[Math.max(0, stepIndex - 1)].key))}>
-          {step === 'members' ? '返回目录' : `上一步：${STEPS[Math.max(0, stepIndex - 1)].label}`}
+        <Button variant="ghost" onClick={() => (step === 'info' ? navigate('/knowledge') : go(STEPS[Math.max(0, stepIndex - 1)].key))}>
+          {step === 'info' ? '返回目录' : `上一步：${STEPS[Math.max(0, stepIndex - 1)].label}`}
         </Button>
-        {step !== 'versions' ? (
+        {step === 'info' && c.canWrite && pkg ? (
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              disabled={!identityDirty || !name.trim() || c.updatePackageMutation.isPending}
+              onClick={() => c.updatePackageMutation.mutate({
+                id: pkg.id,
+                name: name.trim(),
+                description: description.trim(),
+                domain: domain.trim() || '通用',
+                classification,
+              })}
+            >
+              {c.updatePackageMutation.isPending ? '保存中…' : '保存基本信息'}
+            </Button>
+            <Button onClick={() => go('members')}>下一步：添加内容</Button>
+          </div>
+        ) : step !== 'versions' ? (
           <Button onClick={() => go(STEPS[stepIndex + 1].key)}>下一步：{STEPS[stepIndex + 1].label}</Button>
         ) : (
           <Button onClick={() => navigate('/knowledge')}>完成并返回目录</Button>
         )}
       </footer>
-      {pkg && (
-        <AttachDocsModal
-          open={attachOpen}
-          onClose={() => setAttachOpen(false)}
-          candidates={c.docs.filter((doc) => !memberDocs.some((item) => item.id === doc.id))}
-          busy={c.attachPackageMutation.isPending}
-          onSubmit={(docIds) => {
-            c.attachPackageMutation.mutate({ id: pkg.id, docIds });
-            setAttachOpen(false);
-          }}
-        />
-      )}
       <KnowledgeModals c={c} />
     </div>
   );

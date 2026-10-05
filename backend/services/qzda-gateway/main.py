@@ -13,6 +13,7 @@ Env (all optional):
 from __future__ import annotations
 
 import os
+import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import urllib.error
 import urllib.request
@@ -32,8 +33,9 @@ class GatewayHandler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     backend_port = 8100  # overridden in main() below
 
-    def log_message(self, *args):
-        return
+    def log_message(self, fmt, *args):
+        sys.stderr.write("%s - %s\n" % (self.address_string(), fmt % args))
+        sys.stderr.flush()
 
     def _write_response_headers(self, status, headers):
         self.send_response(status)
@@ -83,6 +85,8 @@ class GatewayHandler(BaseHTTPRequestHandler):
                     return
                 data = resp.read()
                 self._proxy_buffered(data, resp.status, resp.headers)
+        except (BrokenPipeError, ConnectionResetError, TimeoutError):
+            return
         except urllib.error.HTTPError as e:
             if stream:
                 self._proxy_stream(e, e.code, e.headers)
@@ -90,11 +94,14 @@ class GatewayHandler(BaseHTTPRequestHandler):
             self._proxy_buffered(e.read(), e.code, e.headers)
         except Exception as e:
             data = f"gateway proxy error: {e}".encode()
-            self.send_response(502)
-            self.send_header("Content-Type", "text/plain; charset=utf-8")
-            self.send_header("Content-Length", str(len(data)))
-            self.end_headers()
-            self.wfile.write(data)
+            try:
+                self.send_response(502)
+                self.send_header("Content-Type", "text/plain; charset=utf-8")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+            except (BrokenPipeError, ConnectionResetError):
+                return
 
     def do_GET(self):
         self._proxy()
@@ -123,8 +130,12 @@ def main() -> None:
     port = int(os.environ.get("DE_BIND_PORT", "8089") or "8089")
     backend_port = int(os.environ.get("DE_BACKEND_PORT", "8100") or "8100")
     GatewayHandler.backend_port = backend_port
-    print(f"qzda-gateway on http://{host}:{port} → 127.0.0.1:{backend_port}")
-    ThreadingHTTPServer((host, port), GatewayHandler).serve_forever()
+    print(f"qzda-gateway on http://{host}:{port} → 127.0.0.1:{backend_port}", flush=True)
+    try:
+        ThreadingHTTPServer((host, port), GatewayHandler).serve_forever()
+    except OSError as e:
+        print(f"qzda-gateway bind failed on {host}:{port}: {e}", file=sys.stderr, flush=True)
+        raise SystemExit(1) from e
 
 
 if __name__ == "__main__":

@@ -33,15 +33,23 @@ func (s *Service) CreateKnowledgeSource(r *http.Request) (any, error) {
 	}
 	credentialHint := strings.TrimSpace(str(body["credentialHint"]))
 	ws := s.Deps.WorkspaceID(r)
+	pkgID := strings.TrimSpace(str(body["packageId"]))
+	if pkgID == "" {
+		return nil, apperr.BadReq(apperr.BadRequest, "请选择归属知识包")
+	}
 	item := map[string]any{
 		"id": s.Store.ID("ks"), "workspaceId": ws, "name": name,
 		"kind": kind, "schedule": schedule, "endpoint": endpoint,
-		"lastSync": "尚未同步", "documents": 0, "status": "attention",
+		"packageId": pkgID, "lastSync": "尚未同步", "documents": 0, "status": "attention",
 	}
 	if credentialHint != "" {
 		item["credentialHint"] = credentialHint
 	}
 	s.Store.Lock()
+	if !s.packageExistsLocked(ws, pkgID) {
+		s.Store.Unlock()
+		return nil, apperr.NotFoundErr(apperr.NotFound, "知识包不存在")
+	}
 	srcs := knowledgeSliceMaps(s.Store.KnowledgeExtra["sources"])
 	s.Store.KnowledgeExtra["sources"] = append([]map[string]any{item}, srcs...)
 	s.appendKnowledgeAuditLocked(ws, id.Name, "接入知识数据源", name, "success", "")
@@ -98,7 +106,13 @@ func (s *Service) SyncKnowledgeSource(r *http.Request) (any, error) {
 			"updatedAt": time.Now().UTC().Format(time.RFC3339),
 			"quality":   map[string]any{"completeness": 75, "freshness": 95, "citationAccuracy": 80},
 		}
+		if pkgID := str(src["packageId"]); pkgID != "" {
+			doc["packageId"] = pkgID
+		}
 		s.Store.KnowledgeDocs = append([]map[string]any{doc}, s.Store.KnowledgeDocs...)
+		if pkgID := str(src["packageId"]); pkgID != "" {
+			s.attachDocsToPackageLocked(ws, pkgID, []string{str(doc["id"])}, true)
+		}
 		s.appendKnowledgeAuditLocked(ws, id.Name, "同步知识数据源", str(src["name"]), "success", "")
 		unlocked = true
 		s.Store.Unlock()

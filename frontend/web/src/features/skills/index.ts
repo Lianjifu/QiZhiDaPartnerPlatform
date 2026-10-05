@@ -5,6 +5,8 @@
  * 同时按需暴露 tab 组件，便于将来直接复用（例如侧栏面板、预览侧栏）。
  */
 export { default as SkillsPage } from './components/SkillsPage';
+export { default as SkillsCreatePage } from './components/SkillsCreatePage';
+export { default as SkillsDetailPage } from './components/SkillsDetailPage';
 export { SkillsTabCatalog } from './components/SkillsTab.Catalog';
 export { CatalogStoreView } from './components/SkillsTab.CatalogStore';
 export { WorkflowSkillList, PackInstallPanel } from './components/SkillsTab.Packages';

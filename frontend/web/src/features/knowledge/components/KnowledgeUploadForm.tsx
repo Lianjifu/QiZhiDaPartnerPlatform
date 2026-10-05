@@ -80,7 +80,7 @@ export function KnowledgeUploadForm({
       >
         <span className="knowledge-upload-dropzone__icon"><Upload className="h-5 w-5" /></span>
         <span className="mt-3 text-xs font-semibold">{file ? file.name : '拖拽文件到此处，或点击选择'}</span>
-        <span className="mt-1 text-[10px] text-[var(--text-muted)]">PDF / Word / Markdown / 文本</span>
+        <span className="mt-1 text-[10px] text-[var(--text-muted)]">Markdown / 文本会读入正文。PDF / Word 目前仅登记占位，完整解析尚未接通。</span>
       </button>
       <Field label="文档标题" required>
         <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="例如：Redis 故障 Runbook v3.3" />

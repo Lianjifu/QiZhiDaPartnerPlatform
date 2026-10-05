@@ -134,7 +134,7 @@ export function rolePageCopy(
     },
     knowledge: {
       user: { title: '知识检索', subtitle: '查找已发布的知识包与内容，供专家协作引用。' },
-      admin: { title: '知识中心', subtitle: '以知识包交付内容：上传纳管、加工评测、版本发布后供数字伙伴装配。' },
+      admin: { title: '知识中心', subtitle: '以知识包交付内容：在包内上传或接入、加工评测，版本发布后供数字伙伴装配。' },
       auditor: { title: '知识引用', subtitle: '只读核查知识包版本与引用证据，不修改资产或加工链路。' },
     },
     skills: {
@@ -213,9 +213,9 @@ export function defaultSkillsTab(role: Role | undefined | null): SkillsTab {
 
 export function visibleSkillsTabs(role: Role | undefined | null): SkillsTab[] {
   const r = resolveAppRole(role);
-  if (r === 'user') return ['workspace', 'workflowSkills'];
+  if (r === 'user') return ['workspace'];
   if (r === 'auditor') return ['governance', 'workspace'];
-  return ['workspace', 'store', 'platformTools', 'workflowSkills', 'integration', 'governance'];
+  return ['workspace', 'governance'];
 }
 
 export function defaultMemoryTab(role: Role | undefined | null): MemoryTab {

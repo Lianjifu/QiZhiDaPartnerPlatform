@@ -48,7 +48,7 @@ export default function KnowledgeDocPage() {
   const go = (next: DocStep) => setParams(next === 'content' ? {} : { step: next }, { replace: true });
 
   const jobsForDoc = useMemo(
-    () => c.processingJobs.filter((job) => job.source === detail?.title || job.source === listDoc?.title || (pkg && job.packageId === pkg.id)),
+    () => c.processingJobs.filter((job) => pkg && job.packageId === pkg.id && (job.source === detail?.title || job.source === listDoc?.title || job.source === pkg.name)),
     [c.processingJobs, detail?.title, listDoc?.title, pkg],
   );
 
@@ -65,6 +65,23 @@ export default function KnowledgeDocPage() {
         <div className="flex flex-wrap items-center gap-2">
           {detail?.status && <Badge tone={detail.status === 'ready' || detail.status === 'published' ? 'success' : 'warn'}>{detail.status === 'ready' || detail.status === 'published' ? '已就绪' : '索引中'}</Badge>}
           {pkg && <Button size="sm" variant="outline" onClick={() => navigate(`/knowledge/packages/${encodeURIComponent(pkg.id)}`)}>打开知识包</Button>}
+          {!pkg && c.canWrite && c.knowledgePackages.length > 0 && (
+            <select
+              aria-label="纳入知识包"
+              className="de-employee-input h-8 rounded-lg bg-[var(--bg)] px-2 text-[11px]"
+              defaultValue=""
+              onChange={(event) => {
+                const packageId = event.target.value;
+                event.target.value = '';
+                if (packageId) c.attachPackageMutation.mutate({ id: packageId, docIds: [id] });
+              }}
+            >
+              <option value="">纳入知识包…</option>
+              {c.knowledgePackages.map((item) => (
+                <option key={item.id} value={item.id}>{item.name}</option>
+              ))}
+            </select>
+          )}
           <Button size="sm" variant="outline" onClick={c.downloadOriginal} disabled={!c.docDetail}><Download className="h-3.5 w-3.5" />下载原文</Button>
         </div>
       </header>

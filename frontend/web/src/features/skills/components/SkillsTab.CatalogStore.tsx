@@ -33,12 +33,14 @@ export function CatalogStoreView({
   initialTypeFilter,
   onTypeFilterChange,
   onStorePageChange,
+  onInstalled,
 }: {
   installedRows: SkillRow[];
   setInstalledRows: React.Dispatch<React.SetStateAction<SkillRow[]>>;
   canWrite: boolean;
   isAdmin: boolean;
   onNotice: (msg: string) => void;
+  onInstalled?: (skill: Skill) => void;
   initialStorePage: number;
   initialStoreSearchQ: string;
   initialStoreRiskFilter: 'all' | 'low' | 'mid' | 'high';
@@ -96,7 +98,9 @@ export function CatalogStoreView({
   const preflightMutation = useApiMutation<SkillInstallPreflight, { id: string }>(({ id }) => `/api/skills/${id}/preflight`);
   const installSkillMutation = useApiMutation<Skill, any>(({ id }) => `/api/skills/${id}/install`, {
     onSuccess: (skill) => {
-      setInstalledRows((prev) => [...prev, ...(Array.isArray(skill) ? skill : [skill]).map((item) => enrichSkillRow(item, healthBySkillId))]);
+      const items = (Array.isArray(skill) ? skill : [skill]);
+      setInstalledRows((prev) => [...prev, ...items.map((item) => enrichSkillRow(item, healthBySkillId))]);
+      if (items[0]) onInstalled?.(items[0]);
     },
   });
 

@@ -94,7 +94,7 @@ export function ProcessingWorkbench({
       <header className="knowledge-processing__intro">
         <div className="min-w-0">
           <h2>{scoped ? '加工' : '加工中心'}</h2>
-          <p>{scoped ? '查看本包切片、索引与已接入数据源的同步。完成后到「检索评测」验证质量。' : '先看任务进度与失败项，再管理数据源与加工链路。'}</p>
+          <p>{scoped ? '查看本包切片、索引与已接入来源的同步。完成后到「检索验证」检查质量。' : '先看任务进度与失败项，再管理数据源与加工链路。'}</p>
         </div>
         {canWrite && (
           <div className="flex flex-wrap items-center gap-2">
@@ -266,7 +266,7 @@ export function ProcessingWorkbench({
         <div className="knowledge-processing__panel-head">
           <div className="min-w-0">
             <h3>数据源</h3>
-            <p>连接企业知识来源，按计划同步后进入加工队列。</p>
+            <p>查看已接入来源的同步状态；新增连接请到「添加内容」。</p>
           </div>
           {canWrite && sources.length > 0 && onConnectSource && (
             <Button size="sm" onClick={onConnectSource}>
@@ -280,7 +280,7 @@ export function ProcessingWorkbench({
             <EmptyState
               icon={Database}
               title="尚未接入数据源"
-              description="新增连接请从知识中心「接入数据源」入口进入。"
+              description="请到本包「添加内容」接入数据源。"
             />
           </div>
         ) : (

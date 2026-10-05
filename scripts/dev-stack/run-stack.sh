@@ -56,23 +56,63 @@ if [ ! -s "$SKILL_SECRET_FILE" ]; then
 fi
 export DE_SANDBOX_RUN_SECRET_FILE="$SKILL_SECRET_FILE"
 
+export PYTHONUNBUFFERED=1
+
 listening() { /usr/sbin/lsof -nP -iTCP:"$1" -sTCP:LISTEN >/dev/null 2>&1; }
+
+pid_alive() {
+  local f="$LOGDIR/${1}.pid"
+  [ -s "$f" ] || return 1
+  kill -0 "$(cat "$f")" 2>/dev/null
+}
+
+reclaim_port() {
+  local port="$1"
+  local pids
+  pids=$(/usr/sbin/lsof -tiTCP:"$port" -sTCP:LISTEN 2>/dev/null || true)
+  [ -n "$pids" ] || return 0
+  echo "$(date '+%F %T') reclaim :$port pids=$pids" >>"$LOGDIR/keeper.log"
+  # shellcheck disable=SC2086
+  kill -TERM $pids 2>/dev/null || true
+  sleep 1
+  # shellcheck disable=SC2086
+  kill -KILL $pids 2>/dev/null || true
+}
 
 start_one() {
   local port="$1" name="$2"; shift 2
-  if listening "$port"; then return 0; fi
+  if pid_alive "$name" && listening "$port"; then
+    return 0
+  fi
+  if pid_alive "$name"; then
+    echo "$(date '+%F %T') $name pid alive but :$port not listening; restart" >>"$LOGDIR/keeper.log"
+    kill -TERM "$(cat "$LOGDIR/${name}.pid")" 2>/dev/null || true
+    sleep 1
+  fi
+  if listening "$port"; then
+    return 0
+  fi
   echo "$(date '+%F %T') start $name :$port" >>"$LOGDIR/keeper.log"
-  nohup "$@" >>"$LOGDIR/${name}.log" 2>&1 </dev/null &
+  nohup env PYTHONUNBUFFERED=1 "$@" >>"$LOGDIR/${name}.log" 2>&1 </dev/null &
   echo $! >"$LOGDIR/${name}.pid"
-  sleep 0.5
+  local i
+  for i in 1 2 3 4 5 6 7 8; do
+    if listening "$port"; then
+      return 0
+    fi
+    sleep 0.4
+  done
+  echo "$(date '+%F %T') $name failed to bind :$port (see $LOGDIR/${name}.log)" >>"$LOGDIR/keeper.log"
 }
 
 start_vite() {
-  if listening 5173; then return 0; fi
-  # reclaim drifted ports
+  if pid_alive de-web && listening 5173; then return 0; fi
   for p in 5174 5175; do
     /usr/sbin/lsof -tiTCP:$p -sTCP:LISTEN 2>/dev/null | while read pid; do kill -9 "$pid" 2>/dev/null || true; done
   done
+  if listening 5173 && ! pid_alive de-web; then
+    return 0
+  fi
   echo "$(date '+%F %T') start de-web :5173" >>"$LOGDIR/keeper.log"
   (
     cd "$FRONTEND/web" || exit 1
@@ -81,6 +121,32 @@ start_vite() {
   )
   sleep 1
 }
+
+cleanup() {
+  echo "$(date '+%F %T') keeper shutdown pid=$$" >>"$LOGDIR/keeper.log"
+  local name pid
+  for name in qzda-app qzda-gateway qzda-rag qzda-skill de-web; do
+    if pid_alive "$name"; then
+      pid=$(cat "$LOGDIR/${name}.pid")
+      kill -TERM "$pid" 2>/dev/null || true
+    fi
+  done
+  local i
+  for i in $(seq 1 12); do
+    listening 8100 || listening 8089 || break
+    sleep 1
+  done
+  for name in qzda-app qzda-gateway qzda-rag qzda-skill de-web; do
+    if pid_alive "$name"; then
+      kill -KILL "$(cat "$LOGDIR/${name}.pid")" 2>/dev/null || true
+    fi
+  done
+  for port in 8100 8089 8092 8093 5173; do
+    listening "$port" && reclaim_port "$port"
+  done
+  exit 0
+}
+trap cleanup TERM INT
 
 echo "$(date '+%F %T') keeper boot pid=$$ stack=monolith" >>"$LOGDIR/keeper.log"
 if [ ! -x "$BACKEND/bin/qzda-app" ]; then

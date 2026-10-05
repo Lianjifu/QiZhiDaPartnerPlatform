@@ -620,6 +620,8 @@ export interface KnowledgeDoc {
 
 export interface KnowledgeSourceConnection {
   id: ID;
+  /** 归属知识包；接入必须发生在某个包上。 */
+  packageId?: ID;
   name: string;
   kind: 'REST API' | 'Git / Markdown' | 'Webhook' | '数据库只读连接';
   schedule: string;

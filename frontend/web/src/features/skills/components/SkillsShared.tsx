@@ -4,9 +4,9 @@ import {
 import type { Skill, SkillRuntimeHealth, CapabilityRef } from '@qzda/web-types';
 
 export const KIND_META: Record<string, { label: string; tone: 'info' | 'success' | 'warn'; icon: typeof Wrench; exec: string }> = {
-  skill: { label: 'Skill', tone: 'info', icon: Wrench, exec: 'gVisor 沙箱' },
+  skill: { label: '技能', tone: 'info', icon: Wrench, exec: 'gVisor 沙箱' },
   mcp: { label: 'MCP', tone: 'success', icon: Globe, exec: 'HTTP/JSON 外部协议' },
-  tool: { label: 'Tool', tone: 'warn', icon: Box, exec: 'REST/RPC 内部 API' },
+  tool: { label: '工具', tone: 'warn', icon: Box, exec: 'REST/RPC 内部 API' },
 };
 
 export const KIND_PROFILE: Record<Skill['kind'], { caption: string; primaryLabel: string; primaryValue: string; secondaryLabel: string; secondaryValue: string; rail: string; iconSurface: string }> = {
@@ -39,6 +39,27 @@ export type SkillRow = {
   & Partial<Pick<Skill, 'hasScripts' | 'scripts' | 'packageFileName'>>;
 
 export type SkillCenterTab = 'workspace' | 'store' | 'platformTools' | 'workflowSkills' | 'integration' | 'governance';
+export type CatalogTypeFilter = 'all' | 'builtin' | Skill['kind'];
+
+export function isBuiltinSource(source?: string) {
+  return source === 'builtin' || source === 'pack';
+}
+
+export function skillSourceLabel(source?: string) {
+  if (isBuiltinSource(source)) return '平台内置';
+  if (source === 'market') return '技能商店';
+  if (source === 'mcp') return 'MCP 接入';
+  if (source === 'tool') return '工具接入';
+  return '导入';
+}
+
+export function skillLifecycleLabel(status?: string) {
+  if (status === 'pending_approval') return '待审批';
+  if (status === 'disabled') return '已暂停';
+  if (status === 'quarantined') return '已隔离';
+  if (status === 'deprecated') return '已废弃';
+  return '已启用';
+}
 
 export type ModalKind = 'importSkill' | 'configureMcp' | 'configureTool' | 'uninstall' | 'upgrade' | null;
 

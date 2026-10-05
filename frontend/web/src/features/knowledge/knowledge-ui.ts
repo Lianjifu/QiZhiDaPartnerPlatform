@@ -112,6 +112,17 @@ const PACKAGE_STATUS_LABEL: Record<KnowledgePackageStatus, string> = {
   archived: '已归档',
 };
 
+export const PACKAGE_LIFECYCLE_STEPS = [
+  { key: 'info', index: '01', label: '基本信息', hint: '名称、分级与说明' },
+  { key: 'members', index: '02', label: '添加内容', hint: '上传文件或接入来源' },
+  { key: 'processing', index: '03', label: '加工处理', hint: '切片并建立索引' },
+  { key: 'eval', index: '04', label: '检索验证', hint: '用问题检查召回质量' },
+  { key: 'graph', index: '05', label: '知识图谱', hint: '看实体与关联' },
+  { key: 'versions', index: '06', label: '发布上线', hint: '版本供伙伴引用' },
+] as const;
+
+export type KnowledgePackageStep = (typeof PACKAGE_LIFECYCLE_STEPS)[number]['key'];
+
 export function packageStatusLabel(status: KnowledgePackageStatus | string | undefined): string {
   if (!status) return '未知';
   return PACKAGE_STATUS_LABEL[status as KnowledgePackageStatus] ?? String(status);

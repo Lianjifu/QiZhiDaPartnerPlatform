@@ -1,8 +1,8 @@
 /**
- * 知识中心目录：知识包发现；上传与详情走独立页。
+ * 知识中心目录：知识包发现。进货在包内完成。
  */
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Database, Plus, Upload } from 'lucide-react';
+import { BookOpen, Plus } from 'lucide-react';
 import { Badge } from '@qzda/web-ui';
 import { RoleReadonlyBanner } from '@/components/shared';
 import { useKnowledgeController } from './useKnowledgeController';
@@ -31,17 +31,9 @@ export function KnowledgePage() {
               <Badge tone="info">{c.workspaceName}</Badge>
               {!c.canWrite && <Badge tone="neutral">只读</Badge>}
               {c.canWrite && (
-                <>
-                  <button type="button" className="de-employee-btn" onClick={() => navigate('/knowledge/packages/new')}>
-                    <Plus className="h-3.5 w-3.5" />新建知识包
-                  </button>
-                  <button type="button" className="de-employee-btn" onClick={() => navigate('/knowledge/sources/new')}>
-                    <Database className="h-3.5 w-3.5" />接入数据源
-                  </button>
-                  <button type="button" className="de-employee-btn de-employee-btn--primary" onClick={() => navigate('/knowledge/new')}>
-                    <Upload className="h-3.5 w-3.5" />上传内容
-                  </button>
-                </>
+                <button type="button" className="de-employee-btn de-employee-btn--primary" onClick={() => navigate('/knowledge/packages/new')}>
+                  <Plus className="h-3.5 w-3.5" />新建知识包
+                </button>
               )}
             </div>
           </div>
@@ -53,17 +45,35 @@ export function KnowledgePage() {
         {unassigned.length > 0 && (
           <div className="knowledge-package-strip" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
             <span className="text-[11px] text-[var(--text-secondary)]">
-              <strong className="text-[var(--warning)]">{unassigned.length}</strong> 篇尚未纳入知识包
+              <strong className="text-[var(--warning)]">{unassigned.length}</strong> 篇尚未纳入任何知识包
             </span>
             {unassigned.slice(0, 6).map((doc) => (
-              <button
-                key={doc.id}
-                type="button"
-                className="wf-tpl-tag"
-                onClick={() => navigate(`/knowledge/docs/${encodeURIComponent(doc.id)}`)}
-              >
-                {doc.title}
-              </button>
+              <span key={doc.id} className="inline-flex items-center gap-1">
+                <button
+                  type="button"
+                  className="wf-tpl-tag"
+                  onClick={() => navigate(`/knowledge/docs/${encodeURIComponent(doc.id)}`)}
+                >
+                  {doc.title}
+                </button>
+                {c.canWrite && c.knowledgePackages.length > 0 && (
+                  <select
+                    aria-label={`将「${doc.title}」纳入知识包`}
+                    className="de-employee-input h-7 rounded-md bg-[var(--bg)] px-1.5 text-[10px]"
+                    defaultValue=""
+                    onChange={(event) => {
+                      const packageId = event.target.value;
+                      event.target.value = '';
+                      if (packageId) c.attachPackageMutation.mutate({ id: packageId, docIds: [doc.id] });
+                    }}
+                  >
+                    <option value="">纳入…</option>
+                    {c.knowledgePackages.map((item) => (
+                      <option key={item.id} value={item.id}>{item.name}</option>
+                    ))}
+                  </select>
+                )}
+              </span>
             ))}
             {unassigned.length > 6 && <span className="text-[10px] text-[var(--text-muted)]">等 {unassigned.length} 篇</span>}
           </div>

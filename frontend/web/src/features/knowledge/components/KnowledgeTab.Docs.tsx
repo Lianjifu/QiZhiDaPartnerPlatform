@@ -104,8 +104,8 @@ export function KnowledgeTabDocs({ c }: { c: KnowledgeController }) {
             title="没有匹配的内容"
             description="尝试清除筛选条件，或上传新的企业知识文档。"
             action={c.canWrite ? (
-              <Button size="sm" onClick={() => navigate('/knowledge/new')}>
-                <UploadIcon className="h-3.5 w-3.5" />上传文档
+              <Button size="sm" onClick={() => navigate('/knowledge/packages/new')}>
+                <UploadIcon className="h-3.5 w-3.5" />新建知识包
               </Button>
             ) : undefined}
           />

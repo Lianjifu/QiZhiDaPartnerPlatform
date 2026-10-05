@@ -82,7 +82,8 @@ describe('role-nav IA', () => {
     expect(defaultKnowledgeTab('auditor')).toBe('governance');
     expect(visibleKnowledgeTabs('user')).toEqual(['retrieval', 'assets']);
     expect(defaultSkillsTab('auditor')).toBe('governance');
-    expect(visibleSkillsTabs('user')).toEqual(['workspace', 'workflowSkills']);
+    expect(visibleSkillsTabs('user')).toEqual(['workspace']);
+    expect(visibleSkillsTabs('admin')).toEqual(['workspace', 'governance']);
     expect(defaultWorkflowTab('auditor')).toBe('versions');
     expect(defaultWorkflowTab('user')).toBe('templates');
     expect(defaultWorkflowTab('admin')).toBe('templates');

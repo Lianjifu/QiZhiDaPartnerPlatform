@@ -54,6 +54,7 @@ func (s *Service) CreateKnowledgePackage(r *http.Request) (any, error) {
 //   publish  — bump semver, mark published, gate behind SoD + countersign
 //   process  — enqueue a chunking / embedding job
 //   delete   — drop the package + cascade clear related control-plane rows
+//   update   — name / description / domain / classification
 //
 // All four actions take the Store write lock (held by defer), perform
 // the mutation, and unlock before the background goroutines fan out.
@@ -349,11 +350,31 @@ func (s *Service) KnowledgePackageAction(r *http.Request) (any, error) {
 		filterExtra("processingJobs")
 		filterExtra("retrievalProfiles")
 		filterExtra("evaluations")
+		filterExtra("sources")
 		s.appendKnowledgeAuditLocked(ws, id.Name, "删除知识包", str(pkg["name"]), "success", pkgID)
 		unlocked = true
 		s.Store.Unlock()
 		go func() { s.Store.Persist("knowledge_docs"); s.persistKnowledgeExtra() }()
 		return map[string]any{"id": pkgID, "deleted": true}, nil
+	case "update":
+		if name := strings.TrimSpace(str(body["name"])); name != "" {
+			pkg["name"] = name
+		}
+		if _, ok := body["description"]; ok {
+			pkg["description"] = str(body["description"])
+		}
+		if domain := strings.TrimSpace(str(body["domain"])); domain != "" {
+			pkg["domain"] = domain
+		}
+		if class := strings.TrimSpace(str(body["classification"])); class != "" {
+			pkg["classification"] = class
+		}
+		pkg["updatedAt"] = now
+		pkgs[idx] = pkg
+		s.Store.KnowledgeExtra["packages"] = pkgs
+		s.appendKnowledgeAuditLocked(ws, id.Name, "更新知识包资料", str(pkg["name"]), "success", "")
+		go s.persistKnowledgeExtra()
+		return pkg, nil
 	default:
 		return nil, apperr.NotFoundErr(apperr.NotFound, "未知动作")
 	}

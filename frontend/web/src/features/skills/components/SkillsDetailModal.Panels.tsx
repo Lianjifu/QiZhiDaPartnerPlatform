@@ -15,6 +15,7 @@ import { cn } from '@qzda/web-utils';
 import { EmptyState } from '@/components/shared';
 import type { SkillAuditEvent, SkillPermission } from '@qzda/web-types';
 import { Stat } from './SkillsModals';
+import { isBuiltinSource } from './SkillsShared';
 
 export type DetailTab = 'overview' | 'access' | 'versions' | 'runtime';
 
@@ -304,7 +305,7 @@ export function OverviewPanel({
         </div>
       </div>
 
-      {canWrite && (
+      {canWrite && !isBuiltinSource(active.source) && (
         <div className="skill-detail-panel">
           <div className="skill-detail-panel__title"><Sparkles className="h-3.5 w-3.5 text-[var(--brand)]" />晋升到技能商店</div>
           <p className="mb-3 text-[11px] leading-5 text-[var(--text-muted)]">将本工作区已验证技能上架为可安装目录条目；高风险 / 全局可见需审批单号。</p>

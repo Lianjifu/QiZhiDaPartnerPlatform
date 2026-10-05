@@ -12,6 +12,7 @@ export type ConnectSourceForm = {
   endpoint: string;
   credentialHint: string;
   syncNow: boolean;
+  packageId?: string;
 };
 
 export const SOURCE_KIND_OPTIONS: Array<{

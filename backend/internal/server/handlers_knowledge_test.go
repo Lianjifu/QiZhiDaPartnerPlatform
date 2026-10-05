@@ -352,14 +352,28 @@ func TestKnowledgePackageAttachAndPublishScope(t *testing.T) {
 func TestKnowledgeSourceConnectAndSync(t *testing.T) {
 	h := server.New(store.New()).Handler()
 
-	rr := knowledgeDo(t, h, http.MethodPost, "/api/knowledge/sources", "mock-admin-token",
+	rr := knowledgeDo(t, h, http.MethodPost, "/api/knowledge/packages", "mock-admin-token",
+		`{"name":"源接入包","domain":"SRE","classification":"internal"}`)
+	if rr.Code != 200 {
+		t.Fatalf("create package %d %s", rr.Code, rr.Body.String())
+	}
+	var pkgEnv struct {
+		Data map[string]any `json:"data"`
+	}
+	_ = json.Unmarshal(rr.Body.Bytes(), &pkgEnv)
+	pkgID, _ := pkgEnv.Data["id"].(string)
+	if pkgID == "" {
+		t.Fatalf("package id missing: %s", rr.Body.String())
+	}
+
+	rr = knowledgeDo(t, h, http.MethodPost, "/api/knowledge/sources", "mock-admin-token",
 		`{"name":"变更记录库","kind":"REST API","schedule":"每 1 小时"}`)
 	if rr.Code != 400 {
 		t.Fatalf("missing endpoint expected 400 got %d %s", rr.Code, rr.Body.String())
 	}
 
 	rr = knowledgeDo(t, h, http.MethodPost, "/api/knowledge/sources", "mock-admin-token",
-		`{"name":"变更记录库","kind":"REST API","schedule":"每 1 小时","endpoint":"https://api.example.com/changes","credentialHint":"Bearer demo"}`)
+		`{"name":"变更记录库","kind":"REST API","schedule":"每 1 小时","endpoint":"https://api.example.com/changes","credentialHint":"Bearer demo","packageId":"`+pkgID+`"}`)
 	if rr.Code != 200 {
 		t.Fatalf("create source %d %s", rr.Code, rr.Body.String())
 	}
@@ -370,6 +384,9 @@ func TestKnowledgeSourceConnectAndSync(t *testing.T) {
 	srcID, _ := srcEnv.Data["id"].(string)
 	if srcID == "" {
 		t.Fatalf("source id missing: %s", rr.Body.String())
+	}
+	if srcEnv.Data["packageId"] != pkgID {
+		t.Fatalf("expected packageId stamped: %s", rr.Body.String())
 	}
 	if srcEnv.Data["status"] != "attention" {
 		t.Fatalf("expected attention pending sync: %s", rr.Body.String())
@@ -390,8 +407,16 @@ func TestKnowledgeSourceConnectAndSync(t *testing.T) {
 		t.Fatalf("expected documents after sync: %s", rr.Body.String())
 	}
 
+	rr = knowledgeDo(t, h, http.MethodGet, "/api/knowledge/docs", "mock-admin-token", "")
+	if rr.Code != 200 {
+		t.Fatalf("docs %d %s", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), pkgID) {
+		t.Fatalf("expected synced doc stamped with packageId: %s", rr.Body.String())
+	}
+
 	rr = knowledgeDo(t, h, http.MethodPost, "/api/knowledge/sources", "mock-admin-token",
-		`{"name":"SIEM 推送","kind":"Webhook"}`)
+		`{"name":"SIEM 推送","kind":"Webhook","packageId":"`+pkgID+`"}`)
 	if rr.Code != 200 {
 		t.Fatalf("create webhook %d %s", rr.Code, rr.Body.String())
 	}

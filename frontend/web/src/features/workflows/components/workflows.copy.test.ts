@@ -212,7 +212,7 @@ describe('workflow canvas orchestration', () => {
     expect(workflowsSource).toContain('validationPassed');
     expect(workflowsSource).toContain('skillSourceVersion');
     expect(workflowsSource).toContain('调用需审批');
-    expect(workflowsSource).toContain('/skills?tab=workflowSkills');
+    expect(workflowsSource).toContain('/skills?tab=governance');
     expect(workflowsSource).toContain('vars.workflowId');
     expect(workflowsSource).toContain('publish-as-skill');
     expect(workflowsSource).toContain('wf-publish');

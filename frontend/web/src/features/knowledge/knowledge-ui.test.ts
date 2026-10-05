@@ -12,6 +12,7 @@ import {
   bumpPackageVersion,
   packageReadyToPublish,
   packageStatusLabel,
+  PACKAGE_LIFECYCLE_STEPS,
 } from './knowledge-ui';
 
 describe('knowledge-ui', () => {
@@ -73,5 +74,11 @@ describe('knowledge-ui', () => {
     expect(packageReadyToPublish({ documentCount: 0 }).ok).toBe(false);
     expect(packageReadyToPublish({ documentIds: ['a'], status: 'draft' }).ok).toBe(true);
     expect(packageReadyToPublish({ documentIds: ['a'], status: 'archived' }).ok).toBe(false);
+  });
+
+  it('names package lifecycle steps in user language', () => {
+    expect(PACKAGE_LIFECYCLE_STEPS.map((item) => item.label)).toEqual([
+      '基本信息', '添加内容', '加工处理', '检索验证', '知识图谱', '发布上线',
+    ]);
   });
 });

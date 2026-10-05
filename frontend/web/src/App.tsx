@@ -28,6 +28,8 @@ const KnowledgePackageCreate = lazy(() => import('./features/knowledge/component
 const KnowledgeSource = lazy(() => import('./features/knowledge/components/KnowledgeSourcePage'));
 const Memory = lazy(() => import('./features/memory/components/MemoryPage'));
 const Skills = lazy(() => import('./features/skills/components/SkillsPage'));
+const SkillsCreate = lazy(() => import('./features/skills/components/SkillsCreatePage'));
+const SkillsDetail = lazy(() => import('./features/skills/components/SkillsDetailPage'));
 const Models = lazy(() => import('./features/models/components/ModelsPage'));
 const ModelProviderCreate = lazy(() => import('./features/models/components/ModelProviderCreatePage'));
 const ModelProviderDetail = lazy(() => import('./features/models/components/ModelProviderDetailPage'));
@@ -89,6 +91,8 @@ export default function App() {
             <Route path="/knowledge/packages/:id" element={<ProtectedRoute roles={['user', 'admin', 'auditor']}><ErrorBoundary><KnowledgePackage /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/knowledge" element={<ProtectedRoute roles={['user', 'admin', 'auditor']}><ErrorBoundary><Knowledge /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/memory" element={<ProtectedRoute roles={['admin', 'auditor']}><ErrorBoundary><Memory /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/skills/new" element={<ProtectedRoute roles={['user', 'admin']}><ErrorBoundary><SkillsCreate /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/skills/:id" element={<ProtectedRoute roles={['user', 'admin', 'auditor']}><ErrorBoundary><SkillsDetail /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/skills" element={<ProtectedRoute roles={['user', 'admin', 'auditor']}><ErrorBoundary><Skills /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/models/providers/new" element={<ProtectedRoute permission="model.read" roles={['admin']}><ErrorBoundary><ModelProviderCreate /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/models/providers/:id" element={<ProtectedRoute permission="model.read" roles={['admin', 'auditor']}><ErrorBoundary><ModelProviderDetail /></ErrorBoundary></ProtectedRoute>} />
