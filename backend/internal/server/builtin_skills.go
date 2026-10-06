@@ -75,6 +75,9 @@ func builtinSkillsRoot() string {
 		return v
 	}
 	candidates := []string{
+		filepath.Join("services", "qzda-sandbox", "builtin", "skills"),
+		filepath.Join("..", "backend", "services", "qzda-sandbox", "builtin", "skills"),
+		filepath.Join("backend", "services", "qzda-sandbox", "builtin", "skills"),
 		filepath.Join("backend", "builtin", "skills"),
 		filepath.Join("..", "backend", "builtin", "skills"),
 		filepath.Join("builtin", "skills"),
@@ -85,7 +88,7 @@ func builtinSkillsRoot() string {
 			return abs
 		}
 	}
-	return filepath.Join("backend", "builtin", "skills")
+	return filepath.Join("services", "qzda-sandbox", "builtin", "skills")
 }
 
 func loadBuiltinManifest() builtinManifest {
