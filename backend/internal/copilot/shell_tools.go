@@ -292,11 +292,11 @@ func (s *Service) shellListDir(path string, depth int) toolExecResult {
 		}
 		prefix := strings.Repeat("  ", d-1)
 		for _, e := range entries {
-			marker := ""
+			sep := ""
 			if e.IsDir() {
-				marker = "/"
+				sep = "/"
 			}
-			out.WriteString(fmt.Sprintf("%s%s/%s%s\n", prefix, e.Name(), marker))
+			out.WriteString(prefix + e.Name() + sep + "\n")
 			if e.IsDir() && d < depth {
 				walk(filepath.Join(p, e.Name()), d+1)
 			}

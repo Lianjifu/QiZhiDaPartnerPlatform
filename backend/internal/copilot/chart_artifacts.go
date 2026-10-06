@@ -143,7 +143,7 @@ func renderBarChart(in chartInput) string {
 		sb.WriteString(fmt.Sprintf(`<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="%s" rx="2"><title>%s = %.2f</title></rect>`,
 			x, y, barW, h, colorFor(i), escXML(s.Label), s.Value))
 		// label (旋转避免重叠)
-		sb.WriteString(fmt.Sprintf(`<text x="%.1f" y="%d" text-anchor="end" fill="#374151" transform="rotate(-35 %.1f %d)">%s</text>`,
+		sb.WriteString(fmt.Sprintf(`<text x="%.1f" y="%.1f" text-anchor="end" fill="#374151" transform="rotate(-35 %.1f %.1f)">%s</text>`,
 			x+barW/2, padT+plotH+16, x+barW/2, padT+plotH+16, escXML(s.Label)))
 		// value 在柱子顶部
 		sb.WriteString(fmt.Sprintf(`<text x="%.1f" y="%.1f" text-anchor="middle" fill="#111827" font-weight="600">%.2f</text>`,
@@ -201,7 +201,7 @@ func renderLineChart(in chartInput) string {
 		sb.WriteString(fmt.Sprintf(`<circle cx="%.1f" cy="%.1f" r="3" fill="%s"><title>%s = %.2f</title></circle>`,
 			x, y, color, escXML(s.Label), s.Value))
 		// x label
-		sb.WriteString(fmt.Sprintf(`<text x="%.1f" y="%d" text-anchor="middle" fill="#374151">%s</text>`,
+		sb.WriteString(fmt.Sprintf(`<text x="%.1f" y="%.1f" text-anchor="middle" fill="#374151">%s</text>`,
 			x, padT+plotH+16, escXML(s.Label)))
 	}
 	sb.WriteString(`</svg>`)
