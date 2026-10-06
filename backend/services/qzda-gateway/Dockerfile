@@ -6,7 +6,7 @@
 # Build: docker build -f services/qzda-gateway/Dockerfile -t qzda-gateway:local .
 FROM python:3.12-slim
 WORKDIR /app
-COPY main.py /app/main.py
+COPY backend/services/qzda-gateway/main.py /app/main.py
 EXPOSE 8089
 ENV QZDA_BIND_HOST=0.0.0.0 \
     QZDA_BIND_PORT=8089 \

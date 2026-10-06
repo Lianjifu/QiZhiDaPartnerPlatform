@@ -19,7 +19,7 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
-COPY services/qzda-sandbox/libqzda_egress.c .
+COPY backend/services/qzda-sandbox/libqzda_egress.c .
 RUN gcc -O2 -fPIC -shared \
         -o /build/libqzda_egress.so libqzda_egress.c \
  && ls -la /build/libqzda_egress.so
@@ -37,11 +37,11 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY services/qzda-sandbox/requirements.txt .
+COPY backend/services/qzda-sandbox/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY services/qzda-sandbox/app/ ./app/
-COPY services/qzda-sandbox/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY backend/services/qzda-sandbox/app/ ./app/
+COPY backend/services/qzda-sandbox/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # 阶段 4 #1:把编译好的 .so 落到 /app/lib/;子进程 env LD_PRELOAD=/app/lib/libqzda_egress.so 启用

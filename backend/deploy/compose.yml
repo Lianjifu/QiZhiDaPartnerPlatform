@@ -13,9 +13,11 @@
 
 services:
   postgres:
-    # pgvector/pgvector 镜像:postgresql 16 + pgvector 扩展预装,RAG 向量
-    # 与控制面事务一致(同一 PG 实例,免额外容器)。
-    image: pgvector/pgvector:pg16-alpine
+    # TODO(infra): 切到 pgvector/pgvector:pg16-alpine 自带 vector 扩展,避免
+    # 手动编译。当前 Docker Hub 在内网不可达,沿用 postgres:16-alpine。
+    # pgvector 0.7.4 已手动装入当前容器(/usr/local/lib/postgresql/vector.so),
+    # 部署/迁移脚本详见 deploy/README.md §7。
+    image: postgres:16-alpine
     container_name: qzda-postgres
     restart: unless-stopped
     environment:
@@ -53,8 +55,8 @@ services:
 
   qzda-sandbox:
     build:
-      context: ..
-      dockerfile: services/qzda-sandbox/Dockerfile
+      context: /Users/LIANJIFU/ops/QiZhiDaPartnerPlatform
+      dockerfile: backend/services/qzda-sandbox/Dockerfile
     image: qzda-sandbox:local
     container_name: qzda-sandbox
     restart: unless-stopped
@@ -106,8 +108,8 @@ services:
 
   qzda-rag:
     build:
-      context: ..
-      dockerfile: services/qzda-rag/Dockerfile
+      context: /Users/LIANJIFU/ops/QiZhiDaPartnerPlatform
+      dockerfile: backend/services/qzda-rag/Dockerfile
     image: qzda-rag:local
     container_name: qzda-rag
     restart: unless-stopped
@@ -129,8 +131,8 @@ services:
 
   qzda-app:
     build:
-      context: ..
-      dockerfile: services/qzda-app/Dockerfile
+      context: /Users/LIANJIFU/ops/QiZhiDaPartnerPlatform
+      dockerfile: backend/services/qzda-app/Dockerfile
       args: { CMD: qzda-app }
     image: qzda-app:local
     container_name: qzda-app
@@ -174,8 +176,8 @@ services:
 
   qzda-gateway:
     build:
-      context: ..
-      dockerfile: services/qzda-gateway/Dockerfile
+      context: /Users/LIANJIFU/ops/QiZhiDaPartnerPlatform
+      dockerfile: backend/services/qzda-gateway/Dockerfile
     image: qzda-gateway:local
     container_name: qzda-gateway
     restart: unless-stopped

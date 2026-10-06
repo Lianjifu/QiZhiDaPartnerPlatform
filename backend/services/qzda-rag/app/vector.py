@@ -153,18 +153,16 @@ class PgVectorIndex:
             cur.execute(f"TRUNCATE {COLLECTION}")
             if not published:
                 return 0
-            from psycopg.types.json import Jsonb
-            rows = []
-            for d in published:
-                text = f"{d.get('title', '')} {d.get('snippet', '')}"
-                rows.append((
+            rows = [
+                (
                     str(d.get("docId") or d.get("id")),
                     str(d.get("title") or "")[:512],
                     str(d.get("snippet") or "")[:2048],
                     "published",
-                    dense_embed(text),
-                ))
-            from psycopg.types.array import Array
+                    dense_embed(f"{d.get('title', '')} {d.get('snippet', '')}"),
+                )
+                for d in published
+            ]
             cur.executemany(
                 f"INSERT INTO {COLLECTION} (id, title, snippet, status, vector) VALUES (%s, %s, %s, %s, %s)",
                 rows,

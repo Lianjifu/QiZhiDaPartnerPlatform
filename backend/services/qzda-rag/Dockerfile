@@ -1,8 +1,8 @@
 FROM python:3.12-slim
 WORKDIR /app
-COPY requirements.txt ./
+COPY backend/services/qzda-rag/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
-COPY app/ ./app/
+COPY backend/services/qzda-rag/app/ ./app/
 ENV PYTHONUNBUFFERED=1
 ENV QZDA_BIND_HOST=0.0.0.0
 ENV QZDA_BIND_PORT=8092
