@@ -212,6 +212,34 @@ func buildToolRegistry(emp map[string]any, enabledTools []string) []registeredTo
 		Key: "builtin:skill.read", Name: "skill.read", Kind: "builtin",
 		Mode: toolModeExecute, Description: "加载已装配技能的 SKILL.md 全文",
 	})
+	// M14+ 企业 agent shell 工具(读 / 写 / 编辑 / 搜索 / 列目录 / 受控执行),
+	// 全部经 workspace 白名单 + exec 白名单 + audit 留痕,数字伙伴可挂载
+	// 后即可在受限 shell 里操作 (agent 上下文读取 / 局部代码与配置查阅 /
+	// 受控命令执行)。
+	add(registeredTool{
+		Key: "tool:shell.read_file", Name: "shell.read_file", Kind: "tool",
+		Mode: toolModeExecute, Description: "读取白名单内单个文件(workspace + /tmp + /var/qzda, ≤256KB)",
+	})
+	add(registeredTool{
+		Key: "tool:shell.write_file", Name: "shell.write_file", Kind: "tool",
+		Mode: toolModeExecute, Description: "写入 / 覆盖白名单内文件(≤256KB)",
+	})
+	add(registeredTool{
+		Key: "tool:shell.edit_file", Name: "shell.edit_file", Kind: "tool",
+		Mode: toolModeExecute, Description: "按 search-replace 原子编辑文件(全文唯一匹配)",
+	})
+	add(registeredTool{
+		Key: "tool:shell.search_files", Name: "shell.search_files", Kind: "tool",
+		Mode: toolModeExecute, Description: "ripgrep 风格文件搜索(pattern / glob / 上下文)",
+	})
+	add(registeredTool{
+		Key: "tool:shell.list_dir", Name: "shell.list_dir", Kind: "tool",
+		Mode: toolModeExecute, Description: "浅列白名单内目录(深度 ≤3)",
+	})
+	add(registeredTool{
+		Key: "tool:shell.exec", Name: "shell.exec", Kind: "tool",
+		Mode: toolModeExecute, Description: "执行只读 / 受控白名单命令(2s 超时 + 64KB 输出上限 + audit 留痕;rm/mv/cp/dd/sh 等显式拒绝)",
+	})
 	add(registeredTool{
 		Key: "builtin:time.now", Name: "time.now", Kind: "builtin",
 		Mode: toolModeExecute, Description: "返回当前时间（ISO8601）",
@@ -613,6 +641,44 @@ func (s *Service) runCopilotTool(ctx toolRunContext, t *registeredTool, call too
 		}
 
 	case t.Kind == "tool":
+		// M14+ shell 工具族:workspace 白名单 + exec 白名单 + audit 留痕。
+		switch call.Name {
+		case "shell.read_file":
+			path, _ := call.Args["path"].(string)
+			return s.shellReadFile(path)
+		case "shell.write_file":
+			path, _ := call.Args["path"].(string)
+			content, _ := call.Args["content"].(string)
+			return s.shellWriteFile(path, content)
+		case "shell.edit_file":
+			path, _ := call.Args["path"].(string)
+			search, _ := call.Args["search"].(string)
+			replace, _ := call.Args["replace"].(string)
+			return s.shellEditFile(path, search, replace)
+		case "shell.search_files":
+			root, _ := call.Args["root"].(string)
+			pattern, _ := call.Args["pattern"].(string)
+			inc, _ := call.Args["include_glob"].(string)
+			ctxL, _ := call.Args["context_lines"].(float64)
+			if ctxL <= 0 {
+				ctxL = 2
+			}
+			return s.shellSearchFiles(root, pattern, inc, int(ctxL))
+		case "shell.list_dir":
+			path, _ := call.Args["path"].(string)
+			depth, _ := call.Args["depth"].(float64)
+			return s.shellListDir(path, int(depth))
+		case "shell.exec":
+			cmd, _ := call.Args["command"].(string)
+			argsAny, _ := call.Args["args"].([]any)
+			args := make([]string, 0, len(argsAny))
+			for _, a := range argsAny {
+				if s, ok := a.(string); ok {
+					args = append(args, s)
+				}
+			}
+			return s.shellExec(ctx.WorkspaceID, ctx.OwnerID, cmd, args)
+		}
 		if isRuntimeTool(t.Name) {
 			return s.Deps.RunRuntimeToolFn(ctx, t, call, started)
 		}
