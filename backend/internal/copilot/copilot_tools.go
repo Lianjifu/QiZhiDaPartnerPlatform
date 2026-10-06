@@ -255,6 +255,27 @@ func buildToolRegistry(emp map[string]any, enabledTools []string) []registeredTo
 		Key: "tool:web.browse", Name: "web.browse", Kind: "tool",
 		Mode: toolModeExecute, Description: "Chrome headless 渲染 URL → 提取 text / title / screenshot(无 chrome 时 graceful 退化为 curl 抓 HTML)",
 	})
+	// M14+ full computer-use(playwright 后端,需要 chromium binary)
+	add(registeredTool{
+		Key: "tool:web.fill", Name: "web.fill", Kind: "tool",
+		Mode: toolModeExecute, Description: "playwright 后端:在指定 selector 输入框 fill(clear + set)",
+	})
+	add(registeredTool{
+		Key: "tool:web.type", Name: "web.type", Kind: "tool",
+		Mode: toolModeExecute, Description: "playwright 后端:在指定 selector 输入框 fill value(不清空)",
+	})
+	add(registeredTool{
+		Key: "tool:web.click", Name: "web.click", Kind: "tool",
+		Mode: toolModeExecute, Description: "playwright 后端:点击 selector 元素(3s 超时)",
+	})
+	add(registeredTool{
+		Key: "tool:web.eval", Name: "web.eval", Kind: "tool",
+		Mode: toolModeExecute, Description: "playwright 后端:在当前页面 evaluate 任意 JS,返回序列化结果",
+	})
+	add(registeredTool{
+		Key: "tool:web.close", Name: "web.close", Kind: "tool",
+		Mode: toolModeExecute, Description: "playwright 后端:关闭浏览器实例(释放内存)",
+	})
 	// M14+ MCP 集成:JSON-RPC 2.0 over stdio / http,工具接入外部 MCP server
 	// (Notion / Slack / Linear / GitHub 官方 server 等),让数字伙伴挂上就能调。
 	// (Notion / Slack / Linear / GitHub 官方 server 等),让数字伙伴挂上就能调。
@@ -725,6 +746,26 @@ func (s *Service) runCopilotTool(ctx toolRunContext, t *registeredTool, call too
 			url, _ := call.Args["url"].(string)
 			action, _ := call.Args["action"].(string)
 			return webBrowse(url, action)
+		case "web.fill":
+			url, _ := call.Args["url"].(string)
+			sel, _ := call.Args["selector"].(string)
+			val, _ := call.Args["value"].(string)
+			return webComputerUse(webComputerUsePayload{Cmd: "fill", URL: url, Selector: sel, Value: val}, url)
+		case "web.type":
+			url, _ := call.Args["url"].(string)
+			sel, _ := call.Args["selector"].(string)
+			val, _ := call.Args["value"].(string)
+			return webComputerUse(webComputerUsePayload{Cmd: "type", URL: url, Selector: sel, Value: val}, url)
+		case "web.click":
+			url, _ := call.Args["url"].(string)
+			sel, _ := call.Args["selector"].(string)
+			return webComputerUse(webComputerUsePayload{Cmd: "click", URL: url, Selector: sel}, url)
+		case "web.eval":
+			url, _ := call.Args["url"].(string)
+			js, _ := call.Args["js"].(string)
+			return webComputerUse(webComputerUsePayload{Cmd: "eval", URL: url, JS: js}, url)
+		case "web.close":
+			return webComputerUse(webComputerUsePayload{Cmd: "close"}, "")
 		}
 		if isRuntimeTool(t.Name) {
 			return s.Deps.RunRuntimeToolFn(ctx, t, call, started)

@@ -65,8 +65,12 @@ func webDomainAllowed(rawURL string) error {
 		return fmt.Errorf("web: URL 需 http(s)://")
 	}
 	allow := strings.TrimSpace(os.Getenv("QZDA_WEB_ALLOWED"))
-	if allow == "" || allow == "*" {
+	// 仅 "*" 显式表示 allow-all;空字符串 / 没设 = 全部拒,默认保守。
+	if allow == "*" {
 		return nil
+	}
+	if allow == "" {
+		return fmt.Errorf("web: 未配置 QZDA_WEB_ALLOWED(逗号分隔域名列表,或 '*' 显式放行)")
 	}
 	// 抽 host(忽略端口)
 	host := u
@@ -315,4 +319,68 @@ func truncate(s string, n int) string {
 		return s
 	}
 	return s[:n]
+}
+
+// webComputerUsePayload 是 web.fill / web.type / web.click / web.eval /
+// web.close 共用的 node 脚本 payload,跨 stdin 传入。
+type webComputerUsePayload struct {
+	Cmd      string `json:"cmd"`                // navigate | click | type | fill | extract_text | extract_html | screenshot | eval | close
+	URL      string `json:"url,omitempty"`
+	Value    string `json:"value,omitempty"`
+	Selector string `json:"selector,omitempty"`
+	JS       string `json:"js,omitempty"`
+	Path     string `json:"path,omitempty"`
+	FullPage bool   `json:"fullPage,omitempty"`
+}
+
+// webComputerUsePath 是 scripts/qzda-browser.mjs 的绝对路径;可被
+// QZDA_BROWSER_SCRIPT 覆盖(dev / staging 部署差异)。
+func webComputerUsePath() string {
+	if v := strings.TrimSpace(os.Getenv("QZDA_BROWSER_SCRIPT")); v != "" {
+		return v
+	}
+	return "/Users/LIANJIFU/ops/QiZhiDaPartnerPlatform/scripts/qzda-browser.mjs"
+}
+
+// webComputerUse 走 node 脚本(playwright 后端)的 stdio JSON 协议,返回结果
+// 直接落到 toolExecResult.Output(JSON 字符串)。
+// domain 白名单 + return (同 web.fetch);每次 8s 上限 + 32KB 输出 cap。
+func webComputerUse(payload webComputerUsePayload, rawURL string) toolExecResult {
+	res := toolExecResult{}
+	if rawURL != "" {
+		if err := webDomainAllowed(rawURL); err != nil {
+			res.Status = "denied"
+			res.Error = err.Error()
+			return res
+		}
+	}
+	scriptPath := webComputerUsePath()
+	if _, err := os.Stat(scriptPath); err != nil {
+		res.Status = "unavailable"
+		res.Error = fmt.Sprintf("web.browse: 找不到脚本 %s(set QZDA_BROWSER_SCRIPT=... 或 npm i -g playwright)", scriptPath)
+		return res
+	}
+	body, _ := json.Marshal(payload)
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "node", scriptPath)
+	cmd.Stdin = strings.NewReader(string(body))
+	outBytes, err := cmd.Output()
+	if err != nil {
+		// 单独保留 stderr 摘要;通常 chromium 缺装会落到这里
+		res.Status = "failed"
+		if ee, ok := err.(*exec.ExitError); ok {
+			res.Error = fmt.Sprintf("node exit %d: %s", ee.ExitCode(), string(ee.Stderr)[:512])
+		} else {
+			res.Error = err.Error()
+		}
+		return res
+	}
+	out := strings.TrimSpace(string(outBytes))
+	if len(out) > 32*1024 {
+		out = out[:32*1024] + "\n[truncated…]"
+	}
+	res.Status = "success"
+	res.Output = out
+	return res
 }
