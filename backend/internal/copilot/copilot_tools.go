@@ -246,6 +246,16 @@ func buildToolRegistry(emp map[string]any, enabledTools []string) []registeredTo
 		Key: "tool:chart.generate", Name: "chart.generate", Kind: "tool",
 		Mode: toolModeExecute, Description: "渲染结构化数据为 SVG 图表(bar/line/pie/table, ≤32KB)",
 	})
+	// M14+ MCP 集成:JSON-RPC 2.0 over stdio / http,工具接入外部 MCP server
+	// (Notion / Slack / Linear / GitHub 官方 server 等),让数字伙伴挂上就能调。
+	add(registeredTool{
+		Key: "tool:mcp.list_servers", Name: "mcp.list_servers", Kind: "tool",
+		Mode: toolModeExecute, Description: "列出已挂载 MCP server 及其 tools(由 QZDA_MCP_SERVERS 配置)",
+	})
+	add(registeredTool{
+		Key: "tool:mcp.call_tool", Name: "mcp.call_tool", Kind: "tool",
+		Mode: toolModeExecute, Description: "在指定 MCP server 上调用 tool(<server>:<tool> args=...)",
+	})
 	add(registeredTool{
 		Key: "builtin:time.now", Name: "time.now", Kind: "builtin",
 		Mode: toolModeExecute, Description: "返回当前时间（ISO8601）",
@@ -691,6 +701,13 @@ func (s *Service) runCopilotTool(ctx toolRunContext, t *registeredTool, call too
 				payload, _ = call.Args["params"].(string)
 			}
 			return renderChartSVG(payload)
+		case "mcp.list_servers":
+			return mcpListServers()
+		case "mcp.call_tool":
+			server, _ := call.Args["server"].(string)
+			tool, _ := call.Args["tool"].(string)
+			args, _ := call.Args["args"].(string)
+			return mcpCallTool(server, tool, args)
 		}
 		if isRuntimeTool(t.Name) {
 			return s.Deps.RunRuntimeToolFn(ctx, t, call, started)
