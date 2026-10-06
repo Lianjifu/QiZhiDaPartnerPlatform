@@ -246,7 +246,17 @@ func buildToolRegistry(emp map[string]any, enabledTools []string) []registeredTo
 		Key: "tool:chart.generate", Name: "chart.generate", Kind: "tool",
 		Mode: toolModeExecute, Description: "渲染结构化数据为 SVG 图表(bar/line/pie/table, ≤32KB)",
 	})
+	// M14+ web / 浏览器(computer-use 子集)
+	add(registeredTool{
+		Key: "tool:web.fetch", Name: "web.fetch", Kind: "tool",
+		Mode: toolModeExecute, Description: "HTTP GET + 解析(text/json),2s 超时 + 1MB 上限 + QZDA_WEB_ALLOWED 域名白名单",
+	})
+	add(registeredTool{
+		Key: "tool:web.browse", Name: "web.browse", Kind: "tool",
+		Mode: toolModeExecute, Description: "Chrome headless 渲染 URL → 提取 text / title / screenshot(无 chrome 时 graceful 退化为 curl 抓 HTML)",
+	})
 	// M14+ MCP 集成:JSON-RPC 2.0 over stdio / http,工具接入外部 MCP server
+	// (Notion / Slack / Linear / GitHub 官方 server 等),让数字伙伴挂上就能调。
 	// (Notion / Slack / Linear / GitHub 官方 server 等),让数字伙伴挂上就能调。
 	add(registeredTool{
 		Key: "tool:mcp.list_servers", Name: "mcp.list_servers", Kind: "tool",
@@ -708,6 +718,13 @@ func (s *Service) runCopilotTool(ctx toolRunContext, t *registeredTool, call too
 			tool, _ := call.Args["tool"].(string)
 			args, _ := call.Args["args"].(string)
 			return mcpCallTool(server, tool, args)
+		case "web.fetch":
+			url, _ := call.Args["url"].(string)
+			return webFetch(url)
+		case "web.browse":
+			url, _ := call.Args["url"].(string)
+			action, _ := call.Args["action"].(string)
+			return webBrowse(url, action)
 		}
 		if isRuntimeTool(t.Name) {
 			return s.Deps.RunRuntimeToolFn(ctx, t, call, started)
