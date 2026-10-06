@@ -240,6 +240,12 @@ func buildToolRegistry(emp map[string]any, enabledTools []string) []registeredTo
 		Key: "tool:shell.exec", Name: "shell.exec", Kind: "tool",
 		Mode: toolModeExecute, Description: "执行只读 / 受控白名单命令(2s 超时 + 64KB 输出上限 + audit 留痕;rm/mv/cp/dd/sh 等显式拒绝)",
 	})
+	// M14+ Chart 渲染:把结构化数据 → SVG(bar / line / pie)/ markdown table。
+	// 数字伙伴输出 chart.generate 后,serving 时落 /api/skill-artifacts/ 让前端 inline 嵌入。
+	add(registeredTool{
+		Key: "tool:chart.generate", Name: "chart.generate", Kind: "tool",
+		Mode: toolModeExecute, Description: "渲染结构化数据为 SVG 图表(bar/line/pie/table, ≤32KB)",
+	})
 	add(registeredTool{
 		Key: "builtin:time.now", Name: "time.now", Kind: "builtin",
 		Mode: toolModeExecute, Description: "返回当前时间（ISO8601）",
@@ -678,6 +684,13 @@ func (s *Service) runCopilotTool(ctx toolRunContext, t *registeredTool, call too
 				}
 			}
 			return s.shellExec(ctx.WorkspaceID, ctx.OwnerID, cmd, args)
+		case "chart.generate":
+			payload, _ := call.Args["payload"].(string)
+			if payload == "" {
+				// 兼容 payload 在 params 字段
+				payload, _ = call.Args["params"].(string)
+			}
+			return renderChartSVG(payload)
 		}
 		if isRuntimeTool(t.Name) {
 			return s.Deps.RunRuntimeToolFn(ctx, t, call, started)
