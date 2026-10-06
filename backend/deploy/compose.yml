@@ -13,10 +13,12 @@
 
 services:
   postgres:
-    # TODO(infra): 切到 pgvector/pgvector:pg16-alpine 自带 vector 扩展,避免
-    # 手动编译。当前 Docker Hub 在内网不可达,沿用 postgres:16-alpine。
-    # pgvector 0.7.4 已手动装入当前容器(/usr/local/lib/postgresql/vector.so),
-    # 部署/迁移脚本详见 deploy/README.md §7。
+    # 优先用 pgvector/pgvector:pg16-alpine(自带 vector 扩展,开箱即用)。
+    # 当前 Docker Hub 在内网不可达,沿用 postgres:16-alpine + 手动 bootstrap:
+    #   bash scripts/dev-stack/pgvector-bootstrap.sh
+    # 装入 vector.so + vector.control + vector--0.7.4.sql 到 PG 扩展目录。
+    # pgvector 0.7.4 已实测在该容器中跑通(dense_embed 64-dim + cosine top-K),
+    # 部署 / 迁移脚本详见 deploy/README.md §7.5。
     image: postgres:16-alpine
     container_name: qzda-postgres
     restart: unless-stopped

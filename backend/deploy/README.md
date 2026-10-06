@@ -163,6 +163,26 @@ docker inspect --format '{{.Name}} {{.State.Health.Status}}' \
 
 `make compose-up` 自动等所有 healthy 才退出。
 
+## 7.5. pgvector 引导(内网 / Docker Hub 不可达时)
+
+compose.yml 默认用 `postgres:16-alpine`(无 vector 扩展)。网络可达 Docker Hub
+时,改为 `pgvector/pgvector:pg16-alpine` 即可自动带扩展。
+
+不可达时(Docker Hub 经常被内网拦),用 `pgvector-bootstrap.sh` 手动编译装入容器:
+
+```bash
+bash scripts/dev-stack/pgvector-bootstrap.sh
+# 默认找容器 qzda-postgres,可用 CONTAINER=... 覆盖
+# 内部步骤:apk add build 工具链 → gh-proxy 镜像拉源码 v0.7.4
+#           → PG_CONFIG=/usr/local/bin/pg_config make(绕开 clang bitcode 步骤)
+#           → 装 .so + .control + vector--0.7.4.sql → 应用 0004_pgvector.sql
+```
+
+脚本是幂等的,可重跑;vector 扩展和 memory_vectors 表 CREATE IF NOT EXISTS 已
+保证。Docker Hub 一旦可达,把 compose.yml postgres image 换回
+`pgvector/pgvector:pg16-alpine` + 删 `volumes: - ./migrations:/docker-entrypoint-initdb.d`
+即可彻底去掉本脚本(扩展由镜像自带)。
+
 ## 8. 不再使用
 
 历史以下 target / profile 已废弃(M10 折叠 / Phase 4 重命名后):
