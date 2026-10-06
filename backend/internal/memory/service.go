@@ -28,6 +28,7 @@ package memory
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -87,6 +88,18 @@ type Deps struct {
 	AppendKnowledgeAuditLocked func(ws, actor, action, target, result, reason string)
 	PersistKnowledgeExtra      func()
 	KnowledgeSliceMaps         func(v any) []map[string]any
+
+	// Vector + embedder — semantic recall wiring. Server.go binds these
+	// to (*memory.EmbedClient).Embed and (*memory.VectorStoreClient)
+	// .{Upsert,Search,Delete}. Tests / older builds can leave any of
+	// them nil: nil Embedder / VectorUpsertFn / VectorSearchFn / VectorDeleteFn
+	// gracefully degrade to "no vector side-effect" / "no semantic recall".
+	// The memory package still has all BM25 + token-overlap retrieval via
+	// the pure-Go retrieval package; vectors are additive, not a replacement.
+	Embedder        func(ctx context.Context, text string) ([]float32, error)
+	VectorUpsert    func(ctx context.Context, recordID, workspaceID string, vec []float32) error
+	VectorSearch    func(ctx context.Context, workspaceID string, vec []float32, topK int) ([]VectorHit, error)
+	VectorDelete    func(ctx context.Context, recordID string) error
 }
 
 // Service is the M07 记忆中心 (Memory Center) HTTP-route façade. All 13
@@ -218,15 +231,12 @@ func (s *Service) IngestRuntimeMemory(in RuntimeMemoryInput) (map[string]any, er
 		return nil, err
 	}
 	go s.persistMemory()
+	// 异步嵌入并写入 memory_vectors;失败静默(BM25 检索仍可用)
+	go s.embedAndUpsertVector(context.Background(), str(item["id"]), in.WorkspaceID, coalesce(str(item["title"]), "")+"\n"+coalesce(str(item["content"]), ""))
 	return item, nil
 }
 
-// IngestRuntimeMemoryLocked requires Store.Lock held by caller. Used by
-// tasks.handlers_memory.writeTaskWorkingMemoryLocked and the cap-delegate
-// post-turn path where the caller already holds Store.Lock().
-func (s *Service) IngestRuntimeMemoryLocked(in RuntimeMemoryInput) (map[string]any, error) {
-	return s.ingestRuntimeMemoryLocked(in)
-}
+// --- read-only accessors exported for cross-package callers ---
 
 // --- read-only accessors exported for cross-package callers ---
 
@@ -236,9 +246,7 @@ func (s *Service) IngestRuntimeMemoryLocked(in RuntimeMemoryInput) (map[string]a
 // lookup semantics.
 func (s *Service) MemoryPolicyFor(ws string) map[string]any {
 	return s.memoryPolicyFor(ws)
-}
-
-// MemoryCanRead mirrors the legacy free-function policy: admin / auditor
+}// MemoryCanRead mirrors the legacy free-function policy: admin / auditor
 // see all; non-admin can read restricted/confidential only if they own
 // the record. Used by copilot (replacing the duplicate inline impl in
 // copilot/helpers.go).
@@ -250,6 +258,43 @@ func (s *Service) MemoryCanRead(id *auth.Identity, item map[string]any) bool {
 // backend. Called by handlers via the deferred goroutine pattern (write
 // → go s.persistMemory).
 func (s *Service) PersistMemory() { s.persistMemory() }
+
+// embedAndUpsertVector fires-and-forgets an embed call + vector upsert.
+// Used by all memory write paths (createMemory / IngestRuntimeMemory) to
+// keep semantic recall in sync. Errors are logged but never surface:
+// vector store is additive to BM25 retrieval, and the control plane
+// must not fail a memory write because the embedder is briefly down.
+func (s *Service) embedAndUpsertVector(ctx context.Context, recordID, workspaceID, text string) {
+	if s.Embedder == nil {
+		fmt.Printf("memory: skip embed record=%s: Embedder not wired\n", recordID)
+		return
+	}
+	if s.VectorUpsert == nil {
+		fmt.Printf("memory: skip embed record=%s: VectorUpsert not wired\n", recordID)
+		return
+	}
+	if text == "" {
+		return
+	}
+	vec, err := s.Embedder(ctx, text)
+	if err != nil || len(vec) == 0 {
+		fmt.Printf("memory: embed record=%s failed: %v\n", recordID, err)
+		return
+	}
+	if err := s.VectorUpsert(ctx, recordID, workspaceID, vec); err != nil {
+		fmt.Printf("memory: vector upsert record=%s failed: %v\n", recordID, err)
+		return
+	}
+}
+
+// deleteVector fires-and-forgets the vector row for a record. Idempotent
+// (VectorStore.Delete returns nil for missing rows).
+func (s *Service) deleteVector(ctx context.Context, recordID string) {
+	if s.VectorDelete == nil {
+		return
+	}
+	_ = s.VectorDelete(ctx, recordID)
+}
 
 // AppendMemoryAuditLocked is the public version of appendMemoryAuditLocked.
 // Caller MUST hold Store.Lock.

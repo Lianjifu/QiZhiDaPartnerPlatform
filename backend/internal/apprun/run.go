@@ -261,6 +261,10 @@ func runDurable(ctx context.Context, opts Options, rt runtimeenv.Mode) error {
 	srv.UsageSink = &infra.UsageSink{Pool: pg}
 	srv.KV = kv
 	srv.Search = search
+	// M11+ 向量召回:PG pool 必须在 buildMemorySvc 之前注入,否则
+	// s.memorySvc.Embedder / VectorUpsert / VectorSearch 全为 nil
+	// (server.New 阶段 pg 还没解析)。重新构造 memorySvc 一次。
+	srv.RebuildMemorySvc()
 	// P1-3 · Register each *distinct* external resource for graceful close.
 	// pg is shared by PG / AuditSink / UsageSink / KV / Kernel — only one
 	// closer avoids double-close (pgxpool.Pool.Close is sync.Once-protected
@@ -288,7 +292,6 @@ func runDurable(ctx context.Context, opts Options, rt runtimeenv.Mode) error {
 		srv.RegisterCloseFunc(search.Close)
 	}
 	srv.Search = search
-	srv.StartMemoryMaintenance()
 
 	httpServer := &http.Server{
 		Addr:              opts.Addr,

@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"time"
@@ -51,10 +52,57 @@ func (s *Service) memoryOverviewAligned(r *http.Request) map[string]any {
 
 // listMemory → GET /api/memory/records
 // Returns all memory records visible to the requester (filtered by
-// memoryCanRead).
+// memoryCanRead). If ?q= is present, switch to semantic recall: embed the
+// query via qzda-rag, vector-search memory_vectors, then return the full
+// record map for each hit (so the FE gets id+title+content as usual).
+//   - no q    → list all (backward compat)
+//   - q=foo   → top-10 by cosine similarity (1 - (vector <=> qvec))
 func (s *Service) listMemory(r *http.Request) any {
 	ws := s.workspaceID(r)
 	id := s.identityFrom(r.Context())
+
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	if q != "" && s.Embedder != nil && s.VectorSearch != nil {
+		// 语义召回路径: 走向量查,命中后回填完整 record。
+		vec, err := s.Embedder(r.Context(), q)
+		if err == nil && len(vec) > 0 {
+			hits, err := s.VectorSearch(r.Context(), ws, vec, 10)
+			if err == nil && len(hits) > 0 {
+				s.Store.RLock()
+				defer s.Store.RUnlock()
+				byID := map[string]map[string]any{}
+				for _, m := range s.Store.MemoryRecords {
+					if str(m["workspaceId"]) == ws && memoryCanRead(id, m) {
+						byID[str(m["id"])] = m
+					}
+				}
+				var out []map[string]any
+				for _, h := range hits {
+					rec := byID[h.RecordID]
+					if rec == nil {
+						continue
+					}
+					hit := map[string]any{
+						"id":         rec["id"],
+						"title":      rec["title"],
+						"content":    rec["content"],
+						"layer":      rec["layer"],
+						"scope":      rec["scope"],
+						"status":     rec["status"],
+						"createdAt":  rec["createdAt"],
+						"updatedAt":  rec["updatedAt"],
+						"expiresAt":  rec["expiresAt"],
+						"confidence": rec["confidence"],
+						"_vectorScore": h.Score,
+					}
+					out = append(out, hit)
+				}
+				return out
+			}
+		}
+		// Embedder / vector 失败时静默回退到 list-all(不阻塞读取)
+	}
+
 	s.Store.RLock()
 	defer s.Store.RUnlock()
 	var out []map[string]any
@@ -134,6 +182,8 @@ func (s *Service) createMemory(r *http.Request) (map[string]any, error) {
 	}
 	s.appendMemoryAuditLocked(ws, id.Name, "写入记忆", title, "success", str(item["correlationId"]))
 	go s.persistMemory()
+	// 异步把 title + content 嵌入并存到 memory_vectors(m11 起加向量召回)
+	go s.embedAndUpsertVector(context.Background(), str(item["id"]), ws, title+"\n"+content)
 	return item, nil
 }
 
@@ -211,6 +261,8 @@ func (s *Service) memoryRecordAction(r *http.Request) (any, error) {
 				s.recountLongTermCapacityLocked(ws)
 			}
 			go s.persistMemory()
+			// 同步删向量(若存在)
+			go s.deleteVector(r.Context(), mid)
 			return map[string]any{"id": mid, "status": "revoked"}, nil
 		}
 	}

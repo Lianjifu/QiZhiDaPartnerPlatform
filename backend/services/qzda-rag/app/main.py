@@ -14,7 +14,7 @@ from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from app.vector import PgVectorIndex, VectorIndex, build_index
+from app.vector import COLLECTION, DIM, PgVectorIndex, VectorIndex, build_index, dense_embed
 
 INDEX, BACKEND = build_index()
 
@@ -111,6 +111,26 @@ async def ingest(request: Request) -> dict[str, Any]:
     else:
         n = INDEX.reindex(docs)
     return {"indexed": n, "backend": BACKEND, "mode": "ingest"}
+
+
+@app.post("/v1/embed")
+async def embed(request: Request) -> dict[str, Any]:
+    """返回单条文本的 64-dim dense 向量(与 pgvector backend 同口径)。
+
+    给 Go 控制面(memory / context 语义检索)用,免去在 Go 侧复制 dense_embed
+    哈希逻辑。后续若启用真实 LLM embedder,这里只需替换 dense_embed 调用,
+    路由契约不变。
+    """
+    try:
+        data = await request.json()
+    except Exception:  # noqa: BLE001
+        data = {}
+    if not isinstance(data, dict):
+        data = {}
+    text = (data.get("text") or "").strip()
+    if not text:
+        return {"dim": DIM, "vector": []}
+    return {"dim": DIM, "vector": dense_embed(text), "backend": BACKEND}
 
 
 @app.exception_handler(404)

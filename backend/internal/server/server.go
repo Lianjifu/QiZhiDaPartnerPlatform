@@ -2059,7 +2059,20 @@ func contains(ss []string, x string) bool {
 // exist for the cross-package helper sites that read into Server
 // state directly.
 //
-// buildMemorySvc is wired once in New(); the dep function fields
+// RebuildMemorySvc re-wires the memory service after cross-package
+// resources (s.PG, s.RAGURL) are injected. server.New() runs before
+// apprun sets s.PG, so buildMemorySvc runs once with PG=nil at boot;
+// apprun calls this after the pool is ready so Embedder / VectorUpsert /
+// VectorSearch actually wire to a live pgxpool + qzda-rag URL. Cancels the
+// previous TTL goroutine before re-binding (StartMemoryMaintenance re-arms).
+func (s *Server) RebuildMemorySvc() {
+	if s.MemoryTTLCancel != nil {
+		s.MemoryTTLCancel()
+		s.MemoryTTLCancel = nil
+	}
+	s.memorySvc = s.buildMemorySvc()
+	s.MemoryTTLCancel = s.memorySvc.StartMemoryMaintenance()
+}
 // close over the *Server helpers the memory module needs (workspace
 // resolver, identity reader, body decoder, zero-trust evaluator, and
 // the knowledge cross-module bridge).
@@ -2072,6 +2085,20 @@ func contains(ss []string, x string) bool {
 // cross-module bridge) so the package boundary stays one-way:
 // memory never imports internal/server/.
 func (s *Server) buildMemorySvc() *mem.Service {
+	// M11+: 向量召回 — memory 写路径异步把 (title+content) 嵌入并存
+	// 到 memory_vectors;读路径 ?q= 走 cosine top-K。Embedder 走 qzda-rag
+	// /v1/embed,VectorStore 走同 PG 实例的 memory_vectors 表。
+	var embedder mem.Embedder
+	var upsert mem.VectorUpsertFn
+	var search mem.VectorSearchFn
+	var del mem.VectorDeleteFn
+	if s.PG != nil {
+		vs := mem.NewVectorStore(s.PG)
+		upsert = vs.Upsert
+		search = vs.Search
+		del = vs.Delete
+	}
+	embedder = mem.NewEmbedClient(s.RAGURL).Embed
 	return mem.NewService(s.Store, mem.Deps{
 		WorkspaceID:  s.workspaceID,
 		IdentityFrom: identityFrom,
@@ -2082,6 +2109,10 @@ func (s *Server) buildMemorySvc() *mem.Service {
 		AppendKnowledgeAuditLocked: s.appendKnowledgeAuditLocked,
 		PersistKnowledgeExtra:      s.persistKnowledgeExtra,
 		KnowledgeSliceMaps:         knowledgeSliceMaps,
+		Embedder:                    embedder,
+		VectorUpsert:                upsert,
+		VectorSearch:                search,
+		VectorDelete:                del,
 	}, s.IdentityProfiles)
 }
 
@@ -2163,7 +2194,7 @@ func (s *Server) ingestRuntimeMemoryLocked(in runtimeMemoryInput) (map[string]an
 	if s.memorySvc == nil {
 		return nil, nil
 	}
-	return s.memorySvc.IngestRuntimeMemoryLocked(in)
+	return s.memorySvc.IngestRuntimeMemory(in)
 }
 
 // persistMemory flushes the four memory collections to the durable
