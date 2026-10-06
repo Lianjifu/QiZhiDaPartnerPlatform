@@ -265,6 +265,11 @@ func runDurable(ctx context.Context, opts Options, rt runtimeenv.Mode) error {
 	// s.memorySvc.Embedder / VectorUpsert / VectorSearch 全为 nil
 	// (server.New 阶段 pg 还没解析)。重新构造 memorySvc 一次。
 	srv.RebuildMemorySvc()
+	// M11+ builtin skills:EnsureBuiltinSkillsReady 在 server.New 阶段
+	// (s.PG=nil)已跑过一次,catalog 已入 in-memory Store 但写不进 PG;
+	// PG pool 就绪后再跑一次,把 builtin skills catalog + workspace w1
+	// 安装持久化到 platform.kv_documents。
+	srv.EnsureBuiltinSkillsReady()
 	// P1-3 · Register each *distinct* external resource for graceful close.
 	// pg is shared by PG / AuditSink / UsageSink / KV / Kernel — only one
 	// closer avoids double-close (pgxpool.Pool.Close is sync.Once-protected
