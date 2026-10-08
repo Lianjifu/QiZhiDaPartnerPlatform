@@ -454,7 +454,7 @@ export interface DigitalPartner {
   capabilities: DigitalPartnerCapabilities;
   memoryPolicy: { shortTermHours: number; workingDays: number; longTermCadence: 'daily' | 'weekly'; knowledgePromotion: 'approval_required' | 'disabled' };
   runtime: { calls24h: number; successRate: number; p95Ms: number; costToday: number; handoffs24h: number; anomalies: number };
-  evaluation: { status: 'not_started' | 'passed' | 'failed' | 'running'; score?: number; lastRunAt?: ISODate };
+  evaluation: { status: 'not_started' | 'passed' | 'failed' | 'running'; score?: number; lastRunAt?: ISODate; /** mock / 演示数据标记 — 前端用于明确告知用户分数非真实冒烟测试结果。 */ mock?: boolean };
   release: {
     status: 'not_released' | 'pending_approval' | 'released';
     releasedAt?: ISODate;

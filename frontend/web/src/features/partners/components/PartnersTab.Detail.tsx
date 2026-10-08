@@ -141,7 +141,7 @@ export function ContextualEmployeeDetail({ employee, context, onClose, onGoToMod
               <div className="grid grid-cols-2 gap-x-7 gap-y-2 text-xs">
                 <span><span className="block text-[11px] text-[var(--text-muted)]">运行环境</span><strong className="mt-0.5 block font-medium">{employee.environment === 'production' ? '生产环境' : employee.environment === 'staging' ? '预发环境' : '沙箱环境'}</strong></span>
                 {context === 'release'
-                  ? <span><span className="block text-[11px] text-[var(--text-muted)]">质量评测</span><strong className="mt-0.5 block font-medium">{employee.evaluation.status === 'failed' ? '未通过' : employee.evaluation.score ?? '待评测'}{employee.evaluation.score ? ' 分' : ''}</strong></span>
+                  ? <span><span className="block text-[11px] text-[var(--text-muted)]">质量评测</span><strong className="mt-0.5 block font-medium">{employee.evaluation.status === 'failed' ? '未通过' : employee.evaluation.score ?? '待评测'}{employee.evaluation.score ? ' 分' : ''}{employee.evaluation.mock ? <span className="ml-1 rounded bg-[var(--warning-light)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--warning)]">演示</span> : null}</strong></span>
                   : <span><span className="block text-[11px] text-[var(--text-muted)]">人工接管</span><strong className="mt-0.5 block font-medium">{employee.escalationOwner || '待指定'}</strong></span>}
               </div>
             </div>

@@ -106,8 +106,9 @@ export function gateLabel(employee: DigitalPartner) {
   if (employee.lifecycle === 'quarantined' || (employee.lifecycle === 'active' && employee.runtime.anomalies > 0)) return '需关注';
   if (employee.lifecycle === 'active') return '可协作';
   if (employee.release.status === 'pending_approval') return '待确认上岗';
-  if (employee.evaluation.status === 'passed') return `评测 ${employee.evaluation.score ?? '—'} · 可申请上岗`;
-  if (employee.evaluation.status === 'failed') return '评测未通过';
+  const mockTag = employee.evaluation.mock ? '（演示）' : '';
+  if (employee.evaluation.status === 'passed') return `评测 ${employee.evaluation.score ?? '—'}${mockTag} · 可申请上岗`;
+  if (employee.evaluation.status === 'failed') return `评测未通过${mockTag}`;
   if (employee.lifecycle === 'paused') return '已暂停';
   if (employee.runtime.anomalies > 0) return '需关注';
   return '配置与评测中';

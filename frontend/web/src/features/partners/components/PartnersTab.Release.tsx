@@ -135,7 +135,7 @@ export function ReleaseListRow({ employee, onSelect }: { employee: DigitalPartne
       <WorkbenchIdentity
         employee={employee}
         onSelect={onSelect}
-        metaLine={employee.evaluation.score != null ? `评测 ${employee.evaluation.score} 分 · ${employee.evaluation.status === 'passed' ? '已通过' : employee.evaluation.status === 'failed' ? '未通过' : '进行中'}` : '尚未评测'}
+        metaLine={employee.evaluation.score != null ? `评测 ${employee.evaluation.score} 分 · ${employee.evaluation.status === 'passed' ? '已通过' : employee.evaluation.status === 'failed' ? '未通过' : '进行中'}${employee.evaluation.mock ? '（演示）' : ''}` : '尚未评测'}
       />
       <WorkbenchCheckStrip items={[
         { label: '契约', ok: completeness.contractOk },

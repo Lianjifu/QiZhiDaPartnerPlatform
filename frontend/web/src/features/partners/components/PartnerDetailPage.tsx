@@ -231,7 +231,7 @@ export default function PartnerDetailPage() {
         </div>
         <dl className="de-partner-detail__kpis">
           <div><dt>运行环境</dt><dd>{envLabel}</dd></div>
-          <div><dt>质量评测</dt><dd>{employee.evaluation.score ?? '待评测'}{employee.evaluation.score ? ' 分' : ''}</dd></div>
+          <div><dt>质量评测</dt><dd>{employee.evaluation.score ?? '待评测'}{employee.evaluation.score ? ' 分' : ''}{employee.evaluation.mock ? <span className="ml-1 rounded bg-[var(--warning-light)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--warning)]">演示</span> : null}</dd></div>
           <div><dt>24h 调用</dt><dd>{employee.runtime.calls24h}</dd></div>
           <div><dt>异常</dt><dd>{employee.runtime.anomalies}</dd></div>
         </dl>
