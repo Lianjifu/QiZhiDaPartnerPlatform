@@ -12,7 +12,7 @@ import (
 )
 
 func TestAdoptTemplatePersistsWhenEnabled(t *testing.T) {
-	t.Setenv("QZDA_ENV", "development")
+	t.Setenv("QZDA_MODE", "dev")
 
 	st := store.NewDemo()
 	var mu sync.Mutex
@@ -47,7 +47,8 @@ func TestAdoptTemplatePersistsWhenEnabled(t *testing.T) {
 }
 
 func TestAfterWriteSkippedInDemo(t *testing.T) {
-	t.Setenv("QZDA_ENV", "demo")
+	t.Setenv("QZDA_MODE", "dev")
+	t.Setenv("QZDA_DATA_BACKEND", "memory")
 
 	st := store.NewDemo()
 	called := false

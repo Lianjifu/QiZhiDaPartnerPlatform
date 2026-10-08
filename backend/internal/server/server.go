@@ -1427,6 +1427,7 @@ func (s *Server) buildAuthHandler() *auth.Handler {
 		Parse:       auth.Parse,
 		OIDC:        &s.OIDC,
 		AuditWriter: auditWriter,
+		Accounts:    pgAccounts{s: s},
 	}
 }
 

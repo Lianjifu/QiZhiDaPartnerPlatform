@@ -1207,7 +1207,6 @@ func TestS17_CrossModuleAgentBind(t *testing.T) {
 // / TestP13_Unauthorized (M05) precedent.
 func TestS18_Unauthorized(t *testing.T) {
 	srv, _ := newServer(t)
-	t.Setenv("QZDA_BAN_MOCK_TOKEN", "")
 	rr := doRequest(t, srv, http.MethodGet, "/api/skills", "", nil)
 	if rr.Code != http.StatusUnauthorized {
 		t.Fatalf("want 401, got %d body=%s", rr.Code, rr.Body.String())

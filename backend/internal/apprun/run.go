@@ -35,11 +35,11 @@ func Run(opts Options) error {
 	}
 
 	rt := runtimeenv.FromEnv()
-	log.Printf("runtimeenv QZDA_ENV=%s persist=%v seed=%v", rt, rt.PersistEnabled(), rt.AllowsSeed())
+	log.Printf("runtimeenv QZDA_MODE=%s persist=%v memory_store=%v", rt, rt.PersistEnabled(), rt.MemoryStore())
 
 	ctx := context.Background()
 
-	if rt.IsDemo() {
+	if rt.MemoryStore() {
 		return runDemo(ctx, opts)
 	}
 	return runDurable(ctx, opts, rt)
@@ -104,8 +104,8 @@ func runDurable(ctx context.Context, opts Options, rt runtimeenv.Mode) error {
 	if err != nil {
 		return err
 	}
-	if pg == nil && rt.RequiresPostgres() {
-		return fmt.Errorf("QZDA_ENV=%s requires Postgres (set QZDA_DATABASE_URL)", rt)
+	if pg == nil {
+		return fmt.Errorf("QZDA_MODE=%s requires Postgres (set QZDA_DATABASE_URL)", rt)
 	}
 	replicaForced := false
 	postgresRecovery := false

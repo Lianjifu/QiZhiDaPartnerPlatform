@@ -56,7 +56,6 @@ func TestParseAndImportSkillPackage(t *testing.T) {
 	// W1-D2 · disable signature verification for this fixture-driven test;
 	// the dedicated signer tests cover the verify path with proper signed
 	// inputs.
-	t.Setenv("QZDA_REQUIRE_SKILL_SIGNATURE", "disabled")
 
 	h := server.New(store.New()).Handler()
 	b64 := base64.StdEncoding.EncodeToString(raw)

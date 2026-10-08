@@ -1,6 +1,6 @@
 /**
  * Mock 适配器 — 前端可独立运行
- * 运行时默认不注入；仅 VITE_USE_MOCK=true 时由 web/main.tsx 挂载。单元测试可直接 import mockHandler。
+ * 运行时默认不加载；仅 VITE_API_MODE=demo 时由 web/main.tsx 经 loadDemoHandler 动态引入。单元测试可直接 import mockHandler。
  */
 import type {
   Agent,

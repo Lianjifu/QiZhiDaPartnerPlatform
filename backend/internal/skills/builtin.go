@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"github.com/qizhida-partner-platform/backend/internal/copilot"
-	"github.com/qizhida-partner-platform/backend/internal/runtimeenv"
 	"github.com/qizhida-partner-platform/backend/services/qzda-sandbox/signing"
 	"github.com/qizhida-partner-platform/backend/internal/skills/vetter"
 	"github.com/qizhida-partner-platform/backend/internal/store"
@@ -436,33 +435,19 @@ func vetterSummary(builtinName string, r vetter.Result) string {
 	return strings.Join(parts, " ")
 }
 
-// skillSignatureRequired reads QZDA_REQUIRE_SKILL_SIGNATURE. Default = required
-// (true). Values that turn it off: "disabled", "off", "warn_only", "warn".
-//
-// W2-D1: thin wrapper over skillSignaturePolicy() (defined in
-// skill_signature_policy.go) so existing call sites and tests keep working.
-func skillSignatureRequired() bool {
-	return skillSignaturePolicy() != PolicyOff
-}
-
 // verifyBuiltinSignature verifies that the builtin package bytes were signed
-// by a publisher listed in builtinManifest.Signers. Returns nil when signing
-// is disabled (env) or the package has no signature record (legacy build),
-// since then vetter alone is the gate. Returns SkillSignatureInvalid / _Missing /
-// _UnknownKey otherwise.
+// by a publisher listed in builtinManifest.Signers. Returns nil when the
+// package has no signature record (legacy build), since then vetter alone is
+// the gate. Returns SkillSignatureInvalid / _Missing / _UnknownKey otherwise.
 //
 // Order of checks:
-//  1. Env gate (skillSignatureRequired). Disabled → return nil.
-//  2. Pull builtinSkillSignature from pack-level manifest. Missing →
+//  1. Pull builtinSkillSignature from pack-level manifest. Missing →
 //     SkillSignatureMissing.
-//  3. Lookup TrustedKey by KeyID in manifest.Signers. Unknown →
+//  2. Lookup TrustedKey by KeyID in manifest.Signers. Unknown →
 //     SkillSignatureUnknownKey.
-//  4. Decode signature base64 → run ed25519.Verify over canonical manifest
+//  3. Decode signature base64 → run ed25519.Verify over canonical manifest
 //     bytes. Mismatch → SkillSignatureInvalid.
 func (s *Service) verifyBuiltinSignature(builtinName string, meta *skillPackageManifest, files map[string][]byte) error {
-	if !skillSignatureRequired() {
-		return nil
-	}
 	pack := loadBuiltinManifest()
 	packSig, ok := pack.SkillSignatures[builtinName]
 	if !ok || packSig.Signature == "" {
@@ -496,11 +481,6 @@ func (s *Service) verifyBuiltinSignature(builtinName string, meta *skillPackageM
 	}
 	return nil
 }
-
-// Mode is referenced here so the package compiles when runtimeenv helpers
-// are unused outside this file. The variable binding is never read but the
-// import is required by the verifier bootstrap path on cold start.
-var _ = runtimeenv.FromEnv
 
 func catalogBuiltinName(cat map[string]any) string {
 	if bn := strings.TrimSpace(str(cat["builtinSkillName"])); bn != "" {

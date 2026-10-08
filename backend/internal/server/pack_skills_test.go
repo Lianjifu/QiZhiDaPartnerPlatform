@@ -21,7 +21,8 @@ func TestListSkillPacksReportsWorkspaceInstallState(t *testing.T) {
 		t.Skip("builtin skills dir missing")
 	}
 	t.Setenv("QZDA_BUILTIN_SKILLS_DIR", root)
-	t.Setenv("QZDA_ENV", "demo")
+	t.Setenv("QZDA_MODE", "dev")
+	t.Setenv("QZDA_DATA_BACKEND", "memory")
 
 	st := store.NewEmpty()
 	st.Workspaces = []map[string]any{{"id": "w4", "name": "外协沙箱"}}

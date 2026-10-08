@@ -416,7 +416,6 @@ func TestC8_RateLimit(t *testing.T) {
 // requests with 401, mirroring TestProtectedRouteReturns401WithoutToken.
 func TestC9_Unauthorized(t *testing.T) {
 	srv, _ := newServer(t)
-	t.Setenv("QZDA_BAN_MOCK_TOKEN", "")
 	rr := doRequest(t, srv, http.MethodGet, "/api/copilot/conversations", "", nil)
 	if rr.Code != http.StatusUnauthorized {
 		t.Fatalf("want 401, got %d body=%s", rr.Code, rr.Body.String())

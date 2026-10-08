@@ -6,7 +6,7 @@
 |----|------|
 | **本地拓扑** | **monolith**：`qzda-gateway:8089` → `qzda-app:8100` + `qzda-sandbox:8093` |
 | **数据** | Docker Postgres 16 + Redis；禁止 Homebrew 抢占 `5432` |
-| **环境** | `QZDA_ENV=development`（空库 hydrate，不灌 ACME seed） |
+| **环境** | `QZDA_MODE=dev`（空库 hydrate，不灌 ACME seed） |
 
 配套文档：
 
@@ -16,7 +16,7 @@
 | [docs/后端单进程方案.md](../docs/后端单进程方案.md) | 单进程 + 未来切分路径 |
 | [deploy/topology-split.md](deploy/topology-split.md) | monolith 拓扑说明 |
 | [deploy/MIGRATION-de-to-qzda.md](deploy/MIGRATION-de-to-qzda.md) | Phase 3 外部集成迁移指南(OIDC client / Kafka 包名 / SPIFFE trust domain) |
-| [docs/环境与数据模式.md](../docs/环境与数据模式.md) | `QZDA_ENV`、Persist、办公开箱 |
+| [docs/环境与数据模式.md](../docs/环境与数据模式.md) | `QZDA_MODE`、Persist、办公开箱 |
 | [api/routes.md](api/routes.md) | HTTP 路由契约 |
 | [../CHANGELOG.md](../CHANGELOG.md) | 三阶段品牌迁移总账 |
 
@@ -293,7 +293,7 @@ make smoke-monolith        # 经 :8089 验收
 前端：
 
 ```env
-VITE_USE_MOCK=false
+VITE_API_MODE=api
 VITE_API_BASE=
 # Vite 默认代理 → http://127.0.0.1:8089
 ```
@@ -304,7 +304,7 @@ VITE_API_BASE=
 | `audit@` | auditor | 治理 / 审计只读 |
 | 其他 | user | 写操作须管理员审批 |
 
-演示 token（`mock-*-token`）需 `QZDA_ALLOW_DEMO_TOKEN=1` 或 `QZDA_BAN_MOCK_TOKEN=0`。LaunchAgent 默认 `QZDA_BAN_MOCK_TOKEN=1`。
+dev 模式下 `mock-*-token` 与 `x-mock-*` 身份头可用；pro 模式下两者都被拒绝，登录签发 JWT。
 
 改 Go 后：
 
@@ -329,7 +329,7 @@ launchctl kickstart -k "gui/$(id -u)/com.qizhida.dev-stack"
 单进程调试：
 
 ```bash
-make run-app              # :8100 monolith · QZDA_ENV=development
+make run-app              # :8100 monolith · QZDA_MODE=dev
 make run-app-workflow     # :8100 monolith + 进程内 Temporal worker
 make run-demo             # 内存 ACME seed，不写 PG
 make run-dev              # infra-env + run-app
@@ -349,7 +349,7 @@ make skill                # :8093 沙箱
 | `EnsureBuiltinSkillsReady` | 技能目录 + 各工作区 `autoInstall` 岗位包（`general` / `office`） |
 | `EnsureBuiltinKnowledgeReady` | `kp.office.*` 知识包 → published |
 | `EnsureBuiltinWorkflowsReady` | `wf.office.*` + 部门 Certified + 高级库；不覆盖 `wft-user-*` |
-| 可选 `QZDA_ENSURE_GENERAL=1` | 补通用员工；办公助手 `de-office` 同路径 |
+| 内存模式（`QZDA_DATA_BACKEND=memory`）补通用员工；办公助手 `de-office` 同路径 |
 
 源码：`builtin/{knowledge,skills,workflows,scenarios}/`。说明见各子目录 README 与 [环境与数据模式](../docs/环境与数据模式.md)。
 
@@ -361,7 +361,7 @@ make skill                # :8093 沙箱
 
 | 模式 | 行为 |
 |------|------|
-| `QZDA_ENV=demo` | 内存 store，不 Persist |
+| `QZDA_MODE=dev` + `QZDA_DATA_BACKEND=memory` | 内存 store，不 Persist |
 | `development`+ | PG hydrate；Upsert 写回；**硬删必须 `PersistDelete(Sync)`** |
 
 多数集合是 Upsert：只改内存再 `Persist` **不会**删掉 PG 旧行。会话删除须 Sync 覆盖 sessions + conversations + messages + context_snapshots。知识 / 模型供应商 / 渠道 / 技能卸载 / 个人流程模板（`workflow_templates`）等同理。记忆为软删（`revoked`）。
@@ -405,9 +405,8 @@ psql "$QZDA_DATABASE_URL" -f scripts/purge-demo-seed-ids.sql
 
 | 变量 | 说明 |
 |------|------|
-| `QZDA_ENV` | `demo` \| `development`（默认）\| `staging` \| `production` |
-| `QZDA_BAN_MOCK_TOKEN` / `QZDA_BAN_DEMO_TOKEN` | 禁止 mock token；**不**触发双人审批 |
-| `QZDA_ALLOW_DEMO_TOKEN` | `development` 下显式允许演示 token |
+| `QZDA_MODE` | `dev`（默认）\| `pro`；见 [环境与数据模式](../docs/环境与数据模式.md) |
+| `QZDA_DATA_BACKEND` | 仅 dev 生效：`pg`（默认）\| `memory`（内存 + ACME seed） |
 | `QZDA_DATABASE_URL` / `QZDA_REDIS_URL` | PG / Redis |
 | `QZDA_APP_ADDR` / `QZDA_LISTEN_ADDR` | monolith 监听（默认 `:8100`） |
 | `QZDA_SERVICE` | 兼容字段，归 `app`；旧值（`sys` / `collab` / `cap` / `workflow`）也归 `app` |
@@ -423,7 +422,6 @@ psql "$QZDA_DATABASE_URL" -f scripts/purge-demo-seed-ids.sql
 | `QZDA_REPLICA_MODE` | `active`（默认）或 `standby` |
 | `QZDA_INSTANCE_ID` | 实例标识 |
 | `QZDA_EVAL_RECALL_MIN` / `QZDA_EVAL_SCORE_MIN` | 生产评测门禁 |
-| `QZDA_ENSURE_GENERAL` | `1` 时非 demo 也可补通用员工 |
 | `QZDA_BUILTIN_WORKFLOWS_DIR` | 覆盖流程包路径 |
 
 ---

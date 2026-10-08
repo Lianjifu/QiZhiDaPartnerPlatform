@@ -10,7 +10,7 @@ import (
 	"github.com/qizhida-partner-platform/backend/internal/store"
 )
 
-// First-screen GETs that must not 404 when VITE_USE_MOCK=false.
+// First-screen GETs that must not 404 when VITE_API_MODE=api.
 func TestPageSmokeGETs(t *testing.T) {
 	h := server.New(store.New()).Handler()
 	paths := []string{

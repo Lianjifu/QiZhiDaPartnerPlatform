@@ -1,7 +1,7 @@
 # 契约缺口对照（Mock vs 控制面）
 
 真相源：`frontend/packages/api/src/mock.ts` + 页面 `useApiQuery` 路径。  
-目标：`VITE_USE_MOCK=false` 时首屏 GET 非 404，关键写路径语义与 Mock 一致。  
+目标：`VITE_API_MODE=api` 时首屏 GET 非 404，关键写路径语义与 Mock 一致。  
 默认后端：**qzda-gateway :8089 → qzda-app :8100**（monolith 单进程,内含 sys / collab / cap / workflow 全部域逻辑）。
 
 ## P0（控制台主路径）— 已对齐
@@ -11,7 +11,7 @@
 | `POST /api/auth/login` | OK |
 | `GET /api/workspaces` 及子资源 | OK |
 | `POST /api/workspaces` | OK（创建后并入 ActorExtraWorkspaces） |
-| `POST /api/copilot/conversations/:id/stream` | OK（FE `useChat` 在 `VITE_USE_MOCK=false` 时接入 SSE） |
+| `POST /api/copilot/conversations/:id/stream` | OK（FE `useChat` 在 `VITE_API_MODE=api` 时接入 SSE） |
 | `GET/PATCH /api/tenant/profile` | OK |
 | `PATCH /api/notification-channels/:id` | OK |
 | `POST /api/backups` | OK（申请备份） |

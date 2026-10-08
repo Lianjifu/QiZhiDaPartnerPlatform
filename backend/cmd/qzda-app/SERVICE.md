@@ -27,12 +27,11 @@ make smoke        # healthz + login + skills/sessions/evaluate 端到端冒烟
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `QZDA_ENV` | `development` | `development` / `demo` / `staging` / `production` |
+| `QZDA_MODE` | `dev` | `dev` / `pro` |
 | `QZDA_APP_ADDR` | `:8100` | Listen address |
 | `QZDA_RUNTIME_MODE` | `local` | 进程内 ReAct Harness(不启 qzda-agent-runtime) |
 | `QZDA_SANDBOX_RUNTIME_URL` | `http://127.0.0.1:8093` | 技能沙箱 upstream |
 | `QZDA_RAG_URL` | `http://127.0.0.1:8092` | RAG backend upstream |
-| `QZDA_BAN_MOCK_TOKEN` | `0` | `1` 禁用 `mock-*--token`(生产) |
 | `QZDA_PUBLIC_BASE_URL` | `http://127.0.0.1:8089` | 网关对外地址 |
 
 完整 env 清单见 [`deploy/.env.example`](../../deploy/.env.example)。

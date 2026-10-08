@@ -2,18 +2,15 @@ package modelprov
 
 import (
 	"context"
-	"os"
 	"strings"
+
+	"github.com/qizhida-partner-platform/backend/internal/runtimeenv"
 )
 
 // EmbeddedChatEnabled is the last-resort local chat when no remote provider works.
-// Disable with QZDA_EMBEDDED_CHAT=0 (production with mandatory external LLM).
+// Dev only; pro requires an external LLM.
 func EmbeddedChatEnabled() bool {
-	v := strings.TrimSpace(os.Getenv("QZDA_EMBEDDED_CHAT"))
-	if v == "" {
-		return true
-	}
-	return v != "0" && !strings.EqualFold(v, "false")
+	return runtimeenv.FromEnv().IsDev()
 }
 
 // EmbeddedChatRequest builds an in-process chat request (no network).

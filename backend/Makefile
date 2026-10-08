@@ -9,7 +9,7 @@
 
 export QZDA_DATABASE_URL ?= postgres://de:de@127.0.0.1:5432/digital_employee?sslmode=disable
 export QZDA_REDIS_URL ?= redis://127.0.0.1:6379/0
-export QZDA_ENV ?= development
+export QZDA_MODE ?= dev
 export PATH := /opt/homebrew/bin:$(HOME)/go/bin:$(PATH)
 
 GO ?= $(shell if [ -x "$(CURDIR)/.tools/go/bin/go" ]; then echo "$(CURDIR)/.tools/go/bin/go"; else echo go; fi)
@@ -28,15 +28,15 @@ run: docker-engine compose-up
 # === 本机直跑 Go 控制面 ===
 # 需要先 make compose-up 启 PG+Redis(infra-env 也会调 ensure-docker-postgres.sh)
 run-app: infra-env
-	QZDA_ENV=$${QZDA_ENV:-development} \
+	QZDA_MODE=$${QZDA_MODE:-dev} \
 	QZDA_RUNTIME_MODE=local \
 	QZDA_SANDBOX_RUNTIME_URL=$${QZDA_SANDBOX_RUNTIME_URL:-http://127.0.0.1:8093} \
 	QZDA_RAG_URL=$${QZDA_RAG_URL:-http://127.0.0.1:8092} \
 	$(GO) run ./cmd/qzda-app
 
-# 演示模式:内存 + ACME seed,不写 PG。
+# 演示模式:dev + 内存存储 + ACME seed,不写 PG。
 run-demo:
-	QZDA_ENV=demo QZDA_SERVICE=app QZDA_LISTEN_ADDR=:8100 $(GO) run ./cmd/qzda-app
+	QZDA_MODE=dev QZDA_DATA_BACKEND=memory QZDA_SERVICE=app QZDA_LISTEN_ADDR=:8100 $(GO) run ./cmd/qzda-app
 
 # 开发模式:同 run-app,但 infra-env 自动确保 PG+Redis 在跑。
 run-dev: infra-env run-app
@@ -109,7 +109,7 @@ db-reset-dev: docker-engine
 	@bash ../scripts/dev-stack/ensure-docker-postgres.sh
 	@echo "WARNING: drops application schemas in Docker Postgres ($(QZDA_DATABASE_URL))"
 	@$(COMPOSE) exec -T postgres psql -U de -d digital_employee -c "DROP SCHEMA IF EXISTS platform CASCADE; DROP SCHEMA IF EXISTS audit CASCADE; DROP SCHEMA IF EXISTS policy CASCADE;" || true
-	@echo "Restart qzda-app with QZDA_ENV=development to re-apply migrations / empty durable store."
+	@echo "Restart qzda-app with QZDA_MODE=dev to re-apply migrations / empty durable store."
 
 # === Skill 安全门禁(W1-D3) ===
 verify-builtins:

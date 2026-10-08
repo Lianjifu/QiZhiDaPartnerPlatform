@@ -5,6 +5,22 @@
 
 ---
 
+## Unreleased — 运行模式收敛为 `dev` / `pro` 与 `VITE_API_MODE`
+
+> 破坏性变更：环境模式与 mock 开关统一为两种模式，单项覆盖开关全部移除。
+
+- 后端：`QZDA_ENV`（`demo` / `development` / `staging` / `production`）替换为 `QZDA_MODE=dev|pro`，默认 `dev`；未知值按 `pro` 处理。
+- 后端：新增 `QZDA_DATA_BACKEND=pg|memory`（仅 dev 生效，`memory` 为内存 + ACME seed，原 `QZDA_ENV=demo`）。
+- 后端：删除 `QZDA_BAN_MOCK_TOKEN`、`QZDA_BAN_DEMO_TOKEN`、`QZDA_ALLOW_DEMO_TOKEN`、`QZDA_ALLOW_MOCK_IDENTITY`、`QZDA_ALLOW_DEMO_IDENTITY`、`QZDA_FORCE_OIDC`、`QZDA_ALLOW_PASSWORD_LOGIN`、`QZDA_REQUIRE_VAULT`、`QZDA_REQUIRE_SKILL_SIGNATURE`、`QZDA_FORCE_DEV_KEYPAIR`、`QZDA_BAN_DEV_KEYPAIR`、`QZDA_ALLOW_RUNTIME_STUB`、`QZDA_EMBEDDED_CHAT`、`QZDA_ENSURE_GENERAL`、`QZDA_TEMPORAL_FAIL_CLOSED`、`QZDA_OIDC_ALLOW_DEV_CODES`；行为由 `QZDA_MODE` 决定。`qzda-agent-runtime` 的 stub 同样跟随 `QZDA_MODE`，删除 `QZDA_ALLOW_RUNTIME_STUB`。
+- 后端：skill 签名策略不再可关闭；dev 接受任意已信任 key，pro 要求工作区 key。
+- 前端：`VITE_USE_DEMO` / `VITE_USE_MOCK` 替换为 `VITE_API_MODE=api|demo`（默认 `api`）；`api` 构建不再包含 mock 数据，`demo` 模式在渲染前动态加载 mock。
+- 前端：删除未被引用的 `features/dashboard/mock.ts`；`@qzda/web-api` 不再 re-export mock 模块。
+- 后端：pro 登录必须校验真实账号（`platform.auth_accounts`，PBKDF2-SHA256 哈希密码），角色来自账号记录；新增 `qzda-account` 命令管理账号。dev 仍不校验密码。
+- 后端：OIDC 不再接受 `code=admin` 等开发码（非 dev 模式），userinfo 失败直接报错，不再伪造身份。
+- 前端：登录页默认密码仅在开发态预填，生产构建不包含演示密码。
+
+---
+
 ## Unreleased — 环境变量前缀重命名 `DE_*` → `QZDA_*`
 
 > Brand phase 4 — 把上一轮刻意保留的 138 个 `DE_*` ops 命名空间环境变量统一

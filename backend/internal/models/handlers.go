@@ -258,7 +258,7 @@ func (s *Service) resolveProviderCredential(ctx context.Context, credRef string)
 			return val
 		}
 	}
-	// QZDA_BAN_MOCK_TOKEN 只禁 mock 身份，不能挡住本地 model_secrets。
+	// dev 的 mock 身份不能挡住本地 model_secrets。
 	// 真实 staging/prod 才强制只走 Vault。
 	if vaultRequiredForCredentials() {
 		return ""

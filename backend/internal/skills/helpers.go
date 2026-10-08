@@ -45,6 +45,7 @@ import (
 
 	"github.com/qizhida-partner-platform/backend/internal/auth"
 	"github.com/qizhida-partner-platform/backend/internal/copilot"
+	"github.com/qizhida-partner-platform/backend/internal/runtimeenv"
 )
 
 // --- local helpers (mirrors of internal/server/* helpers used across
@@ -176,10 +177,9 @@ func envOr(key, def string) string {
 	return def
 }
 
-// productionLikeEnv reports whether the runtime env is staging/production
-// (used by the sandbox-test sim gate). Mirrors server.productionLikeEnv.
+// productionLikeEnv reports whether the runtime is pro (used by the sandbox-test sim gate).
 func productionLikeEnv() bool {
-	return lookupEnv("QZDA_ENV") == "production" || lookupEnv("QZDA_ENV") == "staging"
+	return runtimeenv.FromEnv().IsPro()
 }
 
 // timeNow is a tiny seam so tests can stub clock.

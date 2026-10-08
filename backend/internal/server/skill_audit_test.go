@@ -29,7 +29,6 @@ type ed25519PublicKey = []byte
 func TestAuditWrittenOnBuiltinSignatureFailure(t *testing.T) {
 	root := builtinRoot(t)
 	t.Setenv("QZDA_BUILTIN_SKILLS_DIR", root)
-	t.Setenv("QZDA_REQUIRE_SKILL_SIGNATURE", "enabled")
 	isolatedDevKeypair(t)
 
 	// Swap the manifest's recorded public key for an attacker's. The
@@ -86,7 +85,6 @@ func TestAuditWrittenOnBuiltinSignatureFailure(t *testing.T) {
 func TestAuditWrittenOnImportSignatureFailure(t *testing.T) {
 	root := builtinRoot(t)
 	t.Setenv("QZDA_BUILTIN_SKILLS_DIR", root)
-	t.Setenv("QZDA_REQUIRE_SKILL_SIGNATURE", "enabled")
 	isolatedDevKeypair(t)
 
 	tmp := t.TempDir()

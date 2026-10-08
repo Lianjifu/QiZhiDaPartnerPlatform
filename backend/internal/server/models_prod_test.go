@@ -76,9 +76,7 @@ func TestModelProviderCredentialAliasAndAudit(t *testing.T) {
 
 func TestCreateModelProviderAllowsLocalSecretsWithBanMockToken(t *testing.T) {
 	t.Setenv("QZDA_MODEL_ALLOW_PRIVATE", "1")
-	t.Setenv("QZDA_BAN_MOCK_TOKEN", "1")
-	t.Setenv("QZDA_ALLOW_PASSWORD_LOGIN", "1")
-	t.Setenv("QZDA_ENV", "development")
+	t.Setenv("QZDA_MODE", "dev")
 	st := store.New()
 	h := server.New(st).Handler()
 
@@ -109,7 +107,7 @@ func TestCreateModelProviderAllowsLocalSecretsWithBanMockToken(t *testing.T) {
 	req.Header.Set("x-workspace-id", "w1")
 	h.ServeHTTP(rr, req)
 	if rr.Code != 200 {
-		t.Fatalf("create with QZDA_BAN_MOCK_TOKEN=1 should use ModelSecrets locally, got %d %s", rr.Code, rr.Body.String())
+		t.Fatalf("create in dev should use ModelSecrets locally, got %d %s", rr.Code, rr.Body.String())
 	}
 }
 

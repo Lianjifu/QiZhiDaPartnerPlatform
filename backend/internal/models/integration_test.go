@@ -776,7 +776,6 @@ func TestT15_LegacyAlias(t *testing.T) {
 // module integration tests.
 func TestT16_Unauthorized(t *testing.T) {
 	srv, _ := newServer(t)
-	t.Setenv("QZDA_BAN_MOCK_TOKEN", "")
 	rr := doRequest(t, srv, http.MethodGet, "/api/model-providers", "", nil)
 	if rr.Code != http.StatusUnauthorized {
 		t.Fatalf("want 401, got %d body=%s", rr.Code, rr.Body.String())

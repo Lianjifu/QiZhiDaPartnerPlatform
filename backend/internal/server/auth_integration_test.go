@@ -25,7 +25,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/qizhida-partner-platform/backend/internal/server"
@@ -85,7 +84,6 @@ func TestOIDCLoginStubWhenNotConfigured(t *testing.T) {
 // TestProtectedRouteReturns401WithoutToken 覆盖 I6 —
 // /api/workspaces 无 Authorization header 必须返 401 + 标准 error 包络。
 func TestProtectedRouteReturns401WithoutToken(t *testing.T) {
-	t.Setenv("QZDA_BAN_MOCK_TOKEN", "")
 	h := server.New(store.New()).Handler()
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/workspaces", nil)
@@ -106,12 +104,11 @@ func TestProtectedRouteReturns401WithoutToken(t *testing.T) {
 	}
 }
 
-// TestMockIdentityHeadersRejectedWhenBanMock 覆盖 I8 —
-// QZDA_BAN_MOCK_TOKEN=1 时 x-mock-* 头被中间件拒为 401 (IdentityMockForbidden)。
+// TestMockIdentityHeadersRejectedInPro 覆盖 I8 —
+// QZDA_MODE=pro 时 x-mock-* 头被中间件拒为 401 (IdentityMockForbidden)。
 // 这是身份伪造路径(不只 token 伪造)的关闭测试。
-func TestMockIdentityHeadersRejectedWhenBanMock(t *testing.T) {
-	t.Setenv("QZDA_BAN_MOCK_TOKEN", "1")
-	_ = os.Unsetenv("QZDA_OIDC_ALLOW_DEV_CODES")
+func TestMockIdentityHeadersRejectedInPro(t *testing.T) {
+	t.Setenv("QZDA_MODE", "pro")
 	h := server.New(store.New()).Handler()
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/workspaces", nil)
@@ -125,11 +122,9 @@ func TestMockIdentityHeadersRejectedWhenBanMock(t *testing.T) {
 }
 
 // TestLoginReturnsMockAdminTokenLiteral 守住行为契约 —
-// 默认 demo 环境(无 QZDA_BAN_MOCK_TOKEN)下 /api/auth/login 返 mock-admin-token,
+// 默认 dev 环境(QZDA_MODE 未设置)下 /api/auth/login 返 mock-admin-token,
 // 整合后 token 字面量必须未变(下游 FE 烟雾测试依赖此字符串)。
 func TestLoginReturnsMockAdminTokenLiteral(t *testing.T) {
-	t.Setenv("QZDA_FORCE_OIDC", "")
-	t.Setenv("QZDA_BAN_MOCK_TOKEN", "")
 	h := server.New(store.New()).Handler()
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/login",

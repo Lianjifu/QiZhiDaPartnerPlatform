@@ -11,6 +11,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/qizhida-partner-platform/backend/internal/runtimeenv"
 )
 
 // OIDCConfig is Authentik/Dex-compatible OIDC settings.
@@ -20,7 +22,7 @@ type OIDCConfig struct {
 	ClientSecret  string
 	RedirectURL   string
 	Enabled       bool
-	AllowDevCodes bool // QZDA_OIDC_ALLOW_DEV_CODES=1 → code=admin|user|audit for local demos
+	AllowDevCodes bool // dev only: code=admin|user|audit for local demos
 	HTTPClient    *http.Client
 	// Optional overrides (tests / non-standard IdPs).
 	TokenURL   string
@@ -34,9 +36,9 @@ func LoadOIDC() OIDCConfig {
 		Issuer:        issuer,
 		ClientID:      os.Getenv("QZDA_OIDC_CLIENT_ID"),
 		ClientSecret:  os.Getenv("QZDA_OIDC_CLIENT_SECRET"),
-		RedirectURL:   envOr("QZDA_OIDC_REDIRECT_URL", "http://127.0.0.1:8089/api/auth/oidc/callback"),
+		RedirectURL:   envOr("QZDA_OIDC_REDIRECT_URL", "http://127.0.0.1:5173/login/oidc/callback"),
 		Enabled:       issuer != "",
-		AllowDevCodes: os.Getenv("QZDA_OIDC_ALLOW_DEV_CODES") == "1",
+		AllowDevCodes: runtimeenv.FromEnv().IsDev(),
 		HTTPClient:    &http.Client{Timeout: 15 * time.Second},
 		TokenURL:      strings.TrimSpace(os.Getenv("QZDA_OIDC_TOKEN_URL")),
 		UserInfoURL:   strings.TrimSpace(os.Getenv("QZDA_OIDC_USERINFO_URL")),
@@ -116,9 +118,6 @@ func (c OIDCConfig) ExchangeCode(ctx context.Context, code string) (*Identity, e
 		}
 	}
 	if !c.Enabled {
-		if id := identityFromDevCode(code); id != nil {
-			return id, nil
-		}
 		return nil, errors.New("OIDC 未配置")
 	}
 	return c.exchangeRemote(ctx, code)
@@ -191,12 +190,7 @@ func (c OIDCConfig) exchangeRemote(ctx context.Context, code string) (*Identity,
 
 	info, err := c.fetchUserInfo(ctx, tr.AccessToken, userInfoURL)
 	if err != nil {
-		// Fall back to sparse identity from sub in token response body if userinfo unavailable.
-		n := 8
-		if len(code) < n {
-			n = len(code)
-		}
-		info = &userInfo{Sub: "oidc-" + code[:n], Email: "", Name: "OIDC 用户"}
+		return nil, fmt.Errorf("OIDC userinfo 获取失败: %w", err)
 	}
 	return identityFromUserInfo(info), nil
 }

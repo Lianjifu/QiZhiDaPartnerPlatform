@@ -79,7 +79,6 @@ func countAudits(st *store.Store, actionContains, result string) int {
 // result=denied.
 func TestImportSkillVetterDeniedAuditWritten(t *testing.T) {
 	isolatedDevKeypair(t)
-	t.Setenv("QZDA_REQUIRE_SKILL_SIGNATURE", "off") // signature must not interfere
 
 	// Disable signature requirement explicitly via the policy-aware gate so
 	// the workspace-policy branch doesn't trip the import.
@@ -110,7 +109,6 @@ func TestImportSkillVetterDeniedAuditWritten(t *testing.T) {
 // is observable in the audit trail as a result=override row.
 func TestImportSkillVetterOverrideAdmitsAndAudits(t *testing.T) {
 	isolatedDevKeypair(t)
-	t.Setenv("QZDA_REQUIRE_SKILL_SIGNATURE", "off")
 	t.Setenv("QZDA_SANDBOX_VETTER", "enabled")
 	tmp := t.TempDir()
 	t.Setenv("QZDA_SANDBOX_PACKAGE_DIR", tmp)
@@ -136,7 +134,6 @@ func TestImportSkillVetterOverrideAdmitsAndAudits(t *testing.T) {
 // result=warn audit row (vetter warn is observable, not silent).
 func TestImportSkillVetterWarnAuditWritten(t *testing.T) {
 	isolatedDevKeypair(t)
-	t.Setenv("QZDA_REQUIRE_SKILL_SIGNATURE", "off")
 	t.Setenv("QZDA_SANDBOX_VETTER", "warn_only")
 	tmp := t.TempDir()
 	t.Setenv("QZDA_SANDBOX_PACKAGE_DIR", tmp)
@@ -163,7 +160,6 @@ func TestImportSkillVetterWarnAuditWritten(t *testing.T) {
 // audit log signal-rich.
 func TestImportSkillVetterAllowNoAuditRow(t *testing.T) {
 	isolatedDevKeypair(t)
-	t.Setenv("QZDA_REQUIRE_SKILL_SIGNATURE", "off")
 	tmp := t.TempDir()
 	t.Setenv("QZDA_SANDBOX_PACKAGE_DIR", tmp)
 	t.Setenv("QZDA_SANDBOX_RUNTIME_URL", "http://127.0.0.1:1")

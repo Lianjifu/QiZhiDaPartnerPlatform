@@ -23,7 +23,8 @@ import { useCallback, useEffect, useReducer, useRef } from 'react';
 import { getApiClient } from '@qzda/web-api';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useAuthStore } from '@/stores/authStore';
-import { isMockChatMode, streamCopilotTurn, type CopilotSSEEvent } from '@/features/copilot/lib/copilot-stream';
+import { streamCopilotTurn, type CopilotSSEEvent } from '@/features/copilot/lib/copilot-stream';
+import { isDemoApiMode } from '@/lib/api-mode';
 import { applySegmentSSEEvent, createSegmentRouter } from '@/features/copilot/lib/copilot-segment-router';
 import { orderAssistantSegments } from '@/features/copilot/lib/segment-message-order';
 import { DEFAULT_REPLY_MODE } from '@/features/copilot/lib/composer-mode';
@@ -1180,7 +1181,7 @@ export function useChat(agentMeta?: { name: string }) {
     [],
   );
 
-  /** 对接 qzda-core SSE（VITE_USE_MOCK=false） */
+  /** 对接 qzda-core SSE（VITE_API_MODE=api） */
   const startBackendStream = useCallback(
     (
       sid: string,
@@ -1742,7 +1743,7 @@ export function useChat(agentMeta?: { name: string }) {
       opts?: { replyId?: string; skipAppend?: boolean; agentName?: string; modelId?: string; enabledTools?: string[]; conversationId?: string; modeHint?: string; reflectHint?: string; sessionMode?: 'investigate' | 'execute'; runMode?: 'ask' | 'plan' | 'agent'; reasoningEffort?: 'off' | 'standard' | 'deep'; riskLevel?: 'low' | 'medium' | 'high'; attachmentIds?: string[]; clientMsgId?: string; replyMode?: 'single' | 'segmented' | 'stepwise'; branchFromMessageId?: string },
     ) => {
       const replyId = opts?.replyId ?? uid('m_');
-      if (isMockChatMode()) {
+      if (isDemoApiMode()) {
         const reply = generateMockReply(text);
         startStream(sid, replyId, { ...reply, id: replyId }, ctrl, corr, { skipAppend: opts?.skipAppend });
       } else {
@@ -1806,7 +1807,7 @@ export function useChat(agentMeta?: { name: string }) {
       replyMode: 'segmented',
     });
 
-    if (!isMockChatMode()) {
+    if (!isDemoApiMode()) {
       try {
         const created = await getApiClient().post<{
           id: string;
@@ -1841,7 +1842,7 @@ export function useChat(agentMeta?: { name: string }) {
   }, [agentMeta?.name]);
 
   const patchSessionRemote = useCallback(async (id: string, body: Record<string, unknown>) => {
-    if (!id || /^s_/.test(id) || isMockChatMode()) return;
+    if (!id || /^s_/.test(id) || isDemoApiMode()) return;
     try {
       await getApiClient().request(`/api/sessions/${encodeURIComponent(id)}`, {
         method: 'PATCH',
@@ -1908,7 +1909,7 @@ export function useChat(agentMeta?: { name: string }) {
       preview: session.preview,
       workspaceId: session.workspaceId,
     });
-    if (/^s_/.test(session.id) || isMockChatMode()) return;
+    if (/^s_/.test(session.id) || isDemoApiMode()) return;
     try {
       await getApiClient().request(`/api/sessions/${encodeURIComponent(session.id)}`, {
         method: 'PATCH',
@@ -1964,7 +1965,7 @@ export function useChat(agentMeta?: { name: string }) {
     if (opts?.reasoningEffort) patch.reasoningEffort = opts.reasoningEffort;
     patchSessionLocal(sid, patch);
     try {
-      if (/^s_/.test(sid) || isMockChatMode()) return;
+      if (/^s_/.test(sid) || isDemoApiMode()) return;
       await getApiClient().request(`/api/sessions/${encodeURIComponent(sid)}`, {
         method: 'PATCH',
         body: {
@@ -2000,7 +2001,7 @@ export function useChat(agentMeta?: { name: string }) {
     if (removed) clearCopilotLastSession(removed.workspaceId ?? 'w1', id);
     saveDeletedTombstones(deletedSessionIdsRef.current, deletedConversationIdsRef.current);
     dispatch({ type: 'del_session', id });
-    if (isMockChatMode()) return;
+    if (isDemoApiMode()) return;
 	// 本地已删；tombstone 保留到 DELETE 成功且服务端已持久删除。
     try {
       await getApiClient().request(`/api/sessions/${encodeURIComponent(id)}`, { method: 'DELETE' });
@@ -2052,7 +2053,7 @@ export function useChat(agentMeta?: { name: string }) {
         dispatch({ type: 'update_session', sid, patch: { pendingTurn: undefined } });
       }
       dispatch({ type: 'set_active_correlation', id: null });
-      if (!isMockChatMode()) {
+      if (!isDemoApiMode()) {
         const conversationId = sess?.conversationId ?? sid;
         void getApiClient().request(`/api/copilot/conversations/${encodeURIComponent(conversationId)}/cancel`, {
           method: 'POST',
@@ -2131,7 +2132,7 @@ export function useChat(agentMeta?: { name: string }) {
         attachmentIds: opts?.attachmentIds,
         clientMsgId: userMsg.clientMsgId,
       });
-    }, isMockChatMode() ? 300 : 0);
+    }, isDemoApiMode() ? 300 : 0);
   }, [state.activeId, state.sessions, state.typing, launchReply]);
 
   const sendMessage = send; // 兼容别名
@@ -2165,7 +2166,7 @@ export function useChat(agentMeta?: { name: string }) {
         attachmentIds: opts?.attachmentIds,
         clientMsgId: userMsg.clientMsgId,
       });
-    }, isMockChatMode() ? 200 : 0);
+    }, isDemoApiMode() ? 200 : 0);
   }, [state.activeId, state.sessions, state.typing, launchReply]);
 
   const regenerate = useCallback((mid: string, opts?: { modelId?: string; enabledTools?: string[]; modeHint?: string; reflectHint?: string; sessionMode?: 'investigate' | 'execute'; runMode?: 'ask' | 'plan' | 'agent'; reasoningEffort?: 'off' | 'standard' | 'deep' }) => {
@@ -2223,7 +2224,7 @@ export function useChat(agentMeta?: { name: string }) {
         clientMsgId: userMsg.clientMsgId,
         branchFromMessageId: mid,
       });
-    }, isMockChatMode() ? 200 : 0);
+    }, isDemoApiMode() ? 200 : 0);
   }, [state.activeId, state.sessions, launchReply]);
 
   const clearTurnRecovery = useCallback(() => {
@@ -2234,7 +2235,7 @@ export function useChat(agentMeta?: { name: string }) {
   }, []);
 
   const recoverPendingTurn = useCallback(async (sid: string): Promise<'running' | 'done' | 'cancelled' | 'idle'> => {
-    if (isMockChatMode()) return 'idle';
+    if (isDemoApiMode()) return 'idle';
     const sess = state.sessions[sid];
     if (!sess) return 'idle';
     const pending = sess.pendingTurn;
@@ -2549,7 +2550,7 @@ export function useChat(agentMeta?: { name: string }) {
     if (!state.activeId) return;
     const session = state.sessions[state.activeId];
     dispatch({ type: 'reject', sid: state.activeId, mid, signerIndex, reason });
-    if (!isMockChatMode() && session) {
+    if (!isDemoApiMode() && session) {
       void getApiClient().post(`/api/actions/${mid}/reject`, {
         conversationId: session.conversationId ?? state.activeId,
         reason: reason ?? '已拒绝',
@@ -2562,7 +2563,7 @@ export function useChat(agentMeta?: { name: string }) {
     const sess = state.sessions[id];
     if (!sess) return null;
     if (sess.shareToken) return sess.shareToken;
-    if (isMockChatMode()) {
+    if (isDemoApiMode()) {
       const token = uid('sh_');
       dispatch({ type: 'set_share_token', id, token });
       return token;
@@ -2578,7 +2579,7 @@ export function useChat(agentMeta?: { name: string }) {
 
   const revokeShare = useCallback((id: string) => {
     dispatch({ type: 'set_share_token', id, token: null });
-    if (!isMockChatMode()) {
+    if (!isDemoApiMode()) {
       void getApiClient().request(`/api/sessions/${encodeURIComponent(id)}/share`, { method: 'DELETE' }).catch(() => undefined);
     }
   }, []);
@@ -2601,7 +2602,7 @@ export function useChat(agentMeta?: { name: string }) {
         ratedAt: new Date().toISOString(),
       },
     });
-    if (isMockChatMode()) return;
+    if (isDemoApiMode()) return;
     const conversationId = sess?.conversationId || msg?.correlationId || sid;
     const serverMid = msg?.serverMsgId || mid;
     if (!conversationId || payload.kind == null) return;

@@ -124,9 +124,7 @@ func envFlagFalse(key string) bool {
 }
 
 func productionLikeEnv() bool {
-	// Dual-approval / production governance: QZDA_ENV=staging|production only.
-	// QZDA_BAN_MOCK_TOKEN no longer implies production-like behavior.
-	return runtimeenv.FromEnv().DualApproval()
+	return runtimeenv.FromEnv().IsPro()
 }
 
 // resolveWorkspaceCtx picks an allowed workspace from membership.

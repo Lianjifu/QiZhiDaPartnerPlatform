@@ -1,14 +1,15 @@
 /**
- * API 运行模式：默认走真实控制面（qzda-gateway）；仅当显式演示模式时注入本地 Handler。
- * VITE_USE_DEMO=true 或兼容旧名 VITE_USE_MOCK=true。
+ * API 运行模式（VITE_API_MODE）：
+ *  - api（默认）：走真实控制面（qzda-gateway）；
+ *  - demo：浏览器内 mock handler，不请求后端。
  */
-export function isDemoApiMode(): boolean {
-  return import.meta.env.VITE_USE_DEMO === 'true' || import.meta.env.VITE_USE_MOCK === 'true';
+const rawApiMode: string = import.meta.env.VITE_API_MODE || 'api';
+if (rawApiMode !== 'api' && rawApiMode !== 'demo') {
+  throw new Error(`VITE_API_MODE 只能是 api 或 demo，当前为 "${rawApiMode}"`);
 }
 
-/** @deprecated 使用 isDemoApiMode */
-export function isMockApiMode(): boolean {
-  return isDemoApiMode();
+export function isDemoApiMode(): boolean {
+  return rawApiMode === 'demo';
 }
 
 function isLoopbackBase(url: string): boolean {

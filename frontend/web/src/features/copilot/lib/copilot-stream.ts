@@ -3,6 +3,7 @@
  */
 import { useAuthStore } from '@/stores/authStore';
 import { resolveWorkspaceHeader } from '@/lib/workspace-header';
+import { isDemoApiMode } from '@/lib/api-mode';
 
 export type ReplyMode = 'single' | 'segmented' | 'stepwise';
 
@@ -105,10 +106,6 @@ export type CopilotSSEEvent = {
   turnMeta?: unknown;
 };
 
-export function isMockChatMode(): boolean {
-  return import.meta.env.VITE_USE_DEMO === 'true' || import.meta.env.VITE_USE_MOCK === 'true';
-}
-
 export function mockIdentityHeaders(user: {
   role: string;
   tenantId: string;
@@ -116,7 +113,7 @@ export function mockIdentityHeaders(user: {
   id: string;
   permissions: string[];
 } | null | undefined): Record<string, string> {
-  if (!isMockChatMode() || !user) {
+  if (!isDemoApiMode() || !user) {
     return {};
   }
   return {

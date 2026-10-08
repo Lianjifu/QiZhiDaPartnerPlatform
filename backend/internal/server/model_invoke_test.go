@@ -209,7 +209,6 @@ func TestCopilotStreamUsesModelInvoke(t *testing.T) {
 }
 
 func TestCopilotStreamEmbeddedFallback(t *testing.T) {
-	t.Setenv("QZDA_EMBEDDED_CHAT", "1")
 	t.Setenv("QZDA_MODEL_CANDIDATE_TIMEOUT", "1")
 	st := store.New()
 	st.Lock()
@@ -242,7 +241,6 @@ func TestCopilotStreamEmbeddedFallback(t *testing.T) {
 }
 
 func TestCopilotStreamAllowsMissingEmployee(t *testing.T) {
-	t.Setenv("QZDA_EMBEDDED_CHAT", "1")
 	t.Setenv("QZDA_MODEL_CANDIDATE_TIMEOUT", "1")
 	st := store.New()
 	st.Lock()

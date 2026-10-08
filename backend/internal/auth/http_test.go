@@ -32,8 +32,7 @@ func newTestHandler(allowMock bool, banMock bool, audit auth.AuditWriter) *auth.
 		Parse: auth.Parse,
 		OIDC:  nil,
 		AuditWriter: audit,
-		// env-driven switches are package-level; tests set QZDA_FORCE_OIDC /
-		// QZDA_BAN_MOCK_TOKEN via t.Setenv in the caller.
+		// env-driven switches are package-level; tests set QZDA_MODE via t.Setenv in the caller.
 	}
 }
 
@@ -42,10 +41,10 @@ type noopAudit struct{}
 
 func (noopAudit) AppendAudit(string, string, string, string, string, string) {}
 
-// TestLoginBlockedWhenForceOIDC verifies QZDA_FORCE_OIDC=1 returns 403
-// (RoleForbidden) before any credential check.
-func TestLoginBlockedWhenForceOIDC(t *testing.T) {
-	t.Setenv("QZDA_FORCE_OIDC", "1")
+// TestLoginRejectsUnverifiedAccountInPro verifies pro login fails closed when no
+// credential store is wired, instead of minting a role from the email prefix.
+func TestLoginRejectsUnverifiedAccountInPro(t *testing.T) {
+	t.Setenv("QZDA_MODE", "pro")
 	h := newTestHandler(true, false, noopAudit{})
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/login",
 		bytes.NewBufferString(`{"email":"admin@acme.com","password":"x"}`))
@@ -62,16 +61,14 @@ func TestLoginBlockedWhenForceOIDC(t *testing.T) {
 	if !ok {
 		t.Fatalf("want *AppError, got %T (%v)", err, err)
 	}
-	if ae.Code != apperr.RoleForbidden || ae.Status != http.StatusForbidden {
-		t.Fatalf("want RoleForbidden/403, got %s/%d", ae.Code, ae.Status)
+	if ae.Status != http.StatusUnauthorized {
+		t.Fatalf("want 401, got %s/%d", ae.Code, ae.Status)
 	}
 }
 
 // TestLoginAllowedWhenForceOIDCFalse verifies the happy path: admin email
 // returns mock-admin-token, an "登录" audit row is written, and no error.
 func TestLoginAllowedWhenForceOIDCFalse(t *testing.T) {
-	t.Setenv("QZDA_FORCE_OIDC", "")
-	t.Setenv("QZDA_BAN_MOCK_TOKEN", "")
 	audit := &stubAudit{}
 	h := newTestHandler(true, false, audit)
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/login",
@@ -101,7 +98,6 @@ func TestLoginAllowedWhenForceOIDCFalse(t *testing.T) {
 // allowed (QZDA_OIDC_ALLOW_DEV_CODES=1), the callback exchanges "admin" to a
 // signed JWT for the admin role and writes the "OIDC 登录" audit row.
 func TestOIDCCallbackStubCode(t *testing.T) {
-	t.Setenv("QZDA_OIDC_ALLOW_DEV_CODES", "1")
 	h := &auth.Handler{
 		Sign:  auth.Sign,
 		Parse: auth.Parse,
@@ -136,9 +132,9 @@ func TestOIDCCallbackStubCode(t *testing.T) {
 }
 
 // TestMiddlewareRejectsMockTokenWhenBanMock verifies the auth middleware
-// rejects a mock-* bearer token when QZDA_BAN_MOCK_TOKEN=1 (production-like).
+// rejects a mock-* bearer token when QZDA_MODE=pro (production-like).
 func TestMiddlewareRejectsMockTokenWhenBanMock(t *testing.T) {
-	t.Setenv("QZDA_BAN_MOCK_TOKEN", "1")
+	t.Setenv("QZDA_MODE", "pro")
 	mw := &auth.Middleware{
 		Parse:             auth.Parse,
 		AllowMockIdentity: auth.AllowMockIdentity,
@@ -156,9 +152,9 @@ func TestMiddlewareRejectsMockTokenWhenBanMock(t *testing.T) {
 }
 
 // TestMiddlewareAllowsJWTWhenBanMock verifies the auth middleware accepts a
-// signed JWT even when QZDA_BAN_MOCK_TOKEN=1 (production).
+// signed JWT in pro mode, where mock tokens are banned.
 func TestMiddlewareAllowsJWTWhenBanMock(t *testing.T) {
-	t.Setenv("QZDA_BAN_MOCK_TOKEN", "1")
+	t.Setenv("QZDA_MODE", "pro")
 	tok, err := auth.Sign(auth.Identity{ID: "u1", Role: "admin", TenantID: "tenant-acme", WorkspaceID: "w1"}, time.Hour)
 	if err != nil {
 		t.Fatalf("Sign failed: %v", err)

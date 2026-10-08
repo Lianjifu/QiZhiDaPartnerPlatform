@@ -67,8 +67,7 @@ func TestDingtalkWebhookReusesSessionForSameConversation(t *testing.T) {
 }
 
 func TestProductionHighRiskEmployeeRequiresCountersign(t *testing.T) {
-	t.Setenv("QZDA_ENV", "production")
-	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_MODE", "pro")
 	st := store.New()
 	st.Lock()
 	for _, e := range st.Employees {
@@ -123,8 +122,7 @@ func TestProductionHighRiskEmployeeRequiresCountersign(t *testing.T) {
 }
 
 func TestProductionEvalSetGateBlocksKnowledgePublish(t *testing.T) {
-	t.Setenv("QZDA_ENV", "production")
-	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_MODE", "pro")
 	h := server.New(store.New()).Handler()
 
 	rr := httptest.NewRecorder()
@@ -161,8 +159,7 @@ func TestProductionEvalSetGateBlocksKnowledgePublish(t *testing.T) {
 }
 
 func TestProductionEvolveApproveRequiresSoD(t *testing.T) {
-	t.Setenv("QZDA_ENV", "production")
-	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_MODE", "pro")
 	st := store.New()
 	st.Lock()
 	st.EvolveCands = append(st.EvolveCands, map[string]any{
@@ -194,8 +191,7 @@ func TestProductionEvolveApproveRequiresSoD(t *testing.T) {
 }
 
 func TestProductionAdminEvolveSelfApproveAllowed(t *testing.T) {
-	t.Setenv("QZDA_ENV", "production")
-	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_MODE", "pro")
 	st := store.New()
 	st.Lock()
 	st.EvolveCands = append(st.EvolveCands, map[string]any{
@@ -276,8 +272,7 @@ func TestReplicaForcedRejectsWrites(t *testing.T) {
 }
 
 func TestProductionRestrictedRoutingRequiresCountersign(t *testing.T) {
-	t.Setenv("QZDA_ENV", "production")
-	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_MODE", "pro")
 	st := store.New()
 	st.Lock()
 	st.RoutingPolicies = append(st.RoutingPolicies, map[string]any{
@@ -334,8 +329,7 @@ func TestProductionRestrictedRoutingRequiresCountersign(t *testing.T) {
 }
 
 func TestProductionAdminRestrictedRoutingDirectPublish(t *testing.T) {
-	t.Setenv("QZDA_ENV", "production")
-	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_MODE", "pro")
 	h := server.New(store.New()).Handler()
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/model-routing/policies", bytes.NewBufferString(
@@ -375,8 +369,7 @@ func TestProductionAdminRestrictedRoutingDirectPublish(t *testing.T) {
 }
 
 func TestProductionWorkflowSkillPublishRequiresSoD(t *testing.T) {
-	t.Setenv("QZDA_ENV", "production")
-	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_MODE", "pro")
 	st := store.New()
 	h := server.New(st).Handler()
 
