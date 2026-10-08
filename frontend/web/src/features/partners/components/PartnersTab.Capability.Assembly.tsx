@@ -294,11 +294,11 @@ export function CapabilityAssemblySelector({ catalog, capabilities, policy, onCh
                 updateAssets('tools', [...platform, ...runtime, ...values]);
               }} capabilityType="tool" modeOf={(name) => modeOf('tool', name)} onModeChange={(name, mode) => setMode('tool', name, mode)} emptyHint="暂无已启用工具 / MCP" />
               {platformTools.length > 0 && (
-                <LinkedAssetPicker label="平台工具" hint="内置 · 默认全员可用" options={platformTools} values={capabilities.tools.filter((n) => platformNames.has(n))} onChange={(values) => {
+                <LinkedAssetPicker label="平台工具" hint="内置 · 默认全员可用 · 不可关闭" options={platformTools} values={capabilities.tools.filter((n) => platformNames.has(n))} onChange={(values) => {
                   const enterprise = capabilities.tools.filter((n) => !platformNames.has(n) && !runtimeNames.has(n));
                   const runtime = capabilities.tools.filter((n) => runtimeNames.has(n));
                   updateAssets('tools', [...values, ...runtime, ...enterprise]);
-                }} capabilityType="tool" modeOf={(name) => modeOf('tool', name)} onModeChange={(name, mode) => setMode('tool', name, mode)} emptyHint="—" readonly />
+                }} capabilityType="tool" modeOf={(name) => modeOf('tool', name)} onModeChange={(name, mode) => setMode('tool', name, mode)} emptyHint="—" readonly hideModeSelector />
               )}
               {defaultRuntimeTools.length > 0 && (
                 <LinkedAssetPicker label="运行时工具" hint="内置 · 文件、搜索、任务与 MCP 等" options={defaultRuntimeTools} values={capabilities.tools.filter((n) => defaultRuntimeTools.some((item) => item.name === n))} onChange={(values) => {
@@ -306,7 +306,7 @@ export function CapabilityAssemblySelector({ catalog, capabilities, policy, onCh
                   const enterprise = capabilities.tools.filter((n) => !platformNames.has(n) && !runtimeNames.has(n));
                   const optional = capabilities.tools.filter((n) => optionalRuntimeTools.some((item) => item.name === n));
                   updateAssets('tools', [...platform, ...values, ...optional, ...enterprise]);
-                }} capabilityType="tool" modeOf={(name) => modeOf('tool', name)} onModeChange={(name, mode) => setMode('tool', name, mode)} emptyHint="—" readonly />
+                }} capabilityType="tool" modeOf={(name) => modeOf('tool', name)} onModeChange={(name, mode) => setMode('tool', name, mode)} emptyHint="—" readonly hideModeSelector />
               )}
               {optionalRuntimeTools.length > 0 && (
                 <LinkedAssetPicker label="可选运行时工具" hint="按需启用" options={optionalRuntimeTools} values={capabilities.tools.filter((n) => optionalRuntimeTools.some((item) => item.name === n))} onChange={(values) => {

@@ -130,7 +130,14 @@ export function EmployeeConfigurationWorkbench({ employee, open, onClose, initia
   const modeTypeLabels: Record<'skill' | 'tool' | 'workflow', string> = {
     skill: '技能', tool: '工具', workflow: '流程',
   };
-  const missingModes = boundExecutable.filter((item) => !boundaryPolicy.capabilityModes.some((mode) => mode.capabilityType === item.capabilityType && mode.capabilityName === item.capabilityName));
+  const builtinNames = new Set([
+    ...(capabilityCatalog?.platformTools ?? []).map((item) => item.name),
+    ...(capabilityCatalog?.runtimeTools ?? []).filter((item) => item.autoBind !== false && (item.availability ?? 'default') !== 'opt_in').map((item) => item.name),
+  ]);
+  const missingModes = boundExecutable.filter((item) =>
+    !builtinNames.has(item.capabilityName) &&
+    !boundaryPolicy.capabilityModes.some((mode) => mode.capabilityType === item.capabilityType && mode.capabilityName === item.capabilityName),
+  );
   const modesComplete = missingModes.length === 0;
   const roleBlocking = [
     !profile.name.trim() && '员工名称',

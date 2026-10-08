@@ -12,6 +12,11 @@ import { Badge } from '@qzda/web-ui';
 import { cn } from '@qzda/web-utils';
 import { executionModeOptions } from './PartnersShared';
 
+function modeLabel(mode: DigitalPartnerExecutionMode | undefined): string {
+  if (!mode) return '可执行';
+  return executionModeOptions.find(([value]) => value === mode)?.[1] ?? '可执行';
+}
+
 export type CapabilityCatalogOption = { id: string; name: string; meta: string; removable?: boolean; builtin?: boolean; autoBind?: boolean; availability?: string };
 export type DigitalPartnerCapabilityCatalog = {
   models: CapabilityCatalogOption[];
@@ -24,7 +29,7 @@ export type DigitalPartnerCapabilityCatalog = {
   runtimeTools?: CapabilityCatalogOption[];
 };
 
-export function LinkedAssetPicker({ label, hint, options, values, onChange, capabilityType, modeOf, onModeChange, compact, emptyHint, readonly }: {
+export function LinkedAssetPicker({ label, hint, options, values, onChange, capabilityType, modeOf, onModeChange, compact, emptyHint, readonly, hideModeSelector }: {
   label: string;
   hint: string;
   options: CapabilityCatalogOption[];
@@ -36,6 +41,8 @@ export function LinkedAssetPicker({ label, hint, options, values, onChange, capa
   compact?: boolean;
   emptyHint?: string;
   readonly?: boolean;
+  /** 内置工具默认 mode 已是 execute/running，无需用户逐项选择；展示为只读徽章。 */
+  hideModeSelector?: boolean;
 }) {
   const [filter, setFilter] = useState('');
   const displayValues = readonly ? options.map((item) => item.name) : values;
@@ -94,7 +101,7 @@ export function LinkedAssetPicker({ label, hint, options, values, onChange, capa
                 <span className="block truncate text-xs font-medium">{value}</span>
                 {!compact && <span className="block truncate text-[10px] text-[var(--text-muted)]">{option?.meta ?? '历史已绑定资产（目录中已不存在）'}</span>}
               </div>
-              {withMode && modeOf && onModeChange && (() => {
+              {!hideModeSelector && withMode && modeOf && onModeChange && (() => {
                 const currentMode = modeOf(value);
                 const isMissing = !currentMode;
                 return (
@@ -119,6 +126,9 @@ export function LinkedAssetPicker({ label, hint, options, values, onChange, capa
                   </select>
                 );
               })()}
+              {hideModeSelector && withMode && modeOf && (
+                <Badge tone="success" className="shrink-0">{modeLabel(modeOf(value)) ?? '可执行'}</Badge>
+              )}
               {!readonly && option?.removable !== false && (
                 <button type="button" onClick={() => remove(value)} className="shrink-0 rounded-md px-1 text-xs text-[var(--text-muted)] hover:bg-[var(--danger-light)] hover:text-[var(--danger)]" aria-label={`移除 ${value}`}>×</button>
               )}
