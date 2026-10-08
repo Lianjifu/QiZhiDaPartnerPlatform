@@ -15,6 +15,7 @@ import { cn } from '@qzda/web-utils';
 import { Layers3, ShieldAlert, CheckCircle2 } from 'lucide-react';
 import { CATALOG_PAGE_SIZE_OPTIONS, ModuleTab, WorkbenchIdentity, WorkbenchCheckStrip, WorkbenchListShell, WorkbenchPagination } from './PartnersShared';
 import { capabilityAssemblyCompleteness, compareCapabilityAssemblyEmployees, roleSetupCompleteness } from '@/features/partners/lib/partners';
+import { usePartnerBuiltinToolNames } from '../hooks/usePartnerBuiltinToolNames';
 
 const CAPABILITY_PAGE_SIZE_KEY = 'de.capabilities.pageSize';
 
@@ -22,19 +23,23 @@ export function CapabilitiesView({ employees, onSelect, onGoToModule }: { employ
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(() => readStoredCapabilityPageSize());
 
-  const capabilitySorted = useMemo(() => [...employees].sort(compareCapabilityAssemblyEmployees), [employees]);
+  const builtinToolNames = usePartnerBuiltinToolNames();
+  const capabilitySorted = useMemo(
+    () => [...employees].sort((left, right) => compareCapabilityAssemblyEmployees(left, right, builtinToolNames)),
+    [employees, builtinToolNames],
+  );
   const kpis = useMemo(() => {
     let noModel = 0;
     let noAssets = 0;
     let ready = 0;
     for (const item of capabilitySorted) {
-      const completeness = capabilityAssemblyCompleteness(item);
+      const completeness = capabilityAssemblyCompleteness(item, builtinToolNames);
       if (!completeness.modelOk) noModel += 1;
       else if (!completeness.assetsOk) noAssets += 1;
       if (completeness.ready) ready += 1;
     }
     return { noModel, noAssets, ready };
-  }, [capabilitySorted]);
+  }, [capabilitySorted, builtinToolNames]);
 
   useEffect(() => { setPage(1); }, [pageSize, employees]);
   useEffect(() => { window.localStorage.setItem(CAPABILITY_PAGE_SIZE_KEY, String(pageSize)); }, [pageSize]);
@@ -86,7 +91,8 @@ export function CapabilitiesView({ employees, onSelect, onGoToModule }: { employ
 }
 
 export function CapabilityListRow({ employee, onSelect }: { employee: DigitalPartner; onSelect: () => void }) {
-  const completeness = capabilityAssemblyCompleteness(employee);
+  const builtinToolNames = usePartnerBuiltinToolNames();
+  const completeness = capabilityAssemblyCompleteness(employee, builtinToolNames);
   const contractReady = roleSetupCompleteness(employee).ready;
   const tone = completeness.label === '装配完整' ? 'success' : 'warn';
   return (

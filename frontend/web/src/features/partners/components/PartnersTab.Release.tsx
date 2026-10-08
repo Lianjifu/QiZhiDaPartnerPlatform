@@ -14,10 +14,12 @@ import { cn } from '@qzda/web-utils';
 import { CheckCircle2, ClipboardCheck, Clock3, Route, XCircle } from 'lucide-react';
 import { CATALOG_PAGE_SIZE_OPTIONS, ModuleTab, WorkbenchIdentity, WorkbenchCheckStrip, WorkbenchListShell, WorkbenchPagination } from './PartnersShared';
 import { compareReleaseOnboardingEmployees, releaseOnboardingCompleteness, type ReleaseOnboardingStage } from '@/features/partners/lib/partners';
+import { usePartnerBuiltinToolNames } from '../hooks/usePartnerBuiltinToolNames';
 
 const RELEASE_PAGE_SIZE_KEY = 'de.release.pageSize';
 
 export function OnboardingManagementView({ employees, onSelect, onGoToModule }: { employees: DigitalPartner[]; onSelect: (id: string) => void; onGoToModule: (tab: ModuleTab) => void }) {
+  const builtinToolNames = usePartnerBuiltinToolNames();
   type ReleaseSegment = 'all' | ReleaseOnboardingStage;
   const [segment, setSegment] = useState<ReleaseSegment>('all');
   const [page, setPage] = useState(1);
@@ -31,7 +33,7 @@ export function OnboardingManagementView({ employees, onSelect, onGoToModule }: 
   const counts = useMemo(() => {
     const next = { all: queue.length, pending_eval: 0, eval_failed: 0, ready_to_request: 0, pending_approval: 0, released: 0 };
     for (const item of queue) {
-      const stage = releaseOnboardingCompleteness(item).stage;
+      const stage = releaseOnboardingCompleteness(item, builtinToolNames).stage;
       if (stage !== 'released') next[stage] += 1;
     }
     return next;
@@ -46,7 +48,7 @@ export function OnboardingManagementView({ employees, onSelect, onGoToModule }: 
   ];
 
   const filtered = useMemo(
-    () => (segment === 'all' ? queue : queue.filter((item) => releaseOnboardingCompleteness(item).stage === segment)),
+    () => (segment === 'all' ? queue : queue.filter((item) => releaseOnboardingCompleteness(item, builtinToolNames).stage === segment)),
     [queue, segment],
   );
 
@@ -124,7 +126,8 @@ export function OnboardingManagementView({ employees, onSelect, onGoToModule }: 
 }
 
 export function ReleaseListRow({ employee, onSelect }: { employee: DigitalPartner; onSelect: () => void }) {
-  const completeness = releaseOnboardingCompleteness(employee);
+  const builtinToolNames = usePartnerBuiltinToolNames();
+  const completeness = releaseOnboardingCompleteness(employee, builtinToolNames);
   const tone = completeness.stage === 'ready_to_request' || completeness.stage === 'released'
     ? 'success'
     : completeness.stage === 'pending_approval' || completeness.stage === 'eval_failed'

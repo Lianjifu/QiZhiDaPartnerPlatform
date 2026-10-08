@@ -19,6 +19,7 @@ import { EmployeeConfigurationWorkbench, type EmbeddedSaveHandle } from './Partn
 import { ContextualEmployeeDetail } from './PartnersTab.Detail';
 import { DeleteUnreleasedPartnerButton } from './PartnersDelete';
 import { EmployeeAvatar, lifecycleMeta } from './PartnersShared';
+import { usePartnerBuiltinToolNames } from '../hooks/usePartnerBuiltinToolNames';
 
 type WizardStep = 'identity' | 'role' | 'capability' | 'release';
 
@@ -30,6 +31,7 @@ const STEPS: Array<{ key: WizardStep; index: string; label: string; hint: string
 ];
 
 export default function PartnerCreatePage() {
+  const builtinToolNames = usePartnerBuiltinToolNames();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const canMutate = roleCanMutate(useAuthStore((s) => s.user?.role));
@@ -90,8 +92,8 @@ export default function PartnerCreatePage() {
   if (!canMutate) return <Navigate to="/partners" replace />;
 
   const roleMeta = employee ? roleSetupCompleteness(employee) : null;
-  const capMeta = employee ? capabilityAssemblyCompleteness(employee) : null;
-  const releaseMeta = employee ? releaseOnboardingCompleteness(employee) : null;
+  const capMeta = employee ? capabilityAssemblyCompleteness(employee, builtinToolNames) : null;
+  const releaseMeta = employee ? releaseOnboardingCompleteness(employee, builtinToolNames) : null;
   const roleReady = Boolean(roleMeta?.ready);
   const capReady = Boolean(capMeta?.ready);
   const released = releaseMeta?.stage === 'released';

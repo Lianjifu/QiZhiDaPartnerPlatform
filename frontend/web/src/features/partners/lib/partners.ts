@@ -167,7 +167,22 @@ export type CapabilityAssemblyCompleteness = {
 };
 
 /** 受控能力引用是否达到可评测上岗的装配门槛。 */
-export function capabilityAssemblyCompleteness(employee: CapabilityAssemblyEmployee): CapabilityAssemblyCompleteness {
+/** 系统内置工具(platformTools + runtimeTools)不要求用户逐项配置执行授权模式。 */
+export function builtinToolNamesFromCatalog(
+  catalog?: { platformTools?: { name: string }[]; runtimeTools?: { name: string }[] } | null,
+): ReadonlySet<string> {
+  return new Set([
+    ...(catalog?.platformTools ?? []).map((item) => item.name),
+    ...(catalog?.runtimeTools ?? []).map((item) => item.name),
+  ]);
+}
+
+const NO_BUILTIN_TOOLS: ReadonlySet<string> = new Set();
+
+export function capabilityAssemblyCompleteness(
+  employee: CapabilityAssemblyEmployee,
+  builtinToolNames: ReadonlySet<string> = NO_BUILTIN_TOOLS,
+): CapabilityAssemblyCompleteness {
   const missing: string[] = [];
   const modelOk = Boolean(employee.capabilities.model?.trim());
   if (!modelOk) missing.push('模型路由');
@@ -181,7 +196,10 @@ export function capabilityAssemblyCompleteness(employee: CapabilityAssemblyEmplo
   if (!assetsOk) missing.push('技能/工具/流程技能');
 
   const modes = employee.boundaryPolicy?.capabilityModes ?? [];
-  const missingModeNames = bound.filter((item) => !modes.some((mode) => mode.capabilityType === item.capabilityType && mode.capabilityName === item.capabilityName));
+  const missingModeNames = bound.filter((item) =>
+    !(item.capabilityType === 'tool' && builtinToolNames.has(item.capabilityName)) &&
+    !modes.some((mode) => mode.capabilityType === item.capabilityType && mode.capabilityName === item.capabilityName),
+  );
   const modesOk = assetsOk && missingModeNames.length === 0;
   if (assetsOk && !modesOk) {
     const typeLabel: Record<typeof bound[number]['capabilityType'], string> = {
@@ -204,12 +222,16 @@ export function capabilityAssemblyCompleteness(employee: CapabilityAssemblyEmplo
 }
 
 /** Incomplete capability assemblies first, then department/head order. */
-export function compareCapabilityAssemblyEmployees<T extends SortableEmployee & CapabilityAssemblyEmployee>(left: T, right: T) {
-  const leftReady = Number(capabilityAssemblyCompleteness(left).ready);
-  const rightReady = Number(capabilityAssemblyCompleteness(right).ready);
+export function compareCapabilityAssemblyEmployees<T extends SortableEmployee & CapabilityAssemblyEmployee>(
+  left: T,
+  right: T,
+  builtinToolNames: ReadonlySet<string> = NO_BUILTIN_TOOLS,
+) {
+  const leftReady = Number(capabilityAssemblyCompleteness(left, builtinToolNames).ready);
+  const rightReady = Number(capabilityAssemblyCompleteness(right, builtinToolNames).ready);
   if (leftReady !== rightReady) return leftReady - rightReady;
-  const leftModel = Number(capabilityAssemblyCompleteness(left).modelOk);
-  const rightModel = Number(capabilityAssemblyCompleteness(right).modelOk);
+  const leftModel = Number(capabilityAssemblyCompleteness(left, builtinToolNames).modelOk);
+  const rightModel = Number(capabilityAssemblyCompleteness(right, builtinToolNames).modelOk);
   if (leftModel !== rightModel) return leftModel - rightModel;
   return compareDigitalPartners(left, right);
 }
@@ -251,9 +273,12 @@ const RELEASE_STAGE_RANK: Record<ReleaseOnboardingStage, number> = {
 };
 
 /** 上岗门禁：与 release API 硬校验对齐（档案/职责/模型与执行能力/质量评测）。 */
-export function releaseOnboardingCompleteness(employee: ReleaseOnboardingEmployee): ReleaseOnboardingCompleteness {
+export function releaseOnboardingCompleteness(
+  employee: ReleaseOnboardingEmployee,
+  builtinToolNames: ReadonlySet<string> = NO_BUILTIN_TOOLS,
+): ReleaseOnboardingCompleteness {
   const role = roleSetupCompleteness(employee);
-  const capability = capabilityAssemblyCompleteness(employee);
+  const capability = capabilityAssemblyCompleteness(employee, builtinToolNames);
   const legacyDutyOk = hasLegacyDuties(employee.responsibilities);
   const contractOk = role.profileOk && (role.boundaryOk || legacyDutyOk);
   const capabilityOk = capability.modelOk && capability.assetsOk;

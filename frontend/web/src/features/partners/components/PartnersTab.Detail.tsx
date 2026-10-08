@@ -35,6 +35,7 @@ import {
   Route,
   ShieldAlert,
 } from 'lucide-react';
+import { usePartnerBuiltinToolNames } from '../hooks/usePartnerBuiltinToolNames';
 
 /** `ContextualEmployeeDetail` — 上岗发布 / 运行管理详情。 */
 export function ContextualEmployeeDetail({ employee, context, onClose, onGoToModule, layout = 'modal' }: { employee: DigitalPartner; context: 'release' | 'operations'; onClose: () => void; onGoToModule?: (tab: ModuleTab) => void; layout?: 'modal' | 'inline' }) {
@@ -82,7 +83,8 @@ export function ContextualEmployeeDetail({ employee, context, onClose, onGoToMod
   const meta = context === 'release' ? { title: '上岗发布详情', description: '集中处理质量评测与上岗门禁。' } : { title: '运行管理详情', description: '仅展示岗位服务健康、人工交接与运行处置；不可修改岗位或能力。' };
   const selfRequested = releaseRequestedBySelf(employee, user);
   const canConfirmRelease = employee.release.status === 'pending_approval' && (!selfRequested || isAdmin);
-  const completeness = releaseOnboardingCompleteness(employee);
+  const builtinToolNames = usePartnerBuiltinToolNames();
+  const completeness = releaseOnboardingCompleteness(employee, builtinToolNames);
   const health = operationsHealth(employee);
   const releaseGate = completeness.gates;
 

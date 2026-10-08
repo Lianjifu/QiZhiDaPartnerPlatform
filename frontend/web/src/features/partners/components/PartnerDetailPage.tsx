@@ -24,12 +24,14 @@ import { CapabilityContent, MemoryContent, ProfileContent, RuntimeContent, Struc
 import { OperationsDisposeModal } from './PartnersTab.Detail';
 import { DeleteUnreleasedPartnerButton } from './PartnersDelete';
 import { EmployeeAvatar, gateLabel, lifecycleMeta, Metric, riskMeta } from './PartnersShared';
+import { usePartnerBuiltinToolNames } from '../hooks/usePartnerBuiltinToolNames';
 
 type DetailTab = 'overview' | 'team' | 'profile' | 'boundary' | 'capabilities' | 'memory' | 'runtime' | 'evidence';
 
 const TAB_KEYS: DetailTab[] = ['overview', 'team', 'profile', 'boundary', 'capabilities', 'memory', 'runtime', 'evidence'];
 
 export default function PartnerDetailPage() {
+  const builtinToolNames = usePartnerBuiltinToolNames();
   const navigate = useNavigate();
   const { id = '' } = useParams();
   const [params, setParams] = useSearchParams();
@@ -82,8 +84,8 @@ export default function PartnerDetailPage() {
   }
 
   const roleMeta = roleSetupCompleteness(employee);
-  const capMeta = capabilityAssemblyCompleteness(employee);
-  const releaseMeta = releaseOnboardingCompleteness(employee);
+  const capMeta = capabilityAssemblyCompleteness(employee, builtinToolNames);
+  const releaseMeta = releaseOnboardingCompleteness(employee, builtinToolNames);
   const health = operationsHealth(employee);
   const envLabel = employee.environment === 'production' ? '生产环境' : employee.environment === 'staging' ? '预发环境' : '沙箱环境';
   const incomplete = employee.lifecycle !== 'active' && employee.release.status !== 'released';

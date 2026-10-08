@@ -79,8 +79,9 @@ export default function ModelProviderCreatePage() {
                       workspaceId={c.currentWorkspaceId}
                       creating={c.createProvider.isPending}
                       onCancel={() => navigate('/models')}
-                      onSubmit={(payload) => c.createProvider.mutate(payload, {
+                      onSubmit={(payload, onDone) => c.createProvider.mutate(payload, {
                         onSuccess: (item) => {
+                          onDone(true);
                           toast.success('供应商已接入，正在验证连通性…');
                           setParams({ id: item.id, step: 'routing' }, { replace: true });
                           c.testProvider.mutate(
@@ -91,7 +92,10 @@ export default function ModelProviderCreatePage() {
                             },
                           );
                         },
-                        onError: c.reportError,
+                        onError: (error) => {
+                          onDone(false);
+                          c.reportError(error);
+                        },
                       })}
                     />
                   </section>

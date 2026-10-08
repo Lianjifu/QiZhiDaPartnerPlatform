@@ -25,7 +25,7 @@ type Props = {
   creating?: boolean;
   embedded?: boolean;
   onCancel: () => void;
-  onSubmit: (payload: Record<string, unknown>) => void;
+  onSubmit: (payload: Record<string, unknown>, onDone: (ok: boolean) => void) => void;
 };
 
 export function ModelsModalsProviderForm({ canWrite, workspaceId, creating, embedded, onCancel, onSubmit }: Props) {
@@ -364,10 +364,12 @@ export function ModelsModalsProviderForm({ canWrite, workspaceId, creating, embe
           onClick={() => {
             setAttempted(true);
             if (issues.length > 0) return;
-            onSubmit(providerConnectToPayload(draft, workspaceId, { sessionCredential: sessionCredentialRef.current }));
-            sessionCredentialRef.current = '';
-            setCredentialVerified(false);
-            patch('apiKey', '');
+            onSubmit(providerConnectToPayload(draft, workspaceId, { sessionCredential: sessionCredentialRef.current }), (ok) => {
+              if (!ok) return;
+              sessionCredentialRef.current = '';
+              setCredentialVerified(false);
+              patch('apiKey', '');
+            });
           }}
         >
           {embedded ? '创建并进入路由策略' : '创建受管接入'}
