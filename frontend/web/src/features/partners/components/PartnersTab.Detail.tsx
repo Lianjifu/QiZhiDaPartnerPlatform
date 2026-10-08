@@ -6,7 +6,7 @@
  */
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { DigitalPartner, DigitalPartnerLifecycle } from '@qzda/web-types';
+import type { DigitalPartner, DigitalPartnerConfigurationVersion, DigitalPartnerLifecycle } from '@qzda/web-types';
 import { Badge, Button } from '@qzda/web-ui';
 import { Modal } from '@/components/shared';
 import { cn } from '@qzda/web-utils';
@@ -46,6 +46,12 @@ export function ContextualEmployeeDetail({ employee, context, onClose, onGoToMod
   const [disposeLifecycle, setDisposeLifecycle] = useState<'paused' | 'quarantined' | 'active' | null>(null);
 
   const { data: evidence = [] } = useApiQuery<Array<{ id: string; time: string; actor: string; action: string; target: string; result: string }>>(['digital-employee', employee.id, 'evidence'], `/api/partners/${employee.id}/evidence`);
+  const { data: configurationVersions = [] } = useApiQuery<DigitalPartnerConfigurationVersion[]>(
+    ['digital-employee', employee.id, 'configuration-versions'],
+    `/api/partners/${employee.id}/configuration-versions`,
+    undefined,
+    { enabled: context === 'release' },
+  );
 
   const evaluate = useApiMutation<DigitalPartner, Record<string, never>>(() => `/api/partners/${employee.id}/evaluate`, {
     invalidateKeys: [['digital-employees'], ['digital-employee', employee.id]],
@@ -237,8 +243,31 @@ export function ContextualEmployeeDetail({ employee, context, onClose, onGoToMod
               )}
             </section>
           )}
+          {context === 'release' && (
+            <section className="space-y-3">
+              <h3 className="text-sm font-semibold">上岗定版</h3>
+              <p className="text-[11px] text-[var(--text-muted)]">中间步骤保存不进版本流；只有上岗提交才记录一次"配置版本"，作为运行期可回溯快照。</p>
+              {configurationVersions.length
+                ? (
+                  <ul className="space-y-2">
+                    {configurationVersions.slice(0, 5).map((version) => (
+                      <li key={version.id} className="flex items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-xs">
+                        <div className="min-w-0">
+                          <div className="font-medium">{version.version}</div>
+                          <p className="mt-0.5 truncate text-[11px] text-[var(--text-muted)]">{version.changeSummary}</p>
+                        </div>
+                        <div className="flex shrink-0 flex-col items-end gap-1">
+                          <Badge tone={version.status === 'current' ? 'success' : version.status === 'pending_approval' ? 'warn' : 'neutral'}>{version.status === 'current' ? '当前在岗' : version.status === 'pending_approval' ? '待审批' : '历史'}</Badge>
+                          <span className="text-[10px] text-[var(--text-muted)]">{version.updatedBy} · {new Date(version.updatedAt).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false })}</span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )
+                : <p className="text-xs text-[var(--text-muted)]">暂无上岗定版记录。申请并确认上岗后将在此展示当前在岗版本。</p>}
+            </section>
+          )}
           <section className="space-y-3">
-            <h3 className="text-sm font-semibold">审计证据</h3>
             {evidence.length
               ? evidence.map((event) => (
                 <div key={event.id} className="rounded-lg border border-[var(--border)] bg-[var(--bg)] px-4 py-3">

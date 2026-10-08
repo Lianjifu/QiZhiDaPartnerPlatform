@@ -78,13 +78,14 @@ export function EmployeeConfigurationWorkbench({ employee, open, onClose, initia
   const save = useApiMutation<EmployeeConfigurationResult, EmployeeConfigurationInput>(() => `/api/partners/${employee.id}/configuration`, {
     invalidateKeys: [['digital-employees'], ['digital-employee', employee.id], ['digital-employee', employee.id, 'configuration-versions']],
     onSuccess: (result) => {
+      const versionTag = result.version ? `${result.version} ` : '';
       setFeedback({
         kind: 'success',
         text: mode === 'capability'
-          ? `${result.version} 能力装配已保存并生效。`
+          ? `${versionTag}能力装配已保存并生效。`
           : employee.release.status === 'released' || employee.lifecycle === 'active'
-            ? `${result.version} 岗位授权契约已保存并生效。`
-            : `${result.version} 已保存，可继续执行评测与上岗流程。`,
+            ? `${versionTag}岗位授权契约已保存并生效。`
+            : `${versionTag}已保存，可继续执行评测与上岗流程。`,
       });
       if (layout === 'inline') {
         onSaved?.();
@@ -231,6 +232,7 @@ export function EmployeeConfigurationWorkbench({ employee, open, onClose, initia
     ? '引用已发布模型与能力资产，并为技能/工具/流程设置执行授权；保存后立即生效。'
     : '维护岗位档案、职责边界、人工接管与记忆策略。保存后立即生效。';
 
+  const showVersionPanel = layout !== 'inline';
   const validationAside = (
     <aside className="space-y-3 lg:w-[220px] lg:shrink-0">
       <section className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
@@ -242,26 +244,28 @@ export function EmployeeConfigurationWorkbench({ employee, open, onClose, initia
           <div className="flex gap-1.5 text-[var(--text-secondary)]"><ShieldCheck className="mt-0.5 h-3 w-3 shrink-0 text-[var(--brand)]" />可保存当前配置</div>
         </div>
       </section>
-      <section className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
-        <h3 className="text-xs font-semibold">配置版本</h3>
-        <div className="mt-3 space-y-3">
-          {versions.slice(0, 3).map((version) => (
-            <div key={version.id} className="text-[11px]">
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-medium">{version.version}</span>
-                <Badge tone={version.status === 'current' ? 'success' : version.status === 'pending_approval' ? 'warn' : 'neutral'}>{version.status === 'current' ? '当前' : version.status === 'pending_approval' ? '待审批' : '已替代'}</Badge>
+      {showVersionPanel && (
+        <section className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
+          <h3 className="text-xs font-semibold">配置版本</h3>
+          <div className="mt-3 space-y-3">
+            {versions.slice(0, 3).map((version) => (
+              <div key={version.id} className="text-[11px]">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium">{version.version}</span>
+                  <Badge tone={version.status === 'current' ? 'success' : version.status === 'pending_approval' ? 'warn' : 'neutral'}>{version.status === 'current' ? '当前' : version.status === 'pending_approval' ? '待审批' : '已替代'}</Badge>
+                </div>
+                <p className="mt-1 leading-4 text-[var(--text-muted)]">{version.changeSummary}</p>
+                {version.status === 'pending_approval' && isAdmin && canMutate && version.updatedById !== user?.id && version.updatedBy !== user?.name && (
+                  <Button size="sm" className="mt-2 w-full" loading={approve.isPending && approve.variables?.versionId === version.id} onClick={() => approve.mutate({ versionId: version.id })}>批准并生效</Button>
+                )}
+                {version.status === 'pending_approval' && isAdmin && canMutate && (version.updatedById === user?.id || version.updatedBy === user?.name) && <p className="mt-2 text-[10px] text-[var(--text-muted)]">您是提交人，须由另一名管理员批准</p>}
               </div>
-              <p className="mt-1 leading-4 text-[var(--text-muted)]">{version.changeSummary}</p>
-              {version.status === 'pending_approval' && isAdmin && canMutate && version.updatedById !== user?.id && version.updatedBy !== user?.name && (
-                <Button size="sm" className="mt-2 w-full" loading={approve.isPending && approve.variables?.versionId === version.id} onClick={() => approve.mutate({ versionId: version.id })}>批准并生效</Button>
-              )}
-              {version.status === 'pending_approval' && isAdmin && canMutate && (version.updatedById === user?.id || version.updatedBy === user?.name) && <p className="mt-2 text-[10px] text-[var(--text-muted)]">您是提交人，须由另一名管理员批准</p>}
-            </div>
-          ))}
-          {!versions.length && <p className="text-[11px] text-[var(--text-muted)]">正在读取配置版本…</p>}
-        </div>
-      </section>
-      {pendingVersion && <p className="rounded-lg border border-[var(--warning)]/40 bg-[var(--warning-light)] px-3 py-2 text-[11px] leading-4 text-[var(--text-secondary)]">存在待审批配置 {pendingVersion.version}，批准前当前岗位不会改变。</p>}
+            ))}
+            {!versions.length && <p className="text-[11px] text-[var(--text-muted)]">正在读取配置版本…</p>}
+          </div>
+        </section>
+      )}
+      {showVersionPanel && pendingVersion && <p className="rounded-lg border border-[var(--warning)]/40 bg-[var(--warning-light)] px-3 py-2 text-[11px] leading-4 text-[var(--text-secondary)]">存在待审批配置 {pendingVersion.version}，批准前当前岗位不会改变。</p>}
     </aside>
   );
 

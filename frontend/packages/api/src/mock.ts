@@ -3554,12 +3554,18 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
     ].filter(Boolean) as string[];
     // 岗位授权契约与能力装配均直接生效（历史 pending 版本仍可走 approve）。
     const requiresApproval = false;
-    const revisions = mockDigitalPartnerConfigurationVersions.filter((item) => item.employeeId === employee.id).length + 1;
-    const version: DigitalPartnerConfigurationVersion = { id: mockId('partner_config'), employeeId: employee.id, version: `配置 v${revisions}`, status: 'current', changeSummary: body.scope === 'capability' ? '更新能力装配' : '更新岗位授权契约', changedFields: changedFields.length ? changedFields : ['职责与边界'], updatedBy: identity.name, updatedById: identity.id, updatedAt: new Date().toISOString() };
-    mockDigitalPartnerConfigurationVersions.filter((item) => item.employeeId === employee.id && item.status === 'current').forEach((item) => { item.status = 'superseded'; });
     applyDigitalPartnerConfiguration(employee, body);
-    workspaceAudit(currentWorkspaceId, '更新员工配置', `${employee.role} · ${employee.name} · ${version.version}`);
-    mockDigitalPartnerConfigurationVersions.unshift(version); return { ...version, requiresApproval };
+    workspaceAudit(currentWorkspaceId, '更新员工配置', `${employee.role} · ${employee.name}`);
+    // 仅在最后步骤（release）提交时创建"配置版本"；中间步骤（role / capability）的保存
+    // 不进版本流，避免每次小改都污染历史。
+    if (scope === 'release') {
+      const revisions = mockDigitalPartnerConfigurationVersions.filter((item) => item.employeeId === employee.id).length + 1;
+      const version: DigitalPartnerConfigurationVersion = { id: mockId('partner_config'), employeeId: employee.id, version: `配置 v${revisions}`, status: 'current', changeSummary: '上岗定版', changedFields: changedFields.length ? changedFields : ['职责与边界'], updatedBy: identity.name, updatedById: identity.id, updatedAt: new Date().toISOString() };
+      mockDigitalPartnerConfigurationVersions.filter((item) => item.employeeId === employee.id && item.status === 'current').forEach((item) => { item.status = 'superseded'; });
+      mockDigitalPartnerConfigurationVersions.unshift(version);
+      return { ...version, requiresApproval };
+    }
+    return { id: `${employee.id}-${Date.now()}`, version: null, requiresApproval };
   }
   const digitalPartnerRoute = path.match(/^\/api\/partners\/([^/]+)(?:\/(capabilities|boundary|memory-policy|evaluate|release|lifecycle|runtime|evidence)(?:\/(withdraw|reject))?)?$/);
   if (digitalPartnerRoute) {
@@ -3652,6 +3658,14 @@ export async function mockHandler(path: string, opts: { method?: string; body?: 
           requestedBy: identity.name,
           requestedById: identity.id,
         };
+      }
+      // 上岗定版：仅在最终通过 release 提交时创建一条"配置版本"，与中间保存解耦。
+      // 沙箱环境直接上岗（无审批），也在这里生成；其他环境需后续 admin 确认后再补一条。
+      if (employee.release.status === 'released') {
+        const revisions = mockDigitalPartnerConfigurationVersions.filter((item) => item.employeeId === employee.id).length + 1;
+        const version: DigitalPartnerConfigurationVersion = { id: mockId('partner_config'), employeeId: employee.id, version: `配置 v${revisions}`, status: 'current', changeSummary: '上岗定版', changedFields: ['岗位职责', '执行边界与升级审批', '能力装配'], updatedBy: identity.name, updatedById: identity.id, updatedAt: now };
+        mockDigitalPartnerConfigurationVersions.filter((item) => item.employeeId === employee.id && item.status === 'current').forEach((item) => { item.status = 'superseded'; });
+        mockDigitalPartnerConfigurationVersions.unshift(version);
       }
     }
     if (action === 'lifecycle' && method === 'POST') {
