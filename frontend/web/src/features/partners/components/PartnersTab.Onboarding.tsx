@@ -131,12 +131,15 @@ export function EmployeeConfigurationWorkbench({ employee, open, onClose, initia
   const modeTypeLabels: Record<'skill' | 'tool' | 'workflow', string> = {
     skill: '技能', tool: '工具', workflow: '流程',
   };
-  const builtinNames = new Set([
+  // 所有 platformTools + runtimeTools（无论 availability 是 default 还是 opt_in）都属于
+  // 系统内置工具：catalog 已给出默认 mode=syncCapabilityModes 兜底，无需用户在
+  // 校验面板里看到它们。
+  const builtinTools = new Set([
     ...(capabilityCatalog?.platformTools ?? []).map((item) => item.name),
-    ...(capabilityCatalog?.runtimeTools ?? []).filter((item) => item.autoBind !== false && (item.availability ?? 'default') !== 'opt_in').map((item) => item.name),
+    ...(capabilityCatalog?.runtimeTools ?? []).map((item) => item.name),
   ]);
   const missingModes = boundExecutable.filter((item) =>
-    !builtinNames.has(item.capabilityName) &&
+    !(item.capabilityType === 'tool' && builtinTools.has(item.capabilityName)) &&
     !boundaryPolicy.capabilityModes.some((mode) => mode.capabilityType === item.capabilityType && mode.capabilityName === item.capabilityName),
   );
   const modesComplete = missingModes.length === 0;
