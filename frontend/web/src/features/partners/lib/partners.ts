@@ -181,8 +181,15 @@ export function capabilityAssemblyCompleteness(employee: CapabilityAssemblyEmplo
   if (!assetsOk) missing.push('技能/工具/流程技能');
 
   const modes = employee.boundaryPolicy?.capabilityModes ?? [];
-  const modesOk = assetsOk && bound.every((item) => modes.some((mode) => mode.capabilityType === item.capabilityType && mode.capabilityName === item.capabilityName));
-  if (assetsOk && !modesOk) missing.push('执行授权模式');
+  const missingModeNames = bound.filter((item) => !modes.some((mode) => mode.capabilityType === item.capabilityType && mode.capabilityName === item.capabilityName));
+  const modesOk = assetsOk && missingModeNames.length === 0;
+  if (assetsOk && !modesOk) {
+    const typeLabel: Record<typeof bound[number]['capabilityType'], string> = {
+      skill: '技能', tool: '工具', workflow: '流程',
+    };
+    const preview = missingModeNames.slice(0, 3).map((item) => `${typeLabel[item.capabilityType]}「${item.capabilityName}」`).join('、');
+    missing.push(missingModeNames.length <= 3 ? `执行授权模式：${preview}` : `执行授权模式：${preview} 等 ${missingModeNames.length} 项`);
+  }
 
   const ready = modelOk && assetsOk && modesOk;
   const label: CapabilityAssemblyCompleteness['label'] = !modelOk

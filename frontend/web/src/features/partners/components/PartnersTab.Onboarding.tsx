@@ -127,7 +127,11 @@ export function EmployeeConfigurationWorkbench({ employee, open, onClose, initia
     ...lines(capabilities.tools).map((capabilityName) => ({ capabilityType: 'tool' as const, capabilityName })),
     ...lines(capabilities.workflows).map((capabilityName) => ({ capabilityType: 'workflow' as const, capabilityName })),
   ];
-  const modesComplete = boundExecutable.every((item) => boundaryPolicy.capabilityModes.some((mode) => mode.capabilityType === item.capabilityType && mode.capabilityName === item.capabilityName));
+  const modeTypeLabels: Record<'skill' | 'tool' | 'workflow', string> = {
+    skill: '技能', tool: '工具', workflow: '流程',
+  };
+  const missingModes = boundExecutable.filter((item) => !boundaryPolicy.capabilityModes.some((mode) => mode.capabilityType === item.capabilityType && mode.capabilityName === item.capabilityName));
+  const modesComplete = missingModes.length === 0;
   const roleBlocking = [
     !profile.name.trim() && '员工名称',
     !profile.role.trim() && '岗位名称',
@@ -141,7 +145,9 @@ export function EmployeeConfigurationWorkbench({ employee, open, onClose, initia
   const capabilityBlocking = [
     !capabilities.model.trim() && '模型路由',
     !capabilityCount && '至少一项技能/工具/工作流',
-    capabilityCount > 0 && !modesComplete && '执行授权模式',
+    ...(capabilityCount > 0 && !modesComplete
+      ? [`执行授权模式：${missingModes.map((item) => `${modeTypeLabels[item.capabilityType]}「${item.capabilityName}」`).join('、')}`]
+      : []),
   ].filter(Boolean) as string[];
   const blocking = mode === 'capability' ? capabilityBlocking : roleBlocking;
   const roleContractReady = roleSetupCompleteness(employee).ready;
