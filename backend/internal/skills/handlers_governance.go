@@ -122,14 +122,14 @@ func (s *Service) skillsGovernanceHealth(r *http.Request) (any, error) {
 	}
 	s.refreshSkillGovernanceFromKV()
 	ws := s.WorkspaceID(r)
-	s.Store.Lock()
-	defer s.Store.Unlock()
+	s.Store.RLock()
+	defer s.Store.RUnlock()
 	out := make([]map[string]any, 0)
 	for _, sk := range s.Store.Skills {
 		if str(sk["workspaceId"]) != ws {
 			continue
 		}
-		h := s.ensureSkillHealthLocked(sk)
+		h := s.ensureSkillHealthLockedReadOnly(sk)
 		item := cloneMap(h)
 		item["name"] = sk["name"]
 		item["kind"] = sk["kind"]

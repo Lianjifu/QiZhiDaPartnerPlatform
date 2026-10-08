@@ -12,6 +12,7 @@ import (
 	"github.com/qizhida-partner-platform/backend/internal/copilot"
 	"github.com/qizhida-partner-platform/backend/internal/modelprov"
 	"github.com/qizhida-partner-platform/backend/internal/runtimeenv"
+	"github.com/qizhida-partner-platform/backend/internal/secretbox"
 )
 
 // This file holds small free helpers + a tiny Server method that used to
@@ -191,15 +192,10 @@ func (s *Server) resolveProviderCredential(ctx context.Context, credRef string) 
 			return v
 		}
 	}
-	if vaultRequiredForCredentials() {
-		return ""
-	}
 	s.Store.RLock()
-	defer s.Store.RUnlock()
-	if s.Store.ModelSecrets != nil {
-		return s.Store.ModelSecrets[credRef]
-	}
-	return ""
+	stored := s.Store.ModelSecrets[credRef]
+	s.Store.RUnlock()
+	return openLocalCredential(stored)
 }
 
 // listResolvedTurns is the legacy wrapper around the LLM candidate
@@ -269,13 +265,6 @@ func clampAttemptToParent(ctx context.Context, budget time.Duration) time.Durati
 	return budget
 }
 
-// vaultRequiredForCredentials reports whether Vault is mandatory for
-// provider credentials in the current runtime. Used by server.go
-// (New()) and the legacy hydrateVaultFromSecrets helper. Mirrors the
-// previously-extracted models.vaultRequiredForCredentials.
-func vaultRequiredForCredentials() bool {
-	return runtimeenv.FromEnv().RequiresVault()
-}
 
 // resolvedTurn is a local alias for copilot.ResolvedTurn — the previous
 // (lowercase, server-private) type name was kept by runtime_loop.go when
@@ -296,3 +285,22 @@ func (s *Server) streamLLMForCopilot(ctx context.Context, r *http.Request, ws, m
 	return "", copilot.ResolvedTurn{}, nil
 }
 
+
+// openLocalCredential decrypts a durable local credential; pro refuses plaintext.
+func openLocalCredential(stored string) string {
+	if secretbox.IsSealed(stored) {
+		key, err := secretbox.KeyFromEnv()
+		if err != nil {
+			return ""
+		}
+		plain, err := secretbox.Open(key, stored)
+		if err != nil {
+			return ""
+		}
+		return plain
+	}
+	if runtimeenv.FromEnv().IsPro() {
+		return ""
+	}
+	return stored
+}

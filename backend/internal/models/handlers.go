@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"strings"
@@ -10,6 +11,8 @@ import (
 	"github.com/qizhida-partner-platform/backend/internal/auth"
 	"github.com/qizhida-partner-platform/backend/internal/modelprov"
 	"github.com/qizhida-partner-platform/backend/internal/policy"
+	"github.com/qizhida-partner-platform/backend/internal/runtimeenv"
+	"github.com/qizhida-partner-platform/backend/internal/secretbox"
 	"github.com/qizhida-partner-platform/backend/internal/vault"
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
@@ -209,41 +212,73 @@ func (s *Service) validateRoutingPolicyLocked(policy map[string]any) []string {
 	return issues
 }
 
-// putProviderCredential stores a raw credential via Vault (production) or
-// via the local model_secrets map (dev). Caller MUST NOT hold Store.Lock
+// putProviderCredential stores a raw credential in Vault when it is enabled,
+// otherwise in the durable model_secrets map. In pro that map holds only
+// AES-GCM ciphertext (QZDA_CREDENTIAL_KEY). Caller MUST NOT hold Store.Lock
 // when calling this; the local-secrets path takes it internally.
 func (s *Service) putProviderCredential(r *http.Request, providerID, raw string) (credRef, masked string, err error) {
 	if raw == "" {
 		return "", "", apperr.BadReq(apperr.ProviderInvalid, "凭据不能为空")
 	}
-	v := s.currentVault()
-	if vaultRequiredForCredentials() && (v == nil || !v.Enabled()) {
-		return "", "", apperr.BadReq(apperr.ProviderCredential, "生产环境必须配置 Vault")
-	}
 	credRef = "vault://model-providers/" + providerID + "/credential"
 	masked = modelprov.MaskCredential(raw)
-	if v != nil {
+	if v := s.currentVault(); v != nil && v.Enabled() {
 		if err := v.Put(r.Context(), credRef, raw); err != nil {
 			if s.IncModelVaultError != nil {
 				s.IncModelVaultError()
 			}
 			return "", "", apperr.BadReq(apperr.ProviderCredential, "写入凭据失败")
 		}
+		return credRef, masked, nil
 	}
-	// Local durable mirror when Vault is optional (dev / LaunchAgent).
+	stored, err := sealLocalCredential(raw)
+	if err != nil {
+		return "", "", apperr.BadReq(apperr.ProviderCredential, err.Error())
+	}
 	// Must not nest Store.Lock — callers like PATCH already hold it, then unlock first.
-	if !vaultRequiredForCredentials() {
-		s.Store.Lock()
-		if s.Store.ModelSecrets == nil {
-			s.Store.ModelSecrets = map[string]string{}
-		}
-		s.Store.ModelSecrets[credRef] = raw
-		s.Store.Unlock()
-		if err := s.Store.PersistSync("model_secrets"); err != nil {
-			return "", "", apperr.BadReq(apperr.ProviderCredential, "凭据持久化失败，重启后将丢失")
-		}
+	s.Store.Lock()
+	if s.Store.ModelSecrets == nil {
+		s.Store.ModelSecrets = map[string]string{}
+	}
+	s.Store.ModelSecrets[credRef] = stored
+	s.Store.Unlock()
+	if err := s.Store.PersistSync("model_secrets"); err != nil {
+		return "", "", apperr.BadReq(apperr.ProviderCredential, "凭据持久化失败，重启后将丢失")
 	}
 	return credRef, masked, nil
+}
+
+// sealLocalCredential encrypts a credential for local storage in pro; dev keeps
+// the plaintext mirror it has always used.
+func sealLocalCredential(raw string) (string, error) {
+	if !runtimeenv.FromEnv().IsPro() {
+		return raw, nil
+	}
+	key, err := secretbox.KeyFromEnv()
+	if err != nil {
+		return "", errors.New("生产环境必须配置凭据加密密钥 QZDA_CREDENTIAL_KEY")
+	}
+	return secretbox.Seal(key, raw)
+}
+
+// openLocalCredential decrypts a stored local credential. In pro a plaintext
+// entry is refused, so a value written without encryption is never used.
+func openLocalCredential(stored string) string {
+	if secretbox.IsSealed(stored) {
+		key, err := secretbox.KeyFromEnv()
+		if err != nil {
+			return ""
+		}
+		plain, err := secretbox.Open(key, stored)
+		if err != nil {
+			return ""
+		}
+		return plain
+	}
+	if runtimeenv.FromEnv().IsPro() {
+		return ""
+	}
+	return stored
 }
 
 // resolveProviderCredential returns the raw API key for the named credential
@@ -258,17 +293,10 @@ func (s *Service) resolveProviderCredential(ctx context.Context, credRef string)
 			return val
 		}
 	}
-	// dev 的 mock 身份不能挡住本地 model_secrets。
-	// 真实 staging/prod 才强制只走 Vault。
-	if vaultRequiredForCredentials() {
-		return ""
-	}
 	s.Store.RLock()
-	defer s.Store.RUnlock()
-	if s.Store.ModelSecrets != nil {
-		return s.Store.ModelSecrets[credRef]
-	}
-	return ""
+	stored := s.Store.ModelSecrets[credRef]
+	s.Store.RUnlock()
+	return openLocalCredential(stored)
 }
 
 // checkModelBudgetLocked returns an error when the workspace's published

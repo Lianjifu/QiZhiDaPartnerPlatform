@@ -31,13 +31,6 @@ func (s *Service) modelProbe() *modelprov.Client {
 	return s.ModelProbe
 }
 
-// vaultRequiredForCredentials reports whether Vault is mandatory for provider
-// credentials in the current runtime. Centralized so dev (LaunchAgent) and
-// production agree on the policy.
-func vaultRequiredForCredentials() bool {
-	return runtimeenv.FromEnv().RequiresVault()
-}
-
 // budgetEnforceEnabled reports whether the published-budget gate must be enforced
 // on /api/model-invoke. Controlled by QZDA_MODEL_BUDGET_ENFORCE; defaults to
 // "required-vault OR dual-approval env" when unset.

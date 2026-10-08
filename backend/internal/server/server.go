@@ -34,6 +34,7 @@ import (
 	"github.com/qizhida-partner-platform/backend/internal/policy"
 	"github.com/qizhida-partner-platform/backend/internal/qzdaworkflow"
 	"github.com/qizhida-partner-platform/backend/internal/runtimeenv"
+	"github.com/qizhida-partner-platform/backend/internal/secretbox"
 	"github.com/qizhida-partner-platform/backend/internal/settings"
 	"github.com/qizhida-partner-platform/backend/internal/skills"
 	"github.com/qizhida-partner-platform/backend/internal/skills/registry"
@@ -314,9 +315,7 @@ func New(st *store.Store) *Server {
 	var hbCtx context.Context
 	hbCtx, s.HeartbeatCancel = context.WithCancel(context.Background())
 	go s.Heartbeat.Run(hbCtx)
-	if !vaultRequiredForCredentials() {
-		s.hydrateVaultFromSecrets()
-	}
+	s.hydrateVaultFromSecrets()
 	st.MigrateProvenance()
 	// Drain store-owned hooks (persist / delete / audit) on shutdown so
 	// post-shutdown mutators skip the dangling I/O. Registered before the
@@ -664,7 +663,7 @@ func (s *Server) hydrateVaultFromSecrets() {
 	s.Store.RLock()
 	defer s.Store.RUnlock()
 	for ref, val := range s.Store.ModelSecrets {
-		if ref != "" && val != "" {
+		if ref != "" && val != "" && !secretbox.IsSealed(val) && !runtimeenv.FromEnv().IsPro() {
 			s.Vault.PutStub(ref, val)
 		}
 	}
