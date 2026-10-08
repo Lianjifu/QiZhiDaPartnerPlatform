@@ -94,16 +94,31 @@ export function LinkedAssetPicker({ label, hint, options, values, onChange, capa
                 <span className="block truncate text-xs font-medium">{value}</span>
                 {!compact && <span className="block truncate text-[10px] text-[var(--text-muted)]">{option?.meta ?? '历史已绑定资产（目录中已不存在）'}</span>}
               </div>
-              {withMode && modeOf && onModeChange && (
-                <select
-                  value={modeOf(value)}
-                  onChange={(event) => onModeChange(value, event.target.value as DigitalPartnerExecutionMode)}
-                  className="h-7 max-w-[148px] shrink-0 rounded-md border border-[var(--border)] bg-[var(--bg)] px-1.5 text-[11px] outline-none focus:border-[var(--brand)]"
-                  aria-label={`${value} 授权模式`}
-                >
-                  {executionModeOptions.map(([modeValue, modeLabel]) => <option key={modeValue} value={modeValue}>{modeLabel}</option>)}
-                </select>
-              )}
+              {withMode && modeOf && onModeChange && (() => {
+                const currentMode = modeOf(value);
+                const isMissing = !currentMode;
+                return (
+                  <select
+                    value={currentMode}
+                    onChange={(event) => onModeChange(value, event.target.value as DigitalPartnerExecutionMode)}
+                    className={cn(
+                      'h-7 max-w-[148px] shrink-0 rounded-md border bg-[var(--bg)] px-1.5 text-[11px] outline-none focus:border-[var(--brand)]',
+                      isMissing
+                        ? 'border-[var(--danger)] ring-1 ring-[var(--danger)]/30'
+                        : 'border-[var(--border)]',
+                    )}
+                    aria-label={`${value} 授权模式`}
+                    aria-invalid={isMissing || undefined}
+                  >
+                    <option value="" disabled={!isMissing}>
+                      {isMissing ? '请选择授权模式 *' : '—'}
+                    </option>
+                    {executionModeOptions.map(([modeValue, modeLabel]) => (
+                      <option key={modeValue} value={modeValue}>{modeLabel}</option>
+                    ))}
+                  </select>
+                );
+              })()}
               {!readonly && option?.removable !== false && (
                 <button type="button" onClick={() => remove(value)} className="shrink-0 rounded-md px-1 text-xs text-[var(--text-muted)] hover:bg-[var(--danger-light)] hover:text-[var(--danger)]" aria-label={`移除 ${value}`}>×</button>
               )}
