@@ -8,6 +8,7 @@ import { NotFound } from './pages/NotFound';
 import { useAuthStore } from './stores/authStore';
 
 const LoginPage = lazy(() => import('./auth/LoginPage'));
+const OidcCallbackPage = lazy(() => import('./auth/OidcCallbackPage'));
 const Home = lazy(() => import('./features/dashboard/HomePage'));
 const Copilot = lazy(() => import('./features/copilot/components/CopilotPage'));
 const CopilotShare = lazy(() => import('./features/copilot/components/CopilotShare'));
@@ -60,6 +61,7 @@ export default function App() {
       <Suspense fallback={<PageFallback />}>
         <Routes>
           <Route path="/login" element={<ErrorBoundary><LoginPage /></ErrorBoundary>} />
+          <Route path="/login/oidc/callback" element={<ErrorBoundary><OidcCallbackPage /></ErrorBoundary>} />
           <Route path="/copilot/share/:token" element={<ErrorBoundary><CopilotShare /></ErrorBoundary>} />
           <Route
             element={

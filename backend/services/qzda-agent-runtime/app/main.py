@@ -16,11 +16,10 @@ app = FastAPI(title="qzda-agent-runtime", version="1.0.0")
 def _allow_stub() -> bool:
     """判断是否允许在缺少 LLM 配置时降级到本地 stub 实现。
 
-    读取 QZDA_ALLOW_RUNTIME_STUB(自动去空白、小写化),仅接受 1/true/yes 三种真值;
-    其余情况(含未设置)均返回 False,从而触发 503。
+    跟随 QZDA_MODE:仅 dev(未设置视为 dev)允许;pro 或无法识别的值一律拒绝,
+    从而触发 503。与控制面 runtimeenv 的 fail-closed 规则一致。
     """
-    v = (env("QZDA_ALLOW_RUNTIME_STUB") or "").strip().lower()
-    return v in ("1", "true", "yes")
+    return (env("QZDA_MODE") or "dev").lower() == "dev"
 
 
 def _sse(event: str, payload: dict[str, Any]) -> str:
@@ -88,7 +87,7 @@ async def invoke(request: Request) -> Any:
             status_code=503,
             content={
                 "error": "E_RUNTIME_UNAVAILABLE",
-                "message": "Set QZDA_LLM_BASE_URL (and optional QZDA_LLM_API_KEY / QZDA_LLM_MODEL), or QZDA_ALLOW_RUNTIME_STUB=1 for legacy stub.",
+                "message": "Set QZDA_LLM_BASE_URL (and optional QZDA_LLM_API_KEY / QZDA_LLM_MODEL), or run with QZDA_MODE=dev for legacy stub.",
                 "provider": "none",
             },
         )
@@ -149,7 +148,7 @@ async def run(request: Request) -> Any:
                 status_code=503,
                 content={
                     "error": "E_RUNTIME_UNAVAILABLE",
-                    "message": "agent-runtime has no LLM; set QZDA_LLM_BASE_URL or QZDA_ALLOW_RUNTIME_STUB=1",
+                    "message": "agent-runtime has no LLM; set QZDA_LLM_BASE_URL or run with QZDA_MODE=dev",
                     "correlationId": corr,
                 },
             )

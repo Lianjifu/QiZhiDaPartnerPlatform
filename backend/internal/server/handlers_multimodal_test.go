@@ -15,8 +15,7 @@ import (
 )
 
 func TestMultimodalOCRStub(t *testing.T) {
-	t.Setenv("QZDA_ENV", "test")
-	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_MODE", "dev")
 	t.Setenv("QZDA_MULTIMODAL_CACHE_DIR", t.TempDir())
 	t.Setenv("QZDA_MULTIMODAL_OCR", "stub")
 	h := server.New(store.New()).Handler()
@@ -66,8 +65,7 @@ func TestMultimodalOCRStub(t *testing.T) {
 }
 
 func TestMultimodalASRStub(t *testing.T) {
-	t.Setenv("QZDA_ENV", "test")
-	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_MODE", "dev")
 	t.Setenv("QZDA_MULTIMODAL_CACHE_DIR", t.TempDir())
 	t.Setenv("QZDA_MULTIMODAL_OCR", "stub")
 	t.Setenv("QZDA_MULTIMODAL_ASR", "stub")
@@ -93,8 +91,7 @@ func TestMultimodalASRStub(t *testing.T) {
 }
 
 func TestMultimodalKindNotConfigured(t *testing.T) {
-	t.Setenv("QZDA_ENV", "test")
-	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_MODE", "dev")
 	t.Setenv("QZDA_MULTIMODAL_CACHE_DIR", t.TempDir())
 	// OCR stub disabled — request ASR (also disabled).
 	t.Setenv("QZDA_MULTIMODAL_OCR", "")
@@ -120,8 +117,7 @@ func TestMultimodalKindNotConfigured(t *testing.T) {
 }
 
 func TestMultimodalNoAuth(t *testing.T) {
-	t.Setenv("QZDA_ENV", "test")
-	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "false")
+	t.Setenv("QZDA_MODE", "dev")
 	h := server.New(store.New()).Handler()
 
 	req := httptest.NewRequest("POST", "/api/multimodal/extract", nil)
@@ -133,8 +129,7 @@ func TestMultimodalNoAuth(t *testing.T) {
 }
 
 func TestMultimodalCacheHit(t *testing.T) {
-	t.Setenv("QZDA_ENV", "test")
-	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_MODE", "dev")
 	cacheDir := t.TempDir()
 	t.Setenv("QZDA_MULTIMODAL_CACHE_DIR", cacheDir)
 	t.Setenv("QZDA_MULTIMODAL_OCR", "stub")

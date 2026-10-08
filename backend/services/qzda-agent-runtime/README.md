@@ -100,7 +100,7 @@ backend/services/qzda-agent-runtime/
 完整表格见 [SERVICE.md](SERVICE.md)。最关键的环境变量:
 
 - `QZDA_LLM_BASE_URL` —— 生产必填,指向 OpenAI 兼容的 chat completions 端点
-- `QZDA_ALLOW_RUNTIME_STUB=1` —— **仅限开发联调**,无 LLM 时返回 stub 文本
+- `QZDA_MODE=dev`(默认) —— **仅限开发联调**,无 LLM 时返回 stub 文本
 - `QZDA_RAG_URL` —— 默认 `http://127.0.0.1:8092`,sidecar 调 [qzda-rag](../qzda-rag/) 用
 - `QZDA_LLM_MODEL` / `QZDA_LLM_API_KEY` / `QZDA_LLM_TIMEOUT` —— LLM 调用参数
 - `QZDA_BIND_HOST` / `QZDA_BIND_PORT` —— 监听地址,默认 `127.0.0.1:8091`
@@ -145,7 +145,7 @@ docker run -p 8091:8091 qzda-agent-runtime:local
 
 ## 重要约束
 
-- **生产必须配置 `QZDA_LLM_BASE_URL`**。`QZDA_ALLOW_RUNTIME_STUB=1` 开启后即便不配 LLM 也能起服务,但返回的 `[runtime stub] 已处理:...` **不是** 真实推理结果,只用于联调。
+- **生产必须配置 `QZDA_LLM_BASE_URL`**。`QZDA_MODE=dev` 时即便不配 LLM 也能起服务,但返回的 `[runtime stub] 已处理:...` **不是** 真实推理结果,只用于联调;`QZDA_MODE=pro` 下无 LLM 直接 503。
 - **sidecar 不执行工具**:除 `knowledge.retrieve` / `memory.recall` 外,其它工具一律 `status=skipped`,reason 标明真正执行仍在 Go Harness。契约测试通过 ≠ 远程分发完成。
 - **`remote` 模式 ≠ 默认**:Go 控制面默认 `QZDA_RUNTIME_MODE=local`,进程内跑 Harness。要让请求真的走本服务,需要在 Go 侧显式切 `remote`/`sidecar`/`python`,并设 `QZDA_AGENT_RUNTIME_URL`。
 - **超时与降级**:`retrieve_published` 默认 3s 超时,失败时返回 `backend=unavailable` 的空结果,不让 LLM 端崩溃;`invoke_openai_compatible` 同样在网络/解析异常时返回 `None`,由上层决定是否走 stub。

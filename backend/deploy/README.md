@@ -77,29 +77,27 @@ compose.yml 已配置。
 
 | 变量 | 默认 | 说明 |
 |------|------|------|
-| `QZDA_ENV` | `development` | `development` / `demo` / `staging` / `production` |
+| `QZDA_MODE` | `dev` | `dev`(PG 持久化,可选内存)/ `pro`(双人审批 + Vault + OIDC + 强制签名);见 [环境与数据模式](../../docs/环境与数据模式.md) |
+| `QZDA_DATA_BACKEND` | `pg` | 仅 dev 生效:`memory` = 内存 + ACME seed,不写 PG |
 | `QZDA_DATABASE_URL` | `postgres://de:de@127.0.0.1:5432/digital_employee?sslmode=disable` | docker compose 内自动用 `postgres:5432` |
 | `QZDA_REDIS_URL` | `redis://127.0.0.1:6379/0` | 同上,容器内用 `redis:6379` |
-| `QZDA_BAN_MOCK_TOKEN` | `0` | `1` 禁用 `mock-*-token`(生产) |
-| `QZDA_FORCE_OIDC` | 留空 | `1` 强制仅 OIDC 登录(无密码) |
 | `QZDA_SANDBOX_RUNTIME` | `runc` | `runsc` 启用 gVisor |
 | `QZDA_SANDBOX_RUN_SECRET` | `qzda-skill-run-dev` | 控制面与沙箱共享 HMAC;生产 `openssl rand -hex 32 > deploy/secrets/skill-run-secret` 后挂进容器 |
-| `QZDA_LLM_BASE_URL` / `QZDA_LLM_API_KEY` / `QZDA_LLM_MODEL` | 留空 / 留空 / `gpt-4o-mini` | OpenAI-compatible 远程供应商;留空走 `QZDA_EMBEDDED_CHAT=1` 内置 fallback |
+| `QZDA_LLM_BASE_URL` / `QZDA_LLM_API_KEY` / `QZDA_LLM_MODEL` | 留空 / 留空 / `gpt-4o-mini` | OpenAI-compatible 远程供应商;留空时 dev 走内置对话,pro 必须配置 |
 | `QZDA_PGVECTOR_URL` | `postgres://de:de@127.0.0.1:5432/digital_employee?sslmode=disable` | 控制面 PG 已内嵌 pgvector 扩展(RAG 向量);留空走进程内 `vector-memory`(demo,不持久)。同 PG 实例,免额外容器。 |
 | `QZDA_PUBLIC_BASE_URL` | `http://127.0.0.1:8089` | 网关对外地址,飞书 webhook URL hint 等 |
 
-`QZDA_JWT_SECRET` 生产必填 32 字节随机串;留空走 dev fallback。
+`QZDA_JWT_SECRET` 在 pro 模式下必填 32 字节随机串;留空走 dev fallback。
 
 ## 4. 数据模式
 
 ```
-QZDA_ENV=development   (本机默认)  → PG 持久化,空库不灌演示 seed
-QZDA_ENV=demo          (纯内存)    → ACME seed,不写 PG;一键 reset
-QZDA_ENV=staging       (硬化预发)  → 双人审批 + Vault required
-QZDA_ENV=production    (生产)      → 同 staging,加 BAN_MOCK=1 / FORCE_OIDC=1
+QZDA_MODE=dev                          (本机默认)  → PG 持久化,空库不灌演示 seed
+QZDA_MODE=dev QZDA_DATA_BACKEND=memory (纯内存)    → ACME seed,不写 PG;一键 reset
+QZDA_MODE=pro                          (预发/生产)  → 双人审批 + Vault required + OIDC 登录
 ```
 
-切换模式只需重启 `qzda-app` 容器:`QZDA_ENV=staging docker compose -f deploy/compose.yml up -d qzda-app`。
+切换模式只需重启 `qzda-app` 容器:`QZDA_MODE=pro docker compose -f deploy/compose.yml up -d qzda-app`。
 
 ### Reset 开发库
 

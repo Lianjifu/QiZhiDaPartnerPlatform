@@ -1,6 +1,6 @@
 #!/bin/bash
 # Keep local FE+BE up for 企智搭 · 数字伙伴平台 (QiZhiDa · PartnerPlatform) (real API + PG/Redis; no frontend mock).
-# Defaults: QZDA_ENV=development, QZDA_BAN_MOCK_TOKEN=1. See docs/环境与数据模式.md.
+# Defaults: QZDA_MODE=dev. See docs/环境与数据模式.md.
 set -u
 export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/Users/LIANJIFU/ops/QiZhiDaPartnerPlatform/backend/.tools/go/bin:$PATH"
 ROOT="/Users/LIANJIFU/ops/QiZhiDaPartnerPlatform"
@@ -18,14 +18,8 @@ if [ -f "$BACKEND/deploy/.env" ]; then
   . "$BACKEND/deploy/.env"
   set +a
 fi
-export QZDA_ENV="${QZDA_ENV:-development}"
-export QZDA_BAN_MOCK_TOKEN="${QZDA_BAN_MOCK_TOKEN:-1}"
-export QZDA_BAN_DEMO_TOKEN="${QZDA_BAN_DEMO_TOKEN:-$QZDA_BAN_MOCK_TOKEN}"
-export QZDA_ALLOW_PASSWORD_LOGIN="${QZDA_ALLOW_PASSWORD_LOGIN:-1}"
-export QZDA_ALLOW_MOCK_IDENTITY="${QZDA_ALLOW_MOCK_IDENTITY:-0}"
-export QZDA_ALLOW_RUNTIME_STUB="${QZDA_ALLOW_RUNTIME_STUB:-0}"
+export QZDA_MODE="${QZDA_MODE:-dev}"
 export QZDA_MODEL_DISCOVER_FALLBACK="${QZDA_MODEL_DISCOVER_FALLBACK:-0}"
-export QZDA_EMBEDDED_CHAT="${QZDA_EMBEDDED_CHAT:-0}"
 export QZDA_DATABASE_URL="${QZDA_DATABASE_URL:-postgres://de:de@127.0.0.1:5432/digital_employee?sslmode=disable}"
 export QZDA_PGVECTOR_URL="${QZDA_PGVECTOR_URL:-$QZDA_DATABASE_URL}"
 # Postgres must be Docker (qzda-postgres). Homebrew postgresql@N on :5432 steals host connections.
@@ -163,7 +157,7 @@ while true; do
   else
     workflow_env=(QZDA_WORKFLOW_WORKER=0)
   fi
-  start_one 8100 qzda-app env "${workflow_env[@]}" QZDA_RAG_URL=http://127.0.0.1:8092 QZDA_RUNTIME_MODE=local QZDA_SANDBOX_RUNTIME_URL="$QZDA_SANDBOX_RUNTIME_URL" QZDA_EMBEDDED_CHAT=0 QZDA_MODEL_CANDIDATE_TIMEOUT=45 QZDA_COPILOT_STREAM_TIMEOUT=300 QZDA_BUILTIN_SKILL_BIN="$SKILL_BIN" PATH="$SKILL_BIN:$PATH" "$BACKEND/bin/qzda-app"
+  start_one 8100 qzda-app env "${workflow_env[@]}" QZDA_RAG_URL=http://127.0.0.1:8092 QZDA_RUNTIME_MODE=local QZDA_SANDBOX_RUNTIME_URL="$QZDA_SANDBOX_RUNTIME_URL" QZDA_MODEL_CANDIDATE_TIMEOUT=45 QZDA_COPILOT_STREAM_TIMEOUT=300 QZDA_BUILTIN_SKILL_BIN="$SKILL_BIN" PATH="$SKILL_BIN:$PATH" "$BACKEND/bin/qzda-app"
   start_one 8093 qzda-skill env QZDA_SANDBOX_REQUIRE_ISOLATION=0 QZDA_SANDBOX_ARTIFACT_DIR=/tmp/qzda-stack/artifacts QZDA_BIND_HOST=127.0.0.1 QZDA_BIND_PORT=8093 python3 "$BACKEND/services/qzda-sandbox/main.py"
   start_one 8092 qzda-rag env QZDA_BIND_HOST=127.0.0.1 QZDA_BIND_PORT=8092 QZDA_PGVECTOR_URL="$QZDA_PGVECTOR_URL" python3 "$BACKEND/services/qzda-rag/main.py"
   start_one 8089 qzda-gateway python3 "$GATEWAY_MONOLITH"

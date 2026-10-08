@@ -170,8 +170,7 @@ func TestReplayDoesNotInvokeRuntime(t *testing.T) {
 }
 
 func TestSkillSimDisabledInProduction(t *testing.T) {
-	t.Setenv("QZDA_ENV", "production")
-	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_MODE", "pro")
 	t.Setenv("QZDA_SANDBOX_TEST_SIM", "1")
 	t.Setenv("QZDA_SANDBOX_RUNTIME_URL", "http://127.0.0.1:1")
 	h := server.New(store.New()).Handler()
@@ -222,8 +221,7 @@ func TestRuntimeRemoteFailoverLocalDev(t *testing.T) {
 }
 
 func TestRuntimeRemoteNoFailoverInProduction(t *testing.T) {
-	t.Setenv("QZDA_ENV", "production")
-	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_MODE", "pro")
 	t.Setenv("QZDA_RUNTIME_MODE", "remote")
 	t.Setenv("QZDA_RUNTIME_FAILOVER_LOCAL", "true")
 	st := store.New()
@@ -251,8 +249,7 @@ func TestRuntimeRemoteNoFailoverInProduction(t *testing.T) {
 }
 
 func TestRagDegradesWhenSidecarDownInProduction(t *testing.T) {
-	t.Setenv("QZDA_ENV", "production")
-	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_MODE", "pro")
 	st := store.New()
 	st.Lock()
 	st.KnowledgeDocs = append(st.KnowledgeDocs, map[string]any{

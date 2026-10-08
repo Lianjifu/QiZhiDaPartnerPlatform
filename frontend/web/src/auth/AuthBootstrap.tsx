@@ -1,5 +1,5 @@
 import { useLayoutEffect, type ReactNode } from 'react';
-import { setApiClient, ApiClient, mockHandler } from '@qzda/web-api';
+import { setApiClient, ApiClient, getDemoHandler } from '@qzda/web-api';
 import { useAuthStore } from '@/stores/authStore';
 import { apiBaseURL, isDemoApiMode } from '@/lib/api-mode';
 import { resolveWorkspaceHeader } from '@/lib/workspace-header';
@@ -20,7 +20,7 @@ export function AuthBootstrap({ children }: AuthBootstrapProps) {
       new ApiClient(
         apiBaseURL(),
         () => localStorage.getItem('token'),
-        isDemoApiMode() ? mockHandler : undefined,
+        getDemoHandler(),
         () => {
           const user = useAuthStore.getState().user;
           return {

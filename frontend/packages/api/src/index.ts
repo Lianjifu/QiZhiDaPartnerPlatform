@@ -1,6 +1,6 @@
 /**
  * API 客户端层 — 默认请求真实后端（粗粒度网关 / Vite 代理）。
- * Mock 适配器仅在应用入口显式注入时启用（VITE_USE_MOCK=true）。
+ * 演示模式（VITE_API_MODE=demo）由应用入口调用 loadDemoHandler 注入浏览器内 mock。
  */
 import type { ApiResponse } from '@qzda/web-types';
 
@@ -231,6 +231,15 @@ export function getApiClient(): ApiClient {
   return _client;
 }
 
-export * from './mock';
-import * as mockModule from './mock';
-export const mock = mockModule;
+type DemoHandler = (path: string, opts: RequestOptions) => Promise<unknown>;
+
+let demoHandler: DemoHandler | undefined;
+
+/** 演示模式下在渲染前调用，使 mock 层只在 demo 构建路径中被引用。 */
+export async function loadDemoHandler(): Promise<void> {
+  demoHandler = (await import('./mock')).mockHandler;
+}
+
+export function getDemoHandler(): DemoHandler | undefined {
+  return demoHandler;
+}

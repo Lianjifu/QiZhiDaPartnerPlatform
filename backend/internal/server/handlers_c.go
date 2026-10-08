@@ -11,6 +11,7 @@ import (
 
 	"github.com/qizhida-partner-platform/backend/internal/auth"
 	"github.com/qizhida-partner-platform/backend/internal/copilot"
+	"github.com/qizhida-partner-platform/backend/internal/runtimeenv"
 	"github.com/qizhida-partner-platform/backend/pkg/contract"
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
@@ -1110,13 +1111,7 @@ func (s *Server) removeMemoryForConversationLocked(ws, convID string) []string {
 }
 
 func allowRuntimeStub() bool {
-	if productionLikeEnv() {
-		return false
-	}
-	if !auth.AllowMockIdentity() {
-		return false
-	}
-	return envFlagTrue("QZDA_ALLOW_RUNTIME_STUB")
+	return runtimeenv.FromEnv().IsDev()
 }
 
 // resolveCopilotModelID picks the model/route for one turn.

@@ -16,8 +16,7 @@ import (
 
 func setupSelfImprovingHarness(t *testing.T) http.Handler {
 	t.Helper()
-	t.Setenv("QZDA_ENV", "test")
-	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_MODE", "dev")
 	t.Setenv("QZDA_KNOWLEDGE_BLOB_DIR", t.TempDir())
 	return server.New(store.New()).Handler()
 }
@@ -172,8 +171,7 @@ func TestSelfImprovingWriteRejectedNotPersisted(t *testing.T) {
 }
 
 func TestSelfImprovingNoAuth(t *testing.T) {
-	t.Setenv("QZDA_ENV", "test")
-	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "false")
+	t.Setenv("QZDA_MODE", "dev")
 	h := server.New(store.New()).Handler()
 	var buf bytes.Buffer
 	_ = json.NewEncoder(&buf).Encode(map[string]any{})

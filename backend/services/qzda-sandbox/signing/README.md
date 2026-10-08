@@ -62,17 +62,14 @@ Canonical 编码规则：JSON object keys 按字典序排序、no whitespace。
 }
 ```
 
-启动时加载到 `Server.SkillTrustStore`。dev/demo 模式下若
-`QZDA_BAN_DEV_KEYPAIR` 未设置，会自动生成一对 Ed25519 密钥，
-公钥自动加入 trust store。生产模式（staging/production）必须
-预填 trust file，否则无法启动。
+启动时加载到 `Server.SkillTrustStore`。dev 模式（`QZDA_MODE=dev`）下会自动生成一对 Ed25519 密钥，
+公钥自动加入 trust store。pro 模式必须预填 trust file，否则无法启动。
 
 ## 环境变量
 
 | Env | 默认 | 行为 |
 |---|---|---|
-| `QZDA_REQUIRE_SKILL_SIGNATURE` | `enabled` | 是否强制签名 verify |
-| `QZDA_BAN_DEV_KEYPAIR` | `0` | 强制 prod 启动时禁止生成 dev keypair |
+| `QZDA_MODE` | `dev` | `pro` 强制 workspace publisher 签名；`dev` 接受任意 trust store 来源，并自动生成 dev keypair |
 | `QZDA_TRUSTED_PUBLISHERS_PATH` | `data/skill-keys/trusted-publishers.json` | trust store 路径 |
 | `QZDA_DEV_KEYPAIR_PATH` | `data/skill-keys/dev-keypair.json` | dev keypair 路径 |
 | `QZDA_SANDBOX_VETTER` | `enabled` | vetter 闸门（`enabled` / `warn_only` / `disabled`） |
@@ -209,10 +206,8 @@ skip 一次（sidecar 只用于 verify，不复制到 workspace）。
 
 | Env | 值 | 含义 |
 |---|---|---|
-| `QZDA_REQUIRE_SKILL_SIGNATURE` | `off` / `disabled` / 空 | dev 默认；不验签 |
-| 同上 | `enabled` / `any` | 任意 trust store 来源均接受 |
-| 同上 | `workspace` / `strict` | 必须 workspace publisher；global / dev-auto 拒绝 |
-| 同上 | `builtin_only` | 当前等同 `any`（未来会分离） |
+| `QZDA_MODE` | `dev`（默认） | 接受任意 trust store 来源（`PolicyAny`） |
+| 同上 | `pro` | 必须 workspace publisher；global / dev-auto 拒绝（`PolicyWorkspace`） |
 
 ## CLI：`cmd/sign-skill-pack` vs `cmd/sign-skill`
 
@@ -257,11 +252,13 @@ skip 一次（sidecar 只用于 verify，不复制到 workspace）。
 
 ## 回退路径
 
+签名策略由 `QZDA_MODE` 决定，没有单独关闭验签的开关。需要排查时切换模式即可：
+
 ```bash
-# 切回 W1-D2 行为（任意 trust store 来源 + 不强制 workspace）
-QZDA_REQUIRE_SKILL_SIGNATURE=any go run ./cmd/app
-# 或完全关闭 verify（仅 dev）
-QZDA_REQUIRE_SKILL_SIGNATURE=off go run ./cmd/app
+# dev：接受任意已信任 key
+QZDA_MODE=dev go run ./cmd/app
+# pro：强制 workspace key
+QZDA_MODE=pro go run ./cmd/app
 ```
 
 ## 已知边界 / 不做

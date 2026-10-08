@@ -12,8 +12,7 @@ import (
 // TestHeartbeatProbeReturnsLag verifies the /api/heartbeat endpoint
 // returns 200 with a non-negative lag.
 func TestHeartbeatProbeReturnsLag(t *testing.T) {
-	t.Setenv("QZDA_ENV", "test")
-	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_MODE", "dev")
 	h := server.New(store.New()).Handler()
 
 	req := httptest.NewRequest("GET", "/api/heartbeat", nil)
@@ -40,8 +39,7 @@ func TestHeartbeatProbeReturnsLag(t *testing.T) {
 
 // TestHeartbeatProbeNoAuth verifies the endpoint rejects unauth requests.
 func TestHeartbeatProbeNoAuth(t *testing.T) {
-	t.Setenv("QZDA_ENV", "test")
-	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "false")
+	t.Setenv("QZDA_MODE", "dev")
 	h := server.New(store.New()).Handler()
 
 	req := httptest.NewRequest("GET", "/api/heartbeat", nil)
@@ -55,8 +53,7 @@ func TestHeartbeatProbeNoAuth(t *testing.T) {
 // TestOnlineListTouchesAndReturns verifies a Touch (via authed request)
 // causes the identity to appear in /api/online.
 func TestOnlineListTouchesAndReturns(t *testing.T) {
-	t.Setenv("QZDA_ENV", "test")
-	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_MODE", "dev")
 	h := server.New(store.New()).Handler()
 
 	// Any authed request touches; the seed admin identity is "u-admin".
@@ -88,8 +85,7 @@ func TestOnlineListTouchesAndReturns(t *testing.T) {
 
 // TestOnlineNoAuth verifies /api/online rejects unauth requests.
 func TestOnlineNoAuth(t *testing.T) {
-	t.Setenv("QZDA_ENV", "test")
-	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "false")
+	t.Setenv("QZDA_MODE", "dev")
 	h := server.New(store.New()).Handler()
 
 	req := httptest.NewRequest("GET", "/api/online", nil)
@@ -102,8 +98,7 @@ func TestOnlineNoAuth(t *testing.T) {
 
 // TestOnlineStreamRequiresAuth covers the auth gate on the SSE endpoint.
 func TestOnlineStreamRequiresAuth(t *testing.T) {
-	t.Setenv("QZDA_ENV", "test")
-	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "false")
+	t.Setenv("QZDA_MODE", "dev")
 	h := server.New(store.New()).Handler()
 
 	req := httptest.NewRequest("GET", "/api/online/stream", nil)

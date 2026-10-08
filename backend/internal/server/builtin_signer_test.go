@@ -55,7 +55,6 @@ func seedTrustStoreFromManifest(t *testing.T, manifestPath string) {
 	t.Setenv("QZDA_TRUSTED_PUBLISHERS_PATH", trustPath)
 	// Disable dev keypair auto-provision so the trust store only contains
 	// what we explicitly seeded.
-	t.Setenv("QZDA_BAN_DEV_KEYPAIR", "1")
 }
 
 // builtinRoot locates builtin/skills next to the test binary. Mirrors the
@@ -89,7 +88,6 @@ func builtinRoot(t *testing.T) string {
 func TestBuiltinAttachEnforcesSigner(t *testing.T) {
 	root := builtinRoot(t)
 	t.Setenv("QZDA_BUILTIN_SKILLS_DIR", root)
-	t.Setenv("QZDA_REQUIRE_SKILL_SIGNATURE", "enabled")
 	seedTrustStoreFromManifest(t, filepath.Join(root, "manifest.json"))
 
 	st := store.New()
@@ -116,7 +114,6 @@ func TestBuiltinAttachEnforcesSigner(t *testing.T) {
 func TestBuiltinAttachRejectsUnknownKey(t *testing.T) {
 	root := builtinRoot(t)
 	t.Setenv("QZDA_BUILTIN_SKILLS_DIR", root)
-	t.Setenv("QZDA_REQUIRE_SKILL_SIGNATURE", "enabled")
 	// DO NOT seed the trust store. The signer bootstrap will fall back to
 	// the dev keypair (keyID 8d0880... or whatever this run produces),
 	// which is NOT in the manifest's `signers` block. Every builtin should
@@ -169,16 +166,14 @@ func TestBuiltinAttachRejectsUnknownKey(t *testing.T) {
 	}
 }
 
-// TestBuiltinAttachSkipsSignerWhenDisabled checks the env-controlled
-// escape hatch (QZDA_REQUIRE_SKILL_SIGNATURE=disabled). Even with a busted
-// manifest, the server still installs the packages.
-func TestBuiltinAttachSkipsSignerWhenDisabled(t *testing.T) {
+// TestBuiltinAttachInstallsBuiltinsInDev checks that builtin packages still
+// install in dev, where the signature policy accepts any trusted key.
+func TestBuiltinAttachInstallsBuiltinsInDev(t *testing.T) {
 	root := builtinRoot(t)
 	t.Setenv("QZDA_BUILTIN_SKILLS_DIR", root)
-	t.Setenv("QZDA_REQUIRE_SKILL_SIGNATURE", "disabled")
 	isolatedDevKeypair(t)
 
-	// Garbage the signature field; disabled mode should ignore it.
+	// Restore the manifest after the test in case anything rewrites it.
 	origPath := filepath.Join(root, "manifest.json")
 	origBytes, _ := os.ReadFile(origPath)
 	t.Cleanup(func() {
@@ -198,7 +193,7 @@ func TestBuiltinAttachSkipsSignerWhenDisabled(t *testing.T) {
 		}
 	}
 	if installed == 0 {
-		t.Fatal("disabled mode should still install builtins")
+		t.Fatal("dev mode should still install builtins")
 	}
 }
 

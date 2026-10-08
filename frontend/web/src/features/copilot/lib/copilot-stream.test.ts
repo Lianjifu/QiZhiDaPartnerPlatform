@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { parseSSEChunk, mockIdentityHeaders, isMockChatMode } from './copilot-stream';
+import { parseSSEChunk, mockIdentityHeaders } from './copilot-stream';
+import { isDemoApiMode } from '@/lib/api-mode';
 
 describe('parseSSEChunk', () => {
   it('parses stage and delta events', () => {
@@ -75,7 +76,7 @@ describe('parseSSEChunk', () => {
     expect(events).toEqual(['message_start', 'message_delta', 'done']);
   });
 
-  it('gates mock identity headers on VITE_USE_MOCK', () => {
+  it('gates mock identity headers on VITE_API_MODE=demo', () => {
     const headers = mockIdentityHeaders({
       role: 'admin',
       tenantId: 'tenant-acme',
@@ -83,7 +84,7 @@ describe('parseSSEChunk', () => {
       id: 'u1',
       permissions: ['workspace.read'],
     });
-    if (isMockChatMode()) {
+    if (isDemoApiMode()) {
       expect(headers['x-mock-role']).toBe('admin');
       expect(headers['x-mock-user-id']).toBe('u1');
     } else {

@@ -8,8 +8,7 @@ import (
 )
 
 func TestResolveProviderCredentialSurvivesRestartWithBanMockToken(t *testing.T) {
-	t.Setenv("QZDA_BAN_MOCK_TOKEN", "1")
-	t.Setenv("QZDA_ENV", "development")
+	t.Setenv("QZDA_MODE", "dev")
 	t.Setenv("QZDA_VAULT_ADDR", "")
 	t.Setenv("QZDA_VAULT_TOKEN", "")
 
@@ -36,8 +35,7 @@ func TestResolveProviderCredentialSurvivesRestartWithBanMockToken(t *testing.T) 
 }
 
 func TestResolveProviderCredentialSkipsLocalSecretsInProduction(t *testing.T) {
-	t.Setenv("QZDA_ENV", "production")
-	t.Setenv("QZDA_BAN_MOCK_TOKEN", "1")
+	t.Setenv("QZDA_MODE", "pro")
 	t.Setenv("QZDA_VAULT_ADDR", "")
 	t.Setenv("QZDA_VAULT_TOKEN", "")
 

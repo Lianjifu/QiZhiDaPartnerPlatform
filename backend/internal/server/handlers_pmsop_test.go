@@ -13,8 +13,7 @@ import (
 
 func pmsopHarness(t *testing.T) http.Handler {
 	t.Helper()
-	t.Setenv("QZDA_ENV", "test")
-	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_MODE", "dev")
 	return server.New(store.New()).Handler()
 }
 
@@ -178,8 +177,7 @@ func TestPMsopPlanNotFound(t *testing.T) {
 }
 
 func TestPMsopNoAuth(t *testing.T) {
-	t.Setenv("QZDA_ENV", "test")
-	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "false")
+	t.Setenv("QZDA_MODE", "dev")
 	h := server.New(store.New()).Handler()
 	req := httptest.NewRequest("GET", "/api/pmsop/templates", nil)
 	rr := httptest.NewRecorder()

@@ -333,8 +333,7 @@ func decodeStringSlice(v any) []string {
 // ed25519.Verify against the canonical manifest bytes.
 //
 // W2-D1 · policy gate (skillSignaturePolicy):
-//   - PolicyOff → no check (legacy dev escape hatch, prod auto-promotes)
-//   - PolicyAny → workspace key OR global trust store (W1-D2 default)
+//   - PolicyAny → workspace key OR global trust store (dev default)
 //   - PolicyWorkspace → must be a workspace key (active or rotated); global
 //     + dev-auto trust is rejected
 //
@@ -342,9 +341,6 @@ func decodeStringSlice(v any) []string {
 // parsing — that happens earlier in parseSkillPackage.
 func (s *Server) verifyImportSignature(wsID string, meta *skillPackageManifest, files map[string][]byte) error {
 	policy := skillSignaturePolicy()
-	if policy == PolicyOff {
-		return nil
-	}
 	if meta.Signature == "" || meta.KeyID == "" {
 		return apperr.BadReq(apperr.SkillSignatureMissing,
 			"imported skill missing signature: "+meta.Name)

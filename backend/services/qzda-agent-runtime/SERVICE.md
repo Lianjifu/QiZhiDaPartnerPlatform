@@ -20,7 +20,7 @@ Collab 通过 `QZDA_RUNTIME_MODE=remote` 调用 `/v1/run`。默认 **`local`** �
 | `QZDA_LLM_API_KEY` | — | API key |
 | `QZDA_LLM_MODEL` | `gpt-4o-mini` | Model name |
 | `QZDA_LLM_TIMEOUT` | `20` | Request timeout (seconds) |
-| `QZDA_ALLOW_RUNTIME_STUB` | — | 仅非生产联调：无 LLM 时返回 stub 文本。生产必须配置 `QZDA_LLM_BASE_URL` |
+| `QZDA_MODE` | `dev` | 仅 `dev`(未设置视为 dev)允许无 LLM 时返回 stub 文本;`pro` 必须配置 `QZDA_LLM_BASE_URL` |
 | `QZDA_RAG_URL` | `http://127.0.0.1:8092` | sidecar `knowledge.retrieve` 调用的 published retrieve |
 
 Go 控制面：

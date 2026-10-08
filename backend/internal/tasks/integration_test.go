@@ -487,7 +487,6 @@ func TestT8_InvalidTransition(t *testing.T) {
 func TestT9_Unauthorized(t *testing.T) {
 	srv, _ := newServer(t)
 	// Make sure no dev-mock token bypass is active.
-	t.Setenv("QZDA_BAN_MOCK_TOKEN", "")
 	rr := doRequest(t, srv, http.MethodGet, "/api/tasks", "", nil)
 	if rr.Code != http.StatusUnauthorized {
 		t.Fatalf("want 401, got %d body=%s", rr.Code, rr.Body.String())

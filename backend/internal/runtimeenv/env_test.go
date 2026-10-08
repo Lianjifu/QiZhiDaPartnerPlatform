@@ -4,48 +4,62 @@ import (
 	"testing"
 )
 
-func TestParseAliases(t *testing.T) {
+func TestFromEnvResolvesDevAndPro(t *testing.T) {
 	cases := map[string]Mode{
-		"": ModeDevelopment, "dev": ModeDevelopment, "local": ModeDevelopment,
-		"demo": ModeDemo, "mock": ModeDemo,
-		"staging": ModeStaging, "production": ModeProduction, "prod": ModeProduction,
+		"": ModeDev, "dev": ModeDev, " DEV ": ModeDev,
+		"pro": ModePro, "PRO": ModePro,
+		"staging": ModePro, "production": ModePro, "demo": ModePro, "typo": ModePro,
 	}
 	for in, want := range cases {
-		if got := Parse(in); got != want {
-			t.Fatalf("Parse(%q)=%q want %q", in, got, want)
-		}
+		t.Run("QZDA_MODE="+in, func(t *testing.T) {
+			t.Setenv("QZDA_MODE", in)
+			if got := FromEnv(); got != want {
+				t.Fatalf("FromEnv() with QZDA_MODE=%q = %q, want %q", in, got, want)
+			}
+		})
 	}
 }
 
-func TestDemoModeFlags(t *testing.T) {
-	m := ModeDemo
-	if !m.IsDemo() || m.PersistEnabled() || m.RequiresPostgres() || !m.AllowsSeed() {
-		t.Fatalf("demo flags wrong: %+v persist=%v pg=%v seed=%v", m, m.PersistEnabled(), m.RequiresPostgres(), m.AllowsSeed())
-	}
-	if !m.AllowsDemoToken() || m.DualApproval() || m.RequiresVault() {
-		t.Fatal("demo should allow token, no dual approval, no vault")
-	}
-}
-
-func TestProductionModeFlags(t *testing.T) {
-	m := ModeProduction
-	if m.IsDemo() || !m.PersistEnabled() || !m.RequiresPostgres() || m.AllowsSeed() {
-		t.Fatal("production data flags")
-	}
-	if m.AllowsDemoToken() || !m.DualApproval() || !m.RequiresVault() {
-		t.Fatal("production governance flags")
-	}
-}
-
-func TestBanMockDoesNotImplyDualApproval(t *testing.T) {
-	t.Setenv("QZDA_ENV", "development")
-	t.Setenv("QZDA_BAN_MOCK_TOKEN", "1")
+func TestDevDefaultFlags(t *testing.T) {
+	t.Setenv("QZDA_MODE", "dev")
 	m := FromEnv()
-	if m.DualApproval() {
-		t.Fatal("QZDA_BAN_MOCK_TOKEN must not enable dual approval in development")
+	if !m.PersistEnabled() || m.MemoryStore() || m.EnsureGeneralEmployeeAllowed() {
+		t.Fatal("dev without QZDA_DATA_BACKEND should persist to Postgres")
 	}
-	if m.AllowsDemoToken() {
-		t.Fatal("development + BAN should not allow demo token")
+	if !m.AllowsMockIdentity() || m.BanMockToken() {
+		t.Fatal("dev should allow mock identity and password login")
+	}
+	if m.DualApproval() || m.RequiresVault() || !m.AutoProvisionsSkillKeys() {
+		t.Fatal("dev should skip dual approval and vault, and auto-provision dev keypair")
+	}
+}
+
+func TestDevMemoryStore(t *testing.T) {
+	t.Setenv("QZDA_MODE", "dev")
+	t.Setenv("QZDA_DATA_BACKEND", "memory")
+	m := FromEnv()
+	if !m.MemoryStore() || m.PersistEnabled() || !m.EnsureGeneralEmployeeAllowed() {
+		t.Fatal("dev + memory backend should not persist and should seed")
+	}
+}
+
+func TestProIgnoresMemoryBackend(t *testing.T) {
+	t.Setenv("QZDA_MODE", "pro")
+	t.Setenv("QZDA_DATA_BACKEND", "memory")
+	m := FromEnv()
+	if m.MemoryStore() || !m.PersistEnabled() || m.EnsureGeneralEmployeeAllowed() {
+		t.Fatal("pro must always persist and never seed, regardless of QZDA_DATA_BACKEND")
+	}
+}
+
+func TestProFlags(t *testing.T) {
+	t.Setenv("QZDA_MODE", "pro")
+	m := FromEnv()
+	if m.AllowsMockIdentity() || !m.BanMockToken() {
+		t.Fatal("pro must reject mock identity, mock tokens and password login")
+	}
+	if !m.DualApproval() || !m.RequiresVault() || m.AutoProvisionsSkillKeys() {
+		t.Fatal("pro must enforce dual approval and vault, and never auto-provision keys")
 	}
 }
 
@@ -56,15 +70,7 @@ func TestSessionSyncEnabledFlagVariants(t *testing.T) {
 
 	for _, v := range disabled {
 		t.Run("disabled_"+v, func(t *testing.T) {
-			if v == "" {
-				t.Setenv("QZDA_SESSION_SYNC_ENABLED", "")
-			} else {
-				t.Setenv("QZDA_SESSION_SYNC_ENABLED", v)
-			}
-			// The empty case is also handled by the enabled group below; skip here.
-			if v == "" {
-				t.Skip()
-			}
+			t.Setenv("QZDA_SESSION_SYNC_ENABLED", v)
 			if SessionSyncEnabled() {
 				t.Fatalf("SessionSyncEnabled()=true for %q, want false", v)
 			}

@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/qizhida-partner-platform/backend/internal/runtimeenv"
 )
 
 // Engine is a local Temporal-shaped worker. When QZDA_TEMPORAL_HOST is set,
@@ -42,22 +44,11 @@ func (e *Engine) TemporalConfigured() bool {
 }
 
 // ErrTemporalUnavailable is returned when Temporal is configured but unreachable
-// and fail-closed is on (production / QZDA_TEMPORAL_FAIL_CLOSED).
+// and fail-closed is on (pro mode).
 var ErrTemporalUnavailable = errors.New("temporal unavailable")
 
 func temporalFailClosed() bool {
-	v := strings.TrimSpace(os.Getenv("QZDA_TEMPORAL_FAIL_CLOSED"))
-	if v == "1" || strings.EqualFold(v, "true") {
-		return true
-	}
-	if v == "0" || strings.EqualFold(v, "false") {
-		return false
-	}
-	env := strings.ToLower(strings.TrimSpace(os.Getenv("QZDA_ENV")))
-	if env == "" {
-		env = strings.ToLower(strings.TrimSpace(os.Getenv("GO_ENV")))
-	}
-	return env == "production" || env == "prod" || env == "staging"
+	return runtimeenv.FromEnv().IsPro()
 }
 
 // StartTrial prefers Temporal when configured; otherwise runs in-process.

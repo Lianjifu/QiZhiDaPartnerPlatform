@@ -13,7 +13,7 @@
 
 | | |
 |:--|:--|
-| **默认联调** | 真实 API（`VITE_USE_MOCK=false`）→ Vite 代理 `qzda-gateway :8089` |
+| **默认联调** | 真实 API（`VITE_API_MODE=api`）→ Vite 代理 `qzda-gateway :8089` |
 | **纯前端演示** | `cd frontend/web && npm run dev:demo` |
 | **合规目标** | 等保 3 / ISO 27001 |
 
@@ -324,7 +324,7 @@ flowchart TB
 | [`docs/数字伙伴平台-架构文档.md`](docs/数字伙伴平台-架构文档.md) | L0 / L1 / L2 产品与领域架构 |
 | [`docs/后端架构规划.md`](docs/后端架构规划.md) | 服务边界与演进阶段 |
 | [`backend/deploy/topology-split.md`](backend/deploy/topology-split.md) | monolith 拓扑说明 |
-| [`docs/环境与数据模式.md`](docs/环境与数据模式.md) | `QZDA_ENV`、Persist、办公开箱冷启动 |
+| [`docs/环境与数据模式.md`](docs/环境与数据模式.md) | `QZDA_MODE`、Persist、办公开箱冷启动 |
 
 ### 文档分层
 
@@ -501,7 +501,7 @@ sequenceDiagram
 |------|------|
 | **鉴权与角色** | Token + 工作区头；RBAC：`admin` / `user` / `auditor` |
 | **持久化** | 控制面内存 + PG 快照；硬删须 `PersistDelete(Sync)`，仅 `Persist` 不会删掉旧行 |
-| **环境** | `QZDA_ENV=development` 默认联调（空库 + hydrate，不灌 ACME seed）；`demo` 仅内存 |
+| **环境** | `QZDA_MODE=dev` 默认联调（空库 + hydrate，不灌 ACME seed）；`QZDA_DATA_BACKEND=memory` 仅内存 |
 | **运营聚合** | `/api/home/*`、`/api/operations/overview` 为 live-aggregate；成本仅认 UsageMeters，否则 `—` |
 | **办公开箱** | 冷启动 ensure 知识包 / `autoInstall` 岗位包 / Certified 流程 / `de-office`；个人模板 `wft-user-*` 不覆盖 |
 | **本机二进制** | LaunchAgent 读 `backend/bin/qzda-*`；改 Go 后须 `make build` 再 kickstart |
@@ -614,7 +614,7 @@ cd backend && make build
 launchctl kickstart -k "gui/$(id -u)/com.qizhida.dev-stack"
 ```
 
-脚本：[`scripts/dev-stack/run-stack.sh`](scripts/dev-stack/run-stack.sh)（默认 `QZDA_STACK=monolith`，`QZDA_ENV=development`）。
+脚本：[`scripts/dev-stack/run-stack.sh`](scripts/dev-stack/run-stack.sh)（默认 `QZDA_STACK=monolith`，`QZDA_MODE=dev`）。
 
 > 仓库外的 LaunchAgent 文件位于 `~/Library/LaunchAgents/com.qizhida.dev-stack.plist`(Phase 3 已迁移;升级到 main 前请确认)。详见 [`backend/deploy/MIGRATION-de-to-qzda.md`](backend/deploy/MIGRATION-de-to-qzda.md)。
 
@@ -626,7 +626,7 @@ cd frontend && pnpm install && pnpm --filter web dev
 
 ```env
 # frontend/web/.env.local
-VITE_USE_MOCK=false
+VITE_API_MODE=api
 VITE_API_BASE=
 ```
 
@@ -636,7 +636,7 @@ VITE_API_BASE=
 | `audit@` | auditor | 治理 / 审计只读 |
 | 其他 | user | 协作与任务；写操作须管理员审批 |
 
-默认 `QZDA_BAN_MOCK_TOKEN=1` 禁止 `mock-*-token`；需 mock 身份时设 `QZDA_ALLOW_DEMO_TOKEN=1`。业务按 `x-workspace-id` 隔离。
+dev 允许 `mock-*-token` 与 `x-mock-*` 身份头；pro 禁止两者。业务按 `x-workspace-id` 隔离。
 
 ---
 
@@ -650,12 +650,12 @@ cd ../backend && make test && make test-python && make smoke-monolith
 | 现象 | 处理 |
 |------|------|
 | 运营总览仍见演示金额 | `make build` + kickstart；强刷；确认未打到旧进程 |
-| 前端像 Mock | `VITE_USE_MOCK=false`，代理指向 `:8089` |
+| 前端像 Mock | `VITE_API_MODE=api`，代理指向 `:8089` |
 | ACME 演示与真实数据混杂 | `backend/scripts/purge-demo-seed-ids.sql` 后重启 |
 | 数据像空库 / 版本不对 | 确认 `127.0.0.1:5432` 为 Docker `qzda-postgres` 16.x |
 | 办公模板 / 知识包缺失 | `make build` 并重启，确认 `EnsureBuiltin*` |
 | Go 改了不生效 | 未写入 `backend/bin` 或未重启栈 |
-| `E_IDENTITY_MOCK_FORBIDDEN` | `QZDA_ALLOW_DEMO_TOKEN=1` 或真实登录 |
+| `E_IDENTITY_MOCK_FORBIDDEN` | 使用真实登录；mock 身份仅 dev 可用 |
 | `healthz` 失败 | 先起 PG/Redis 与 gateway |
 
 ---
@@ -664,7 +664,7 @@ cd ../backend && make test && make test-python && make smoke-monolith
 
 | 文档 | 用途 |
 |------|------|
-| [`docs/环境与数据模式.md`](docs/环境与数据模式.md) | `QZDA_ENV`、Postgres、硬删除、岗位包、办公开箱 |
+| [`docs/环境与数据模式.md`](docs/环境与数据模式.md) | `QZDA_MODE`、Postgres、硬删除、岗位包、办公开箱 |
 | [`docs/数字伙伴平台-功能模块文档.md`](docs/数字伙伴平台-功能模块文档.md) | 模块 Tab / 路由 / 成熟度 |
 | [`docs/数字伙伴平台-架构文档.md`](docs/数字伙伴平台-架构文档.md) | L0 / L1 / L2 |
 | [`docs/后端架构规划.md`](docs/后端架构规划.md) · [`docs/后端单进程方案.md`](docs/后端单进程方案.md) | 后端演进 |

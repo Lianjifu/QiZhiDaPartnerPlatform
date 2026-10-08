@@ -2,22 +2,35 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useApiMutation } from '@/services/query';
+import { getApiClient } from '@qzda/web-api';
 import { Button, Input, Badge, toast } from '@qzda/web-ui';
 import { useUiStore } from '@/stores/uiStore';
+import { isDemoApiMode } from '@/lib/api-mode';
 import { Bot, ShieldCheck, Sun, Moon, Gauge } from 'lucide-react';
 import type { LoginRequest, LoginResponse } from '@qzda/web-types';
 import { BrandLogo } from '@/components/brand';
 import { MfaCodeField } from './components/MfaCodeField';
 import { ExperienceRoleButtons } from './components/ExperienceRoleButtons';
 
+interface OidcLoginStart {
+  enabled: boolean;
+  authorizationUrl?: string;
+  hint?: string;
+}
+
+// 仅开发态预填体验账号；生产构建中两者折叠为空串，不进入产物。
+const DEV_PREFILL_EMAIL = import.meta.env.DEV ? 'admin@acme.com' : '';
+const DEV_PREFILL_PASSWORD = import.meta.env.DEV ? 'demo123456' : '';
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuthStore();
   const { theme, toggleTheme } = useUiStore();
-  const [email, setEmail] = useState('admin@acme.com');
-  const [password, setPassword] = useState('demo123456');
+  const [email, setEmail] = useState(DEV_PREFILL_EMAIL);
+  const [password, setPassword] = useState(DEV_PREFILL_PASSWORD);
   const [mfa, setMfa] = useState('');
+  const [oidcPending, setOidcPending] = useState(false);
 
   const mut = useApiMutation<LoginResponse, LoginRequest>(
     '/api/auth/login',
@@ -42,7 +55,23 @@ export default function LoginPage() {
 
   const chooseRole = (nextEmail: string) => {
     setEmail(nextEmail);
-    setPassword('demo123456');
+    setPassword(DEV_PREFILL_PASSWORD);
+  };
+
+  const startOidc = async () => {
+    setOidcPending(true);
+    try {
+      const res = await getApiClient().request<OidcLoginStart>('/api/auth/oidc/login');
+      if (!res.enabled || !res.authorizationUrl) {
+        toast.warn(res.hint ?? '企业账号登录未启用');
+        return;
+      }
+      window.location.assign(res.authorizationUrl);
+    } catch (err: any) {
+      toast.error(err?.message ?? '企业账号登录不可用');
+    } finally {
+      setOidcPending(false);
+    }
   };
 
   return (
@@ -141,6 +170,12 @@ export default function LoginPage() {
           <Button type="submit" loading={mut.isPending} className="w-full">
             登录平台
           </Button>
+
+          {!isDemoApiMode() && (
+            <Button type="button" variant="outline" loading={oidcPending} onClick={startOidc} className="mt-3 w-full">
+              企业账号登录（OIDC）
+            </Button>
+          )}
 
           <ExperienceRoleButtons onPick={chooseRole} />
 

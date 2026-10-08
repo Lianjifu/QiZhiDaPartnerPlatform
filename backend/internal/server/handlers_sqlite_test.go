@@ -11,8 +11,7 @@ import (
 
 func TestServerStoreBackendSQLiteHook(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("QZDA_ENV", "test")
-	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_MODE", "dev")
 	t.Setenv("QZDA_STORE_BACKEND", "sqlite")
 	t.Setenv("QZDA_SQLITE_PATH", filepath.Join(dir, "kv.db"))
 
@@ -40,8 +39,7 @@ func TestServerStoreBackendSQLiteHook(t *testing.T) {
 }
 
 func TestServerStoreBackendDefaultIsMemory(t *testing.T) {
-	t.Setenv("QZDA_ENV", "test")
-	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_MODE", "dev")
 	t.Setenv("QZDA_STORE_BACKEND", "")
 	s := server.New(store.New())
 	if s.SQLite != nil {
@@ -50,8 +48,7 @@ func TestServerStoreBackendDefaultIsMemory(t *testing.T) {
 }
 
 func TestServerStoreBackendBadPathFallsBack(t *testing.T) {
-	t.Setenv("QZDA_ENV", "test")
-	t.Setenv("QZDA_ALLOW_MOCK_IDENTITY", "true")
+	t.Setenv("QZDA_MODE", "dev")
 	t.Setenv("QZDA_STORE_BACKEND", "sqlite")
 	// /dev/null is a valid file but not a directory; providing a directory
 	// path that cannot host a database should make open fail and the

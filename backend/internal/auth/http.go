@@ -1,14 +1,17 @@
 package auth
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/qizhida-partner-platform/backend/internal/runtimeenv"
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
@@ -62,6 +65,32 @@ type Handler struct {
 
 	// AuditWriter writes login/oidc audit rows. May be nil in tests.
 	AuditWriter AuditWriter
+
+	// Accounts resolves credential-backed logins (pro mode). May be nil in tests.
+	Accounts CredentialStore
+}
+
+func (h *Handler) authenticateAccount(ctx context.Context, email, password string) (*Account, error) {
+	invalid := apperr.UnauthorizedErr("邮箱或密码错误")
+	normalized := strings.ToLower(strings.TrimSpace(email))
+	var (
+		acc *Account
+		err error
+	)
+	if h.Accounts != nil {
+		acc, err = h.Accounts.FindAccount(ctx, normalized)
+		if err != nil {
+			log.Printf("auth: account lookup failed: %v", err)
+		}
+	}
+	if err != nil || acc == nil {
+		VerifyPassword(password, unknownAccountHash())
+		return nil, invalid
+	}
+	if acc.Disabled || !VerifyPassword(password, acc.PasswordHash) {
+		return nil, invalid
+	}
+	return acc, nil
 }
 
 // Route describes one HTTP route owned by Handler.
@@ -90,21 +119,25 @@ type loginBody struct {
 // Login is the password / OIDC-gated login handler.
 //
 // Behavior (preserved byte-for-byte from the previous server.login):
-//   - QZDA_FORCE_OIDC=1 → 403 with "请使用 OIDC".
+//   - pro → password must match a verified account (see Handler.Accounts)
 //   - Missing email/password → 400 with "缺少凭据".
-//   - Returns a stable mock token for FE smoke; production (QZDA_BAN_MOCK_TOKEN)
+//   - Returns a stable mock token for FE smoke; pro (BanMockToken)
 //     issues JWT instead via auth.Sign (unless caller already prefers JWT via
 //     x-prefer-jwt: 1 header).
 //   - Writes a "登录" audit row on success.
 func (h *Handler) Login(r *http.Request) (any, error) {
-	if ForceOIDCLogin() {
-		return nil, apperr.Forbidden(apperr.RoleForbidden, "生产环境已禁用密码登录，请使用 OIDC（/api/auth/oidc/login）")
-	}
 	var body loginBody
 	if err := decodeJSONBody(r, &body); err != nil || body.Email == "" || body.Password == "" {
 		return nil, apperr.BadReq(apperr.CredentialsRequired, "缺少凭据")
 	}
 	role, name, userID := RoleFromEmail(body.Email)
+	if runtimeenv.FromEnv().IsPro() {
+		acc, err := h.authenticateAccount(r.Context(), body.Email, body.Password)
+		if err != nil {
+			return nil, err
+		}
+		role, name, userID = acc.Role, acc.Name, acc.UserID
+	}
 	ws := []string{"w1", "w2"}
 	scopes := []string{"sandbox", "staging"}
 	if role == "admin" {
@@ -120,7 +153,7 @@ func (h *Handler) Login(r *http.Request) (any, error) {
 		TenantID: "tenant-acme", WorkspaceID: ws[0], WorkspaceIDs: ws,
 		EnvironmentScopes: scopes, Permissions: RolePermissions(role), MFAEnabled: true,
 	}
-	// Prefer stable mock tokens for FE smoke; production (QZDA_BAN_MOCK_TOKEN) issues JWT only.
+	// Prefer stable mock tokens for FE smoke; pro (BanMockToken) issues JWT only.
 	token := "mock-user-token"
 	switch role {
 	case "admin":
@@ -152,12 +185,15 @@ func (h *Handler) OIDCLogin(r *http.Request) (any, error) {
 		oidcStates.Store(state, time.Now().Add(10*time.Minute).Unix())
 	}
 	if h.OIDC == nil || !h.OIDC.Enabled {
-		return map[string]any{
-			"enabled":      false,
-			"hint":         "设置 QZDA_OIDC_ISSUER / QZDA_OIDC_CLIENT_ID 后启用 Authentik/Dex OIDC",
-			"stubCallback": "/api/auth/oidc/callback?code=admin&state=" + state,
-			"state":        state,
-		}, nil
+		resp := map[string]any{
+			"enabled": false,
+			"hint":    "设置 QZDA_OIDC_ISSUER / QZDA_OIDC_CLIENT_ID 后启用 Authentik/Dex OIDC",
+			"state":   state,
+		}
+		if h.OIDC != nil && h.OIDC.AllowDevCodes {
+			resp["stubCallback"] = "/api/auth/oidc/callback?code=admin&state=" + state
+		}
+		return resp, nil
 	}
 	url, err := h.OIDC.AuthURL(state)
 	if err != nil {

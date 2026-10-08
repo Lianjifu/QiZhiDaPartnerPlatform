@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/qizhida-partner-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/runtimeenv"
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
@@ -450,17 +451,9 @@ func evalRecallMin() float64 {
 	return n
 }
 
-// isProdEnv reports whether QZDA_ENV is "production" or "prod". The
-// full server-side productionLikeEnv() also considers other signals
-// (AUTH_REQUIRED, ...); for the eval gate in production, the env var
-// check is sufficient and lets this helper stay inside the
-// knowledge package without an extra Deps call.
+// isProdEnv reports whether the runtime is pro.
 func isProdEnv() bool {
-	switch strings.ToLower(strings.TrimSpace(os.Getenv("QZDA_ENV"))) {
-	case "production", "prod":
-		return true
-	}
-	return false
+	return runtimeenv.FromEnv().IsPro()
 }
 
 // KnowledgeListFiltered → GET /api/knowledge/packages (and other /api/knowledge/*
