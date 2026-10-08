@@ -3,6 +3,9 @@
 // 同时 server/ 仍向 /api/metrics 推送自己的版本（双写），dashboard 看到的数字保持一致。
 package copilot
 
+// metrics.go — 指标埋点:回合计数、工具成功率、延迟分位、用量与异常计数。
+// 导出到 Prometheus / OpenMetrics;埋点粒度按需递增,不要直接在这里做业务判断。
+
 import "sync/atomic"
 
 // copilot 模块的进程内指标计数器（与 server/metrics.go 重复统计）。
@@ -21,6 +24,7 @@ var (
 	copilotTurnExecute          atomic.Uint64
 	copilotTurnReflect          atomic.Uint64
 	copilotTurnTaskTotal        atomic.Uint64
+	copilotBudgetDenied        atomic.Uint64
 )
 
 // IncCopilotRateLimited records that a copilot turn was throttled by the
@@ -72,3 +76,8 @@ func IncTurnPhaseStep(phase string) {
 // IncTurnTaskEvent records a `task` SSE event from the copilot stream.
 // Mirrors server.IncTurnTaskEvent.
 func IncTurnTaskEvent() { copilotTurnTaskTotal.Add(1) }
+
+// IncCopilotBudgetDenied records that a copilot turn was rejected by the
+// model-budget gate (Dep.CheckModelBudgetFn 返回 allowed=false)。
+// 用于 dashboard 监测按 workspace 的用量告警触发频次。
+func IncCopilotBudgetDenied() { copilotBudgetDenied.Add(1) }

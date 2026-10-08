@@ -12,6 +12,9 @@
 //   - ensureEmployeeCognitiveSkills —— 给数字伙伴注入三件套基础认知技能（防漏挂）
 package copilot
 
+// copilot_cognitive.go — 认知层:把用户意图拆成 thought → plan → action 三段,
+// 驱动后续 ReAct。在 route 之后、/mode dispatch 之前运行,失败高失败不重试,只走纯逻辑分支。
+
 import (
 	"os"
 	"path/filepath"
@@ -471,9 +474,10 @@ func buildCognitiveDigestBlock(d cognitiveDecision) string {
 	b.WriteString("（")
 	b.WriteString(d.Mode)
 	b.WriteString("）\n")
-	b.WriteString("对用户可见回复须遵循下列骨架；勿输出逐步隐性思维；澄清最多 1–3 问。\n")
+	// 行为约束走版本化注册表,可 env 切换(默认 v1)
+	b.WriteString(promptGet("cognitive.framework.primary.intro"))
 	if dig := loadCognitiveDigest(cognitiveSkillByFramework[d.Primary]); dig != "" {
-		b.WriteString("\n—— 主框架摘要 ——\n")
+		b.WriteString(promptGet("cognitive.framework.primary.divider"))
 		b.WriteString(dig)
 		b.WriteString("\n")
 	}
@@ -481,16 +485,15 @@ func buildCognitiveDigestBlock(d cognitiveDecision) string {
 		if dig := loadCognitiveDigest(cognitiveSkillByFramework[d.Secondary]); dig != "" {
 			b.WriteString("\n【认知框架·辅】")
 			b.WriteString(cognitiveLabel(d.Secondary))
-			b.WriteString("\n—— 辅框架摘要（补充视角，勿重复提问） ——\n")
+			b.WriteString(promptGet("cognitive.framework.secondary.divider"))
 			b.WriteString(dig)
 			b.WriteString("\n")
 		}
 	}
 	if d.Mode == cognitiveModeDeep {
 		if skill := cognitiveSkillByFramework[d.Primary]; skill != "" {
-			b.WriteString("\n如需细则，可 skill.open 「")
-			b.WriteString(skill)
-			b.WriteString("」，勿同时打开多份全文。\n")
+			// 占位符 {skill} 在运行时替换;走版本化注册表
+			b.WriteString(strings.Replace(promptGet("cognitive.framework.skill_hint"), "{skill}", skill, 1))
 		}
 	}
 	out := b.String()

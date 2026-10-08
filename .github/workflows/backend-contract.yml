@@ -47,7 +47,7 @@ jobs:
           test -f deploy/migrations/0001_init.sql || test -f deploy/migrations/0001_initial.sql
           test -f deploy/qzda-sandbox/seccomp.json
           test -f Dockerfile
-          test -f services/qzda-app/Dockerfile
+          test -f cmd/qzda-app/Dockerfile
           test -f services/qzda-sandbox/Dockerfile
           test -f services/qzda-rag/Dockerfile
           test -f services/qzda-gateway/Dockerfile
@@ -58,7 +58,7 @@ jobs:
           test -f services/qzda-gateway/Dockerfile
           test -f services/qzda-rag/requirements-milvus.txt
           test -f cmd/qzda-app/main.go
-          test -f services/qzda-app/Dockerfile
+          test -f cmd/qzda-app/Dockerfile
           test ! -f cmd/qzda-sys/main.go
           test ! -f cmd/qzda-collab/main.go
           test ! -f cmd/qzda-cap/main.go

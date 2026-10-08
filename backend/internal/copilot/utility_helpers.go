@@ -6,6 +6,9 @@
 // 产物 TTL 清理、office 文档分类等。
 package copilot
 
+// utility_helpers.go — 杂项 utility:slug 生成、hash、字符串截断、JSON 拼装。
+// 与 helpers.go 不重叠:本文件专做"无业务含义的小工具",helpers.go 偏业务转换。
+
 import (
 	"os"
 	"path/filepath"

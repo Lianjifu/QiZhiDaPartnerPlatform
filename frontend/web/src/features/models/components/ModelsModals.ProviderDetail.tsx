@@ -82,7 +82,12 @@ export function ModelsModalsProviderDetail({ provider, impact, canWrite, workspa
         <span className="text-[var(--text-muted)]">{provider.lastVerifiedAt ? `最近验证 ${new Date(provider.lastVerifiedAt).toLocaleString('zh-CN')}` : '尚未验证'}</span>
       </div>
       <div className="mt-2 text-[11px] text-[var(--text-secondary)]">
-        当前模型：{(provider.models ?? []).map((model) => model.name).join(' · ') || '未配置'}
+        当前模型：{provider.models?.[0]?.name ?? '未配置'}
+        {provider.models && provider.models.length > 1 && (
+          <span className="ml-1.5 text-[var(--text-muted)]" title={provider.models.map((model) => model.name).join(' · ')}>
+            +{provider.models.length - 1}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -243,7 +248,7 @@ export function ModelsModalsProviderDetail({ provider, impact, canWrite, workspa
               className="h-9 flex-1 font-mono text-xs"
               list={viewing ? undefined : `provider-detail-models-${provider.id}`}
               readOnly={viewing}
-              value={viewing ? ((provider.models ?? []).map((model) => model.name).join(' · ') || '') : draft.modelId}
+              value={viewing ? (provider.models?.[0]?.name ?? '') : draft.modelId}
               onChange={(event) => patch('modelId', event.target.value)}
               placeholder={preset.modelPlaceholder}
             />

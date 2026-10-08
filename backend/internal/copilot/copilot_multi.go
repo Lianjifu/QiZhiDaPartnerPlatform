@@ -5,6 +5,9 @@
 // supervisor 拿到所有意见后用主模型统一汇总。
 package copilot
 
+// copilot_multi.go — 多专家面板(supervisor panel):同时调度多个 copilot 角色协作,
+// 各角色独立 context、并行产出;适合需要多视角的综合判断场景。
+
 import (
 	"context"
 	"fmt"
@@ -160,7 +163,8 @@ func specialistSystemPrompt(emp map[string]any) string {
 		b.WriteString(strings.Join(resp, "、"))
 		b.WriteString("\n")
 	}
-	b.WriteString("只输出本岗位视角的简要意见，不要扮演其他岗位，不要输出 TOOL/PLAN 标记。")
+	// 工具/规划标记禁用规则走版本化注册表;子专家只输出意见,不主动调用工具。
+	b.WriteString(promptGet("system.multi.worker.tail"))
 	return b.String()
 }
 
@@ -255,7 +259,7 @@ func (s *Service) runMultiAgentTurn(ctx context.Context, in reactTurnInput) reac
 				turnID = in.ConversationID
 			}
 			turnID += ":supervisor"
-			s.Deps.LogCitationsForRAGFn(in.WorkspaceID, turnID, hits)
+			s.Deps.Memory.LogCitationsForRAGFn(in.WorkspaceID, turnID, hits)
 		}
 		if res.Output != "" {
 			opinions = append(opinions, "【共享知识检索】\n"+truncateRunes(res.Output, 800))
@@ -274,7 +278,7 @@ func (s *Service) runMultiAgentTurn(ctx context.Context, in reactTurnInput) reac
 	participants := make([]participantContext, 0, len(picks))
 	for _, sp := range picks {
 		emp := empByID[sp.ID]
-		pc := s.Deps.BuildParticipantContextFn(participantCtxInput{
+		pc := s.Deps.MultiAgent.BuildParticipantContextFn(participantCtxInput{
 			WorkspaceID:     in.WorkspaceID,
 			ConversationID:  in.ConversationID,
 			CorrelationID:   in.CorrelationID,
@@ -285,8 +289,8 @@ func (s *Service) runMultiAgentTurn(ctx context.Context, in reactTurnInput) reac
 			Viewer:          in.Viewer,
 			Request:         in.Request,
 			Emit:            in.Emit,
-			SessionModeHint: s.Deps.ResolveDefaultSessionModeFn(sp.ID),
-			RiskLevelHint:   s.Deps.ResolveDefaultRiskLevelFn(sp.ID),
+			SessionModeHint: s.Deps.Routing.ResolveDefaultSessionModeFn(sp.ID),
+			RiskLevelHint:   s.Deps.Routing.ResolveDefaultRiskLevelFn(sp.ID),
 		}, emp)
 		// Floor the participant's risk level by the inbound turn's risk so
 		// a high-risk query is never silently floored to a P1-tier specialist
@@ -380,12 +384,14 @@ func (s *Service) runMultiAgentTurn(ctx context.Context, in reactTurnInput) reac
 	resolvedModel := in.ModelID
 	var lastRT ResolvedTurn
 	var aggBuf strings.Builder
-	aggText, rt2, err2 := s.Deps.StreamLLMForCopilotFn(ctx, in.Request, in.WorkspaceID, in.ModelID, aggMsgs, aggSystem, func(chunk, mid string) error {
-		if mid != "" {
-			resolvedModel = mid
-		}
-		aggBuf.WriteString(chunk)
-		return nil
+	aggText, rt2, err2 := withLLMRetry(ctx, func(ctx context.Context) (string, ResolvedTurn, error) {
+		return s.Deps.Routing.StreamLLMForCopilotFn(ctx, in.Request, in.WorkspaceID, in.ModelID, aggMsgs, aggSystem, func(chunk, mid string) error {
+			if mid != "" {
+				resolvedModel = mid
+			}
+			aggBuf.WriteString(chunk)
+			return nil
+		})
 	})
 	if err2 != nil && aggBuf.Len() == 0 && aggText == "" {
 		return reactTurnResult{Err: err2, ToolCalls: toolCalls, Steps: len(picks), ModelID: resolvedModel, Mode: modeMultiAgent}
@@ -443,7 +449,7 @@ func (s *Service) dispatchParticipants(ctx context.Context, pcs []participantCon
 		tasks[i] = agentos.Task{
 			ID: pcs[i].DigitalPartner,
 			Fn: func(tctx context.Context) agentos.Result {
-				r := s.Deps.RunParticipantTurnFn(tctx, pcs[i])
+				r := s.Deps.MultiAgent.RunParticipantTurnFn(tctx, pcs[i])
 				return agentos.Result{
 					Status:        r.Status,
 					Text:          r.Text,

@@ -8,6 +8,9 @@
 // 任何修改都会影响前端渲染和跨端协议。
 package copilot
 
+// copilot_segments.go — 段落切分:把长输出拆成可独立渲染的 segments(citations /
+// chart / text block),给前端按段渲染并支持流式追加。
+
 import (
 	"strings"
 	"time"

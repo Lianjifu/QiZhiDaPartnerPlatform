@@ -11,6 +11,9 @@
 //   - 段流式 —— runReactTurn 收尾后通过 streamHarnessAnswer 转 SSE 段事件
 package copilot
 
+// copilot_react.go — ReAct 主循环:反复 (think → tool → observe) 直到达到目标或
+// 耗尽 step 预算。在 cognitive / state 完成阶段之后、reflect 之前。
+
 import (
 	"context"
 	"encoding/json"
@@ -187,15 +190,17 @@ func (s *Service) runReactTurn(ctx context.Context, in reactTurnInput) reactTurn
 		in.Emit("stage", "react", map[string]any{"status": "running", "step": step})
 
 		var buf strings.Builder
-		text, rt, err := s.Deps.StreamLLMForCopilotFn(ctx, in.Request, in.WorkspaceID, in.ModelID, messages, system, func(chunk, mid string) error {
-			if mid != "" {
-				resolvedModel = mid
-			}
-			buf.WriteString(chunk)
-			if in.LiveStream != nil {
-				in.LiveStream.OnDelta(chunk, buf.String())
-			}
-			return nil
+		text, rt, err := withLLMRetry(ctx, func(ctx context.Context) (string, ResolvedTurn, error) {
+			return s.Deps.Routing.StreamLLMForCopilotFn(ctx, in.Request, in.WorkspaceID, in.ModelID, messages, system, func(chunk, mid string) error {
+				if mid != "" {
+					resolvedModel = mid
+				}
+				buf.WriteString(chunk)
+				if in.LiveStream != nil {
+					in.LiveStream.OnDelta(chunk, buf.String())
+				}
+				return nil
+			})
 		})
 		if err != nil {
 			if finalText == "" && buf.Len() == 0 && text == "" {
@@ -228,7 +233,7 @@ func (s *Service) runReactTurn(ctx context.Context, in reactTurnInput) reactTurn
 			"name": call.Name, "status": "running", "args": call.Args, "id": tcID,
 		})
 
-		tool, res := s.Deps.DispatchAuthorizedToolFn(runCtx, reg, call, in.SessionMode, in.RiskLevel, in.Emit)
+		tool, res := s.Deps.Tools.DispatchAuthorizedToolFn(runCtx, reg, call, in.SessionMode, in.RiskLevel, in.Emit)
 
 		displayName := call.Name
 		if tool != nil {
@@ -260,16 +265,16 @@ func (s *Service) runReactTurn(ctx context.Context, in reactTurnInput) reactTurn
 		if obs == "" {
 			obs = coalesce(res.Error, res.Status)
 		}
-		if runCmd := s.Deps.ParseNextRunCommandFn(obs); s.Deps.ShouldAutoRunAfterSkillWriteFn(res, runCmd) && s.Deps.IsSkillWorkspaceWriteCallFn(call, tool) {
-			runCall := s.Deps.BuildAutoRunToolCallAfterWriteFn(reg, tool, call, runCmd)
+		if runCmd := s.Deps.Sandbox.ParseNextRunCommandFn(obs); s.Deps.Sandbox.ShouldAutoRunAfterSkillWriteFn(res, runCmd) && s.Deps.Sandbox.IsSkillWorkspaceWriteCallFn(call, tool) {
+			runCall := s.Deps.Sandbox.BuildAutoRunToolCallAfterWriteFn(reg, tool, call, runCmd)
 			runTcID := tcID + "_autorun"
 			runDisplay := runCall.Name
 			in.Emit("tool", "react", map[string]any{
 				"name": runDisplay, "status": "running", "args": runCall.Args, "id": runTcID, "autoContinue": true,
 			})
-			runTool, runRes := s.Deps.DispatchAuthorizedToolFn(runCtx, reg, runCall, in.SessionMode, in.RiskLevel, in.Emit)
+			runTool, runRes := s.Deps.Tools.DispatchAuthorizedToolFn(runCtx, reg, runCall, in.SessionMode, in.RiskLevel, in.Emit)
 			// write 已在本回合成功：若 run 仍被送进审核队列，改为直接执行沙箱脚本（避免卡在「只写不跑」）。
-			if runRes.Status == "pending_authorization" && s.Deps.IsSandboxCopilotWsPathFn(runCmd) {
+			if runRes.Status == "pending_authorization" && s.Deps.Sandbox.IsSandboxCopilotWsPathFn(runCmd) {
 				if runTool == nil {
 					runTool = registryLookup(reg, runCall.Name)
 				}
@@ -307,15 +312,17 @@ func (s *Service) runReactTurn(ctx context.Context, in reactTurnInput) reactTurn
 		if step == maxSteps {
 			systemFinal := system + "\n已达工具步数上限，请不要再调用工具，直接给出最终中文回答。"
 			var finalBuf strings.Builder
-			ft, rt2, err2 := s.Deps.StreamLLMForCopilotFn(ctx, in.Request, in.WorkspaceID, in.ModelID, messages, systemFinal, func(chunk, mid string) error {
-				if mid != "" {
-					resolvedModel = mid
-				}
-				finalBuf.WriteString(chunk)
-				if in.LiveStream != nil {
-					in.LiveStream.OnDelta(chunk, finalBuf.String())
-				}
-				return nil
+			ft, rt2, err2 := withLLMRetry(ctx, func(ctx context.Context) (string, ResolvedTurn, error) {
+				return s.Deps.Routing.StreamLLMForCopilotFn(ctx, in.Request, in.WorkspaceID, in.ModelID, messages, systemFinal, func(chunk, mid string) error {
+					if mid != "" {
+						resolvedModel = mid
+					}
+					finalBuf.WriteString(chunk)
+					if in.LiveStream != nil {
+						in.LiveStream.OnDelta(chunk, finalBuf.String())
+					}
+					return nil
+				})
 			})
 			if err2 == nil {
 				lastRT = rt2

@@ -21,6 +21,15 @@ import { ApprovalCard } from './CopilotPage.ApprovalCard';
 import { CopilotMessageStatus } from './CopilotPage.MessageStatus';
 import { CopilotVariantNav, type CopilotVariant } from './CopilotPage.VariantNav';
 import { CopilotMessageAuditLink } from './CopilotPage.MessageAuditLink';
+import type { BubbleVariantStyle } from './CopilotPage.BubbleSplitter';
+
+/**
+ * 气泡变体样式(由 BubbleSplitter 决定):
+ *   - standard: 默认 assistant 主气泡
+ *   - muted   : 灰色 / 紧凑 / 折叠向(thought / observation)
+ *   - compact : 工具调用卡片(橙边 / font-mono)
+ */
+const _BUBBLE_VARIANT_DOC: BubbleVariantStyle = 'standard';
 
 export function CopilotPageMessageBubble({
   m, expandedArgs = {}, setExpandedArgs = (() => undefined) as any,
@@ -37,6 +46,7 @@ export function CopilotPageMessageBubble({
   onOpenReplay = () => undefined,
   onSwitchVariant = () => undefined,
   conversationId,
+  bubbleProps,
 }: {
   m: ChatMessageEx;
   expandedArgs?: Record<string, boolean>;
@@ -71,9 +81,23 @@ export function CopilotPageMessageBubble({
   onOpenReplay?: (conversationId: string, correlationId: string) => void;
   onSwitchVariant?: (messageId: string, variantId: string) => void;
   conversationId?: string;
+  /** BubbleSplitter 决定的变体参数(可选,默认 standard) */
+  bubbleProps?: {
+    variantStyle?: BubbleVariantStyle;
+    showHeader?: boolean;
+    collapse?: boolean;
+    /** 跳过 TurnThoughtPanel(让 thought 泡独占,避免 answer 泡重复渲染) */
+    skipTurnPanel?: boolean;
+    tag?: string;
+  };
 }) {
+  const variantStyle: BubbleVariantStyle = bubbleProps?.variantStyle ?? 'standard';
+  const showHeader = bubbleProps?.showHeader ?? true;
+  const skipTurnPanel = bubbleProps?.skipTurnPanel ?? false;
   const isUser = m.role === 'user';
   const isTool = m.role === 'tool';
+  const isMuted = variantStyle === 'muted';
+  const isCompact = variantStyle === 'compact';
   const isEmpty = !m.content;
   const isStreaming = m.status === 'streaming' || m.status === 'in_flight';
   const agentDisplayName = agentName || m.agentName || (isUser ? '王昊' : isTool ? '能力调用' : '助手');
@@ -121,10 +145,11 @@ export function CopilotPageMessageBubble({
   return (
     <div
       ref={messageRef}
-      className={cn('copilot-message relative', isUser ? 'copilot-message--user flex justify-end' : isTool ? 'copilot-message--tool flex gap-3' : 'copilot-message--assistant flex gap-3', selectedContextMessageId === m.id && 'is-context-selected')}
+      data-bubble-kind={variantStyle}
+      className={cn('copilot-message relative bubble-stack', isUser ? 'copilot-message--user flex justify-end' : isTool ? 'copilot-message--tool flex gap-3' : 'copilot-message--assistant flex gap-3', selectedContextMessageId === m.id && 'is-context-selected')}
       data-message-status={m.status}
     >
-      {!isUser ? (
+      {!isUser && showHeader ? (
         <div className="shrink-0 pt-0.5">
           {isTool ? (
             <div className="copilot-message__avatar copilot-message__avatar--tool grid h-7 w-7 place-items-center rounded-full bg-[var(--warning-bg)] text-[var(--warning)]">
@@ -139,35 +164,40 @@ export function CopilotPageMessageBubble({
           )}
         </div>
       ) : null}
-      <div className={cn('copilot-message__content min-w-0 space-y-2.5', isUser ? 'max-w-[80%]' : 'w-full max-w-[960px]')}>
-        <div className={cn('copilot-message__meta flex items-center gap-1.5 text-[11px]', isUser && 'justify-end')}>
-          {isUser ? <Avatar name="王昊" size={20} /> : null}
-          <span className="font-semibold text-[var(--text)]">{isUser ? '王昊' : agentDisplayName}</span>
-          {!isUser && !isTool && expertRole ? (
-            <span className="truncate text-[10px] text-[var(--text-muted)]">{expertRole}</span>
-          ) : null}
-          {!isUser && m.status ? (
-            <CopilotMessageStatus status={m.status} elapsedSec={generationElapsedSec} />
-          ) : null}
-          {!isUser && m.metrics?.ttftMs !== undefined ? (
-            <details className="text-[10px] text-[var(--text-muted)]">
-              <summary className="cursor-pointer">运行详情</summary>
-              <span className="font-mono">TTFT {m.metrics.ttftMs}ms · {m.metrics.durationMs ? `${(m.metrics.durationMs / 1000).toFixed(1)}s` : ''}{m.metrics.model ? ` · ${m.metrics.model}` : ''}</span>
-            </details>
-          ) : null}
-          <span className="text-[10px] text-[var(--text-muted)] font-mono tabular-nums" title={m.createdAt}>{formatShanghaiTime(m.createdAt)}</span>
-          {((m.toolCalls?.length ?? 0) > 0 || isTool) ? <Badge tone="warn" className="text-[9px]">能力调用</Badge> : null}
-          {m.approvalRequest ? <Badge tone="error" className="text-[9px]">写操作</Badge> : null}
-          {!isUser ? (
-            <CopilotMessageAuditLink
-              conversationId={conversationId}
-              correlationId={m.correlationId}
-              auditEventId={m.auditEventId}
-              onOpenAudit={onOpenAudit}
-              onOpenReplay={onOpenReplay}
-            />
-          ) : null}
-        </div>
+      <div className={cn(
+        'copilot-message__content min-w-0 space-y-2.5',
+        isUser ? 'max-w-[80%]' : isMuted ? 'w-full max-w-[760px] opacity-90' : isCompact ? 'w-full max-w-[640px]' : 'w-full max-w-[960px]',
+      )}>
+        {showHeader ? (
+          <div className={cn('copilot-message__meta flex items-center gap-1.5 text-[11px]', isUser && 'justify-end')}>
+            {isUser ? <Avatar name="王昊" size={20} /> : null}
+            <span className="font-semibold text-[var(--text)]">{isUser ? '王昊' : agentDisplayName}</span>
+            {!isUser && !isTool && expertRole ? (
+              <span className="truncate text-[10px] text-[var(--text-muted)]">{expertRole}</span>
+            ) : null}
+            {!isUser && m.status ? (
+              <CopilotMessageStatus status={m.status} elapsedSec={generationElapsedSec} />
+            ) : null}
+            {!isUser && m.metrics?.ttftMs !== undefined ? (
+              <details className="text-[10px] text-[var(--text-muted)]">
+                <summary className="cursor-pointer">运行详情</summary>
+                <span className="font-mono">TTFT {m.metrics.ttftMs}ms · {m.metrics.durationMs ? `${(m.metrics.durationMs / 1000).toFixed(1)}s` : ''}{m.metrics.model ? ` · ${m.metrics.model}` : ''}</span>
+              </details>
+            ) : null}
+            <span className="text-[10px] text-[var(--text-muted)] font-mono tabular-nums" title={m.createdAt}>{formatShanghaiTime(m.createdAt)}</span>
+            {((m.toolCalls?.length ?? 0) > 0 || isTool) && !isCompact ? <Badge tone="warn" className="text-[9px]">能力调用</Badge> : null}
+            {m.approvalRequest && !isCompact ? <Badge tone="error" className="text-[9px]">写操作</Badge> : null}
+            {!isUser && showHeader ? (
+              <CopilotMessageAuditLink
+                conversationId={conversationId}
+                correlationId={m.correlationId}
+                auditEventId={m.auditEventId}
+                onOpenAudit={onOpenAudit}
+                onOpenReplay={onOpenReplay}
+              />
+            ) : null}
+          </div>
+        ) : null}
 
         {!isUser && m.variants && m.variants.length > 1 ? (
           <CopilotVariantNav
@@ -223,7 +253,7 @@ export function CopilotPageMessageBubble({
           </div>
         ) : null}
 
-        {!isUser && !isTool ? (
+        {!isUser && !isTool && !skipTurnPanel ? (
           <TurnThoughtPanel message={m} streaming={isStreaming} showNarrative={expert?.capabilities?.cognitive?.showNarrative !== false} />
         ) : null}
 
@@ -234,6 +264,10 @@ export function CopilotPageMessageBubble({
               ? 'copilot-message__body--user inline-block max-w-full whitespace-pre-wrap break-words rounded-2xl rounded-tr-sm bg-[var(--brand)] px-4 py-2.5 text-[14px] text-white shadow-sm'
               : isTool
               ? 'copilot-message__body--tool rounded-lg border border-[var(--warning)]/30 bg-[var(--warning-bg)]/50 px-3 py-2 text-[12px] text-[var(--text-secondary)] font-mono'
+              : isMuted
+              ? 'copilot-message__body--muted max-w-[760px] px-3 py-2 text-[13px] leading-[1.6] text-[var(--text-secondary)] break-words bg-[var(--bg-elevated)]/40 rounded-lg italic'
+              : isCompact
+              ? 'copilot-message__body--compact max-w-[640px] px-3 py-2 text-[12.5px] font-mono text-[var(--text-secondary)] break-words rounded-md border-l-2 border-[var(--warning)]/40 bg-[var(--bg-elevated)]/30'
               : 'copilot-message__body--assistant max-w-[920px] text-[14.5px] leading-[1.7] text-[var(--text)] break-words',
           )}>
             {isUser ? (

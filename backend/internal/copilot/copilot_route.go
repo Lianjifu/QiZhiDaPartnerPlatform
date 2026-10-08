@@ -12,6 +12,9 @@
 // 后续 resolveModelByPolicyLevel 据此再选具体模型。
 package copilot
 
+// copilot_route.go — 路由决策:根据 channel / 工具启用 / 角色判断走 direct /
+// react / supervisor 哪条分支。走错路不会崩,只是会标记降级、记录 metrics。
+
 import (
 	"regexp"
 	"strings"
@@ -153,7 +156,7 @@ func (s *Service) resolveModelByPolicyLevel(ws, requested, level, riskLevel stri
 		// constructed directly via New(st). Treat nil as "never demo alias"
 		// so the explicit-request branch returns immediately and the
 		// routing-level lookup below never runs.
-		if s.Deps.IsDemoModelAliasFn == nil || !s.Deps.IsDemoModelAliasFn(requested) {
+		if s.Deps.Sandbox.IsDemoModelAliasFn == nil || !s.Deps.Sandbox.IsDemoModelAliasFn(requested) {
 			return requested, "", ""
 		}
 	}
@@ -174,10 +177,10 @@ func (s *Service) resolveModelByPolicyLevel(ws, requested, level, riskLevel stri
 		// server.New; nil in copilot-internal tests where no published
 		// policy lookup is needed (tryLevel never matches and we fall
 		// through to the final return).
-		if s.Deps.PublishedPolicyByLevelFn == nil {
+		if s.Deps.Routing.PublishedPolicyByLevelFn == nil {
 			return "", "", false
 		}
-		pol := s.Deps.PublishedPolicyByLevelFn(ws, lv)
+		pol := s.Deps.Routing.PublishedPolicyByLevelFn(ws, lv)
 		if pol == nil {
 			return "", "", false
 		}

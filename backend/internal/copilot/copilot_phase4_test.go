@@ -97,13 +97,13 @@ func TestDreamCompress_ShortToWorking(t *testing.T) {
 	s := New(st)
 	// Stub MemoryPolicyForFn so dreamCompressConversationLocked treats the
 	// conversation as eligible for short→working compression.
-	s.Deps.MemoryPolicyForFn = func(ws string) map[string]any {
+	s.Deps.Memory.MemoryPolicyForFn = func(ws string) map[string]any {
 		return map[string]any{"shortToWorkingEnabled": true}
 	}
 	// Stub the IngestRuntimeMemoryLockedFn Dep so the test can populate
 	// short_term records without spinning up the full runtime_memory
 	// subsystem.
-	s.Deps.IngestRuntimeMemoryLockedFn = func(in runtimeMemoryInput) (map[string]any, error) {
+	s.Deps.Memory.IngestRuntimeMemoryLockedFn = func(in runtimeMemoryInput) (map[string]any, error) {
 		id := st.ID("memory")
 		item := map[string]any{
 			"id": id, "workspaceId": in.WorkspaceID, "ownerId": in.OwnerID,
@@ -118,7 +118,7 @@ func TestDreamCompress_ShortToWorking(t *testing.T) {
 	cid := "cv-dream-1"
 	s.Store.Lock()
 	for i := 0; i < dreamShortTermThreshold; i++ {
-		_, err := s.Deps.IngestRuntimeMemoryLockedFn(runtimeMemoryInput{
+		_, err := s.Deps.Memory.IngestRuntimeMemoryLockedFn(runtimeMemoryInput{
 			WorkspaceID: "w1", OwnerID: "u1", OwnerName: "测试",
 			Title: "短记忆" + itoa(i), Content: "内容" + itoa(i),
 			SourceType: "conversation", SourceID: cid, CorrelationID: "c" + itoa(i),

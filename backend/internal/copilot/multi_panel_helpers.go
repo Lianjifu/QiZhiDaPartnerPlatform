@@ -3,6 +3,9 @@
 // 镜像到这里（因为它们消费 copilot-internal 类型 participantTurnResult）。
 package copilot
 
+// multi_panel_helpers.go — 多面板渲染辅助(每个 panel 的角色定位、配色、顺序),
+// 与 copilot_multi.go 配套,处理面板合并 / 对比渲染逻辑。镜像自 internal/server/。
+
 // mergeParticipantOpinions 把 participantTurnResults 列表拼成 supervisor 聚合 prompt 用的字符串切片。
 // mergeParticipantOpinions stitches participantTurnResults into the
 // supervisor-aggregate prompt. Truncates each opinion to keep the aggregate

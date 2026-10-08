@@ -1,5 +1,11 @@
 /**
  * CopilotPage.Messages — message stream area with bubbles and progress.
+ *
+ * 渲染策略(hybrid 拆分):
+ *   - 用户 / tool 消息:单气泡(不进 stack)
+ *   - assistant 消息:经 BubbleSplitter 切成 N 个连续气泡(thought / tool_call /
+ *     observation / answer / meta),所有 slice 包在一个 .bubble-stack 容器内,
+ *     间距与连接线由 global.css 中的 .bubble-stack > .copilot-message 选择器控制。
  */
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
@@ -7,8 +13,10 @@ import { ArrowUp, BriefcaseBusiness, Loader2, Sparkles } from 'lucide-react';
 import { Button } from '@qzda/web-ui';
 import { useCopilotContext } from '@/features/copilot/components/useCopilotController';
 import { CopilotPageMessageBubble } from '@/features/copilot/components/CopilotPage.MessageBubble';
+import { splitMessageIntoBubbles, withStableKeys } from '@/features/copilot/components/CopilotPage.BubbleSplitter';
 import { TurnThoughtPanel } from '@/features/copilot/turn-narrative/turn-thought-panel';
 import { DigitalPartnerAvatar } from '@/features/partners/components/DigitalPartnerAvatar';
+import type { ChatMessageEx } from '@/hooks/types';
 
 export function CopilotPageMessages() {
   const ctrl = useCopilotContext();
@@ -113,6 +121,92 @@ export function CopilotPageMessages() {
     );
   }
 
+  /**
+   * 渲染单条消息:
+   * - user / tool: 单气泡
+   * - assistant: .bubble-stack 容器 + N 个 BubbleSlice 气泡
+   */
+  const renderMessage = (message: ChatMessageEx): JSX.Element => {
+    const sharedProps = {
+      copiedId: s.copiedId,
+      currentUser,
+      expert: activeEmployee ?? undefined,
+      agentName: expertName,
+      expertRole: expertMeta ?? undefined,
+      conversationId: currentSession?.conversationId,
+      onOpenContext: (tab, mid, artifact, opts) => openContext(tab, mid, artifact, opts),
+      onOpenAudit: openAuditTab,
+      onOpenReplay: openReplay,
+      onSwitchVariant: (mid: string, variantId: string) => { void switchActiveVariant(mid, variantId); },
+      onCopy: (m: ChatMessageEx) => { void copyMessage(m); },
+      onEdit: (m: ChatMessageEx) => {
+        if (!canMutate) return;
+        s.setEditingMessageId(m.id);
+        s.chat.setDraft(m.content ?? '');
+        requestAnimationFrame(() => s.inputRef.current?.focus());
+      },
+      onRegenerate: (mid: string) => {
+        if (!canMutate || isGenerating) return;
+        s.chat.regenerate(mid);
+      },
+      onRetryMessage: (mid: string) => {
+        if (!canMutate || isGenerating) return;
+        s.chat.retryMessage(mid);
+      },
+      onFeedback: (mid: string, kind: 'like' | 'dislike' | null) => {
+        if (!canMutate) return;
+        s.chat.setFeedback(mid, { kind: kind ?? undefined });
+        if (kind === 'dislike') s.setFeedbackOpen(mid);
+      },
+    };
+
+    // user / tool 消息:单气泡,不进 stack 容器(避免误触发连接线)
+    if (message.role === 'user' || message.role === 'tool') {
+      const slice = splitMessageIntoBubbles(message)[0];
+      const merged: ChatMessageEx = { ...message, ...slice.messageOverride };
+      return (
+        <CopilotPageMessageBubble
+          key={message.id}
+          m={merged}
+          bubbleProps={slice.bubbleProps}
+          {...sharedProps}
+          generationElapsedSec={
+            message.status === 'streaming' || message.status === 'in_flight'
+              ? generationElapsedSec
+              : undefined
+          }
+        />
+      );
+    }
+
+    // assistant 消息:切片 + .bubble-stack 容器
+    const slices = splitMessageIntoBubbles(message);
+    const keyed = withStableKeys(message, slices);
+    return (
+      <div
+        key={`${message.id}__stack`}
+        className="bubble-stack flex flex-col"
+        data-turn-message-id={message.id}
+        data-turn-role="assistant"
+      >
+        {keyed.map(({ key, slice, merged }) => (
+          <CopilotPageMessageBubble
+            key={key}
+            m={merged}
+            bubbleProps={slice.bubbleProps}
+            {...sharedProps}
+            generationElapsedSec={
+              // 仅 answer(主气泡)展示生成耗时;muted/compact 子气泡不重复
+              slice.kind === 'answer' && (message.status === 'streaming' || message.status === 'in_flight')
+                ? generationElapsedSec
+                : undefined
+            }
+          />
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div ref={s.scrollRef} className="copilot-messages min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5" role="log" aria-live="polite" aria-relevant="additions text">
       {conversationMissing && (
@@ -121,49 +215,13 @@ export function CopilotPageMessages() {
         </div>
       )}
       {displayMessages.length === 0 ? emptyIntro : (
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
-          {displayMessages.map((message) => (
-            <CopilotPageMessageBubble
-              key={message.id}
-              m={message}
-              copiedId={s.copiedId}
-              currentUser={currentUser}
-              expert={activeEmployee ?? undefined}
-              agentName={expertName}
-              expertRole={expertMeta ?? undefined}
-              generationElapsedSec={message.status === 'streaming' || message.status === 'in_flight' ? generationElapsedSec : undefined}
-              conversationId={currentSession?.conversationId}
-              onOpenContext={(tab, mid, artifact, opts) => openContext(tab, mid, artifact, opts)}
-              onOpenAudit={openAuditTab}
-              onOpenReplay={openReplay}
-              onSwitchVariant={(mid, variantId) => void switchActiveVariant(mid, variantId)}
-              onCopy={(m) => { void copyMessage(m); }}
-              onEdit={(m) => {
-                if (!canMutate) return;
-                s.setEditingMessageId(m.id);
-                s.chat.setDraft(m.content ?? '');
-                requestAnimationFrame(() => s.inputRef.current?.focus());
-              }}
-              onRegenerate={(mid) => {
-                if (!canMutate || isGenerating) return;
-                s.chat.regenerate(mid);
-              }}
-              onRetryMessage={(mid) => {
-                if (!canMutate || isGenerating) return;
-                s.chat.retryMessage(mid);
-              }}
-              onFeedback={(mid, kind) => {
-                if (!canMutate) return;
-                s.chat.setFeedback(mid, { kind });
-                if (kind === 'dislike') s.setFeedbackOpen(mid);
-              }}
-            />
-          ))}
+        <div className="mx-auto flex w-full max-w-full flex-col">
+          {displayMessages.map(renderMessage)}
           {streamingAssistant && (
             <TurnThoughtPanel message={streamingAssistant} streaming />
           )}
           {showTypingFallback && (
-            <div className="copilot-typing flex items-center gap-2 text-[12px] text-[var(--text-muted)]" aria-live="polite">
+            <div className="copilot-typing mt-3 flex items-center gap-2 text-[12px] text-[var(--text-muted)]" aria-live="polite">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
               <span>{generationHint || '正在连接模型与准备上下文…'}</span>
             </div>

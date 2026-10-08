@@ -12,7 +12,11 @@
 //   - 未知 / 未挂执行器的 tool 返回 status=unavailable（不伪造 success）
 package copilot
 
+// copilot_tools.go — 工具注册与执行编排:集成 shell / web / skill / MCP /
+// platform tool,统一参数解析、结果归一与错误分类。
+
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -350,7 +354,8 @@ func registryLookup(reg []registeredTool, name string) *registeredTool {
 }
 
 // toolRegistryPrompt 把当前会话可用的工具列表渲染成给 LLM 的 system prompt 片段。
-// 包含通用 ReAct 规则、Skill Harness 原语说明、docx/pptx/pdf 工具专属约束、产物协议约束等。
+// 静态段(ReAct 入口 / 格式 / 禁用 XML / Skill Harness / 产物协议)走 prompt 注册表;
+// 工具特定段(docx / pptx / pdf)保留为条件代码块(动态依赖 enabled 列表)。
 func toolRegistryPrompt(reg []registeredTool) string {
 	var enabled []registeredTool
 	for _, t := range reg {
@@ -359,19 +364,14 @@ func toolRegistryPrompt(reg []registeredTool) string {
 		}
 	}
 	if len(enabled) == 0 {
-		return "本回合未启用任何工具。请直接根据对话历史与记忆作答，不要尝试调用工具。"
+		return promptGet("tool.registry.empty")
 	}
 	var b strings.Builder
-	b.WriteString("你可以使用下列工具（ReAct）。需要工具时，先只输出一个工具调用块，不要夹杂最终答案：\n")
-	b.WriteString("<<<TOOL>>>\n{\"name\":\"工具名\",\"args\":{...}}\n<<<END>>>\n")
-	b.WriteString("禁止输出 <skill.read>、<pptx> 等 XML 标签式工具块；仅使用上述 <<<TOOL>>> 格式。\n")
-	b.WriteString("收到工具观察结果后，再决定是否继续调用或给出最终中文回答。最终回答不要包含 <<<TOOL>>> 或 XML 工具标记。\n")
-	b.WriteString("【Skill Harness】对 kind=skill 的能力：\n")
-	b.WriteString("1) 首次先 action=open 阅读 SKILL.md 与 scripts 列表；\n")
-	b.WriteString("2) Office（pptx/docx/pdf）须先 write path=.copilot-ws/*.md 写入大纲，再 run command=scripts/...；run 引用 --outline-file .copilot-ws/... 时系统会自动补 write 步；\n")
-	b.WriteString("3) 执行必须 action=run 且 command 匹配 scripts/... 或 .copilot-ws/...；未见到下载链接前勿声称 PPT/Word 已生成；\n")
-	b.WriteString("4) 勿把自然语言当 command；观察 status=needs_instruction 表示尚未真正执行；status=failed 且含【预检失败】表示缺 package 或依赖文件；\n")
-	b.WriteString("5) 仅当观察为 pending_authorization 时告知用户「已进入人工审核」；禁止在 success/needs_instruction 时声称已提交审核或已生成文件。\n")
+	b.WriteString(promptGet("tool.registry.react_header"))
+	b.WriteString(promptGet("tool.registry.format"))
+	b.WriteString(promptGet("tool.registry.xml_forbidden"))
+	b.WriteString(promptGet("tool.registry.finalize"))
+	b.WriteString(promptGet("tool.registry.skill_harness"))
 	hasDocx := false
 	for _, t := range enabled {
 		if isDocxSkillName(t.Name) {
@@ -402,7 +402,7 @@ func toolRegistryPrompt(reg []registeredTool) string {
 	if hasPdf {
 		b.WriteString("【PDF】须 action=open 后 action=run command=scripts/...；禁止 title+content 快捷生成。未见到 /api/skill-artifacts/*.pdf 链接前勿声称已生成。\n")
 	}
-	b.WriteString("【产物协议】docx/pptx/pdf 必须由 skill 脚本产出并以 /api/skill-artifacts/ 链接交付；平台禁止内置旁路生成。\n")
+	b.WriteString(promptGet("tool.registry.artifact_protocol"))
 	b.WriteString("可用工具：\n")
 	for _, t := range enabled {
 		b.WriteString("- ")
@@ -605,9 +605,18 @@ func (s *Service) runCopilotTool(ctx toolRunContext, t *registeredTool, call too
 		query := coalesce(str(call.Args["query"]), ctx.UserMessage)
 		var hits []memoryHit
 		var err error
-		if s.Deps.RetrievePublishedFn != nil {
+		if s.Deps.RAG.RetrievePublishedFn != nil {
 			var raw any
-			raw, err = s.Deps.RetrievePublishedFn(ctx.Request, map[string]any{"query": query}, ctx.CorrelationID)
+			// 缓存键由 query + workspace + scope 派生,5min 内复用上次 RAG 命中;
+			// 缓存未命中走 withRAGRetry:1+2 重试,基数 2s。
+			cacheKey := ragCacheKey(query, ctx.WorkspaceID, nil)
+			raw, err = s.getRAGCache().LoadOrCompute(cacheKey, func() (any, error) {
+				return withRAGRetry(ctx.Request.Context(), func(c context.Context) (any, error) {
+					// 把 retry 的 ctx 透传给下游 HTTP 调用
+					req := ctx.Request.WithContext(c)
+					return s.Deps.RAG.RetrievePublishedFn(req, map[string]any{"query": query}, ctx.CorrelationID)
+				})
+			})
 			if raw != nil {
 				if h, ok := raw.([]memoryHit); ok {
 					hits = h
@@ -658,7 +667,7 @@ func (s *Service) runCopilotTool(ctx toolRunContext, t *registeredTool, call too
 		return res
 
 	case t.Name == "skill.read" || t.Key == "builtin:skill.read":
-		return s.Deps.RunSkillReadToolFn(ctx, call, started)
+		return s.Deps.Tools.RunSkillReadToolFn(ctx, call, started)
 
 	case t.Name == "time.now" || t.Key == "builtin:time.now":
 		now := time.Now().Format(time.RFC3339)
@@ -668,16 +677,16 @@ func (s *Service) runCopilotTool(ctx toolRunContext, t *registeredTool, call too
 		}
 
 	case isPlatformPilotdeckTool(t.Name):
-		return s.Deps.RunPilotdeckToolFn(ctx, t, call, started)
+		return s.Deps.Tools.RunPilotdeckToolFn(ctx, t, call, started)
 
 	case isRuntimeTool(t.Name):
-		return s.Deps.RunRuntimeToolFn(ctx, t, call, started)
+		return s.Deps.Tools.RunRuntimeToolFn(ctx, t, call, started)
 
 	case isCMDBTool(t.Name) || isCMDBTool(t.Key):
-		return s.Deps.RunCMDBLookupFn(ctx, t, call, started)
+		return s.Deps.Tools.RunCMDBLookupFn(ctx, t, call, started)
 
 	case t.Kind == "skill":
-		return s.Deps.RunSkillToolFn(ctx, t, call, started)
+		return s.Deps.Tools.RunSkillToolFn(ctx, t, call, started)
 
 	case t.Kind == "workflow":
 		return toolExecResult{
@@ -768,10 +777,10 @@ func (s *Service) runCopilotTool(ctx toolRunContext, t *registeredTool, call too
 			return webComputerUse(webComputerUsePayload{Cmd: "close"}, "")
 		}
 		if isRuntimeTool(t.Name) {
-			return s.Deps.RunRuntimeToolFn(ctx, t, call, started)
+			return s.Deps.Tools.RunRuntimeToolFn(ctx, t, call, started)
 		}
 		if isPlatformPilotdeckTool(t.Name) {
-			return s.Deps.RunPilotdeckToolFn(ctx, t, call, started)
+			return s.Deps.Tools.RunPilotdeckToolFn(ctx, t, call, started)
 		}
 		// Display-name enterprise tools without a concrete executor: honest failure, not fake success.
 		return toolExecResult{

@@ -12,6 +12,10 @@
 // the server-side callers (skill_artifacts.go, etc.).
 package copilot
 
+// helpers.go — copilot 模块内部通用辅助(类型转换、map/slice 操作、字符串处理、JSON 拼装)。
+// 被多个 copilot_*.go 文件共用,非业务语义;修改前先看是否有更专业的 helper 文件
+// (tool_helpers / utility_helpers / multi_panel_helpers)更适合。
+
 import (
 	"context"
 	"encoding/json"
@@ -147,8 +151,8 @@ func builtinSkillsRoot() string {
 // means "use the package-private builtinSkillsRoot fallback". This
 // keeps the copilot package free of any internal/server/ import.
 func (s *Service) BuiltinSkillsRoot() string {
-	if s != nil && s.Deps.BuiltinSkillsRootFn != nil {
-		return s.Deps.BuiltinSkillsRootFn()
+	if s != nil && s.Deps.SkillsRoot.BuiltinSkillsRootFn != nil {
+		return s.Deps.SkillsRoot.BuiltinSkillsRootFn()
 	}
 	return builtinSkillsRoot()
 }

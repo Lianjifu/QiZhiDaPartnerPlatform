@@ -12,6 +12,9 @@
 //   - off     → 关闭扫描（仅供测试）
 package copilot
 
+// copilot_safety.go — 安全护栏:高风险写操作拦截、人工审核触发、内容合规过滤。
+// 在所有阶段前后都跑;零信任评估点入口由 /internal/policy 提供。
+
 import (
 	"os"
 	"regexp"

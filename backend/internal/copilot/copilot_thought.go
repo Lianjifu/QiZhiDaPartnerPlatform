@@ -4,6 +4,9 @@
 // 标题用于前端四阶段进度条，详情用于 hover 显示原因。
 package copilot
 
+// copilot_thought.go — 思维链:让 LLM 输出可解释的 reasoning steps,便于前端展示
+// 思考过程与人工审核。与 cognitive 层配合,但更轻量(仅生成步骤,不决策)。
+
 import (
 	"strings"
 )

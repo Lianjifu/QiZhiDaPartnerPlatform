@@ -5,6 +5,9 @@
 // 存储层先看 Kernel（外部 durable backend），没有时回落到 Store.ContextSnapshots 内存环形缓冲。
 package copilot
 
+// copilot_snapshot.go — ContextSnapshot 数据模型与快照生成;持久化到 store 的
+// 同时提供 LLM 端引用,使后续回合可以重放上下文。
+
 import (
 	"context"
 	"log"
@@ -103,7 +106,7 @@ func (s *Service) persistContextSnapshot(rec map[string]any) {
 		}
 		s.Store.Unlock()
 		if len(dropped) > 0 {
-			s.Deps.DurableDeleteSyncFn("context_snapshots", dropped...)
+			s.Deps.Persist.DurableDeleteSyncFn("context_snapshots", dropped...)
 		}
 	} else {
 		s.Store.Unlock()
@@ -134,7 +137,7 @@ func (s *Service) lookupContextSnapshotCtx(ctx context.Context, ws, conversation
 	}
 	s.Store.RLock()
 	defer s.Store.RUnlock()
-	cid := s.Deps.ResolveMessageBucketIDFn(ws, conversationID)
+	cid := s.Deps.Routing.ResolveMessageBucketIDFn(ws, conversationID)
 	for _, rec := range s.Store.ContextSnapshots {
 		if str(rec["correlationId"]) != correlationID {
 			continue
@@ -165,7 +168,7 @@ func (s *Service) replayCopilotTurn(r *http.Request) (any, error) {
 	if rawID == "" || corr == "" {
 		return nil, apperr.BadReq(apperr.BadRequest, "缺少会话或 correlationId")
 	}
-	ws := s.Deps.WorkspaceIDFn(r)
+	ws := s.Deps.Workspace.WorkspaceIDFn(r)
 	rec := s.lookupContextSnapshotCtx(r.Context(), ws, rawID, corr)
 	if rec == nil {
 		return nil, apperr.NotFoundErr(apperr.ReplayNotFound, "回合快照不存在")

@@ -37,6 +37,11 @@
 // single seam.
 package copilot
 
+// handler.go — HTTP handler 适配层:把 *copilot.Service 的方法注册到 chi 路由。
+//
+// 负责请求解析、响应编码、错误映射;业务逻辑全在 Service 里,handler 只做"翻译"。
+// 替换底层 Service 实现(例如测试时)不影响路由层。
+
 import (
 	"net/http"
 	"strings"

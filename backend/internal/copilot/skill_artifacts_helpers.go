@@ -6,6 +6,9 @@
 // preview 检查、CSV/OOXML 校验、产物 TTL 清理、HTTP 头辅助等。
 package copilot
 
+// skill_artifacts_helpers.go — 技能 artifacts 解析与回填(模块内技能 + 远程执行结果)。
+// 整个包最大文件(1505 行),承担了 builtin + remote 两类技能产出的完整结构化处理。
+
 import (
 	"archive/zip"
 	"encoding/json"

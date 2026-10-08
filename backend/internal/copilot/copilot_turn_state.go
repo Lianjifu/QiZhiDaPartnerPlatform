@@ -7,6 +7,9 @@
 // 同时被 SSE 流的取消逻辑（cancelStreamByCorrelation）复用。
 package copilot
 
+// copilot_turn_state.go — 回合状态机(in_progress / awaiting_approval / completed /
+// failed);由 harness 推进,所有外部中断(用户取消 / 超时)都转为 failed。
+
 import (
 	"strings"
 	"sync"

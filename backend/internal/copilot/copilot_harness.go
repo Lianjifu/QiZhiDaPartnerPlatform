@@ -5,8 +5,13 @@
 // 在 runHarnessTurn 里串成一个完整的 copilot 回合。
 package copilot
 
+// copilot_harness.go — ReAct harness 入口:串联 route / cognitive / react /
+// reflect / answer_enrich / stream 等子阶段,处理整体事务边界与异常回滚。
+
 import (
 	"context"
+	"errors"
+	"fmt"
 	"strings"
 )
 
@@ -22,6 +27,37 @@ func (s *Service) runHarnessTurn(ctx context.Context, in reactTurnInput) reactTu
 	resolvedModel, policyID, usedLevel := s.resolveModelByPolicyLevel(in.WorkspaceID, in.ModelID, decision.PolicyLevel, in.RiskLevel)
 	if resolvedModel != "" {
 		in.ModelID = resolvedModel
+	}
+
+	// 模型用量预算闸:per-turn 一次,在 cognitive 决策之前拦截,
+	// 避免已无预算的 workspace 还跑昂贵的认知分析。
+	var employeeID string
+	if in.Viewer != nil {
+		employeeID = in.Viewer.ID
+	}
+	if employeeID != "" {
+		proposedModel := coalesce(resolvedModel, in.ModelID)
+		allowed, remaining, berr := s.depCheckModelBudget(in.WorkspaceID, employeeID, proposedModel)
+		if berr != nil || !allowed {
+			IncCopilotBudgetDenied()
+			in.Emit("stage", "harness", map[string]any{
+				"status":   "budget_denied",
+				"remaining": remaining,
+				"modelId":   proposedModel,
+				"reason":   "model_budget_exceeded",
+			})
+			msg := fmt.Sprintf("model budget exceeded (remaining=$%.4f, model=%s)", remaining, proposedModel)
+			if berr != nil {
+				msg = fmt.Sprintf("model budget check error: %v", berr)
+			}
+			return reactTurnResult{
+				Err:         errors.New(msg),
+				ModelID:     proposedModel,
+				Mode:        decision.Mode,
+				PolicyLevel: usedLevel,
+				PolicyID:    policyID,
+			}
+		}
 	}
 
 	// Cognitive thinking model: route after harness mode, inject digest before act.
@@ -53,7 +89,7 @@ func (s *Service) runHarnessTurn(ctx context.Context, in reactTurnInput) reactTu
 	in.SkipRoute = true
 
 	idGen := defaultSegmentIDGen(s)
-	live := newLiveAnswerStream(in.Emit, in.ReplyMode, in.SegmentPolicy, in.CorrelationID, in.FirstMessageID, in.ModelID, idGen)
+	live := newLiveAnswerStream(in.Emit, in.ReplyMode, in.SegmentPolicy, in.CorrelationID, in.FirstMessageID, in.ModelID, idGen).WithContext(ctx)
 	in.LiveStream = live
 
 	var out reactTurnResult

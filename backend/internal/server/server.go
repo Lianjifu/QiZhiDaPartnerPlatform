@@ -1483,34 +1483,48 @@ func (s *Server) buildOpsHandler() *operations.Handler {
 // server/.
 func (s *Server) buildCopSvc() *copilot.Service {
 	deps := copilot.Deps{
-		WorkspaceIDFn:               s.workspaceID,
-		RequireMemoryGovernanceFn:   s.memorySvc.RequireMemoryGovernanceCompat,
-		EvaluateZeroTrustFn:         s.evaluateZeroTrust,
-		ResolveDefaultRiskLevelFn:   s.resolveDefaultRiskLevel,
-		ResolveDefaultSessionModeFn: s.resolveDefaultSessionMode,
-		ResolveMessageBucketIDFn:    s.resolveMessageBucketID,
-		// Cross-module bridge — M02 expert-collab delegates the actual LLM
-		// stream to the M08 模型中心 facade (s.modelSvc.StreamLLMForCopilot).
-		// Implementation lives in internal/models/handlers_stream.go. The
-		// published-policy lookup also moves to M08 since both share the
-		// store snapshot; see internal/models/handlers_invoke.go.
-		StreamLLMForCopilotFn:     s.modelSvc.StreamLLMForCopilot,
-		AppendMemoryAuditLockedFn: s.appendMemoryAuditLocked,
-		RunParticipantTurnFn:      s.runParticipantTurn,
-		MemoryCanReadFn:           s.memoryCanRead,
-		RunSkillToolFn:            s.runSkillTool,
-		DispatchAuthorizedToolFn:  s.dispatchAuthorizedTool,
-		BuildParticipantContextFn: func(in copilot.ParticipantCtxInput, emp map[string]any) copilot.ParticipantContext {
-			return s.buildParticipantContext(participantCtxInput(in), emp)
+		Workspace: copilot.WorkspaceDeps{
+			WorkspaceIDFn:             s.workspaceID,
+			RequireMemoryGovernanceFn: s.memorySvc.RequireMemoryGovernanceCompat,
+			EvaluateZeroTrustFn:       s.evaluateZeroTrust,
 		},
-		IsDemoModelAliasFn:       isDemoModelAlias,
-		PublishedPolicyByLevelFn: s.modelSvc.PublishedPolicyByLevelLocked,
-		// BuiltinSkillsRootFn — the M09 (skills) module owns the on-disk
-		// builtin skills directory. We expose s.skillsSvc.BuiltinSkillsRoot
-		// as a method value so the copilot module can locate the digest.md
-		// for each cognitive framework without copilot→server/ or
-		// copilot→skills/ direct imports.
-		BuiltinSkillsRootFn: s.skillsSvc.BuiltinSkillsRoot,
+		Routing: copilot.RoutingDeps{
+			// Cross-module bridge — M02 expert-collab delegates the actual LLM
+			// stream to the M08 模型中心 facade (s.modelSvc.StreamLLMForCopilot).
+			// Implementation lives in internal/models/handlers_stream.go. The
+			// published-policy lookup also moves to M08 since both share the
+			// store snapshot; see internal/models/handlers_invoke.go.
+			StreamLLMForCopilotFn:     s.modelSvc.StreamLLMForCopilot,
+			PublishedPolicyByLevelFn:  s.modelSvc.PublishedPolicyByLevelLocked,
+			ResolveDefaultRiskLevelFn: s.resolveDefaultRiskLevel,
+			ResolveDefaultSessionModeFn: s.resolveDefaultSessionMode,
+			ResolveMessageBucketIDFn:    s.resolveMessageBucketID,
+		},
+		Memory: copilot.MemoryDeps{
+			AppendMemoryAuditLockedFn: s.appendMemoryAuditLocked,
+			MemoryCanReadFn:           s.memoryCanRead,
+		},
+		Tools: copilot.ToolDeps{
+			DispatchAuthorizedToolFn: s.dispatchAuthorizedTool,
+			RunSkillToolFn:           s.runSkillTool,
+		},
+		MultiAgent: copilot.MultiAgentDeps{
+			BuildParticipantContextFn: func(in copilot.ParticipantCtxInput, emp map[string]any) copilot.ParticipantContext {
+				return s.buildParticipantContext(participantCtxInput(in), emp)
+			},
+			RunParticipantTurnFn: s.runParticipantTurn,
+		},
+		Sandbox: copilot.SandboxHelperDeps{
+			IsDemoModelAliasFn: isDemoModelAlias,
+		},
+		SkillsRoot: copilot.SkillsRootDeps{
+			// BuiltinSkillsRootFn — the M09 (skills) module owns the on-disk
+			// builtin skills directory. We expose s.skillsSvc.BuiltinSkillsRoot
+			// as a method value so the copilot module can locate the digest.md
+			// for each cognitive framework without copilot→server/ or
+			// copilot→skills/ direct imports.
+			BuiltinSkillsRootFn: s.skillsSvc.BuiltinSkillsRoot,
+		},
 	}
 	svc := copilot.NewService(s.Store, deps)
 	svc.SubAgent = s.SubAgent

@@ -5,6 +5,9 @@
 // 不再覆盖原消息。所有变体元数据都以 map[string]any key 的形式存在 Store.Messages 上。
 package copilot
 
+// copilot_variants.go — 答案变体:同一回合并行生成 N 个候选,前端可切换对比;
+// 不写回主状态,仅作为探索选项供用户选用。所有变体元数据以 map[string]any 形式存 Store.Messages。
+
 // Message variant bookkeeping for the M02 redesign.
 //
 // Each assistant message in a Copilot conversation carries optional

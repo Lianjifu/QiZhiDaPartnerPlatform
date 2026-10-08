@@ -13199,3 +13199,84 @@ a:focus-visible,
   .audit-evidence__stats,
   .zt-verify__kpis { grid-template-columns: 1fr; }
 }
+
+/* =============================================================
+ * CopilotPage.BubbleSplits — hybrid 拆分后的气泡堆叠样式
+ * -------------------------------------------------------------
+ * 设计目标:
+ *   1. 同一 turn 的多个 slice(thought / tool_call / observation / answer)
+ *      视觉上"成组",与下一条 user/assistant 消息之间有清晰的阶段分隔。
+ *   2. compact / muted 子气泡向主 answer 气泡"对齐缩进",形成视觉从属关系。
+ *   3. 阶段过渡(thought → tool_call → answer)用淡色连接线表达流程。
+ * ============================================================= */
+
+/* 同一 turn 内 slice 紧凑衔接;跨 turn 之间由父容器 gap 控制 */
+.copilot-message-list .bubble-stack + .bubble-stack {
+  margin-top: 1rem; /* 跨 turn 间距(替换原 gap-4) */
+}
+
+/* 单 turn 内:同一栈的连续气泡几乎贴在一起(无 margin) */
+.bubble-stack > .copilot-message + .copilot-message {
+  margin-top: 0.375rem;
+}
+
+/* 阶段过渡:thought → tool_call / tool_call → answer 拉大一点 */
+.bubble-stack > .copilot-message[data-bubble-kind='muted']
+  + .copilot-message[data-bubble-kind='compact'],
+.bubble-stack > .copilot-message[data-bubble-kind='compact']
+  + .copilot-message[data-bubble-kind='standard'],
+.bubble-stack > .copilot-message[data-bubble-kind='muted']
+  + .copilot-message[data-bubble-kind='standard'] {
+  margin-top: 0.75rem;
+}
+
+/* compact / muted 向主气泡对齐缩进,头像列形成垂直线 */
+.bubble-stack > .copilot-message[data-bubble-kind='compact'],
+.bubble-stack > .copilot-message[data-bubble-kind='muted'] {
+  margin-left: 2.25rem; /* 与主气泡头像列对齐 */
+}
+
+/* 当 showHeader=false 时(observation 子气泡),不缩进 */
+.bubble-stack > .copilot-message[data-bubble-kind='muted']
+  :where(.copilot-message__content > .copilot-message__meta:not(:first-child)) {
+  /* keep default for meta which is hidden */
+}
+
+/* thought / observation 视觉降级(opacity already in component;这里加左侧连接线) */
+.bubble-stack > .copilot-message[data-bubble-kind='muted']::before {
+  content: '';
+  position: absolute;
+  left: 1.125rem; /* 与头像中心对齐 */
+  top: 0;
+  bottom: 0;
+  border-left: 2px solid color-mix(in srgb, var(--brand) 12%, transparent);
+  pointer-events: none;
+}
+
+/* tool_call 紧凑卡片:左边的橙边已在组件内;此处加一点悬浮感 */
+.bubble-stack > .copilot-message[data-bubble-kind='compact']
+  .copilot-message__body--compact {
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.bubble-stack > .copilot-message[data-bubble-kind='compact']:hover
+  .copilot-message__body--compact {
+  background-color: var(--bg-elevated);
+  border-left-color: color-mix(in srgb, var(--warning) 60%, transparent);
+}
+
+/* 暗色模式适配 */
+.dark .bubble-stack > .copilot-message[data-bubble-kind='muted']::before {
+  border-left-color: color-mix(in srgb, var(--brand) 24%, transparent);
+}
+
+/* 响应式:小屏去掉左侧缩进 */
+@media (max-width: 640px) {
+  .bubble-stack > .copilot-message[data-bubble-kind='compact'],
+  .bubble-stack > .copilot-message[data-bubble-kind='muted'] {
+    margin-left: 0;
+  }
+  .bubble-stack > .copilot-message[data-bubble-kind='muted']::before {
+    left: 0.5rem;
+  }
+}

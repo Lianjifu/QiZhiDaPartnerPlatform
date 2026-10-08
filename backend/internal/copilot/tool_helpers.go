@@ -10,6 +10,9 @@
 //   - pilotdeckToolDef + pilotdeckToolRegistry：PilotDeck builtin 工具对齐表
 package copilot
 
+// tool_helpers.go — 工具参数解析、结果裁剪、错误归一;被 shell / web / skill
+// 三个具体工具实现共用,统一了上游工具的输出形状。
+
 import "strings"
 
 // skillActionOpen 是 skill.read/open 通用 open 动作的归一化取值。

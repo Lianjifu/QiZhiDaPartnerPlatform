@@ -5,6 +5,9 @@
 // 做去重清理。
 package copilot
 
+// copilot_artifacts.go — artifacts 入口:登记图表/文件/链接等可附在回合输出上的
+// artifact 类型,作为附件层抽象。具体实现(sheet / chart / skill_result)按类型派发。
+
 import (
 	"fmt"
 	"regexp"

@@ -16,6 +16,9 @@
 
 package copilot
 
+// web_tools.go — web 工具实现:fetch / browse / fill / type / click / close 等
+// computer-use 子集,在浏览器侧通过 Chrome DevTools Protocol 执行。
+
 import (
 	"context"
 	"encoding/base64"

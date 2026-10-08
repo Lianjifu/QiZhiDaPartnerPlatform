@@ -230,7 +230,7 @@ sequenceDiagram
 ```text
 backend/
 ├── cmd/                       # 进程入口
-│   ├── qzda-app/                # monolith 主进程（默认，唯一部署入口）
+│   ├── qzda-app/                # monolith 主进程（默认，唯一部署入口）+ Dockerfile/SERVICE.md
 │   └── qzda-local-llm/          # 本地模型辅助
 ├── builtin/                   # 出厂包（冷启动 EnsureBuiltin*）
 │   ├── knowledge/office/      # kp.office.* 办公开箱知识
@@ -247,10 +247,11 @@ backend/
 │   ├── runtimeenv/            # 运行时环境
 │   └── feishu/ · wecom/ · dingtalk/ · weixin/
 ├── api/                       # routes.md · proto · 契约说明
-├── services/                  # 一部署单元一目录
-│   ├── qzda-app/              # monolith Dockerfile
-│   ├── qzda-gateway/          # Envoy 配置
-│   └── qzda-sandbox/ · qzda-agent-runtime/ · qzda-rag/
+├── services/                  # Python sidecar 集群（每服务一目录）
+│   ├── qzda-gateway/          # Python 反向代理
+│   ├── qzda-sandbox/          # 技能沙箱 · 必须独立
+│   ├── qzda-rag/              # FastAPI RAG
+│   └── qzda-agent-runtime/    # Python agent 运行时 sidecar
 ├── deploy/                    # compose · envoy · migrations · topology-split
 ├── infra/ · obs/              # 基础依赖与可观测
 ├── libs/ · pkg/ · gen/        # hexkit 等与 buf 生成代码
@@ -266,7 +267,8 @@ backend/
 | `cmd/qzda-app` + `internal/apprun` | 本地主路径入口与启动编排 |
 | `internal/server` | 路由与领域 handler（六边形迁包进行中） |
 | `builtin/` | 知识 / 技能 / 流程 / 场景出厂源 |
-| `services/*/SERVICE.md` | 各部署单元说明 |
+| `cmd/qzda-app/SERVICE.md` | Go 单进程运维参考(port/env/启动) |
+| `services/*/SERVICE.md` | Python sidecar 运维参考 |
 | `bin/qzda-*` | 改 Go 后须 `make build` 再 kickstart |
 
 ---

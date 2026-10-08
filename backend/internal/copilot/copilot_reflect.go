@@ -7,6 +7,9 @@
 // 触发原因透传给前端 SSE（reason 字段），便于 UI 显示"为什么 AI 又改了一次"。
 package copilot
 
+// copilot_reflect.go — 反思阶段:回合结束后评估输出是否合格,不通过则回流到 react
+// 重试(通常有上限次数)。与 self-improving/ 联动,负面反馈会写入反思样本库。
+
 import (
 	"context"
 	"strings"
@@ -62,13 +65,14 @@ func shouldReflect(result reactTurnResult, reflectHint string) (bool, string) {
 
 func buildCritiquePrompt(answer, userMsg, hint, reason string, toolCalls []map[string]any) string {
 	var b strings.Builder
-	b.WriteString("请对助手回答做简短自我批评（3 条以内），指出事实缺口、步骤遗漏或工具失败未处理处，然后给出修订后的最终中文回答。\n")
-	b.WriteString("不要输出 TOOL/PLAN 标记。\n")
+	// 反思主指令 + 工具/规划标记禁用规则走版本化注册表
+	b.WriteString(promptGet("system.reflect.critique"))
+	b.WriteString(promptGet("system.part.tool_plan_rule"))
 	b.WriteString("触发原因：")
 	b.WriteString(reason)
 	b.WriteString("\n")
 	if reason == "cognitive_structure_weak" {
-		b.WriteString("请按当前认知框架补齐：结论/依据或问题定义/行动或候选方案/有条件推荐等可见结构。\n")
+		b.WriteString(promptGet("system.reflect.cognitive_structure_weak"))
 	}
 	if hint != "" {
 		b.WriteString("用户反馈：")
@@ -158,12 +162,14 @@ func (s *Service) applyReflection(ctx context.Context, in reactTurnInput, result
 		msgs = append(msgs, modelprov.ChatMessage{Role: "user", Content: prompt})
 
 		var buf strings.Builder
-		text, rt, err := s.Deps.StreamLLMForCopilotFn(ctx, in.Request, in.WorkspaceID, in.ModelID, msgs, system, func(chunk, mid string) error {
-			if mid != "" {
-				current.ModelID = mid
-			}
-			buf.WriteString(chunk)
-			return nil
+		text, rt, err := withLLMRetry(ctx, func(ctx context.Context) (string, ResolvedTurn, error) {
+			return s.Deps.Routing.StreamLLMForCopilotFn(ctx, in.Request, in.WorkspaceID, in.ModelID, msgs, system, func(chunk, mid string) error {
+				if mid != "" {
+					current.ModelID = mid
+				}
+				buf.WriteString(chunk)
+				return nil
+			})
 		})
 		if err != nil && buf.Len() == 0 && text == "" {
 			in.Emit("reflect", "reflect", map[string]any{"status": "failed", "round": round, "error": err.Error()})

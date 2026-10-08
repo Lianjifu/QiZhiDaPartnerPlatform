@@ -5,6 +5,9 @@
 // 模型未产出有效 PLAN 块时回退到 heuristicPlan。
 package copilot
 
+// copilot_plan.go — 计划阶段:把 thought 转成可执行步骤序列。每个步骤对应一项
+// tool call 或最终答复,是 ReAct 循环的输入。
+
 import (
 	"context"
 	"encoding/json"
@@ -88,13 +91,10 @@ func heuristicPlan(userMsg string) planPayload {
 	return planPayload{Goal: goal, Steps: steps}
 }
 
-// planPrompt 注入给 planner LLM 的 system prompt：要求只输出 PLAN 块、不超过 6 步。
+// planPrompt 注入给 planner LLM 的 system prompt(走版本化注册表)。
+// 要求只输出 PLAN 块、不超过 6 步;注册表为空时回退 hardcoded v1。
 func planPrompt() string {
-	return `你是任务规划器。请为用户目标产出简洁可执行计划，只输出计划块，不要回答问题本身：
-<<<PLAN>>>
-{"goal":"一句话目标","steps":[{"id":"1","title":"步骤标题","action":"retrieve|memory|tool|answer","tool":"可选工具名","query":"可选查询"}]}
-<<<END>>>
-规则：steps 不超过 6；需要查知识用 retrieve；需要回忆偏好用 memory；纯推理用 answer；具体技能用 tool 并填写 tool 名。`
+	return promptGet("plan.prompt")
 }
 
 // runPlanExecuteTurn: Planner → per-step Act → Aggregator, then optional caller reflection.
@@ -136,12 +136,14 @@ func (s *Service) runPlanExecuteTurn(ctx context.Context, in reactTurnInput) rea
 		Role: "user", Content: "请为以下请求制定计划（只输出 PLAN 块）：\n" + in.UserMessage,
 	})
 	var planBuf strings.Builder
-	planText, rt, err := s.Deps.StreamLLMForCopilotFn(ctx, in.Request, in.WorkspaceID, in.ModelID, planMsgs, system+"\n\n"+planPrompt(), func(chunk, mid string) error {
-		if mid != "" {
-			resolvedModel = mid
-		}
-		planBuf.WriteString(chunk)
-		return nil
+	planText, rt, err := withLLMRetry(ctx, func(ctx context.Context) (string, ResolvedTurn, error) {
+		return s.Deps.Routing.StreamLLMForCopilotFn(ctx, in.Request, in.WorkspaceID, in.ModelID, planMsgs, system+"\n\n"+planPrompt(), func(chunk, mid string) error {
+			if mid != "" {
+				resolvedModel = mid
+			}
+			planBuf.WriteString(chunk)
+			return nil
+		})
 	})
 	if err == nil {
 		lastRT = rt
@@ -208,7 +210,7 @@ func (s *Service) runPlanExecuteTurn(ctx context.Context, in reactTurnInput) rea
 			tcID := fmt.Sprintf("tc_plan_%s", st.ID)
 			in.Emit("tool", "plan", map[string]any{"name": toolName, "status": "running", "args": call.Args, "id": tcID})
 
-			tool, res := s.Deps.DispatchAuthorizedToolFn(runCtx, reg, call, in.SessionMode, in.RiskLevel, in.Emit)
+			tool, res := s.Deps.Tools.DispatchAuthorizedToolFn(runCtx, reg, call, in.SessionMode, in.RiskLevel, in.Emit)
 			display := toolName
 			if tool != nil {
 				display = tool.Name
@@ -252,12 +254,14 @@ func (s *Service) runPlanExecuteTurn(ctx context.Context, in reactTurnInput) rea
 		Content: "用户请求：\n" + in.UserMessage + "\n\n计划观察：\n" + strings.Join(observations, "\n\n") + "\n\n请给出最终回答。",
 	})
 	var aggBuf strings.Builder
-	aggText, rt2, err2 := s.Deps.StreamLLMForCopilotFn(ctx, in.Request, in.WorkspaceID, in.ModelID, aggMsgs, aggSystem, func(chunk, mid string) error {
-		if mid != "" {
-			resolvedModel = mid
-		}
-		aggBuf.WriteString(chunk)
-		return nil
+	aggText, rt2, err2 := withLLMRetry(ctx, func(ctx context.Context) (string, ResolvedTurn, error) {
+		return s.Deps.Routing.StreamLLMForCopilotFn(ctx, in.Request, in.WorkspaceID, in.ModelID, aggMsgs, aggSystem, func(chunk, mid string) error {
+			if mid != "" {
+				resolvedModel = mid
+			}
+			aggBuf.WriteString(chunk)
+			return nil
+		})
 	})
 	if err2 != nil && aggBuf.Len() == 0 && aggText == "" {
 		return reactTurnResult{Err: err2, ToolCalls: toolCalls, Citations: citations, Steps: len(plan.Steps), ModelID: resolvedModel, Mode: modePlanExec, Plan: plan}

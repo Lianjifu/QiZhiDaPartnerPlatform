@@ -13,6 +13,9 @@
 // - 颜色调色板:走 CSS var(--brand),保证与平台主题一致
 package copilot
 
+// chart_artifacts.go — 图表 artifacts:把 LLM 返回的图表数据(柱状/折线/饼)
+// 序列化为前端可渲染的 SVG / JSON payload,作为 copilot_artifacts 的具体实现。
+
 import (
 	"encoding/json"
 	"fmt"

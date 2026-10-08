@@ -5,7 +5,11 @@
 // 触发分段由 replyMode + segmentDelimiter("<<<NEXT>>>") 共同决定。
 package copilot
 
+// copilot_live_stream.go — SSE 实时流:把回合事件流式推给前端,处理 backpressure
+// 与断开重连。flush 策略与前端 EventSource 协商,避免单包过大被截断。
+
 import (
+	"context"
 	"strings"
 
 	"github.com/qizhida-partner-platform/backend/pkg/contract"
@@ -26,6 +30,10 @@ type liveAnswerStream struct {
 	currentID      string
 	segmentIndex   int
 	emittedRunes   int
+	// ctx 用于 SSE 客户端断开检测:ctx 取消时所有 emit* 方法立即返回,
+	// 不再向 emit channel 推任何事件,避免无效工作与 goroutine 累积。
+	// nil 时视为"无取消源"(向后兼容)。
+	ctx context.Context
 }
 
 // newLiveAnswerStream 构造一个 liveAnswerStream；emit 为 nil 时直接返回 nil，
@@ -47,9 +55,32 @@ func newLiveAnswerStream(emit reactEmitFunc, replyMode, segmentPolicy, corr, fir
 	}
 }
 
-// Active 报告流式是否已启动且未被禁用（工具调用触发禁用后会失效）。
+// Active 报告流式是否已启动且未被禁用，且底层 ctx 未取消。
+// 客户端断开(SSE ctx 取消)时返回 false,调用方可据此跳过 emit。
 func (ls *liveAnswerStream) Active() bool {
-	return ls != nil && ls.started && !ls.disabled
+	if ls == nil || !ls.started || ls.disabled {
+		return false
+	}
+	if ls.ctx != nil && ls.ctx.Err() != nil {
+		return false
+	}
+	return true
+}
+
+// WithContext 注入 ctx,用于 SSE 客户端断开检测。
+// 链式返回 ls,便于构造后立即挂在调用链上。
+// ctx == nil 时清除(等价于"无取消源")。
+func (ls *liveAnswerStream) WithContext(ctx context.Context) *liveAnswerStream {
+	if ls != nil {
+		ls.ctx = ctx
+	}
+	return ls
+}
+
+// isCtxDone 在所有 emit* 路径前调用:nil ctx 视为未取消,非 nil 时查 ctx.Err()。
+// 返回 true 时调用方应立即放弃后续工作。
+func (ls *liveAnswerStream) isCtxDone() bool {
+	return ls != nil && ls.ctx != nil && ls.ctx.Err() != nil
 }
 
 // StreamedSegmentCount 返回已下发过的段数量（包含正在流的那一段），
@@ -68,7 +99,7 @@ func (ls *liveAnswerStream) StreamedSegmentCount() int {
 // OnDelta 接收 LLM 流式产出的 chunk，并把它转成对应的 SSE delta 事件。
 // 一旦检测到 <<<TOOL>>> 标记（说明模型要转 ReAct 工具调用），立刻禁用流式避免泄露给前端。
 func (ls *liveAnswerStream) OnDelta(chunk string, accumulated string) {
-	if ls == nil || ls.disabled || chunk == "" {
+	if ls == nil || ls.disabled || chunk == "" || ls.isCtxDone() {
 		return
 	}
 	if strings.Contains(accumulated, "<<<TOOL>>>") {
@@ -124,7 +155,7 @@ func (ls *liveAnswerStream) finishSegment() {
 // FinishOpenSegment 在回合末尾关闭可能仍处于"打开"状态的段，
 // 由 streamHarnessAnswer 在 reconcile 阶段调用，避免最后一段被丢失。
 func (ls *liveAnswerStream) FinishOpenSegment() {
-	if ls == nil || !ls.started {
+	if ls == nil || !ls.started || ls.isCtxDone() {
 		return
 	}
 	ls.finishSegment()
@@ -178,12 +209,18 @@ func (ls *liveAnswerStream) pushDelta(_ string, accumulated string) {
 
 // emitPlainDelta 在单气泡模式（不分段）下发出普通 StreamDelta 事件。
 func (ls *liveAnswerStream) emitPlainDelta(text string) {
+	if ls == nil || ls.isCtxDone() {
+		return
+	}
 	ls.emit(contract.StreamDelta, "runtime", map[string]any{"text": text, "modelId": ls.modelID})
 }
 
 // emitSegmentDelta 在分段模式下发出 StreamMessageDelta，绑定到当前 currentID。
 // 若还没 beginSegment 就先开一段，避免空段。
 func (ls *liveAnswerStream) emitSegmentDelta(text string) {
+	if ls == nil || ls.isCtxDone() {
+		return
+	}
 	if ls.currentID == "" {
 		ls.beginSegment(ls.firstMessageID)
 	}

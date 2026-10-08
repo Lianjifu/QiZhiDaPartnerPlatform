@@ -11,6 +11,10 @@
 // 下游 runReactTurn/runPlanExecuteTurn 只负责把这些输入跑完。
 package copilot
 
+// copilot_context.go — 上下文拼装:把 session / snapshot / memory / knowledge / tools
+// 汇总成 LLM 可见的 system + user prompt。是 build_run_prompt 的 Go 实现版本,
+// 与 Python sidecar 的同文件 (backend/services/qzda-agent-runtime/app/llm.py) 行为对齐。
+
 import (
 	"sort"
 	"strings"
@@ -300,7 +304,7 @@ func (s *Service) retrieveMemoryForTurnLocked(ws, ownerID, deID, excludeSourceID
 		if str(m["status"]) != "active" {
 			continue
 		}
-		if s.Deps.MemoryCanReadFn != nil && !s.Deps.MemoryCanReadFn(viewer, m) {
+		if s.Deps.Memory.MemoryCanReadFn != nil && !s.Deps.Memory.MemoryCanReadFn(viewer, m) {
 			continue
 		}
 		layer := str(m["layer"])
@@ -597,17 +601,14 @@ func buildCopilotSystemPrompt(emp map[string]any, ragHits any, memoryHits []memo
 	return buildCopilotSystemPromptWithEffort(emp, ragHits, memoryHits, "")
 }
 
+// reasoningEffortGuidance 根据 reasoning 强度返回对应 prompt(走版本化注册表)。
+// 缺版本时按 v1 hardcoded 默认值兜底,保证注册表为空也能跑。
 func reasoningEffortGuidance(effort string) string {
-	switch strings.ToLower(strings.TrimSpace(effort)) {
-	case "off":
-		return "推理强度：直接给出结论，不要展开冗长链式思考；必要时用一两句说明依据即可。\n"
-	case "deep":
-		return "推理强度：请深入分析，必要时分步说明假设、证据与权衡，再给出可执行结论。\n"
-	case "standard", "":
-		return ""
-	default:
-		return ""
+	if p := promptGet("reasoning." + strings.ToLower(strings.TrimSpace(effort))); p != "" {
+		return p
 	}
+	// 注册表未命中且 hardcoded 也未定义("standard")→ 返回空(历史行为)
+	return ""
 }
 
 func buildCopilotSystemPromptWithEffort(emp map[string]any, ragHits any, memoryHits []memoryHit, reasoningEffort string) string {
@@ -643,17 +644,18 @@ func buildCopilotSystemPromptWithEffort(emp map[string]any, ragHits any, memoryH
 			b.WriteString(strings.Join(proh, "、"))
 			b.WriteString("\n")
 		}
-		b.WriteString("请用中文简洁、可执行地回答，严格遵守岗位边界；涉及审批、写操作或敏感数据时提示人工接管。\n")
-		b.WriteString("若用户使用「刚才/上面/之前」等指代，请结合对话历史与跨会话记忆作答，不要假装遗忘。\n")
-	} else {
-		b.WriteString("你是企业企智搭 · 数字伙伴平台的协作助手。请用中文简洁、可执行地回答。\n")
-		b.WriteString("若用户使用「刚才/上面/之前」等指代，请结合对话历史与跨会话记忆作答。\n")
-	}
+		// 系统 prompt 的尾段(职责边界 + 接管提示)走版本化注册表;
+// 缺版本时回退到 hardcoded v1,保证向后兼容。
+	b.WriteString(promptGet("system.identity.active.tail"))
+} else {
+	// fallback 分支(无员工身份)同样走版本化注册表
+	b.WriteString(promptGet("system.identity.fallback"))
+}
 	if g := reasoningEffortGuidance(reasoningEffort); g != "" {
 		b.WriteString(g)
 	}
 	if len(memoryHits) > 0 {
-		b.WriteString("\n跨会话记忆（按相关性，可修正；括号内为记忆 ID，便于审计追溯）：\n")
+		b.WriteString(promptGet("section.memory.header"))
 		for i, hit := range memoryHits {
 			if i >= copilotMemoryMaxItems {
 				break
@@ -677,7 +679,7 @@ func buildCopilotSystemPromptWithEffort(emp map[string]any, ragHits any, memoryH
 		}
 	}
 	if snippets := ragSnippetsForPrompt(ragHits); len(snippets) > 0 {
-		b.WriteString("\n已检索已发布知识（仅供参考，与记忆分栏）：\n")
+		b.WriteString(promptGet("section.rag.header"))
 		for i, sn := range snippets {
 			if i >= 5 {
 				break

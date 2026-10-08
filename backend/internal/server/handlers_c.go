@@ -691,7 +691,14 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 		s.Store.Messages[cid] = append(s.Store.Messages[cid], ackPersisted...)
 		s.Store.Unlock()
 	}
-	streamCtx, streamCancel := context.WithTimeout(context.Background(), copilotStreamTimeout())
+	// streamCtx 派生自 r.Context():
+//   - 客户端断开时 r.Context() 取消 → streamCtx 自动级联 →
+//   copilot.RunStream 链路上的 live_stream.WithContext(ctx) 检测到并立即停止无效 SSE 写入
+//   - 同时保留 streamTimeout() 上限(超过时长主动结束,避免超时回合持续空转)
+//
+// streamCancel 单独 register 是为了支持"主动 cancel"语义(其他模块通过 corr/流取消接口),
+// 与 ctx 派生是两条独立的取消路径。
+streamCtx, streamCancel := context.WithTimeout(r.Context(), copilotStreamTimeout())
 	copilot.RegisterStreamCancel(corr, streamCancel)
 	defer func() {
 		copilot.ClearStreamCancel(corr)

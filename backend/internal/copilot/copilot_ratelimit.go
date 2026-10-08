@@ -13,6 +13,9 @@
 //    避免并发 wecom webhook 把同一句用户消息跑两遍。
 package copilot
 
+// copilot_ratelimit.go — 回合频控、clientMsgId 幂等、流量整形;防止单 workspace /
+// 单用户在窗口内爆量,在 route 之后立即生效。
+
 import (
 	"context"
 	"fmt"

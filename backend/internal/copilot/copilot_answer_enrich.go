@@ -9,6 +9,9 @@
 //   - 对"请稍候""正在为您生成"等明显占位回复，主动补出"已生成 Word/PPT"行
 package copilot
 
+// copilot_answer_enrich.go — 答案富化:在 LLM 原始输出之上叠加 citations、source
+// links、evidence 引用,生成最终给前端的"富答案"。在 reflect 之后、stream 之前调用。
+
 import (
 	"fmt"
 	"regexp"

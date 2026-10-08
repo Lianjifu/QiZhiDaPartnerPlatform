@@ -12,6 +12,9 @@
 // （并发 wecom webhook + 重试触发的常见噪声源）。
 package copilot
 
+// copilot_turn_meta.go — 回合元数据(correlationId / workspace / channel / 时间戳 /
+// provider / cost),持久化到 audit 与 outcome 用量,与 turn_state 联动。
+
 import (
 	"fmt"
 	"strings"

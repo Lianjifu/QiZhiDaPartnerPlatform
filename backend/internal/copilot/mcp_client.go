@@ -14,6 +14,10 @@
 //   - mcp.call_tool      server <name>:tools/call <tool>  args = {...}
 package copilot
 
+// mcp_client.go — MCP(Model Context Protocol)客户端实现:JSON-RPC 通信、
+// 能力协商、tool call。与 discover_server 配套,把 MCP server 暴露的工具
+// 接入到 copilot_tools 的统一编排中。
+
 import (
 	"bufio"
 	"bytes"

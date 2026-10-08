@@ -22,6 +22,9 @@
 //   - 写 / exec 写 audit.events 留痕。
 package copilot
 
+// shell_tools.go — shell 工具实现:命令执行、stdout/stderr 捕获、超时与退出码
+// 归一。在 qzda-sandbox 内运行,本文件只做参数封装与结果解析。
+
 import (
 	"bytes"
 	"context"

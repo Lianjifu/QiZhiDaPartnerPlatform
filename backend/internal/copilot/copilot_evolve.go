@@ -8,6 +8,9 @@
 // 是 runtime policy 允许直接落地的。
 package copilot
 
+// copilot_evolve.go — 自学习/演化:基于历史回合表现更新 few-shot 示例与提示策略,
+// 长期提升模型在该 workspace 的命中率。改动会影响 15% of 后续演化,需紧跟回归测试。
+
 import (
 	"net/http"
 	"strings"
@@ -242,8 +245,8 @@ func (s *Service) dreamCompressConversationLocked(in evolveTurnInput) map[string
 		return nil
 	}
 	var policy map[string]any
-	if s.Deps.MemoryPolicyForFn != nil {
-		policy = s.Deps.MemoryPolicyForFn(ws)
+	if s.Deps.Memory.MemoryPolicyForFn != nil {
+		policy = s.Deps.Memory.MemoryPolicyForFn(ws)
 	}
 	if policy["shortToWorkingEnabled"] != true {
 		return nil
@@ -284,7 +287,7 @@ func (s *Service) dreamCompressConversationLocked(in evolveTurnInput) map[string
 		b.WriteString("\n")
 	}
 	content := strings.TrimSpace(b.String())
-	item, err := s.Deps.IngestRuntimeMemoryLockedFn(runtimeMemoryInput{
+	item, err := s.Deps.Memory.IngestRuntimeMemoryLockedFn(runtimeMemoryInput{
 		WorkspaceID: ws, OwnerID: in.OwnerID, OwnerName: in.OwnerName,
 		DigitalPartnerID: in.DigitalPartnerID,
 		Title:             "Dream 压缩 · " + truncateRunes(cid, 24),
@@ -380,7 +383,7 @@ func (s *Service) createFeedbackEvolveCandidateLocked(ws, ownerID, ownerName, ci
 // listEvolveCandidates 返回当前 workspace 下所有自进化候选（不区分状态）。
 // 处理 HTTP GET /api/evolve/candidates，前端在审计页展示。
 func (s *Service) listEvolveCandidates(r *http.Request) (any, error) {
-	ws := s.Deps.WorkspaceIDFn(r)
+	ws := s.Deps.Workspace.WorkspaceIDFn(r)
 	s.Store.RLock()
 	defer s.Store.RUnlock()
 	var out []map[string]any
@@ -398,11 +401,11 @@ func (s *Service) listEvolveCandidates(r *http.Request) (any, error) {
 // evolveDreamRun 手动触发 dream compress：可指定单个会话或扫所有满足阈值阈的会话。
 // 命中 memory governance（admin/auditor）才能调用，避免滥用 working 层写权限。
 func (s *Service) evolveDreamRun(r *http.Request) (any, error) {
-	id, err := s.Deps.RequireMemoryGovernanceFn(r, "执行 Dream 压缩")
+	id, err := s.Deps.Workspace.RequireMemoryGovernanceFn(r, "执行 Dream 压缩")
 	if err != nil {
 		return nil, err
 	}
-	ws := s.Deps.WorkspaceIDFn(r)
+	ws := s.Deps.Workspace.WorkspaceIDFn(r)
 	body, _ := decodeMap(r)
 	cid := strings.TrimSpace(str(body["conversationId"]))
 	s.Store.Lock()
@@ -452,8 +455,8 @@ func (s *Service) evolveDreamRun(r *http.Request) (any, error) {
 // persistEvolve 异步持久化自进化候选 + 触发的记忆落盘；通常由审批/写入路径 spawn。
 func (s *Service) persistEvolve() {
 	s.Store.Persist("evolve_candidates")
-	if s.Deps.PersistMemorySyncFn != nil {
-		s.Deps.PersistMemorySyncFn()
+	if s.Deps.Memory.PersistMemorySyncFn != nil {
+		s.Deps.Memory.PersistMemorySyncFn()
 	}
 }
 
@@ -514,9 +517,9 @@ func (s *Service) evolveCandidateAction(r *http.Request) (any, error) {
 			return nil, apperr.Forbidden(apperr.AdminRequired, "审核自进化候选仅限管理员执行")
 		}
 		var eval map[string]any
-		if s.Deps.EvaluateZeroTrustFn != nil {
+		if s.Deps.Workspace.EvaluateZeroTrustFn != nil {
 			var err error
-			eval, err = s.Deps.EvaluateZeroTrustFn(id, "memory", "write", "internal", false, "")
+			eval, err = s.Deps.Workspace.EvaluateZeroTrustFn(id, "memory", "write", "internal", false, "")
 			if err != nil {
 				return nil, err
 			}
@@ -560,8 +563,8 @@ func (s *Service) evolveCandidateAction(r *http.Request) (any, error) {
 
 	// approve
 	kind := str(cand["kind"])
-	if s.Deps.RequireProductionDualApprovalFn != nil {
-		if err := s.Deps.RequireProductionDualApprovalFn(str(cand["createdById"]), str(cand["createdBy"]), id, "自进化"); err != nil {
+	if s.Deps.Sandbox.RequireProductionDualApprovalFn != nil {
+		if err := s.Deps.Sandbox.RequireProductionDualApprovalFn(str(cand["createdById"]), str(cand["createdBy"]), id, "自进化"); err != nil {
 			return nil, err
 		}
 	}
@@ -630,8 +633,8 @@ func (s *Service) applyEvolveCandidateLocked(ws, actorID, actorName string, cand
 		}
 		var item map[string]any
 		var err error
-		if s.Deps.IngestRuntimeMemoryLockedFn != nil {
-			item, err = s.Deps.IngestRuntimeMemoryLockedFn(runtimeMemoryInput{
+		if s.Deps.Memory.IngestRuntimeMemoryLockedFn != nil {
+			item, err = s.Deps.Memory.IngestRuntimeMemoryLockedFn(runtimeMemoryInput{
 				WorkspaceID: ws, OwnerID: actorID, OwnerName: actorName,
 				DigitalPartnerID: str(cand["digitalPartnerId"]),
 				Title:             coalesce(str(payload["title"]), str(cand["title"])),
@@ -664,7 +667,7 @@ func (s *Service) applyEvolveCandidateLocked(ws, actorID, actorName string, cand
 		}
 		drafts := knowledgeSliceMaps(s.Store.SkillExtra["evolveDrafts"])
 		s.Store.SkillExtra["evolveDrafts"] = append([]map[string]any{draft}, drafts...)
-		s.Deps.PersistSkillHealthFn()
+		s.Deps.Tools.PersistSkillHealthFn()
 		return map[string]any{"skillDraftId": str(draft["id"]), "status": "draft"}, nil
 
 	case evolveKindRoutingHint:
@@ -766,8 +769,8 @@ func (s *Service) copilotMessageFeedback(r *http.Request) (any, error) {
 // appendAudit 把记忆/自进化相关的审计行转交给 Deps.AppendMemoryAuditLockedFn，
 // nil 时静默跳过（测试模式或 Deps 未注入）。
 func (s *Service) appendAudit(ws, actor, action, target, result, corr string) {
-	if s == nil || s.Deps.AppendMemoryAuditLockedFn == nil {
+	if s == nil || s.Deps.Memory.AppendMemoryAuditLockedFn == nil {
 		return
 	}
-	s.Deps.AppendMemoryAuditLockedFn(ws, actor, action, target, result, corr)
+	s.Deps.Memory.AppendMemoryAuditLockedFn(ws, actor, action, target, result, corr)
 }

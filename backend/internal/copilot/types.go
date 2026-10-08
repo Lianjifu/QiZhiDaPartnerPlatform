@@ -11,6 +11,11 @@
 // 拆包（M02 P2 deep move）后调用点不再被破坏。
 package copilot
 
+// types.go — M02 模块全部共享类型定义(Request / Response / Event / State / Payload 等)。
+//
+// 567 行,是 copilot 包的"类型心脏",几乎每个文件都从这里取类型;
+// 新增领域事件或状态时,先确认本文件是否已有可复用的,避免再造平行类型。
+
 import (
 	"context"
 	"net/http"

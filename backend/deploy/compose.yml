@@ -134,7 +134,7 @@ services:
   qzda-app:
     build:
       context: /Users/LIANJIFU/ops/QiZhiDaPartnerPlatform
-      dockerfile: backend/services/qzda-app/Dockerfile
+      dockerfile: backend/cmd/qzda-app/Dockerfile
       args: { CMD: qzda-app }
     image: qzda-app:local
     container_name: qzda-app
