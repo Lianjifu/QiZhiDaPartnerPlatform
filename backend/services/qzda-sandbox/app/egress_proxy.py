@@ -1,10 +1,10 @@
-"""技能沙箱的出口代理:127.0.0.1:8080 stdlib HTTP 代理。
+"""技能沙箱的出口代理:127.0.0.1:8081 stdlib HTTP 代理。
 
 为什么要有这个:
 - ``socket.getaddrinfo`` monkey-patch 只能拦住 Python stdlib。
 - 真正执行 skill 脚本的子进程可能是 curl / urllib3 / node fetch / Go net/http,
   都会自动读 ``HTTPS_PROXY`` / ``HTTP_PROXY`` 环境变量。
-- 我们的子进程环境里强制注入 ``HTTPS_PROXY=http://127.0.0.1:8080``,
+- 我们的子进程环境里强制注入 ``HTTPS_PROXY=http://127.0.0.1:8081``,
   所有"守规矩"的 HTTP 客户端会先连本地代理。
 - 代理只放行 allowlist 内的域名,其他 → 502。
 
@@ -193,7 +193,7 @@ class _ThreadingHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
 
 
 class EgressProxy:
-    """单实例 127.0.0.1:8080 出口代理,常驻 FastAPI 进程。
+    """单实例 127.0.0.1:8081 出口代理,常驻 FastAPI 进程。
 
     调用流程:
     1. ``lifespan`` → ``await egress_proxy.start()``
@@ -201,7 +201,7 @@ class EgressProxy:
     3. 响应聚合时 ``egress_proxy.used_hosts()``
     """
 
-    def __init__(self, bind_host: str = "127.0.0.1", bind_port: int = 8080) -> None:
+    def __init__(self, bind_host: str = "127.0.0.1", bind_port: int = 8081) -> None:
         self.bind_host = bind_host
         self.bind_port = bind_port
         self._allowed: set[str] = set()
@@ -277,7 +277,7 @@ class EgressProxy:
 
         阶段 4 #8 改造:
         - 启动失败(端口占用 / OSError)**不再 raise**,改写 self._started=False
-          返回 False,让 supervisor 接管;lifespan 因此不会因为 8080 一时被
+          返回 False,让 supervisor 接管;lifespan 因此不会因为 8081 一时被
           占住而整个进程退出。
         - 启动成功会同时拉起 supervisor 线程(5s 一次 TCP 探测)。
         """

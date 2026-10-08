@@ -21,7 +21,7 @@ app/main.py         FastAPI 入口 + 路由(/healthz、/v1/execute、/v1/artifac
    │              │     + audit_hooks.install_audit_hooks()(QZDA_SANDBOX_AUDIT=1 时)
    │              └── preexec_fn=make_preexec()     prlimit(RLIMIT_NPROC/AS/CPU)
    │
-   ├─► app/egress_proxy.py      阶段 2 — 常驻 127.0.0.1:8080 stdlib 出口代理
+   ├─► app/egress_proxy.py      阶段 2 — 常驻 127.0.0.1:8081 stdlib 出口代理
    │       阶段 4 #8 supervisor thread 每 10s 探活 + 指数退避重启
    │       └── app/egress.py      DnsGate + 子进程代理 fork
    │
@@ -67,7 +67,7 @@ PR2 (`7ed63a9`) 把这一路关死:
    `signing/README.md`。
 9. **执行** — `run_package_script` 同步 `subprocess.run`(`preexec_fn` 调
    `make_preexec` 设置 `RLIMIT_NPROC/AS/CPU`;env 注入 `LD_PRELOAD=libqzda_egress.so`
-   + `HTTPS_PROXY=127.0.0.1:8080` + DnsGate bootstrap)。
+   + `HTTPS_PROXY=127.0.0.1:8081` + DnsGate bootstrap)。
 10. **审计** — Python `audit_hooks.summary()` 聚合并通过响应回 Go 控制面
     `AppendAudit`(`;syscalls=…` 形状)。
 11. **制品采集** — `app/artifact_harvest.py` 扫描包目录,合并 `downloadPath`,
@@ -79,7 +79,7 @@ PR2 (`7ed63a9`) 把这一路关死:
 |---|---|---|
 | 签名层 | RunToken HMAC-SHA256,Go 控制面签发 | body 字段被篡改(`claims.allowedEgress` 是唯一可信源) |
 | DNS 层 | `sitecustomize.py` bootstrap,`DnsGate` monkey-patch `socket.getaddrinfo` | Python stdlib(`socket` / `urllib` / `requests`) |
-| 代理层 | `127.0.0.1:8080` stdlib 出口代理,子进程 `HTTPS_PROXY` 注入 | `curl` / `wget` / `urllib3` / Go `net/http` 等守规矩的 HTTP 客户端 |
+| 代理层 | `127.0.0.1:8081` stdlib 出口代理,子进程 `HTTPS_PROXY` 注入 | `curl` / `wget` / `urllib3` / Go `net/http` 等守规矩的 HTTP 客户端 |
 | **C 层** | `libqzda_egress.so` `LD_PRELOAD` 拦截非环回 IPv4 `connect()` | 任何直接调 `connect(2)` 的客户端(go net/http、wget、curl) |
 
 **默认 deny-all(空 `allowedEgress`)** — [`app/sandbox.py:386-394`](../app/sandbox.py)

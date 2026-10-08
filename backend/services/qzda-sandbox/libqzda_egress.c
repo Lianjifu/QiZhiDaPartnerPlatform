@@ -1,4 +1,4 @@
-/* qzda-egress:把子进程所有非环回 IPv4 connect 重定向到 127.0.0.1:8080。
+/* qzda-egress:把子进程所有非环回 IPv4 connect 重定向到 127.0.0.1:8081。
  *
  * 编译(参见 Dockerfile builder stage):
  *   gcc -O2 -fPIC -shared -o libqzda_egress.so libqzda_egress.c
@@ -9,7 +9,7 @@
  * 1. connect() 拦截:
  *    - dest 是 127.0.0.1/0.0.0.0/::1 → 原样放行(stdlib 内部 / unix socket 等)。
  *    - dest 是 IP literal 且在 env QZDA_SANDBOX_ALLOWED_EGRESS(CSV)里 → 原样放行。
- *    - 其他情况 → 改写为 127.0.0.1:8080,由 Python egress_proxy 按 allowlist 决策。
+ *    - 其他情况 → 改写为 127.0.0.1:8081,由 Python egress_proxy 按 allowlist 决策。
  *    - AF_INET6 直接放行(DNS-gate 已挡域名解析;IPv6 直连留作未来 iptables 层处理)。
  *
  * 2. getaddrinfo() 拦截:
@@ -97,12 +97,12 @@ int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
         if (in_allowlist(buf)) {
             return rc(sockfd, addr, addrlen);
         }
-        /* 重定向到 127.0.0.1:8080,保留 sin_zero 与 sin_family / addrlen */
+        /* 重定向到 127.0.0.1:8081,保留 sin_zero 与 sin_family / addrlen */
         struct sockaddr_in redir;
         memset(&redir, 0, sizeof(redir));
         redir.sin_family = AF_INET;
         redir.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-        redir.sin_port = htons(8080);
+        redir.sin_port = htons(8081);
         /* 同样 sin_zero 已 0 */
         return rc(sockfd, (struct sockaddr *)&redir, sizeof(redir));
     }

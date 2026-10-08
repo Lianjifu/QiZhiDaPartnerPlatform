@@ -45,7 +45,7 @@ Prometheus text exposition([`app/main.py:138`](../app/main.py))。
 | `skill_execution_duration_seconds{sandbox}` | histogram | 执行耗时 |
 | `skill_in_flight` | gauge | 当前并发 |
 | `egress_blocked_total` | counter | egress 拒绝次数 |
-| `egress_proxy_up` | gauge | 127.0.0.1:8080 代理存活(0/1) |
+| `egress_proxy_up` | gauge | 127.0.0.1:8081 代理存活(0/1) |
 | `rate_limit_rejected_total{scope}` | counter | rate limit 拒绝(scope ∈ ws / ip / actor) |
 | `skill_syscalls_total{syscall}` | counter | Python 层 syscall 计数 |
 

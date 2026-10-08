@@ -8,7 +8,7 @@
 # https://github.com/google/gvisor/releases 下载 runsc 二进制到 /usr/local/bin。
 
 # 阶段 4 #1:libqzda_egress.so 用 gcc builder stage 编译,然后 COPY 到 base。
-# 它把子进程所有非环回 IPv4 connect 重定向到 127.0.0.1:8080,让 curl/wget/Go net/http
+# 它把子进程所有非环回 IPv4 connect 重定向到 127.0.0.1:8081,让 curl/wget/Go net/http
 # 等不走 Python stdlib 的客户端也能被 egress policy 覆盖(PR2 起 sandbox 不再支持
 # Node.js 脚本,.mjs/.js 不再出现在解释器白名单内,node fetch 自然不再相关)。
 # sandbox.py 在子进程 env 里加 LD_PRELOAD=/app/lib/libqzda_egress.so 启用。
@@ -52,7 +52,7 @@ RUN mkdir -p /etc/qzda && chmod 755 /etc/qzda
 
 # backend/scripts/ 是 ``from generate_docx import ...`` 的目标;docx_gen 用
 # 向上搜索 (``_find_scripts_root``) 找到 /app/scripts/,所以这里必须落到 /app/scripts/。
-COPY scripts/ /app/scripts/
+COPY backend/services/qzda-sandbox/scripts/ /app/scripts/
 
 EXPOSE 8093
 

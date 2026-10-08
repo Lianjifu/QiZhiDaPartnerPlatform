@@ -50,7 +50,7 @@ from app.telemetry import (
 )
 
 
-# 阶段 2:常驻 127.0.0.1:8080 出口代理,所有执行子进程的 HTTPS_PROXY
+# 阶段 2:常驻 127.0.0.1:8081 出口代理,所有执行子进程的 HTTPS_PROXY
 # 都会指到这里。lifespan 启动,FastAPI 退出前收尾。
 _egress_proxy = EgressProxy()
 

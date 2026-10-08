@@ -288,7 +288,7 @@ def run_package_script(
     5. 复制环境变量但过滤 ``FORBIDDEN_ENV``,再注入 ``QZDA_SANDBOX_PACKAGE_ROOT``
        / ``QZDA_SANDBOX_WORK_DIR`` 让脚本能定位自己。
     5a. **阶段 2 网关**: 注入 ``QZDA_SANDBOX_ALLOWED_EGRESS`` /
-       ``HTTPS_PROXY=http://127.0.0.1:8080`` / ``HTTP_PROXY=http://127.0.0.1:8080``。
+       ``HTTPS_PROXY=http://127.0.0.1:8081`` / ``HTTP_PROXY=http://127.0.0.1:8081``。
        Python 子进程还会自动加载 :func:`_ensure_dns_bootstrap` 注入的
        ``sitecustomize.py``,把 ``socket.getaddrinfo`` monkey-patch 掉。
     6. 同步 ``subprocess.run``,timeout 夹紧在 [1, 120]s,捕获 stdout/stderr。
@@ -356,7 +356,7 @@ def run_package_script(
     # 阶段 4 #5:透传 workspace_id 给子进程,审计 + 日志 tag 一致
     if workspace_id:
         env["QZDA_WORKSPACE_ID"] = str(workspace_id)
-    # 阶段 4 #1:LD_PRELOAD 拦截非环回 IPv4 connect → 重定向到 127.0.0.1:8080,
+    # 阶段 4 #1:LD_PRELOAD 拦截非环回 IPv4 connect → 重定向到 127.0.0.1:8081,
     # 让 curl/wget/node fetch 等不走 stdlib 的客户端也能被 egress policy 覆盖。
     # .so 不存在时 silently 降级(开发期 / 单元测试环境可能未编译)。
     lib_path = "/app/lib/libqzda_egress.so"
@@ -387,8 +387,8 @@ def run_package_script(
     # deny-all 时也强制设置 no_proxy=* 兜底,防止子进程通过其他环境
     # 变量绕过 DnsGate。
     if egress:
-        env["HTTPS_PROXY"] = "http://127.0.0.1:8080"
-        env["HTTP_PROXY"] = "http://127.0.0.1:8080"
+        env["HTTPS_PROXY"] = "http://127.0.0.1:8081"
+        env["HTTP_PROXY"] = "http://127.0.0.1:8081"
     else:
         env["NO_PROXY"] = "*"
         env["no_proxy"] = "*"

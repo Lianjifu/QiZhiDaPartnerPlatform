@@ -137,10 +137,10 @@ skill_subprocess_duration_seconds: Histogram = Histogram(
     ["exit_code"],
     buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60],
 )
-# 阶段 4 #8:127.0.0.1:8080 egress proxy 健康度;0 = down,1 = up
+# 阶段 4 #8:127.0.0.1:8081 egress proxy 健康度;0 = down,1 = up
 egress_proxy_up: Gauge = Gauge(
     "egress_proxy_up",
-    "Egress proxy (127.0.0.1:8080) liveness",
+    "Egress proxy (127.0.0.1:8081) liveness",
 )
 # 阶段 4 #8:proxy 重启次数(累计),便于发现 flapping
 egress_proxy_restart_total: Counter = Counter(

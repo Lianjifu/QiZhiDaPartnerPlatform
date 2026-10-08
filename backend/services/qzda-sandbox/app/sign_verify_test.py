@@ -1,103 +1,150 @@
 """``sign_verify.py`` 单元测试 — 不依赖 docker / 网络 / FastAPI。
 
 覆盖:
-- marker 缺失 → 失败
-- signed_by 不在 trusted → 失败
-- SHA256 不一致 → 失败(篡改 SKILL.md 后)
-- SKILL.md 缺失 → 失败
+- 完整 happy path(发布密钥签名 + 清单一致) → 通过
+- marker 缺失 / signed_by 不在 trusted / 缺公钥 → 失败
+- 签名无效 / 载荷身份不符 / 清单不一致(脚本被改) → 失败
+- SKILL.md 篡改 / 缺失 → 失败
 - QZDA_SANDBOX_TRUSTED_KEY_IDS 未设 → fail-closed
-- 完整 happy path → 通过
 """
 from __future__ import annotations
 
+import base64
 import json
 
 import pytest
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from app import sign_verify
 
+KEY_ID = "ed25519:testrelease01"
+
 
 @pytest.fixture
-def pkg(tmp_path, monkeypatch: pytest.MonkeyPatch):
-    """创建临时 skill 包 + .signed marker。"""
-    skill_md = tmp_path / "SKILL.md"
-    skill_md.write_text("# weather\n", encoding="utf-8")
-    return tmp_path
+def release_key(monkeypatch: pytest.MonkeyPatch):
+    priv = Ed25519PrivateKey.generate()
+    pub_b64 = base64.b64encode(
+        priv.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+    ).decode("ascii")
+    monkeypatch.setenv("QZDA_SANDBOX_TRUSTED_KEY_IDS", KEY_ID)
+    monkeypatch.setenv(sign_verify.RELEASE_KEYS_ENV, f"{KEY_ID}={pub_b64}")
+    return priv
 
 
-def _write_marker(pkg_path, *, signed_by: str, sha: str | None = None) -> None:
-    if sha is None:
-        sha = sign_verify.compute_skill_md_sha256(str(pkg_path))
-    (pkg_path / ".signed").write_text(
-        json.dumps({"signed_by": signed_by, "sha256": sha, "skill_id": "x"}),
-        encoding="utf-8",
-    )
+@pytest.fixture
+def pkg(tmp_path, release_key):
+    root = tmp_path / "sk-test"
+    (root / "scripts").mkdir(parents=True)
+    (root / "SKILL.md").write_text("# test\n", encoding="utf-8")
+    (root / "scripts" / "run.py").write_text("print('ok')\n", encoding="utf-8")
+    _sign(root, release_key)
+    return root
 
 
-def test_happy_path(pkg, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("QZDA_SANDBOX_TRUSTED_KEY_IDS", "ed25519:abc12345,ed25519:deadbeef")
-    _write_marker(pkg, signed_by="ed25519:abc12345")
-    ok, reason = sign_verify.verify_package_signature(str(pkg))
-    assert ok is True, reason
+def _sign(pkg_path, priv, *, key_id: str = KEY_ID, manifest: str | None = None) -> None:
+    manifest = manifest or sign_verify.manifest_sha256(str(pkg_path))
+    payload = sign_verify.signing_payload(key_id, pkg_path.name, manifest)
+    marker = {
+        "signed_by": key_id,
+        "sha256": sign_verify.compute_skill_md_sha256(str(pkg_path)),
+        "manifest_sha256": manifest,
+        "payload": payload.decode("utf-8"),
+        "signature": base64.b64encode(priv.sign(payload)).decode("ascii"),
+    }
+    (pkg_path / sign_verify.MARKER_FILENAME).write_text(json.dumps(marker), encoding="utf-8")
+
+
+def _marker(pkg_path) -> dict:
+    return json.loads((pkg_path / sign_verify.MARKER_FILENAME).read_text(encoding="utf-8"))
+
+
+def _write_marker(pkg_path, marker: dict) -> None:
+    (pkg_path / sign_verify.MARKER_FILENAME).write_text(json.dumps(marker), encoding="utf-8")
+
+
+def test_happy_path(pkg):
+    assert sign_verify.verify_package_signature(str(pkg)) == (True, "")
 
 
 def test_no_trusted_keys_fails_closed(pkg, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.delenv("QZDA_SANDBOX_TRUSTED_KEY_IDS", raising=False)
-    _write_marker(pkg, signed_by="ed25519:abc12345")
     ok, reason = sign_verify.verify_package_signature(str(pkg))
-    assert ok is False
-    assert "no trusted" in reason.lower() or "QZDA_SANDBOX_TRUSTED_KEY_IDS" in reason
+    assert not ok and "trusted" in reason
 
 
-def test_missing_marker(pkg, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("QZDA_SANDBOX_TRUSTED_KEY_IDS", "ed25519:abc12345")
-    # 不写 .signed
+def test_missing_marker(pkg):
+    (pkg / sign_verify.MARKER_FILENAME).unlink()
     ok, reason = sign_verify.verify_package_signature(str(pkg))
-    assert ok is False
-    assert "missing marker" in reason
+    assert not ok and "missing marker" in reason
 
 
-def test_untrusted_signer(pkg, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("QZDA_SANDBOX_TRUSTED_KEY_IDS", "ed25519:abc12345")
-    _write_marker(pkg, signed_by="ed25519:evilkey0")
+def test_untrusted_signer(pkg, release_key):
+    _sign(pkg, release_key, key_id="ed25519:someoneelse")
     ok, reason = sign_verify.verify_package_signature(str(pkg))
-    assert ok is False
-    assert "untrusted" in reason
+    assert not ok and "untrusted signer" in reason
 
 
-def test_tampered_skill_md(pkg, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("QZDA_SANDBOX_TRUSTED_KEY_IDS", "ed25519:abc12345")
-    _write_marker(pkg, signed_by="ed25519:abc12345")
-    # 签名后篡改 SKILL.md
-    (pkg / "SKILL.md").write_text("# weather\n# injected\n", encoding="utf-8")
+def test_no_public_key_configured(pkg, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv(sign_verify.RELEASE_KEYS_ENV, "")
     ok, reason = sign_verify.verify_package_signature(str(pkg))
-    assert ok is False
-    assert "mismatch" in reason or "sha256" in reason
+    assert not ok and "no release public key" in reason
 
 
-def test_missing_skill_md(pkg, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("QZDA_SANDBOX_TRUSTED_KEY_IDS", "ed25519:abc12345")
-    _write_marker(pkg, signed_by="ed25519:abc12345")
+def test_forged_signature_rejected(pkg, release_key):
+    other = Ed25519PrivateKey.generate()
+    _sign(pkg, other)
+    ok, reason = sign_verify.verify_package_signature(str(pkg))
+    assert not ok and "signature verification failed" in reason
+
+
+def test_modified_script_rejected(pkg):
+    (pkg / "scripts" / "run.py").write_text("print('pwned')\n", encoding="utf-8")
+    ok, reason = sign_verify.verify_package_signature(str(pkg))
+    assert not ok and "differ from the signed manifest" in reason
+
+
+def test_added_file_rejected(pkg):
+    (pkg / "scripts" / "extra.py").write_text("x = 1\n", encoding="utf-8")
+    ok, reason = sign_verify.verify_package_signature(str(pkg))
+    assert not ok and "differ from the signed manifest" in reason
+
+
+def test_pycache_is_ignored(pkg):
+    cache = pkg / "scripts" / "__pycache__"
+    cache.mkdir()
+    (cache / "run.cpython-312.pyc").write_bytes(b"\x00")
+    assert sign_verify.verify_package_signature(str(pkg)) == (True, "")
+
+
+def test_payload_identity_mismatch_rejected(pkg):
+    marker = _marker(pkg)
+    marker["payload"] = marker["payload"].replace("sk-test", "sk-other")
+    _write_marker(pkg, marker)
+    ok, reason = sign_verify.verify_package_signature(str(pkg))
+    assert not ok and "payload" in reason
+
+
+def test_marker_without_signature(pkg):
+    marker = _marker(pkg)
+    del marker["signature"]
+    _write_marker(pkg, marker)
+    ok, reason = sign_verify.verify_package_signature(str(pkg))
+    assert not ok and "signature" in reason
+
+
+def test_tampered_skill_md(pkg):
+    (pkg / "SKILL.md").write_text("# evil\n", encoding="utf-8")
+    ok, reason = sign_verify.verify_package_signature(str(pkg))
+    assert not ok
+
+
+def test_missing_skill_md(pkg):
     (pkg / "SKILL.md").unlink()
     ok, reason = sign_verify.verify_package_signature(str(pkg))
-    assert ok is False
-    assert "SKILL.md" in reason
+    assert not ok
 
 
-def test_marker_without_sha(pkg, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("QZDA_SANDBOX_TRUSTED_KEY_IDS", "ed25519:abc12345")
-    (pkg / ".signed").write_text(
-        json.dumps({"signed_by": "ed25519:abc12345"}),  # 没 sha256
-        encoding="utf-8",
-    )
-    ok, reason = sign_verify.verify_package_signature(str(pkg))
-    assert ok is False
-    assert "sha256" in reason
-
-
-def test_compute_skill_md_sha256_lower_fallback(pkg):
-    (pkg / "SKILL.md").unlink()
-    (pkg / "skill.md").write_text("# lower\n", encoding="utf-8")
-    h = sign_verify.compute_skill_md_sha256(str(pkg))
-    assert h is not None
-    assert len(h) == 64
+def test_compute_skill_md_sha256_lower_fallback(tmp_path):
+    (tmp_path / "skill.md").write_text("x", encoding="utf-8")
+    assert sign_verify.compute_skill_md_sha256(str(tmp_path)) is not None

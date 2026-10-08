@@ -2,7 +2,7 @@
 """wttr.in weather lookup for the ``weather`` skill.
 
 阶段 2:此脚本被 Python 沙箱 fork 出子进程执行,
-会通过 HTTPS_PROXY=http://127.0.0.1:8080 走出口代理。
+会通过 HTTPS_PROXY=http://127.0.0.1:8081 走出口代理。
 代理只放行 ``SKILL.md`` front-matter ``egress`` 字段声明的域名(此处为 ``wttr.in``),
 其它域名一律 502。
 

@@ -77,7 +77,7 @@ runsc install
 ## Egress 代理自愈
 
 `app/egress_proxy.py:supervisor_loop()` 每 10s 一次
-`socket.create_connection(("127.0.0.1", 8080), timeout=1)`;失败 → `stop()` 再 `start()`,
+`socket.create_connection(("127.0.0.1", 8081), timeout=1)`;失败 → `stop()` 再 `start()`,
 指数退避封顶 30s。指标 `egress_proxy_up{instance}`(0/1)。
 
 `/v1/execute` 响应 `egressProxyUp: false` 时,前端可据此提示"网络出口策略已停用"。
@@ -111,7 +111,7 @@ OTel:
 | `/v1/execute` 始终 401 `runToken expired` | 控制面与沙箱时钟漂移 > 60s | ntpdate / chrony 对齐 |
 | `QZDA_SANDBOX_SANDBOX=gvisor-local` 沙箱降级 `process` | 没设 runsc | 见上文 *gVisor 启用* |
 | `sealelf: not found` 容器启动失败 | Dockerfile builder stage 缺 `libc6-dev`,本机 `Makefile` 没跑 `make bake` | `make bake` 重 build |
-| `egressProxyUp: false` 持续 | 127.0.0.1:8080 起不来 | 检查 `EgressProxy.start()` 日志;`lsof -i :8080` 看端口冲突 |
+| `egressProxyUp: false` 持续 | 127.0.0.1:8081 起不来 | 检查 `EgressProxy.start()` 日志;`lsof -i :8081` 看端口冲突 |
 | `skill package signature check failed` | builtin / 用户上传包签名不匹配 | 重签(`cmd/sign-skill`)或重传原 `.skill` 包 |
 
 ## Backup / log path / 持久化

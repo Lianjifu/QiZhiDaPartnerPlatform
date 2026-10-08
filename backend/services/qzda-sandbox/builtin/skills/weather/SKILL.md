@@ -7,7 +7,7 @@ egress:
 
 # Weather (wttr.in)
 
-Single-purpose weather lookup skill. Uses Python stdlib `urllib` (no third-party deps), routed through the platform's `127.0.0.1:8080` egress proxy — which only allows hosts declared in this `SKILL.md` front-matter.
+Single-purpose weather lookup skill. Uses Python stdlib `urllib` (no third-party deps), routed through the platform's `127.0.0.1:8081` egress proxy — which only allows hosts declared in this `SKILL.md` front-matter.
 
 ## Usage from Copilot / Digital Employee
 
