@@ -15,12 +15,12 @@ import (
 )
 
 // qzda-local-llm: OpenAI-compatible chat completions for local Copilot / Cap wiring.
-// Default listen: 127.0.0.1:18080 (matches seed "Local Mock LLM").
+// Default listen: 127.0.0.1:8180 (matches seed "Local Mock LLM").
 
 func main() {
 	addr := strings.TrimSpace(os.Getenv("QZDA_LOCAL_LLM_ADDR"))
 	if addr == "" {
-		addr = "127.0.0.1:18080"
+		addr = "127.0.0.1:8180"
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {

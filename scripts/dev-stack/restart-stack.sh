@@ -12,7 +12,7 @@
 
 set -u
 PLIST="$HOME/Library/LaunchAgents/com.qizhida.dev-stack.plist"
-PORTS=(8089 8100 5173)
+PORTS=(8089 8100 8010)
 BACKEND="/Users/LIANJIFU/ops/QiZhiDaPartnerPlatform/backend"
 
 probe() {
@@ -59,10 +59,10 @@ wait_ready() {
   local timeout="${1:-30}"
   for i in $(seq 1 "$timeout"); do
     b=$(curl -s -o /dev/null -w "%{http_code}" --max-time 1 http://127.0.0.1:8100/healthz 2>/dev/null)
-    f=$(curl -s -o /dev/null -w "%{http_code}" --max-time 1 http://127.0.0.1:5173/ 2>/dev/null)
+    f=$(curl -s -o /dev/null -w "%{http_code}" --max-time 1 http://127.0.0.1:8010/ 2>/dev/null)
     g=$(curl -s -o /dev/null -w "%{http_code}" --max-time 1 http://127.0.0.1:8089/healthz 2>/dev/null)
     if [ "$b" = "200" ] && [ "$f" = "200" ] && [ "$g" = "200" ]; then
-      echo "stack ready after ${i}s (gateway:8089 backend:8100 frontend:5173)"
+      echo "stack ready after ${i}s (gateway:8089 backend:8100 frontend:8010)"
       return 0
     fi
     sleep 1

@@ -121,7 +121,7 @@ curl -sS http://127.0.0.1:8089/healthz
 
 # 3) 前端
 cd ../frontend && pnpm install && pnpm --filter web dev
-# 打开 http://127.0.0.1:5173 ，用 admin@… 登录（密码任意非空）
+# 打开 http://127.0.0.1:8010 ，用 admin@… 登录（密码任意非空）
 ```
 
 建议验收：
@@ -137,7 +137,7 @@ cd ../frontend && pnpm install && pnpm --filter web dev
 
 ## 控制台一览
 
-本地联调（`:5173` → 网关 `:8089`）界面示意（产品截图 2.0）：
+本地联调（`:8010` → 网关 `:8089`）界面示意（产品截图 2.0）：
 
 | 运营总览 | 专家协作 |
 |:-------:|:-------:|
@@ -353,7 +353,7 @@ flowchart TB
 ```mermaid
 flowchart TB
   subgraph Client["客户端"]
-    Browser["浏览器 · Vite :5173"]
+    Browser["浏览器 · Vite :8010"]
   end
 
   subgraph Edge["入口层"]
@@ -513,7 +513,7 @@ sequenceDiagram
 qizhida-partner-platform/
 ├── README.md                      # GitHub 项目介绍（本文件）
 ├── frontend/                      # pnpm workspace 控制台
-│   ├── web/                       # React 18 + Vite 应用（:5173）
+│   ├── web/                       # React 18 + Vite 应用（:8010）
 │   └── packages/                  # api · types · ui · utils · hooks
 ├── backend/                       # Go 控制面 + Python 执行面
 │   ├── cmd/                       # qzda-app（默认唯一入口） · qzda-local-llm
@@ -593,7 +593,7 @@ bash scripts/dev-stack/ensure-docker-postgres.sh
 | qzda-gateway | **8089** |
 | qzda-app（monolith，默认） | 8100 |
 | qzda-sandbox | 8093 |
-| Vite | 5173 |
+| Vite | 8010 |
 | qzda-agent-runtime / qzda-rag（按需） | 8091 / 8092 |
 
 ### Compose

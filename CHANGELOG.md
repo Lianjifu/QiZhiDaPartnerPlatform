@@ -17,6 +17,7 @@
 - 前端：删除未被引用的 `features/dashboard/mock.ts`；`@qzda/web-api` 不再 re-export mock 模块。
 - 后端：pro 登录必须校验真实账号（`platform.auth_accounts`，PBKDF2-SHA256 哈希密码），角色来自账号记录；新增 `qzda-account` 命令管理账号。dev 仍不校验密码。
 - 后端：OIDC 不再接受 `code=admin` 等开发码（非 dev 模式），userinfo 失败直接报错，不再伪造身份。
+- 后端：pro 模式供应商凭据不再要求 Vault，改为 AES-256-GCM 加密后存入数据库（需配置 `QZDA_CREDENTIAL_KEY`），明文凭据在 pro 下不会被读取。
 - 前端：登录页默认密码仅在开发态预填，生产构建不包含演示密码。
 
 ---
@@ -40,7 +41,7 @@
 ### 验证
 
 - `go build ./...` 通过（v1.5 后端在 env rename 后首轮完整编译通过）
-- `scripts/dev-stack/restart-stack.sh restart` 后 `:8089 :8100 :5173` 三端口 200，`/api/auth/login` → `/api/skills` 端到端通。
+- `scripts/dev-stack/restart-stack.sh restart` 后 `:8089 :8100 :8010` 三端口 200，`/api/auth/login` → `/api/skills` 端到端通。
 
 ---
 

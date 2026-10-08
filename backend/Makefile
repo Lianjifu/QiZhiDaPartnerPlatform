@@ -53,7 +53,7 @@ build:
 	$(GO) build -o ./bin/qzda-app ./cmd/qzda-app
 	$(GO) build -o ./bin/qzda-local-llm ./cmd/qzda-local-llm
 
-# 本地 OpenAI-compatible chat(默认 :18080),Copilot 无云端 key 时 fallback
+# 本地 OpenAI-compatible chat(默认 :8180),Copilot 无云端 key 时 fallback
 local-llm:
 	$(GO) run ./cmd/qzda-local-llm
 

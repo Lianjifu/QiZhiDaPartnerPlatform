@@ -36,7 +36,7 @@ func LoadOIDC() OIDCConfig {
 		Issuer:        issuer,
 		ClientID:      os.Getenv("QZDA_OIDC_CLIENT_ID"),
 		ClientSecret:  os.Getenv("QZDA_OIDC_CLIENT_SECRET"),
-		RedirectURL:   envOr("QZDA_OIDC_REDIRECT_URL", "http://127.0.0.1:5173/login/oidc/callback"),
+		RedirectURL:   envOr("QZDA_OIDC_REDIRECT_URL", "http://127.0.0.1:8010/login/oidc/callback"),
 		Enabled:       issuer != "",
 		AllowDevCodes: runtimeenv.FromEnv().IsDev(),
 		HTTPClient:    &http.Client{Timeout: 15 * time.Second},

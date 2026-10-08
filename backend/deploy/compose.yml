@@ -166,7 +166,7 @@ services:
       QZDA_OIDC_ISSUER: ${QZDA_OIDC_ISSUER:-}
       QZDA_OIDC_CLIENT_ID: ${QZDA_OIDC_CLIENT_ID:-}
       QZDA_OIDC_CLIENT_SECRET: ${QZDA_OIDC_CLIENT_SECRET:-}
-      QZDA_OIDC_REDIRECT_URL: ${QZDA_OIDC_REDIRECT_URL:-http://127.0.0.1:5173/login/oidc/callback}
+      QZDA_OIDC_REDIRECT_URL: ${QZDA_OIDC_REDIRECT_URL:-http://127.0.0.1:8010/login/oidc/callback}
     ports:
       - "8100:8100"
     healthcheck:

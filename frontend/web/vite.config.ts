@@ -20,7 +20,7 @@ export default defineConfig({
   },
   server: {
     host: true,
-    port: 5173,
+    port: 8010,
     strictPort: false,
     // 联调：VITE_API_BASE 为空时，浏览器走同源 /api，由此代理到粗粒度网关
     proxy: {
@@ -36,7 +36,7 @@ export default defineConfig({
       },
     },
   },
-  preview: { host: true, port: 4173 },
+  preview: { host: true, port: 8011 },
   optimizeDeps: {
     include: [
       'react',

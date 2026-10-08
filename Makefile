@@ -10,7 +10,7 @@ help:
 	@echo "  make skill-gate      — W1-D1 退出门槛：vetter strict + 签名 verify-skill"
 	@echo "  make ci-backend      — alias for test + lint"
 	@echo "  make ci-frontend     — frontend/web vitest (run inside frontend/web)"
-	@echo "  make run-app         — start local dev stack (gateway :8089 + qzda-app :8100 + vite :5173)"
+	@echo "  make run-app         — start local dev stack (gateway :8089 + qzda-app :8100 + vite :8010)"
 	@echo "  make run-app-stop    — stop local dev stack"
 	@echo "  make run-app-status  — show dev stack ports + processes"
 	@echo ""
@@ -51,7 +51,7 @@ ci-frontend:
 # ---------- Local dev stack ----------
 #
 # Brings up the full monolith stack: gateway :8089 (Vite proxy target) +
-# qzda-app :8100 + sandbox :8093 + Vite :5173. Wraps the launchd-supervised
+# qzda-app :8100 + sandbox :8093 + Vite :8010. Wraps the launchd-supervised
 # restart-stack.sh so the stack survives transient crashes.
 #
 # QZDA_STACK=coarse switches to the split qzda-sys / qzda-collab / qzda-cap

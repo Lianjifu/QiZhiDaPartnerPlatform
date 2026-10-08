@@ -101,17 +101,17 @@ start_one() {
 }
 
 start_vite() {
-  if pid_alive de-web && listening 5173; then return 0; fi
-  for p in 5174 5175; do
+  if pid_alive de-web && listening 8010; then return 0; fi
+  for p in 8012 5175; do
     /usr/sbin/lsof -tiTCP:$p -sTCP:LISTEN 2>/dev/null | while read pid; do kill -9 "$pid" 2>/dev/null || true; done
   done
-  if listening 5173 && ! pid_alive de-web; then
+  if listening 8010 && ! pid_alive de-web; then
     return 0
   fi
-  echo "$(date '+%F %T') start de-web :5173" >>"$LOGDIR/keeper.log"
+  echo "$(date '+%F %T') start de-web :8010" >>"$LOGDIR/keeper.log"
   (
     cd "$FRONTEND/web" || exit 1
-    nohup ./node_modules/.bin/vite --host 127.0.0.1 --port 5173 --strictPort >>"$LOGDIR/de-web.log" 2>&1 </dev/null &
+    nohup ./node_modules/.bin/vite --host 127.0.0.1 --port 8010 --strictPort >>"$LOGDIR/de-web.log" 2>&1 </dev/null &
     echo $! >"$LOGDIR/de-web.pid"
   )
   sleep 1
@@ -136,7 +136,7 @@ cleanup() {
       kill -KILL "$(cat "$LOGDIR/${name}.pid")" 2>/dev/null || true
     fi
   done
-  for port in 8100 8089 8092 8093 5173; do
+  for port in 8100 8089 8092 8093 8010; do
     listening "$port" && reclaim_port "$port"
   done
   exit 0
