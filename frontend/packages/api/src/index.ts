@@ -243,3 +243,23 @@ export async function loadDemoHandler(): Promise<void> {
 export function getDemoHandler(): DemoHandler | undefined {
   return demoHandler;
 }
+
+// === 运营总览 (home-live-aggregate) ===
+export type {
+  AggregateEmployee,
+  AggregateMember,
+  AggregateSession,
+  AggregateTask,
+  HomeExtraLive,
+  UsageMeter,
+} from './home-live-aggregate';
+export { buildHomeExtraLive, buildOpsOverviewLive } from './home-live-aggregate';
+
+// === M01 别名 / 规范化 ===
+export {
+  CAPABILITY_NAME_ALIASES,
+  CHANNEL_NAME_ALIASES,
+  normalizeCapabilityName,
+  normalizeChannelName,
+  normalizeEmployeeCapabilities,
+} from './m01-builders';

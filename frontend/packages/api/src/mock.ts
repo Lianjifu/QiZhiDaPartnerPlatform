@@ -748,8 +748,8 @@ const mockDigitalPartnerTemplateAdoptions: DigitalPartnerTemplateAdoption[] = [
 ];
 
 type DigitalPartnerConfigurationInput = {
-  /** capability 装配直接生效；role/缺省仍按在岗·生产·高风险走审批 */
-  scope?: 'capability' | 'role';
+  /** role=基本档案;capability=能力装配(直接生效);release=上岗定版(进版本流) */
+  scope?: 'capability' | 'role' | 'release';
   profile: Pick<DigitalPartner, 'name' | 'role' | 'department' | 'description' | 'owner' | 'escalationOwner' | 'serviceObject' | 'risk' | 'environment'>;
   boundary: Pick<DigitalPartner, 'responsibilities' | 'prohibitedActions' | 'handoffPolicy' | 'boundaryPolicy'>;
   capabilities?: DigitalPartner['capabilities'];

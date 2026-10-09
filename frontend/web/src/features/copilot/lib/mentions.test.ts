@@ -30,6 +30,7 @@ describe('formatMentionToken', () => {
   });
 });
 
+describe('replaceMentionTrigger', () => {
   it('replaces leading @ with a skill token', () => {
     expect(replaceMentionTrigger('@', '@skill:政策问答')).toBe('@skill:政策问答 ');
   });

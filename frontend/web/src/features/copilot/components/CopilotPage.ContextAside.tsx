@@ -30,22 +30,24 @@ export function CopilotPageContextAside() {
       aria-label="会话上下文"
       data-open="true"
     >
-      <div className="copilot-agent-details__tabs" role="tablist">
-        {visibleContextTabs.map((t) => (
-          <button
-            key={t.tab}
-            type="button"
-            role="tab"
-            aria-selected={contextTab === t.tab}
-            className={cn('copilot-agent-details__tab', contextTab === t.tab && 'is-active')}
-            onClick={() => setContextTab(t.tab)}
-          >
-            {t.label}
-            {typeof t.count === 'number' ? (
-              <span className="copilot-agent-details__tab-count">{t.count}</span>
-            ) : null}
-          </button>
-        ))}
+      <div className="copilot-agent-details__head">
+        <div className="copilot-agent-details__tabs" role="tablist">
+          {visibleContextTabs.map((t) => (
+            <button
+              key={t.tab}
+              type="button"
+              role="tab"
+              aria-selected={contextTab === t.tab}
+              className={cn('copilot-agent-details__tab', contextTab === t.tab && 'is-active')}
+              onClick={() => setContextTab(t.tab)}
+            >
+              {t.label}
+              {typeof t.count === 'number' ? (
+                <span className="copilot-agent-details__tab-count">{t.count}</span>
+              ) : null}
+            </button>
+          ))}
+        </div>
         <button
           type="button"
           className="copilot-details-close"

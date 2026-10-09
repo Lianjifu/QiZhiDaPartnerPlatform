@@ -192,7 +192,7 @@ export function splitMessageIntoBubbles(m: ChatMessageEx): BubbleSlice[] {
  */
 function extractThought(m: ChatMessageEx): { text: string; steps?: ReasoningStep[] } | null {
   if (m.reasoningSteps && m.reasoningSteps.length > 0) {
-    const text = m.reasoningSteps.map((s) => s.text ?? '').filter(Boolean).join('\n\n');
+    const text = m.reasoningSteps.map((s) => s.detail ?? s.title).filter(Boolean).join('\n\n');
     if (text.trim()) return { text, steps: m.reasoningSteps };
   }
   if (m.thinking && m.thinking.trim()) {

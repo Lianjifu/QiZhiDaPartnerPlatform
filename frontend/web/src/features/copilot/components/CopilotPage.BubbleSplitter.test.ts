@@ -39,8 +39,8 @@ describe('splitMessageIntoBubbles', () => {
   it('extracts thought from reasoningSteps', () => {
     const slices = splitMessageIntoBubbles(baseMsg({
       reasoningSteps: [
-        { type: 'understand', text: '用户问入职流程' },
-        { type: 'plan', text: '先查 RAG 再回答' },
+        { id: 's1', kind: 'analyze', title: '理解用户意图', detail: '用户问入职流程' },
+        { id: 's2', kind: 'plan', title: '检索 RAG', detail: '先查 RAG 再回答' },
       ],
       content: '这是最终回答。',
     }));
@@ -99,7 +99,7 @@ describe('splitMessageIntoBubbles', () => {
 
   it('answer slice always has skipTurnPanel=true (避免 thought 重复渲染)', () => {
     const slices = splitMessageIntoBubbles(baseMsg({
-      reasoningSteps: [{ type: 'plan', text: 'think' }],
+      reasoningSteps: [{ id: 's1', kind: 'plan', title: 'think', detail: '思考过程' }],
       content: 'answer',
     }));
     // 即使有 reasoningSteps 触发 thought 泡,answer 仍 skipTurnPanel
@@ -114,10 +114,10 @@ it('流式期间与完成后的切分结构一致:思考在前、工具居中、
   for (const status of statuses) {
     const slices = splitMessageIntoBubbles(baseMsg({
       status,
-      reasoningSteps: [{ type: 'plan', text: 'thinking' }],
+      reasoningSteps: [{ id: 's1', kind: 'plan', title: 'thinking', detail: '思考中' }],
       content: '部分内容...',
       toolCalls: [
-        { id: 'tc1', name: 'knowledge.retrieve', args: {}, status: 'ok' },
+        { id: 'tc1', name: 'knowledge.retrieve', args: {}, status: 'success' },
       ],
       turnTasks: [{ id: 't1', title: '任务1', status: 'done' }],
       cognitive: { enabled: true, phases: ['意图理解'] },
@@ -131,7 +131,7 @@ it('流式期间与完成后的切分结构一致:思考在前、工具居中、
 it('流式中正文为空时仍保留答复片段,用来承载"正在生成回复"', () => {
   const slices = splitMessageIntoBubbles(baseMsg({
     status: 'streaming',
-    reasoningSteps: [{ type: 'plan', text: 'think' }],
+    reasoningSteps: [{ id: 's1', kind: 'plan', title: 'think', detail: 'think' }],
     content: '',
   }));
   const last = slices[slices.length - 1];
@@ -156,8 +156,8 @@ it('debug: actual kinds', () => {
   it('alternates tool_call and tool_observation per tool call, with last obs merged into answer', () => {
     const slices = splitMessageIntoBubbles(baseMsg({
       toolCalls: [
-        { id: 'tc1', name: 'knowledge.retrieve', args: { query: '入职' }, status: 'ok' },
-        { id: 'tc2', name: 'memory.recall', args: {}, status: 'ok' },
+        { id: 'tc1', name: 'knowledge.retrieve', args: { query: '入职' }, status: 'success' },
+        { id: 'tc2', name: 'memory.recall', args: {}, status: 'success' },
       ],
       content:
         '【思考】应该查知识【/思考】' +
@@ -188,7 +188,7 @@ it('debug: actual kinds', () => {
   it('handles tool call without <<<TOOL>>> markers (natural language path)', () => {
     // LLM 直接文字描述工具使用,没有 <<<TOOL>>> 块
     const slices = splitMessageIntoBubbles(baseMsg({
-      toolCalls: [{ id: 'tc1', name: 'knowledge.retrieve', args: {}, status: 'ok' }],
+      toolCalls: [{ id: 'tc1', name: 'knowledge.retrieve', args: {}, status: 'success' }],
       content: '我查询了相关文档,得到 3 条记录。流程是 A → B → C。',
     }));
     // 期望:tool_call + answer(observation 走 natural language,合并到 answer)
@@ -202,8 +202,8 @@ it('debug: actual kinds', () => {
   it('adds meta bubble when citations present', () => {
     const slices = splitMessageIntoBubbles(baseMsg({
       citations: [
-        { docId: 'd1', title: '入职流程', tier: 'primary' },
-        { docId: 'd2', title: '体检', tier: 'secondary' },
+        { id: 'c1', docId: 'd1', source: '入职流程', score: 0.9, text: '流程描述' },
+        { id: 'c2', docId: 'd2', source: '体检', score: 0.7, text: '体检项目' },
       ],
       content: '答案是 A。',
     }));
@@ -221,7 +221,7 @@ it('debug: actual kinds', () => {
 
   it('skips tool_observation bubble when observation text is empty', () => {
     const slices = splitMessageIntoBubbles(baseMsg({
-      toolCalls: [{ id: 'tc1', name: 'test', args: {}, status: 'ok' }],
+      toolCalls: [{ id: 'tc1', name: 'test', args: {}, status: 'success' }],
       // tool call 块之后没有任何文字
       content: '<<<TOOL>>>{"name":"test","args":{}}<<<END>>>',
     }));
@@ -232,7 +232,7 @@ it('debug: actual kinds', () => {
   it('preserves original message fields in answer slice', () => {
     const slices = splitMessageIntoBubbles(baseMsg({
       content: '答案',
-      variants: [{ id: 'v1', content: '答案', isActive: true }],
+      variants: [{ id: 'v1', branchIndex: 0, isActive: true, preview: '答案' }],
     }));
     const answer = slices.find((s) => s.kind === 'answer')!;
     // variants 应保留(因为 answer 没显式设 undefined)
@@ -243,7 +243,7 @@ it('debug: actual kinds', () => {
 
   it('handles reasoningSteps even without content (empty answer still present)', () => {
     const slices = splitMessageIntoBubbles(baseMsg({
-      reasoningSteps: [{ type: 'plan', text: 'just thinking' }],
+      reasoningSteps: [{ id: 's1', kind: 'plan', title: 'just thinking', detail: 'just thinking' }],
       content: '',
     }));
     expect(slices.length).toBe(2);
@@ -260,11 +260,11 @@ describe('applySliceToMessage', () => {
     const slice = {
       kind: 'answer' as const,
       index: 0,
-      messageOverride: { content: '新内容', status: 'idle' },
+      messageOverride: { content: '新内容', status: 'succeeded' as const },
     };
     const merged = applySliceToMessage(m, slice);
     expect(merged.content).toBe('新内容');
-    expect(merged.status).toBe('idle');
+    expect(merged.status).toBe('succeeded');
     expect(merged.id).toBe(m.id); // 原字段保留
   });
 });
@@ -272,8 +272,8 @@ describe('applySliceToMessage', () => {
 describe('describeSlices', () => {
   it('produces readable summary', () => {
     const slices = splitMessageIntoBubbles(baseMsg({
-      reasoningSteps: [{ type: 'plan', text: 'think' }],
-      toolCalls: [{ id: 't1', name: 'k.retrieve', args: {}, status: 'ok' }],
+      reasoningSteps: [{ id: 's1', kind: 'plan', title: 'think', detail: 'think' }],
+      toolCalls: [{ id: 't1', name: 'k.retrieve', args: {}, status: 'success' }],
       content: '<<<TOOL>>>{}<<<END>>>observation\n最终',
     }));
     const desc = describeSlices(slices);

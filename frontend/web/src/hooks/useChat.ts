@@ -1428,6 +1428,7 @@ export function useChat(agentMeta?: { name: string }) {
         dispatch({ type: 'set_typing', typing: false });
         dispatch({ type: 'set_abort', ctrl: null });
         dispatch({ type: 'set_active_correlation', id: null });
+        dispatch({ type: 'update_session', sid, patch: { pendingTurn: undefined } });
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
       };
 
@@ -1734,8 +1735,11 @@ export function useChat(agentMeta?: { name: string }) {
             for (const mid of segmentRouter.segments.keys()) {
               dispatch({ type: 'set_msg_status', sid, mid, status: 'cancelled' });
             }
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
             dispatch({ type: 'set_typing', typing: false });
             dispatch({ type: 'set_abort', ctrl: null });
+            dispatch({ type: 'set_active_correlation', id: null });
+            dispatch({ type: 'update_session', sid, patch: { pendingTurn: undefined } });
             return;
           }
           finishError(

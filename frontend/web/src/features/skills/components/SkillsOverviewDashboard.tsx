@@ -16,7 +16,7 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Activity, Boxes, CheckCircle2, FileCode2, History, IdCard,
+  Activity, Boxes, CheckCircle2, FileCode2, History,
   Lock, ShieldCheck, Wrench, X,
 } from 'lucide-react';
 import { Badge } from '@qzda/web-ui';
@@ -74,7 +74,7 @@ export function SkillsOverviewDashboard({
   permissionMutation,
   setPermsState,
   versions,
-}: OverviewPanelProps & {
+}: Omit<OverviewPanelProps, 'active'> & {
   active: SkillRow;
   installedRows: SkillRow[];
   trace: any;
@@ -293,7 +293,7 @@ export function SkillsOverviewDashboard({
             <Badge tone="neutral" className="ml-auto text-[9px]">{safeVersions.length} 个版本</Badge>
           </header>
           {safeVersions.length === 0 ? (
-            <EmptyState icon={History} title="暂无版本记录" description="后续升级、回滚和发布记录会在此处沉淀。" compact />
+            <EmptyState icon={History} title="暂无版本记录" description="后续升级、回滚和发布记录会在此处沉淀。" />
           ) : (
             <ol className="skill-overview-versions">
               {safeVersions.slice(0, 4).map((v) => (

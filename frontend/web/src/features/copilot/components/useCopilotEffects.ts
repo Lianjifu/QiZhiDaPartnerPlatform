@@ -463,5 +463,9 @@ export function useCopilotEffects(p: UseCopilotEffectsParams) {
     } catch {
       window.localStorage.removeItem(`copilot-context:${p.currentSession.id}`);
     }
-  }, [p.currentSession?.id, p.s]);
+    // 仅在会话 ID 变化时水化；故意不订阅 p.s（useCopilotState 的 useMemo 依赖很多，
+    // 每次渲染都会换新对象，把它放进依赖会导致 effect 每帧执行、把刚关闭的抽屉
+    // 立即从 localStorage 重新打开)。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p.currentSession?.id]);
 }

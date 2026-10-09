@@ -14,6 +14,7 @@ import { Button } from '@qzda/web-ui';
 import { useCopilotContext } from '@/features/copilot/components/useCopilotController';
 import { CopilotPageMessageBubble } from '@/features/copilot/components/CopilotPage.MessageBubble';
 import { splitMessageIntoBubbles, withStableKeys } from '@/features/copilot/components/CopilotPage.BubbleSplitter';
+import type { WorkbenchContextTab } from '@/features/copilot/lib/workbench';
 import { DigitalPartnerAvatar } from '@/features/partners/components/DigitalPartnerAvatar';
 import type { ChatMessageEx } from '@/hooks/types';
 
@@ -133,7 +134,7 @@ export function CopilotPageMessages() {
       agentName: expertName,
       expertRole: expertMeta ?? undefined,
       conversationId: currentSession?.conversationId,
-      onOpenContext: (tab, mid, artifact, opts) => openContext(tab, mid, artifact, opts),
+      onOpenContext: (tab: WorkbenchContextTab, mid?: string, artifact?: unknown, opts?: { startSlide?: number }) => openContext(tab, mid, artifact, opts),
       onOpenAudit: openAuditTab,
       onOpenReplay: openReplay,
       onSwitchVariant: (mid: string, variantId: string) => { void switchActiveVariant(mid, variantId); },
@@ -152,9 +153,9 @@ export function CopilotPageMessages() {
         if (!canMutate || isGenerating) return;
         s.chat.retryMessage(mid);
       },
-      onFeedback: (mid: string, kind: 'like' | 'dislike' | null) => {
+      onFeedback: (mid: string, kind: 'like' | 'dislike' | null | undefined) => {
         if (!canMutate) return;
-        s.chat.setFeedback(mid, { kind: kind ?? undefined });
+        s.chat.setFeedback(mid, { kind: kind ?? null });
         if (kind === 'dislike') s.setFeedbackOpen(mid);
       },
     };
