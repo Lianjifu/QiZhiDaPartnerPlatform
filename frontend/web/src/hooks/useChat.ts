@@ -194,6 +194,10 @@ const MAX_CHARS_DEFAULT = 4000;
 const STREAM_CHUNK_MS = 24;
 const STREAM_TICK_MS = 120;
 const DEFAULT_TIMEOUT_MS = 150_000;
+/** abort 原因:只有用户主动停止才把消息标记为"已停止";超时 / 错误中断按失败处理 */
+export const USER_STOP_REASON = 'user_stop';
+const STREAM_TIMEOUT_REASON = 'stream_timeout';
+const STREAM_ERROR_REASON = 'stream_error';
 const MAX_RETRY = 1;
 
 /* ============ 工具函数 ============ */
@@ -486,7 +490,7 @@ function reducer(s: State, a: Action): State {
     case 'set_typing':
       return { ...s, typing: a.typing };
     case 'stop_typing':
-      if (s.abortRef.current) s.abortRef.current.abort();
+      if (s.abortRef.current) s.abortRef.current.abort(USER_STOP_REASON);
       return { ...s, typing: false, abortRef: { current: null } };
     case 'set_abort':
       return { ...s, abortRef: { current: a.ctrl } };
@@ -1427,8 +1431,14 @@ export function useChat(agentMeta?: { name: string }) {
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
       };
 
+      const armIdleTimeout = () => {
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        timeoutRef.current = setTimeout(() => ctrl.abort(STREAM_TIMEOUT_REASON), DEFAULT_TIMEOUT_MS);
+      };
+
       const onEvent = (event: string, data: CopilotSSEEvent) => {
         if (ctrl.signal.aborted) return;
+        armIdleTimeout();
         const typ = data.type || event;
         if (typeof data.modelId === 'string' && data.modelId) resolvedModel = data.modelId;
         if (typeof data.modelName === 'string' && data.modelName) resolvedModel = data.modelName;
@@ -1603,7 +1613,7 @@ export function useChat(agentMeta?: { name: string }) {
         }
         if (typ === 'error') {
           finishError(data.message || '策略或运行时拒绝', 'tool_denied');
-          ctrl.abort();
+          ctrl.abort(STREAM_ERROR_REASON);
           return;
         }
         if (typ === 'done') {
@@ -1717,12 +1727,21 @@ export function useChat(agentMeta?: { name: string }) {
         }
       }).catch((err: unknown) => {
         if (ctrl.signal.aborted) {
-          dispatch({ type: 'update_request', id: reqId, patch: { status: 'aborted', durationMs: Date.now() - startedAt } });
-          for (const mid of segmentRouter.segments.keys()) {
-            dispatch({ type: 'set_msg_status', sid, mid, status: 'cancelled' });
+          const reason = ctrl.signal.reason;
+          if (reason === STREAM_ERROR_REASON) return;
+          if (reason === USER_STOP_REASON) {
+            dispatch({ type: 'update_request', id: reqId, patch: { status: 'aborted', durationMs: Date.now() - startedAt } });
+            for (const mid of segmentRouter.segments.keys()) {
+              dispatch({ type: 'set_msg_status', sid, mid, status: 'cancelled' });
+            }
+            dispatch({ type: 'set_typing', typing: false });
+            dispatch({ type: 'set_abort', ctrl: null });
+            return;
           }
-          dispatch({ type: 'set_typing', typing: false });
-          dispatch({ type: 'set_abort', ctrl: null });
+          finishError(
+            reason === STREAM_TIMEOUT_REASON ? '回复等待超时，连接已断开，可重试' : '连接中断，请重试',
+            'timeout',
+          );
           return;
         }
         const message = err instanceof Error ? err.message : '网络错误';
@@ -2095,7 +2114,7 @@ export function useChat(agentMeta?: { name: string }) {
     // 超时
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(() => {
-      ctrl.abort();
+      ctrl.abort(STREAM_TIMEOUT_REASON);
     }, DEFAULT_TIMEOUT_MS);
 
     const deId = opts?.digitalPartnerId ?? sess?.digitalPartnerId;
@@ -2148,7 +2167,7 @@ export function useChat(agentMeta?: { name: string }) {
     dispatch({ type: 'set_draft', value: '' }); dispatch({ type: 'set_active_correlation', id: corr }); dispatch({ type: 'set_typing', typing: true });
     const ctrl = new AbortController(); dispatch({ type: 'set_abort', ctrl });
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => ctrl.abort(), DEFAULT_TIMEOUT_MS);
+    timeoutRef.current = setTimeout(() => ctrl.abort(STREAM_TIMEOUT_REASON), DEFAULT_TIMEOUT_MS);
     const modelId = opts?.modelId ?? sess.modelId;
     const enabledTools = opts?.enabledTools ?? sess.enabledTools;
     setTimeout(() => {
@@ -2206,7 +2225,7 @@ export function useChat(agentMeta?: { name: string }) {
     dispatch({ type: 'set_typing', typing: true });
 
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => ctrl.abort(), DEFAULT_TIMEOUT_MS);
+    timeoutRef.current = setTimeout(() => ctrl.abort(STREAM_TIMEOUT_REASON), DEFAULT_TIMEOUT_MS);
 
     setTimeout(() => {
       launchReply(state.activeId, userMsg.content, ctrl, corr, sess.digitalPartnerId, {

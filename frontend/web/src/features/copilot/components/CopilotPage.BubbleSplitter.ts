@@ -64,18 +64,6 @@ export function splitMessageIntoBubbles(m: ChatMessageEx): BubbleSlice[] {
     return [singleSlice(m, 0, 'answer', { variantStyle: 'standard', showHeader: true })];
   }
 
-  // 流式中不切分:避免每个 SSE 事件都生成 N 个新泡
-  // 保留 thought panel + tool call + 最终内容在一个泡内,等流式结束再切
-  // skipTurnPanel: true 因为 Messages.tsx 在 streamingAssistant 分支单独渲染了 TurnThoughtPanel,
-  // 不在本泡内重复
-  if (m.status === 'streaming' || m.status === 'in_flight' || m.status === 'queued') {
-    return [singleSlice(m, 0, 'answer', {
-      variantStyle: 'standard',
-      showHeader: true,
-      skipTurnPanel: true,
-    })];
-  }
-
   const slices: BubbleSlice[] = [];
   let idx = 0;
   const toolCalls = m.toolCalls ?? [];

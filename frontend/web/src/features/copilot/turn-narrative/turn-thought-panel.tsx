@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Brain, ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from '@qzda/web-utils';
 import type { ChatMessageEx } from '@/hooks/types';
@@ -75,11 +75,7 @@ export function TurnThoughtPanel({ message, streaming, showNarrative = true }: P
     [steps, tasks, message.cognitive, streaming, message.turnMeta],
   );
   const hasContent = thinking.length > 0 || steps.length > 0 || phases.length > 0 || tasks.length > 0;
-  const [expanded, setExpanded] = useState(true);
-
-  useEffect(() => {
-    if (streaming) setExpanded(true);
-  }, [streaming, message.id]);
+  const [expanded, setExpanded] = useState(false);
 
   if (!showNarrative) return null;
 
@@ -99,20 +95,20 @@ export function TurnThoughtPanel({ message, streaming, showNarrative = true }: P
   const summary = buildTurnSummary(message, phases, streaming);
 
   return (
-    <div className="copilot-turn-thought max-w-[920px] rounded-md border border-[var(--border)] bg-[var(--bg-elevated)]">
+    <div className="copilot-turn-thought w-full max-w-[800px] rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)]">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
         aria-controls={`turn-thought-${message.id}`}
-        className="flex w-full items-center gap-2 px-3 py-1.5 text-[11px] text-[var(--text-muted)] hover:text-[var(--text)]"
+        className="flex w-full items-center gap-2 px-3 py-2 text-[11px] text-[var(--text-muted)] hover:text-[var(--text)]"
       >
         <Brain className="h-3 w-3 shrink-0" />
         <span className="font-semibold">{summary}</span>
         {expanded ? <ChevronDown className="ml-auto h-3 w-3" /> : <ChevronRight className="ml-auto h-3 w-3" />}
       </button>
       {expanded && (
-        <div id={`turn-thought-${message.id}`} className="space-y-2 px-3 pb-2">
+        <div id={`turn-thought-${message.id}`} className="space-y-2 border-t border-[var(--border)] px-3 py-2">
           {thinking ? (
             <div className="text-[11px] leading-relaxed text-[var(--text-muted)] whitespace-pre-wrap">{thinking}</div>
           ) : null}

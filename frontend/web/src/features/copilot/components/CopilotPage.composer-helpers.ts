@@ -156,7 +156,6 @@ export function buildComposerHandlers(
       s.historyIdx.current = 0;
       return;
     }
-    if (e.key === 'Escape' && s.chat.state.typing) { s.chat.stop(); return; }
     const ta = e.currentTarget;
     if (e.key === 'ArrowUp' && ta.selectionStart === 0 && ta.value !== '' && s.chat.state.inputHistory.length > 0) {
       e.preventDefault();

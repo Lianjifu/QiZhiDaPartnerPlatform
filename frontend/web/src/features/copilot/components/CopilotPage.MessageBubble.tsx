@@ -16,11 +16,11 @@ import type { WorkbenchContextTab } from '@/features/copilot/lib/workbench';
 import { ERROR_HINT, STATUS_LABEL } from '@/features/copilot/lib/message-status';
 import { MessageCapabilityTrace, RiskDecisionCard } from './CopilotPage.MessageTrace';
 import { ArtifactOutline, SkillArtifactDownloadCard } from './CopilotPage.ArtifactCard';
-import { CitationsList, ToolCallDetails } from './CopilotPage.ToolCallDetails';
 import { ApprovalCard } from './CopilotPage.ApprovalCard';
 import { CopilotMessageStatus } from './CopilotPage.MessageStatus';
 import { CopilotVariantNav, type CopilotVariant } from './CopilotPage.VariantNav';
 import { CopilotMessageAuditLink } from './CopilotPage.MessageAuditLink';
+import { ToolCallRow } from './CopilotPage.ToolCallRow';
 import type { BubbleVariantStyle } from './CopilotPage.BubbleSplitter';
 
 /**
@@ -88,12 +88,18 @@ export function CopilotPageMessageBubble({
     collapse?: boolean;
     /** 跳过 TurnThoughtPanel(让 thought 泡独占,避免 answer 泡重复渲染) */
     skipTurnPanel?: boolean;
+    /** 一轮回复的最后一个片段:承载操作区、状态、决策卡等轮次级内容 */
+    turnTail?: boolean;
+    /** 是否由本片段渲染 TurnThoughtPanel(每轮只出现一次) */
+    showTurnPanel?: boolean;
     tag?: string;
   };
 }) {
   const variantStyle: BubbleVariantStyle = bubbleProps?.variantStyle ?? 'standard';
   const showHeader = bubbleProps?.showHeader ?? true;
   const skipTurnPanel = bubbleProps?.skipTurnPanel ?? false;
+  const isTurnTail = bubbleProps?.turnTail ?? true;
+  const showTurnPanel = bubbleProps?.showTurnPanel ?? true;
   const isUser = m.role === 'user';
   const isTool = m.role === 'tool';
   const isMuted = variantStyle === 'muted';
@@ -101,7 +107,6 @@ export function CopilotPageMessageBubble({
   const isEmpty = !m.content;
   const isStreaming = m.status === 'streaming' || m.status === 'in_flight';
   const agentDisplayName = agentName || m.agentName || (isUser ? '王昊' : isTool ? '能力调用' : '助手');
-  const [traceOpen, setTraceOpen] = useState(false);
   const needsDecision = !isUser && /CVE|高危|高风险|影响资产/.test(m.content ?? '');
   const artifacts = useMemo(
     () => (isUser || isTool || !m.content ? [] : extractSkillArtifacts(m.content)),
@@ -149,6 +154,7 @@ export function CopilotPageMessageBubble({
       className={cn('copilot-message relative bubble-stack', isUser ? 'copilot-message--user flex justify-end' : isTool ? 'copilot-message--tool flex gap-3' : 'copilot-message--assistant flex gap-3', selectedContextMessageId === m.id && 'is-context-selected')}
       data-message-status={m.status}
     >
+      {!isUser && !showHeader ? <div className="w-7 shrink-0" aria-hidden="true" /> : null}
       {!isUser && showHeader ? (
         <div className="shrink-0 pt-0.5">
           {isTool ? (
@@ -166,7 +172,7 @@ export function CopilotPageMessageBubble({
       ) : null}
       <div className={cn(
         'copilot-message__content min-w-0 space-y-2.5',
-        isUser ? 'max-w-[80%]' : isMuted ? 'w-full max-w-[760px] opacity-90' : isCompact ? 'w-full max-w-[640px]' : 'w-full max-w-[960px]',
+        isUser ? 'max-w-[80%]' : 'w-full max-w-[800px]',
       )}>
         {showHeader ? (
           <div className={cn('copilot-message__meta flex items-center gap-1.5 text-[11px]', isUser && 'justify-end')}>
@@ -199,7 +205,7 @@ export function CopilotPageMessageBubble({
           </div>
         ) : null}
 
-        {!isUser && m.variants && m.variants.length > 1 ? (
+        {isTurnTail && !isUser && m.variants && m.variants.length > 1 ? (
           <CopilotVariantNav
             variants={m.variants as CopilotVariant[]}
             activeId={(m.variants.find((v) => v.isActive) ?? m.variants[0])?.id ?? null}
@@ -207,18 +213,9 @@ export function CopilotPageMessageBubble({
           />
         ) : null}
 
-        {!isUser ? (
-          <MessageCapabilityTrace
-            message={m}
-            onOpenContext={onOpenContext}
-            expanded={traceOpen}
-            onToggle={() => setTraceOpen((open) => !open)}
-          />
-        ) : null}
+        {isTurnTail && needsDecision ? <RiskDecisionCard onOpenContext={onOpenContext} messageId={m.id} /> : null}
 
-        {needsDecision ? <RiskDecisionCard onOpenContext={onOpenContext} messageId={m.id} /> : null}
-
-        {m.status === 'failed' ? (
+        {isTurnTail && m.status === 'failed' ? (
           <div role="alert" className="rounded-md border border-[var(--danger)]/30 bg-[var(--danger-bg)] px-3 py-2 text-[11px] flex items-center gap-2">
             <AlertCircle className="h-3.5 w-3.5 text-[var(--danger)]" />
             <span className="text-[var(--text)]">
@@ -233,12 +230,13 @@ export function CopilotPageMessageBubble({
             </button>
           </div>
         ) : null}
-        {m.status === 'cancelled' ? (
-          <div className="rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-1.5 text-[11px] text-[var(--text-muted)] inline-flex items-center gap-1.5">
-            <Square className="h-3 w-3" />生成已停止
+        {isTurnTail && m.status === 'cancelled' ? (
+          <div className="inline-flex items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
+            <Square className="h-2.5 w-2.5" aria-hidden="true" />
+            <span>已停止生成</span>
           </div>
         ) : null}
-        {m.status === 'moderated' && m.safety ? (
+        {isTurnTail && m.status === 'moderated' && m.safety ? (
           <div role="alert" className="rounded-md border border-[var(--warning)]/30 bg-[var(--warning-bg)] px-3 py-2 text-[11px] flex items-center gap-2">
             <ShieldAlert className="h-3.5 w-3.5 text-[var(--warning)]" />
             <span className="text-[var(--text)]">
@@ -253,8 +251,16 @@ export function CopilotPageMessageBubble({
           </div>
         ) : null}
 
-        {!isUser && !isTool && !skipTurnPanel ? (
+        {!isUser && !isTool && !skipTurnPanel && showTurnPanel ? (
           <TurnThoughtPanel message={m} streaming={isStreaming} showNarrative={expert?.capabilities?.cognitive?.showNarrative !== false} />
+        ) : null}
+
+        {isTool && (m.toolCalls?.length ?? 0) > 0 ? (
+          <div className="space-y-1">
+            {m.toolCalls!.map((tc) => (
+              <ToolCallRow key={tc.id} toolCall={tc} />
+            ))}
+          </div>
         ) : null}
 
         {!isEmpty ? (
@@ -265,10 +271,10 @@ export function CopilotPageMessageBubble({
               : isTool
               ? 'copilot-message__body--tool rounded-lg border border-[var(--warning)]/30 bg-[var(--warning-bg)]/50 px-3 py-2 text-[12px] text-[var(--text-secondary)] font-mono'
               : isMuted
-              ? 'copilot-message__body--muted max-w-[760px] px-3 py-2 text-[13px] leading-[1.6] text-[var(--text-secondary)] break-words bg-[var(--bg-elevated)]/40 rounded-lg italic'
+              ? 'copilot-message__body--muted max-w-[760px] text-[12.5px] leading-[1.6] text-[var(--text-muted)] break-words'
               : isCompact
-              ? 'copilot-message__body--compact max-w-[640px] px-3 py-2 text-[12.5px] font-mono text-[var(--text-secondary)] break-words rounded-md border-l-2 border-[var(--warning)]/40 bg-[var(--bg-elevated)]/30'
-              : 'copilot-message__body--assistant max-w-[920px] text-[14.5px] leading-[1.7] text-[var(--text)] break-words',
+              ? 'copilot-message__body--compact max-w-[640px] py-0.5 text-[12px] font-mono text-[var(--text-secondary)] break-words'
+              : 'copilot-message__body--assistant w-full text-[14.5px] leading-[1.7] text-[var(--text)] break-words',
           )}>
             {isUser ? (
               <span className="whitespace-pre-wrap">{m.content}</span>
@@ -308,13 +314,13 @@ export function CopilotPageMessageBubble({
                     </pre>
                   </details>
                 ) : null}
-                {isStreaming ? (
+                {isStreaming && isTurnTail ? (
                   <span className="inline-block h-3.5 w-1.5 ml-0.5 align-text-bottom bg-[var(--brand)] animate-pulse rounded-sm" aria-hidden="true" />
                 ) : null}
               </div>
             )}
           </div>
-        ) : isStreaming ? (
+        ) : isStreaming && isTurnTail && !isTool ? (
           <div className="copilot-message__body copilot-message__body--pending inline-flex items-center gap-2.5 text-[var(--text-muted)] text-sm py-1" role="status" aria-label="消息正在生成">
             <span className="copilot-thinking-dots" aria-hidden="true">
               {[0, 1, 2].map((i) => (
@@ -351,25 +357,7 @@ export function CopilotPageMessageBubble({
           </div>
         ) : null}
 
-        {traceOpen && m.toolCalls && m.toolCalls.length > 0 ? (
-          <ToolCallDetails
-            messageId={m.id}
-            toolCalls={m.toolCalls}
-            expandedArgs={expandedArgs}
-            setExpandedArgs={setExpandedArgs}
-            onRetry={onRetry}
-          />
-        ) : null}
-
-        {traceOpen && m.citations && m.citations.length > 0 ? (
-          <CitationsList
-            citations={m.citations}
-            onCitation={onCitation}
-            messageId={m.id}
-          />
-        ) : null}
-
-        {m.approvalRequest ? (
+        {isTurnTail && m.approvalRequest ? (
           <ApprovalCard
             m={m}
             isSingleAuth={isSingleAuth}
@@ -386,7 +374,11 @@ export function CopilotPageMessageBubble({
           />
         ) : null}
 
-        {!isEmpty ? (
+        {isTurnTail && !isUser ? (
+          <MessageCapabilityTrace message={m} onOpenContext={onOpenContext} />
+        ) : null}
+
+        {isTurnTail && !isEmpty ? (
           <div className={cn('copilot-message__actions flex items-center gap-0.5 text-[var(--text-muted)]', isUser ? 'justify-end' : '')}>
             <button
               onClick={() => onCopy(m)}

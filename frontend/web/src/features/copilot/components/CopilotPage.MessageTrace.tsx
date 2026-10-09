@@ -3,13 +3,16 @@
  * Extracted from CopilotPage.tsx to satisfy file-size gates.
  */
 import type { ReactNode } from 'react';
-import { AlertTriangle, Link2, ListChecksIcon, ShieldCheck, Wrench } from 'lucide-react';
+import { AlertTriangle, Layers, ShieldCheck, Wrench } from 'lucide-react';
 import { Badge, Button } from '@qzda/web-ui';
 import { cn } from '@qzda/web-utils';
 import type { ChatMessageEx } from '@/hooks/types';
 import type { SkillArtifactLink } from '@/features/copilot/lib/artifact-links';
+import { messageHasContext } from '@/features/copilot/components/CopilotPage.context-helpers';
 
 export type WorkbenchContextTab = 'overview' | 'evidence' | 'tasks' | 'approvals' | 'audit' | 'admin';
+
+const CHIP_CLASS = 'inline-flex items-center gap-1 rounded-md border border-[var(--border)] px-2 py-0.5 text-[var(--text-secondary)] transition-colors hover:border-[var(--brand)] hover:text-[var(--brand)]';
 
 export function MessageCapabilityTrace({
   message,
@@ -17,36 +20,42 @@ export function MessageCapabilityTrace({
 }: {
   message: ChatMessageEx;
   onOpenContext: (tab: WorkbenchContextTab, messageId?: string, artifact?: SkillArtifactLink, options?: { startSlide?: number }) => void;
-  expanded?: boolean;
-  onToggle?: () => void;
 }) {
+  if (!messageHasContext(message)) return null;
   const toolCount = message.toolCalls?.length ?? 0;
+  const failedTools = message.toolCalls?.filter((item) => item.status === 'failed').length ?? 0;
   const citeCount = message.citations?.length ?? 0;
   const taskRef = message.linkedTaskId ?? message.approvalRequest?.ticketId;
-  const hasApproval = Boolean(message.approvalRequest);
-  if (!toolCount && !citeCount && !hasApproval && !taskRef) return null;
-  const okTools = message.toolCalls?.filter((item) => item.status === 'success').length ?? 0;
+  const approval = message.approvalRequest;
 
   return (
-    <div className="copilot-message-workcards flex max-w-[920px] flex-wrap items-center gap-1.5" aria-label="岗位能力调用与依据">
+    <div className="copilot-message-workcards flex max-w-[800px] flex-wrap items-center gap-2 text-[11px] text-[var(--text-muted)]" aria-label="能力调用与上下文信息">
       {toolCount > 0 && (
-        <button type="button" onClick={() => onOpenContext('audit', message.id)} className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1 text-[10px] text-[var(--text-secondary)] hover:border-[var(--brand)] hover:text-[var(--brand)]">
-          <Wrench className="h-3 w-3 text-[var(--brand)]" />能力调用 {toolCount} · {okTools} 成功
+        <button
+          type="button"
+          onClick={() => onOpenContext('audit', message.id)}
+          className={cn(CHIP_CLASS, failedTools > 0 && 'border-[var(--danger)]/40 text-[var(--danger)]')}
+        >
+          <Wrench className="h-3 w-3" />
+          能力调用 {toolCount} 项{failedTools > 0 ? ` · ${failedTools} 项失败` : ' · 全部成功'}
         </button>
       )}
+      <button type="button" onClick={() => onOpenContext('overview', message.id)} className={CHIP_CLASS}>
+        <Layers className="h-3 w-3" />上下文信息
+      </button>
       {citeCount > 0 && (
-        <button type="button" onClick={() => onOpenContext('evidence', message.id)} className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1 text-[10px] text-[var(--text-secondary)] hover:border-[var(--brand)] hover:text-[var(--brand)]">
-          <Link2 className="h-3 w-3 text-[var(--brand)]" />依据 {citeCount}
-        </button>
-      )}
-      {hasApproval && (
-        <button type="button" onClick={() => onOpenContext('approvals', message.id)} className="inline-flex items-center gap-1 rounded-md border border-[var(--warning)]/40 bg-[var(--warning-bg)] px-2 py-1 text-[10px] text-[var(--text-secondary)] hover:border-[var(--warning)]">
-          <ShieldCheck className="h-3 w-3 text-[var(--warning)]" />受控审批 {message.approvalRequest!.signed}/{message.approvalRequest!.required}
+        <button type="button" onClick={() => onOpenContext('evidence', message.id)} className={CHIP_CLASS}>
+          依据 {citeCount}
         </button>
       )}
       {taskRef && (
-        <button type="button" onClick={() => onOpenContext('tasks', message.id)} className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--bg-elevated)] px-2 py-1 text-[10px] text-[var(--text-secondary)] hover:border-[var(--brand)]">
-          <ListChecksIcon className="h-3 w-3 text-[var(--brand)]" />任务 {taskRef}
+        <button type="button" onClick={() => onOpenContext('tasks', message.id)} className={CHIP_CLASS}>
+          任务 {taskRef}
+        </button>
+      )}
+      {approval && (
+        <button type="button" onClick={() => onOpenContext('approvals', message.id)} className={cn(CHIP_CLASS, 'text-[var(--warning)]')}>
+          <ShieldCheck className="h-3 w-3" />受控审批 {approval.signed}/{approval.required}
         </button>
       )}
     </div>

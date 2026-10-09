@@ -14,14 +14,13 @@ import { Button } from '@qzda/web-ui';
 import { useCopilotContext } from '@/features/copilot/components/useCopilotController';
 import { CopilotPageMessageBubble } from '@/features/copilot/components/CopilotPage.MessageBubble';
 import { splitMessageIntoBubbles, withStableKeys } from '@/features/copilot/components/CopilotPage.BubbleSplitter';
-import { TurnThoughtPanel } from '@/features/copilot/turn-narrative/turn-thought-panel';
 import { DigitalPartnerAvatar } from '@/features/partners/components/DigitalPartnerAvatar';
 import type { ChatMessageEx } from '@/hooks/types';
 
 export function CopilotPageMessages() {
   const ctrl = useCopilotContext();
   const { s, currentSession, displayMessages, showTypingFallback, generationHint,
-    openContext, isGenerating, streamingAssistant, generationElapsedSec,
+    openContext, isGenerating, generationElapsedSec,
     switchActiveVariant, openAuditTab, openReplay, copyMessage,
     activeEmployee, expertName, expertMeta, expertDescription, expertSuggestions,
     suggestionIconMap, canMutate, onDutyEmployees, hasBoundExpert, conversationMissing,
@@ -185,15 +184,20 @@ export function CopilotPageMessages() {
     return (
       <div
         key={`${message.id}__stack`}
-        className="bubble-stack flex flex-col"
+        className="bubble-stack flex flex-col gap-2"
         data-turn-message-id={message.id}
         data-turn-role="assistant"
       >
-        {keyed.map(({ key, slice, merged }) => (
+        {keyed.map(({ key, slice, merged }, index) => (
           <CopilotPageMessageBubble
             key={key}
             m={merged}
-            bubbleProps={slice.bubbleProps}
+            bubbleProps={{
+              ...slice.bubbleProps,
+              showHeader: index === 0 && (slice.bubbleProps?.showHeader ?? true),
+              turnTail: index === keyed.length - 1,
+              showTurnPanel: slice.kind === 'thought' || keyed.length === 1,
+            }}
             {...sharedProps}
             generationElapsedSec={
               // 仅 answer(主气泡)展示生成耗时;muted/compact 子气泡不重复
@@ -217,9 +221,6 @@ export function CopilotPageMessages() {
       {displayMessages.length === 0 ? emptyIntro : (
         <div className="mx-auto flex w-full max-w-full flex-col">
           {displayMessages.map(renderMessage)}
-          {streamingAssistant && (
-            <TurnThoughtPanel message={streamingAssistant} streaming />
-          )}
           {showTypingFallback && (
             <div className="copilot-typing mt-3 flex items-center gap-2 text-[12px] text-[var(--text-muted)]" aria-live="polite">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />

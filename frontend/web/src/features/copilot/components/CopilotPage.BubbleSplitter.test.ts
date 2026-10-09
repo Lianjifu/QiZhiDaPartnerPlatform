@@ -109,41 +109,34 @@ describe('splitMessageIntoBubbles', () => {
 
   // === 流式期间行为锁定 ===
 
-it('streaming 期间只返回 1 个泡(避免 SSE 事件触发重复切分)', () => {
+it('流式期间与完成后的切分结构一致:思考在前、工具居中、答复在末尾', () => {
   const statuses: Array<'queued' | 'in_flight' | 'streaming'> = ['queued', 'in_flight', 'streaming'];
   for (const status of statuses) {
     const slices = splitMessageIntoBubbles(baseMsg({
       status,
-      // 即使有 thought + tool calls + cognitive,流式期间也只出 1 个泡
       reasoningSteps: [{ type: 'plan', text: 'thinking' }],
-      content: '部分内容...', // 增量到达
+      content: '部分内容...',
       toolCalls: [
         { id: 'tc1', name: 'knowledge.retrieve', args: {}, status: 'ok' },
       ],
       turnTasks: [{ id: 't1', title: '任务1', status: 'done' }],
       cognitive: { enabled: true, phases: ['意图理解'] },
     }));
-    expect(slices.length).toBe(1);
-    expect(slices[0].kind).toBe('answer');
-    expect(slices[0].bubbleProps?.skipTurnPanel).toBe(true);
+    expect(slices[0].kind).toBe('thought');
+    expect(slices.some((slice) => slice.kind === 'tool_call')).toBe(true);
+    expect(slices[slices.length - 1].kind).toBe('answer');
   }
 });
 
-it('流式结束后(re-render 触发)再走完整切分', () => {
-  // 同一消息两次 split:streaming 时单泡,completed 时多泡
-  const m = baseMsg({
+it('流式中正文为空时仍保留答复片段,用来承载"正在生成回复"', () => {
+  const slices = splitMessageIntoBubbles(baseMsg({
     status: 'streaming',
     reasoningSteps: [{ type: 'plan', text: 'think' }],
-    content: '部分内容',
-  });
-  expect(splitMessageIntoBubbles(m).length).toBe(1);
-
-  // status 变 succeeded
-  const completed = { ...m, status: 'succeeded' as const };
-  const slices = splitMessageIntoBubbles(completed);
-  expect(slices.length).toBe(2); // thought + answer
-  expect(slices[0].kind).toBe('thought');
-  expect(slices[1].kind).toBe('answer');
+    content: '',
+  }));
+  const last = slices[slices.length - 1];
+  expect(last.kind).toBe('answer');
+  expect(last.messageOverride.content).toBe('');
 });
 
 it('纯内容(无 thought 数据)只有 answer 一个泡', () => {
