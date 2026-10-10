@@ -7,8 +7,8 @@
       "phase": "P0",
       "workflowId": "wf.office.ask_policy",
       "knowledgePackageIds": [
-        "kp.office.handbook",
-        "kp.office.leave_travel"
+        "kp.hr.handbook",
+        "kp.hr.attendance"
       ],
       "requiredSkills": [
         "summarize"
@@ -22,7 +22,7 @@
       "phase": "P0",
       "workflowId": "wf.office.meeting_minutes",
       "knowledgePackageIds": [
-        "kp.office.meeting"
+        "kp.admin.meeting"
       ],
       "requiredSkills": [
         "summarize",
@@ -39,7 +39,7 @@
       "phase": "P0",
       "workflowId": "wf.office.weekly_report",
       "knowledgePackageIds": [
-        "kp.office.writing"
+        "kp.admin.office_doc"
       ],
       "requiredSkills": [
         "summarize",
@@ -54,7 +54,7 @@
       "phase": "P0",
       "workflowId": "wf.office.doc_review",
       "knowledgePackageIds": [
-        "kp.office.writing"
+        "kp.admin.office_doc"
       ],
       "requiredSkills": [
         "docx",
@@ -69,7 +69,7 @@
       "phase": "P0",
       "workflowId": "wf.office.leave_request",
       "knowledgePackageIds": [
-        "kp.office.leave_travel"
+        "kp.hr.attendance"
       ],
       "requiredSkills": [],
       "optionalSkills": [],
@@ -81,7 +81,7 @@
       "phase": "P0",
       "workflowId": "wf.office.travel_request",
       "knowledgePackageIds": [
-        "kp.office.leave_travel"
+        "kp.admin.travel"
       ],
       "requiredSkills": [],
       "optionalSkills": [],
@@ -93,7 +93,7 @@
       "phase": "P1",
       "workflowId": "wf.office.expense_precheck",
       "knowledgePackageIds": [
-        "kp.office.expense_lite"
+        "kp.admin.travel"
       ],
       "requiredSkills": [
         "summarize"
@@ -107,7 +107,7 @@
       "phase": "P1",
       "workflowId": "wf.office.meeting_book",
       "knowledgePackageIds": [
-        "kp.office.meeting"
+        "kp.admin.meeting"
       ],
       "requiredSkills": [],
       "optionalSkills": [],
@@ -119,7 +119,7 @@
       "phase": "P1",
       "workflowId": "wf.office.it_helpdesk",
       "knowledgePackageIds": [
-        "kp.office.it_selfservice"
+        "kp.admin.it_selfservice"
       ],
       "requiredSkills": [
         "summarize"
@@ -133,8 +133,8 @@
       "phase": "P1",
       "workflowId": "wf.office.announce",
       "knowledgePackageIds": [
-        "kp.office.writing",
-        "kp.office.handbook"
+        "kp.admin.office_doc",
+        "kp.hr.handbook"
       ],
       "requiredSkills": [
         "docx",
@@ -149,7 +149,7 @@
       "phase": "P1",
       "workflowId": "wf.office.todo_followup",
       "knowledgePackageIds": [
-        "kp.office.meeting"
+        "kp.admin.meeting"
       ],
       "requiredSkills": [],
       "optionalSkills": [],

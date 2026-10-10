@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="./docs/images/brand/logo-wordmark.svg" alt="企智搭 · 数字伙伴平台" width="280" />
-</p>
-
 # 企智搭 · 数字伙伴平台 (QiZhiDa · PartnerPlatform)
 
 企业级 **数字伙伴** 编排与治理控制台：把大模型、企业知识、技能/工具与工作流，装配为可上岗的数字伙伴，在受控边界内完成协作、执行与审计。
@@ -22,8 +18,6 @@
 ## 目录
 
 - [产品主轴](#产品主轴)
-- [品牌标识](#品牌标识)
-- [品牌能力支柱](#品牌能力支柱)
 - [快速开始](#快速开始)
 - [控制台一览](#控制台一览)
 - [能力地图](#能力地图)
@@ -42,10 +36,6 @@
 
 一切能力围绕 **一位数字伙伴** 运转：先装配可信身份，再进入人机协同，最后沉淀可度量结果。模型 / 知识 / 技能 / 记忆 / 渠道是 **供给**，不是主叙事。
 
-<p align="center">
-  <img src="./docs/images/brand/partner-axis.png" alt="数字伙伴图" width="100%" />
-</p>
-
 | 我们是 | 我们不是 |
 |--------|----------|
 | 以「谁在岗、能否托付、如何协同」为中心的运营控制面 | 模型广场、Prompt 玩具或裸跑 Agent 控制台 |
@@ -57,53 +47,6 @@
 ```text
 能力接入（含办公开箱预置） → 装配上岗 → 受控协同（研判 / 执行 / 审核 / 流程） → 运营复盘与审计
 ```
-
----
-
-## 品牌标识
-
-两块圆角方块层叠咬合，白色间隙勾出层次，象征「搭」——像积木一样把企业的智能化能力一块一块搭建起来。
-
-| 色 | 值 | 用途 |
-|----|----|------|
-| 紫 | `#6D28D9` | 图形后块、中文主名 |
-| 橙 | `#FF7A1B` | 图形前块、QIZHIDA |
-
-<p align="center">
-  <img src="./docs/images/brand/logo-mark.svg" alt="图形标识" height="64" />
-  &nbsp;&nbsp;&nbsp;
-  <img src="./docs/images/brand/logo-horizontal.svg" alt="横向组合" height="48" />
-  &nbsp;&nbsp;&nbsp;
-  <img src="./docs/images/brand/logo-icon.svg" alt="图标标识" height="64" />
-  &nbsp;&nbsp;&nbsp;
-  <img src="./docs/images/brand/logo-mono.svg" alt="单色版本" height="48" />
-</p>
-
-| 资产 | 场景 |
-|------|------|
-| `logo-wordmark.svg` | 文档页头：图形 + 企智搭 + QIZHIDA |
-| `logo-horizontal.svg` | 横向组合：图形 + 企智搭 |
-| `logo-mark.svg` | 控制台顶栏图形标（字标上下排列） |
-| `logo-icon.svg` / `favicon.svg` | 应用图标、浏览器标签 |
-| `logo-mono.svg` | 单色印刷 / 反白底不适用时 |
-
-控制台顶栏为「图形 + 企智搭 / 数字伙伴平台」上下字标；登录页为白底图形锁合 + QIZHIDA。源文件见 [`docs/images/brand/`](./docs/images/brand/)。
-
----
-
-## 品牌能力支柱
-
-企业把大模型推进生产时，常见困境是 **装不起来、管不住、说不清**。三支柱即产品回答：
-
-<p align="center">
-  <img src="./docs/images/brand/brand-pillars.png" alt="三大品牌能力支柱" width="100%" />
-</p>
-
-| 支柱 | 一句话 | 用户感知 |
-|------|--------|----------|
-| **安全零信任** | 敢托付 | 「他凭什么能做这件事，出事能否说清」 |
-| **先进生产力** | 愿协作 | 「像靠谱同事一样并肩，而不是裸模型」 |
-| **成本新范式** | 花得明白 | 「花了多少、换回什么，没有数就不假装有数」 |
 
 ---
 
@@ -185,7 +128,7 @@ cd ../frontend && pnpm install && pnpm --filter web dev
 |------|------|
 | **工作流程 → 流程模板** | 「平台内置 / 个人创建」；默认筛 **办公通用**；「全部」平铺分页；卡片展示配套知识/技能 |
 | **数字伙伴** | 出厂 **办公助手** `de-office` |
-| **知识中心** | `kp.office.*` 六包冷启动 published |
+| **知识中心** | `kp.{hr,admin,sales,market}.*` 10 包冷启动 published |
 | **技能中心** | 岗位包 `office` 对各工作区 `autoInstall` |
 
 | 层 | 源码 | 冷启动 |
@@ -303,7 +246,7 @@ flowchart TB
 | M05 | 数字伙伴 | `/partners` | 编排 | 岗位装配与上岗；含 `de-office` |
 | M06 | 工作流程 | `/workflows` | 编排 | 办公开箱 / 部门 / 个人模板；画布与发布 |
 | M07 | 模型服务 | `/models` | 能力 | 供应商、路由发布 / 回滚、治理审计 |
-| M08 | 知识中心 | `/knowledge` | 能力 | 资产与知识包；含办公开箱 `kp.office.*` |
+| M08 | 知识中心 | `/knowledge` | 能力 | 资产与知识包；含办公开箱 10 包（按部门归类 `kp.{hr,admin,sales,market}.*`） |
 | M09 | 技能中心 | `/skills` | 能力 | 清单 / 商店 / 岗位包（含 `office`）/ 流程技能 |
 | M10 | 记忆中心 | `/memory` | 能力 | 三层记忆、晋升候选 |
 | M11 | 消息渠道 | `/channels` | 能力 | 飞书 / 钉钉 / 企微等接入与投递 |
@@ -518,7 +461,7 @@ qizhida-partner-platform/
 ├── backend/                       # Go 控制面 + Python 执行面
 │   ├── cmd/                       # qzda-app（默认唯一入口） · qzda-local-llm
 │   ├── builtin/                   # 出厂包（办公开箱）
-│   │   ├── knowledge/office/      # kp.office.* 知识包
+│   │   ├── knowledge/office/      # kp.{hr,admin,sales,market}.* 10 包（人事3/行政4/销售2/市场1）
 │   │   ├── skills/                # 岗位包 manifest（含 office autoInstall）
 │   │   ├── workflows/             # wf.office.* + 部门 Certified + 高级库
 │   │   └── scenarios/office/      # 知识·技能·流程三联

@@ -1,0 +1,35 @@
+{
+  "id": "kp.sales.pipeline",
+  "name": "销售管道与客户档案",
+  "version": "1.0.0",
+  "description": "销售漏斗、阶段定义、商机分级与客户档案维护规范。",
+  "domain": "销售",
+  "department": "sales",
+  "classification": "internal",
+  "builtin": true,
+  "source": "platform",
+  "tags": [
+    "sales",
+    "开箱"
+  ],
+  "docs": [
+    {
+      "file": "01-销售漏斗与阶段.md",
+      "title": "销售漏斗与阶段"
+    },
+    {
+      "file": "02-客户档案与分级.md",
+      "title": "客户档案与分级"
+    }
+  ],
+  "qa": [
+    {
+      "q": "商机阶段谁定",
+      "a": "销售经理根据《BANT 评估表》确认阶段。"
+    },
+    {
+      "q": "客户分级",
+      "a": "按 ARR 划分 S/A/B/C/D 五级，跨级需总裁办批准。"
+    }
+  ]
+}

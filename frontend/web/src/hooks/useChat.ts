@@ -1729,7 +1729,15 @@ export function useChat(agentMeta?: { name: string }) {
       }).catch((err: unknown) => {
         if (ctrl.signal.aborted) {
           const reason = ctrl.signal.reason;
-          if (reason === STREAM_ERROR_REASON) return;
+          if (reason === STREAM_ERROR_REASON) {
+            // Defensive cleanup: in-band onEvent('error') already calls
+            // finishError, but if the SSE `error` frame is lost (server
+            // panic / un-flushed close) finishError never runs and
+            // pendingTurn stays set — Composer stuck on Stop button forever.
+            // Mirror the fee94cf USER_STOP_REASON symmetry.
+            finishError('生成过程已被服务端中断，请重试', 'tool_denied');
+            return;
+          }
           if (reason === USER_STOP_REASON) {
             dispatch({ type: 'update_request', id: reqId, patch: { status: 'aborted', durationMs: Date.now() - startedAt } });
             for (const mid of segmentRouter.segments.keys()) {
@@ -2268,22 +2276,39 @@ export function useChat(agentMeta?: { name: string }) {
     const convId = sess.conversationId ?? sid;
     if (/^s_/.test(convId)) return 'idle';
 
+    // Dead-end counter: server-side copilotTurnStates is in-memory and
+    // gets wiped on every backend restart. If status keeps returning null
+    // forever, FE used to spin and never clear pendingTurn. After ~12s of
+    // silent recovery we give up and force-clear so Composer returns to Send.
+    const nullCountRef = { current: 0 };
+    const RECOVERY_NULL_DEADLINE = 6;
+
+    const forceDone = () => {
+      dispatch({ type: 'update_session', sid, patch: { pendingTurn: undefined } });
+      dispatch({ type: 'set_typing', typing: false });
+      clearTurnRecovery();
+    };
+
     const applyStatus = (status: Awaited<ReturnType<typeof fetchCopilotTurnStatus>>) => {
-      if (!status) return 'running' as const;
+      if (!status) {
+        nullCountRef.current += 1;
+        if (nullCountRef.current >= RECOVERY_NULL_DEADLINE) {
+          forceDone();
+          return 'done' as const;
+        }
+        return 'running' as const;
+      }
+      nullCountRef.current = 0;
       if (status.status === 'running' && !status.hasAssistantReply) {
         dispatch({ type: 'set_typing', typing: true });
         return 'running' as const;
       }
       if (status.status === 'done' || status.hasAssistantReply) {
-        dispatch({ type: 'update_session', sid, patch: { pendingTurn: undefined } });
-        dispatch({ type: 'set_typing', typing: false });
-        clearTurnRecovery();
+        forceDone();
         return 'done' as const;
       }
       if (status.status === 'cancelled' || status.status === 'failed') {
-        dispatch({ type: 'update_session', sid, patch: { pendingTurn: undefined } });
-        dispatch({ type: 'set_typing', typing: false });
-        clearTurnRecovery();
+        forceDone();
         return 'cancelled' as const;
       }
       return 'running' as const;

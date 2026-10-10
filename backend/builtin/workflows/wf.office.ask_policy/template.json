@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "certification": "certified",
   "library": "default",
-  "department": "office",
-  "audience": "全员 / 办公协作",
+  "department": "hr",
+  "audience": "全体员工 / 制度咨询",
   "industryTags": [
     "all",
     "saas",
@@ -118,8 +118,8 @@
     }
   ],
   "knowledgePackageIds": [
-    "kp.office.handbook",
-    "kp.office.leave_travel"
+    "kp.hr.handbook",
+    "kp.hr.attendance"
   ],
   "requiredSkills": [
     "summarize"

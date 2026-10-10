@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "certification": "certified",
   "library": "default",
-  "department": "office",
-  "audience": "全员 / 办公协作",
+  "department": "admin",
+  "audience": "全体员工 / 会议协调",
   "industryTags": [
     "all",
     "saas",
@@ -118,7 +118,7 @@
     }
   ],
   "knowledgePackageIds": [
-    "kp.office.meeting"
+    "kp.admin.meeting"
   ],
   "requiredSkills": [],
   "optionalSkills": [],

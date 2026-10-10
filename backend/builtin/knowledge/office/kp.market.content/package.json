@@ -1,0 +1,35 @@
+{
+  "id": "kp.market.content",
+  "name": "营销内容与渠道 SOP",
+  "version": "1.0.0",
+  "description": "营销内容生产流程、品牌口径、渠道发布与效果复盘。",
+  "domain": "市场",
+  "department": "market",
+  "classification": "internal",
+  "builtin": true,
+  "source": "platform",
+  "tags": [
+    "market",
+    "开箱"
+  ],
+  "docs": [
+    {
+      "file": "01-内容选题与生产流程.md",
+      "title": "内容选题与生产流程"
+    },
+    {
+      "file": "02-渠道发布与复盘.md",
+      "title": "渠道发布与复盘"
+    }
+  ],
+  "qa": [
+    {
+      "q": "内容审批",
+      "a": "营销负责人 + 法务双重审；对外发布前必须归档版本。"
+    },
+    {
+      "q": "渠道归口",
+      "a": "公众号、官网、抖音、视频号统一由市场部归口。"
+    }
+  ]
+}

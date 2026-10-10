@@ -129,8 +129,10 @@ var officePackSkillNames = []string{
 }
 
 var officeKnowledgePackages = []string{
-	"kp.office.handbook", "kp.office.meeting", "kp.office.writing",
-	"kp.office.leave_travel", "kp.office.expense_lite", "kp.office.it_selfservice",
+	"kp.hr.handbook", "kp.hr.attendance", "kp.hr.compensation",
+	"kp.admin.meeting", "kp.admin.travel", "kp.admin.office_doc", "kp.admin.it_selfservice",
+	"kp.sales.pipeline", "kp.sales.quotation",
+	"kp.market.content",
 }
 
 var officeWorkflowSkills = []string{

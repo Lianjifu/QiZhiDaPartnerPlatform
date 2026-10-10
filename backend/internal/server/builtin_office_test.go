@@ -22,8 +22,10 @@ func TestEnsureBuiltinKnowledgeReady_OfficePacks(t *testing.T) {
 		}
 	}
 	for _, want := range []string{
-		"kp.office.handbook", "kp.office.meeting", "kp.office.writing",
-		"kp.office.leave_travel", "kp.office.expense_lite", "kp.office.it_selfservice",
+		"kp.hr.handbook", "kp.hr.attendance", "kp.hr.compensation",
+		"kp.admin.meeting", "kp.admin.travel", "kp.admin.office_doc", "kp.admin.it_selfservice",
+		"kp.sales.pipeline", "kp.sales.quotation",
+		"kp.market.content",
 	} {
 		if !found[want] {
 			t.Fatalf("missing knowledge pack %s", want)
@@ -31,7 +33,7 @@ func TestEnsureBuiltinKnowledgeReady_OfficePacks(t *testing.T) {
 	}
 	docCount := 0
 	for _, d := range st.KnowledgeDocs {
-		if str(d["packageId"]) == "kp.office.handbook" {
+		if str(d["packageId"]) == "kp.hr.handbook" {
 			docCount++
 		}
 	}

@@ -2,34 +2,64 @@
   "version": "1.0.0",
   "packs": [
     {
-      "id": "kp.office.handbook",
+      "id": "kp.hr.handbook",
       "name": "员工手册与制度问答",
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "department": "hr"
     },
     {
-      "id": "kp.office.meeting",
+      "id": "kp.hr.attendance",
+      "name": "假勤与考勤标准",
+      "version": "1.0.0",
+      "department": "hr"
+    },
+    {
+      "id": "kp.hr.compensation",
+      "name": "薪酬与绩效规则",
+      "version": "1.0.0",
+      "department": "hr"
+    },
+    {
+      "id": "kp.admin.meeting",
       "name": "会议与纪要规范",
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "department": "admin"
     },
     {
-      "id": "kp.office.writing",
+      "id": "kp.admin.travel",
+      "name": "差旅与报销标准",
+      "version": "1.0.0",
+      "department": "admin"
+    },
+    {
+      "id": "kp.admin.office_doc",
       "name": "公文与材料规范",
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "department": "admin"
     },
     {
-      "id": "kp.office.leave_travel",
-      "name": "假勤与差旅标准",
-      "version": "1.0.0"
-    },
-    {
-      "id": "kp.office.expense_lite",
-      "name": "报销常识（轻量）",
-      "version": "1.0.0"
-    },
-    {
-      "id": "kp.office.it_selfservice",
+      "id": "kp.admin.it_selfservice",
       "name": "IT 自助服务",
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "department": "admin"
+    },
+    {
+      "id": "kp.sales.pipeline",
+      "name": "销售管道与客户档案",
+      "version": "1.0.0",
+      "department": "sales"
+    },
+    {
+      "id": "kp.sales.quotation",
+      "name": "报价单与合同模板",
+      "version": "1.0.0",
+      "department": "sales"
+    },
+    {
+      "id": "kp.market.content",
+      "name": "营销内容与渠道 SOP",
+      "version": "1.0.0",
+      "department": "market"
     }
   ]
 }

@@ -1,14 +1,15 @@
 {
-  "id": "kp.office.handbook",
+  "id": "kp.hr.handbook",
   "name": "员工手册与制度问答",
   "version": "1.0.0",
   "description": "员工手册摘要、通用制度 FAQ 与红线提示，支撑制度问答流程。",
-  "domain": "办公",
+  "domain": "人事",
+  "department": "hr",
   "classification": "internal",
   "builtin": true,
   "source": "platform",
   "tags": [
-    "office",
+    "hr",
     "开箱"
   ],
   "docs": [

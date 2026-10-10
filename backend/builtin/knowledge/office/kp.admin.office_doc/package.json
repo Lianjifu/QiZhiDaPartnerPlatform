@@ -1,14 +1,15 @@
 {
-  "id": "kp.office.writing",
+  "id": "kp.admin.office_doc",
   "name": "公文与材料规范",
   "version": "1.0.0",
   "description": "周报、请示、通知的文风与结构规范。",
-  "domain": "办公",
+  "domain": "行政",
+  "department": "admin",
   "classification": "internal",
   "builtin": true,
   "source": "platform",
   "tags": [
-    "office",
+    "admin",
     "开箱"
   ],
   "docs": [

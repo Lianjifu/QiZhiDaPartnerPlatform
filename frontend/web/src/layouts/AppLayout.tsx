@@ -27,6 +27,7 @@ import { getRoleNavGroups, navLabelKeyForPath } from '@/features/role-nav/role-n
 import { useReauthPrompt, useLogout, SignOutMenuItem } from '@/auth';
 import { useQueryClient } from '@tanstack/react-query';
 import { preloadRoute } from '@/lib/routePreload';
+import { getRuntimeMode, RUNTIME_MODE_LABELS } from '@/lib/api-mode';
 import type { Workspace } from '@qzda/web-types';
 
 const NAV_ICONS: Record<string, ComponentType<{ className?: string }>> = {
@@ -285,6 +286,7 @@ export function AppLayout() {
         )}
 
         <div className="ml-auto" />
+        <RuntimeModeBadge />
       </header>
 
       <aside
@@ -476,5 +478,35 @@ function UserMenuItem({
       <span className="user-menu__label">{label}</span>
       {shortcut && <kbd className="user-menu__shortcut">{shortcut}</kbd>}
     </button>
+  );
+}
+
+const RUNTIME_BADGE_STYLE: Record<'neutral' | 'info' | 'warning', string> = {
+  neutral: 'border-[var(--border)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]',
+  info: 'border-[var(--brand)]/30 bg-[var(--brand-light)] text-[var(--brand)]',
+  warning: 'border-[var(--warning)]/40 bg-[var(--warning-bg)] text-[var(--warning)]',
+};
+
+function RuntimeModeBadge() {
+  const mode = getRuntimeMode();
+  const meta = RUNTIME_MODE_LABELS[mode];
+  const dotClass =
+    mode === 'pro'
+      ? 'bg-[var(--warning)]'
+      : mode === 'dev'
+      ? 'bg-[var(--brand)]'
+      : 'bg-[var(--text-muted)]';
+  return (
+    <span
+      title={`当前运行环境：${meta.label}`}
+      aria-label={`当前运行环境 ${meta.label}`}
+      className={cn(
+        'hidden h-7 items-center gap-1.5 rounded-md border px-2 text-[11px] font-semibold md:inline-flex',
+        RUNTIME_BADGE_STYLE[meta.tone],
+      )}
+    >
+      <span className={cn('h-1.5 w-1.5 rounded-full', dotClass)} />
+      {meta.label}
+    </span>
   );
 }

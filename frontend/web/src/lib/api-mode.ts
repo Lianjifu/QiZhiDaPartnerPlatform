@@ -8,9 +8,34 @@ if (rawApiMode !== 'api' && rawApiMode !== 'demo') {
   throw new Error(`VITE_API_MODE 只能是 api 或 demo，当前为 "${rawApiMode}"`);
 }
 
+const rawRuntimeMode: string = (import.meta.env.VITE_QZDA_MODE as string | undefined) || '';
+if (rawRuntimeMode && rawRuntimeMode !== 'dev' && rawRuntimeMode !== 'pro') {
+  throw new Error(`VITE_QZDA_MODE 只能是 dev 或 pro，当前为 "${rawRuntimeMode}"`);
+}
+
+export type RuntimeMode = 'demo' | 'dev' | 'pro';
+
 export function isDemoApiMode(): boolean {
   return rawApiMode === 'demo';
 }
+
+/**
+ * 三档：演示 / 开发 / 生产。
+ *  - demo：VITE_API_MODE=demo → 浏览器内 mock，无后端
+ *  - dev ：VITE_API_MODE=api 且 VITE_QZDA_MODE=dev（或未设置） → 本机联调
+ *  - pro ：VITE_API_MODE=api 且 VITE_QZDA_MODE=pro → 双人审批 / Vault / 强签名
+ */
+export function getRuntimeMode(): RuntimeMode {
+  if (rawApiMode === 'demo') return 'demo';
+  if (rawRuntimeMode === 'pro') return 'pro';
+  return 'dev';
+}
+
+export const RUNTIME_MODE_LABELS: Record<RuntimeMode, { label: string; tone: 'neutral' | 'info' | 'warning' }> = {
+  demo: { label: '演示环境', tone: 'neutral' },
+  dev: { label: '开发环境', tone: 'info' },
+  pro: { label: '生产环境', tone: 'warning' },
+};
 
 function isLoopbackBase(url: string): boolean {
   try {

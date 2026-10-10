@@ -1,20 +1,21 @@
 {
-  "id": "kp.office.it_selfservice",
+  "id": "kp.admin.it_selfservice",
   "name": "IT 自助服务",
   "version": "1.0.0",
   "description": "密码重置、账号与权限自助说明。",
-  "domain": "办公",
+  "domain": "行政",
+  "department": "admin",
   "classification": "internal",
   "builtin": true,
   "source": "platform",
   "tags": [
-    "office",
+    "admin",
     "开箱"
   ],
   "docs": [
     {
-      "file": "01-密码重置.md",
-      "title": "密码重置"
+      "file": "01-密码与账号.md",
+      "title": "密码与账号"
     },
     {
       "file": "02-权限申请说明.md",

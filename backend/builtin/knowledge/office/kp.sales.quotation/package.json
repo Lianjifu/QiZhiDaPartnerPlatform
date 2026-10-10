@@ -1,0 +1,35 @@
+{
+  "id": "kp.sales.quotation",
+  "name": "报价单与合同模板",
+  "version": "1.0.0",
+  "description": "报价单结构、折扣授权、合同模板与签署流程。",
+  "domain": "销售",
+  "department": "sales",
+  "classification": "internal",
+  "builtin": true,
+  "source": "platform",
+  "tags": [
+    "sales",
+    "开箱"
+  ],
+  "docs": [
+    {
+      "file": "01-报价单结构与折扣授权.md",
+      "title": "报价单结构与折扣授权"
+    },
+    {
+      "file": "02-合同模板与签署.md",
+      "title": "合同模板与签署"
+    }
+  ],
+  "qa": [
+    {
+      "q": "最大折扣",
+      "a": "销售总监 15%、VP 25%、总裁办 30%；超过 30% 不接受。"
+    },
+    {
+      "q": "合同必须法务审",
+      "a": "标准模板可直接用；非标条款须法务审。"
+    }
+  ]
+}

@@ -41,7 +41,6 @@ export function EmployeeCard({ employee, onSelect }: { employee: DigitalPartner;
           <Badge tone={riskMeta[employee.risk].tone}>{riskMeta[employee.risk].label}</Badge>
         </div>
         <p className="mt-2 text-[11px] text-[var(--text-secondary)]">{head ? '可调度本部门专家，并可发起跨部门协办。' : gate}</p>
-        {tags.length > 0 && <div className="mt-2 flex flex-wrap gap-1">{tags.map((tag) => <span key={tag} className="max-w-[110px] truncate rounded px-2 py-0.5 text-[10px] text-[var(--text-muted)]" style={{ boxShadow: 'var(--saas-ring)' }}>{tag}</span>)}</div>}
       </button>
       {employee.lifecycle === 'active' ? (
         <div className="mt-3 flex justify-end gap-2 pt-3" style={{ boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--brand) 14%, transparent)' }}>

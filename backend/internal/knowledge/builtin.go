@@ -288,6 +288,11 @@ func (s *Service) EnsureBuiltinKnowledgeReady() {
 		}
 	}
 	s.Store.KnowledgeExtra["packages"] = packages
+
+	// Persist the freshly-seeded builtin packs so that subsequent restarts
+	// keep them across boot (without this, knowledge_extra stays in-memory
+	// only and any user upload/eval lives only until next reboot).
+	go func() { _ = s.Store.PersistSync("knowledge_extra") }()
 }
 
 // RetrieveBuiltin is the M02 copilot "knowledge.retrieve" tool

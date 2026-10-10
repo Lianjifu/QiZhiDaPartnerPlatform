@@ -14,6 +14,12 @@
       "runtimeArgs": ["dev"],
       "autoPort": true,
       "cwd": "frontend/web"
+    },
+    {
+      "name": "qiZhiDa-prod-static",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["/Users/LIANJIFU/ops/QiZhiDaPartnerPlatform/scripts/dev-stack/fe-prod-serve.mjs"],
+      "autoPort": true
     }
   ]
 }

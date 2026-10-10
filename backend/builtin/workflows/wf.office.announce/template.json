@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "certification": "certified",
   "library": "default",
-  "department": "office",
-  "audience": "全员 / 办公协作",
+  "department": "admin",
+  "audience": "全体员工 / 行政通知",
   "industryTags": [
     "all",
     "saas",
@@ -133,8 +133,8 @@
     }
   ],
   "knowledgePackageIds": [
-    "kp.office.writing",
-    "kp.office.handbook"
+    "kp.admin.office_doc",
+    "kp.hr.handbook"
   ],
   "requiredSkills": [
     "docx",

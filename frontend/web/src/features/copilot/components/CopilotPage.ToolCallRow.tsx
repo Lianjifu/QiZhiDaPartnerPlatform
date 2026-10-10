@@ -27,12 +27,12 @@ export function ToolCallRow({ toolCall }: { toolCall: ToolCall }) {
   const status = STATUS_DOT[String(toolCall.status)] ?? STATUS_DOT.pending;
   const detail = toolCall.error || toolCall.result;
   return (
-    <div className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-1.5 font-mono text-[12px] leading-[1.6]">
+    <div className="font-mono text-[12px] leading-[1.6]">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
-        className="flex w-full min-w-0 items-center gap-2 text-left text-[var(--text-secondary)] hover:text-[var(--text)]"
+        className="flex w-fit max-w-full min-w-0 items-center gap-2 text-left text-[var(--text-secondary)] hover:text-[var(--text)]"
       >
         <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', status.className)} role="img" aria-label={status.label} />
         <span className="shrink-0 font-semibold text-[var(--text)]">{toolCall.name}</span>

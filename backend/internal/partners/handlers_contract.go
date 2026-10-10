@@ -1,6 +1,7 @@
 package partners
 
 import (
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -21,6 +22,7 @@ func (s *Service) listEmployees(r *http.Request) (any, error) {
 	}
 	s.Store.RLock()
 	defer s.Store.RUnlock()
+	log.Printf("listEmployees: s.Store.Employees=%d ws=%s", len(s.Store.Employees), ws)
 	var out = make([]map[string]any, 0)
 	for _, e := range s.Store.Employees {
 		if str(e["workspaceId"]) == ws {

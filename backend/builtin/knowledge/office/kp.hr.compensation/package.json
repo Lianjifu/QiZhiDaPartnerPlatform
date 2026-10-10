@@ -1,0 +1,35 @@
+{
+  "id": "kp.hr.compensation",
+  "name": "薪酬与绩效规则",
+  "version": "1.0.0",
+  "description": "薪酬构成、绩效评估、年度调薪与晋升规则摘要。",
+  "domain": "人事",
+  "department": "hr",
+  "classification": "internal",
+  "builtin": true,
+  "source": "platform",
+  "tags": [
+    "hr",
+    "开箱"
+  ],
+  "docs": [
+    {
+      "file": "01-薪酬构成与发放.md",
+      "title": "薪酬构成与发放"
+    },
+    {
+      "file": "02-绩效评估与调薪.md",
+      "title": "绩效评估与调薪"
+    }
+  ],
+  "qa": [
+    {
+      "q": "调薪频率",
+      "a": "每年 4 月与 10 月两次窗口；晋升即时生效。"
+    },
+    {
+      "q": "绩效奖金",
+      "a": "按年度绩效系数与公司业绩双系数核定。"
+    }
+  ]
+}

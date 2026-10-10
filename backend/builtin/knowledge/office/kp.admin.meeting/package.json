@@ -1,14 +1,15 @@
 {
-  "id": "kp.office.meeting",
+  "id": "kp.admin.meeting",
   "name": "会议与纪要规范",
   "version": "1.0.0",
   "description": "会议议程、纪要必填项与分发规则。",
-  "domain": "办公",
+  "domain": "行政",
+  "department": "admin",
   "classification": "internal",
   "builtin": true,
   "source": "platform",
   "tags": [
-    "office",
+    "admin",
     "开箱"
   ],
   "docs": [

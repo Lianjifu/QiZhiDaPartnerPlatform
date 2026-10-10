@@ -233,7 +233,7 @@ backend/
 │   ├── qzda-app/                # monolith 主进程（默认，唯一部署入口）+ Dockerfile/SERVICE.md
 │   └── qzda-local-llm/          # 本地模型辅助
 ├── builtin/                   # 出厂包（冷启动 EnsureBuiltin*）
-│   ├── knowledge/office/      # kp.office.* 办公开箱知识
+│   ├── knowledge/office/      # kp.{hr,admin,sales,market}.* 办公开箱知识（人事/行政/销售/市场 10 包）
 │   ├── skills/                # 岗位包 manifest（office / general …）
 │   ├── workflows/             # wf.office.* + 部门 Certified + 高级库
 │   └── scenarios/office/      # 知识·技能·流程三联
@@ -347,7 +347,7 @@ make skill                # :8093 沙箱
 | Ensure | 内容 |
 |--------|------|
 | `EnsureBuiltinSkillsReady` | 技能目录 + 各工作区 `autoInstall` 岗位包（`general` / `office`） |
-| `EnsureBuiltinKnowledgeReady` | `kp.office.*` 知识包 → published |
+| `EnsureBuiltinKnowledgeReady` | `kp.{hr,admin,sales,market}.*` 知识包 → published |
 | `EnsureBuiltinWorkflowsReady` | `wf.office.*` + 部门 Certified + 高级库；不覆盖 `wft-user-*` |
 | 内存模式（`QZDA_DATA_BACKEND=memory`）补通用员工；办公助手 `de-office` 同路径 |
 

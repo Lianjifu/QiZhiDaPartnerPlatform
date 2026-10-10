@@ -1,14 +1,15 @@
 {
-  "id": "kp.office.leave_travel",
-  "name": "假勤与差旅标准",
+  "id": "kp.hr.attendance",
+  "name": "假勤与考勤标准",
   "version": "1.0.0",
-  "description": "假种说明、请假口径与差旅档位摘要。",
-  "domain": "办公",
+  "description": "假种说明、请假口径、考勤统计与异常处置规则。",
+  "domain": "人事",
+  "department": "hr",
   "classification": "internal",
   "builtin": true,
   "source": "platform",
   "tags": [
-    "office",
+    "hr",
     "开箱"
   ],
   "docs": [
@@ -17,8 +18,8 @@
       "title": "假勤说明"
     },
     {
-      "file": "02-差旅摘要.md",
-      "title": "差旅摘要"
+      "file": "02-考勤异常处置.md",
+      "title": "考勤异常处置"
     }
   ],
   "qa": [
@@ -27,8 +28,8 @@
       "a": "需要说明事由并由主管审批。"
     },
     {
-      "q": "差旅超标",
-      "a": "超标须事前审批。"
+      "q": "迟到多久算旷工",
+      "a": "超过 2 小时且未事先请假的，按旷工半日处理。"
     }
   ]
 }

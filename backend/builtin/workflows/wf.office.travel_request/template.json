@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "certification": "certified",
   "library": "default",
-  "department": "office",
-  "audience": "全员 / 办公协作",
+  "department": "admin",
+  "audience": "全体员工 / 差旅申请",
   "industryTags": [
     "all",
     "saas",
@@ -153,7 +153,7 @@
     }
   ],
   "knowledgePackageIds": [
-    "kp.office.leave_travel"
+    "kp.hr.attendance"
   ],
   "requiredSkills": [],
   "optionalSkills": [],

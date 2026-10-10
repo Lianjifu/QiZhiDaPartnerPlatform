@@ -1,34 +1,35 @@
 {
-  "id": "kp.office.expense_lite",
-  "name": "报销常识（轻量）",
+  "id": "kp.admin.travel",
+  "name": "差旅与报销标准",
   "version": "1.0.0",
-  "description": "报销前自查清单与不可报项摘要。",
-  "domain": "办公",
+  "description": "差旅申请、票据规范与报销自查清单。",
+  "domain": "行政",
+  "department": "admin",
   "classification": "internal",
   "builtin": true,
   "source": "platform",
   "tags": [
-    "office",
+    "admin",
     "开箱"
   ],
   "docs": [
     {
-      "file": "01-报销自查.md",
-      "title": "报销自查"
+      "file": "01-差旅申请与档位.md",
+      "title": "差旅申请与档位"
     },
     {
-      "file": "02-不可报项.md",
-      "title": "不可报项"
+      "file": "02-报销自查与不可报项.md",
+      "title": "报销自查与不可报项"
     }
   ],
   "qa": [
     {
-      "q": "报销要注意什么",
-      "a": "发票、抬头、事由一致、附件齐全。"
+      "q": "差旅超标",
+      "a": "超标须事前审批，事后不予追补。"
     },
     {
-      "q": "什么不能报",
-      "a": "个人罚款与无关消费。"
+      "q": "报销要注意什么",
+      "a": "发票、抬头、事由一致，附件齐全。"
     }
   ]
 }
