@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -185,6 +186,22 @@ func runDurable(ctx context.Context, opts Options, rt runtimeenv.Mode) error {
 			return kv.DeleteMany(ctx, collection, ids)
 		})
 	}
+
+	// Serialize "employees" persists across all goroutines (delete handler,
+	// builtin skill ready, runtime hook, skill adoption, etc.) so the
+	// fire-and-forget PersistCollection callers can't race their DELETE-all
+	// + INSERT batches against each other and resurrect deleted rows.
+	empMu := &sync.Mutex{}
+	st.SetCollectionSerialHook(func(collection string, items []map[string]any) {
+		if collection != "employees" {
+			return
+		}
+		empMu.Lock()
+		defer empMu.Unlock()
+		if err := kv.ReplaceCollection(ctx, collection, items); err != nil {
+			log.Printf("persist %s: %v", collection, err)
+		}
+	})
 
 	hydrated := 0
 	for _, coll := range store.CollectionsForDomain(store.DomainAll) {

@@ -137,17 +137,32 @@ func normalizeDeleteIDs(ids []string) []string {
 }
 
 // PersistCollection snapshots a collection asynchronously (caller should hold Lock or own slice).
+// For "employees" the snapshot goes through a server-level mutex (Server.employeePersistMu)
+// registered via SetCollectionSerialHook — concurrent goroutines issuing DELETE-all+INSERT
+// on the same collection otherwise race each other's INSERT.
 func (s *Store) PersistCollection(collection string, items []map[string]any) {
 	if s.persistHook == nil {
 		return
 	}
 	cp := make([]map[string]any, len(items))
 	copy(cp, items)
+	if s.serialHook != nil {
+		s.serialHook(collection, cp)
+		return
+	}
 	go func() {
 		if err := s.persistHook(context.Background(), collection, cp); err != nil {
 			log.Printf("persist %s: %v", collection, err)
 		}
 	}()
+}
+
+// SetCollectionSerialHook registers an optional synchronous handler that fully
+// replaces the fire-and-forget goroutine for collections needing strict
+// ordering (e.g. "employees" where delete + insert races otherwise resurrect
+// deleted rows). Set to nil to fall back to the goroutine.
+func (s *Store) SetCollectionSerialHook(fn func(collection string, items []map[string]any)) {
+	s.serialHook = fn
 }
 
 // Persist snapshots a named durable collection (safe to call without holding Lock).
@@ -433,6 +448,7 @@ func (s *Store) HydrateFrom(collection string, items []map[string]any) {
 	case "workflow_templates":
 		s.WorkflowTpls = items
 	case "employees":
+		log.Printf("hydrate employees: %d items", len(items))
 		s.Employees = items
 	case "backups":
 		s.Backups = items

@@ -126,6 +126,11 @@ type Store struct {
 	// Optional durable collection snapshot (platform.kv_documents).
 	persistHook PersistFunc
 	deleteHook  DeleteFunc
+	// Optional sync handler replacing the fire-and-forget goroutine in
+	// PersistCollection for collections needing strict ordering (e.g.
+	// "employees" where concurrent DELETE-all+INSERT races otherwise
+	// resurrect deleted rows).
+	serialHook func(collection string, items []map[string]any)
 	writeDomain Domain
 
 	// closed is set by Close() to make it idempotent. atomic.Bool so callers
