@@ -5,7 +5,6 @@ import type { ChatMessageEx } from '@/hooks/types';
 import { thoughtKindLabel } from '../lib/human-thought';
 import { buildTurnSummary } from './build-turn-summary';
 import { groupTurnPhases } from './group-turn-phases';
-import { phaseLabel } from './phase-labels';
 import type { TurnMeta, TurnPhaseBlock } from './types';
 import { TurnTaskList, settleTurnTasks } from './turn-task-list';
 
@@ -28,15 +27,18 @@ function PhaseSection({ block, streaming }: { block: TurnPhaseBlock; streaming?:
   if (visible.length === 0 && block.status === 'pending') return null;
   return (
     <details className="copilot-turn-thought__phase group/phase" open={streaming && block.status === 'running'}>
-      <summary className="flex cursor-pointer list-none items-center gap-2 text-[12px] font-semibold text-[var(--text-secondary)] marker:content-none">
+      <summary className="flex cursor-pointer list-none items-center gap-2 text-[11.5px] text-[var(--text-muted)] marker:content-none hover:text-[var(--text-secondary)]">
         <span className={cn(
-          'inline-flex h-1.5 w-1.5 rounded-full',
+          'inline-flex h-1.5 w-1.5 shrink-0 rounded-full',
           block.status === 'running' && 'bg-[var(--brand)] animate-pulse',
           block.status === 'done' && 'bg-[var(--success)]',
           block.status === 'pending' && 'bg-[var(--border)]',
         )} />
         {block.label}
-        {block.status === 'running' ? <span className="text-[10px] font-normal text-[var(--brand)]">进行中</span> : null}
+        {block.steps.length > 0 ? (
+          <span className="text-[10px] text-[var(--text-muted)]">· {block.steps.length} 步</span>
+        ) : null}
+        {block.status === 'running' ? <span className="text-[10px] text-[var(--brand)]">进行中</span> : null}
       </summary>
       <div className="mt-1.5 space-y-1.5 border-l border-[var(--border)] pl-3">
         {hidden > 0 ? (
@@ -114,8 +116,8 @@ export function TurnThoughtPanel({ message, streaming, showNarrative = true }: P
             <PhaseSection key={block.phase} block={block} streaming={streaming} />
           ))}
           {tasks.length > 0 ? (
-            <div className="rounded-md border border-[var(--border)]/70 bg-[var(--bg)]/40 px-2.5 py-2">
-              <div className="mb-1 text-[10px] font-semibold text-[var(--text-muted)]">{phaseLabel('plan')} · 任务</div>
+            <div>
+              <div className="mb-1.5 text-[10px] font-semibold text-[var(--text-muted)]">任务 · {tasks.length}</div>
               <TurnTaskList tasks={tasks} compact />
             </div>
           ) : null}

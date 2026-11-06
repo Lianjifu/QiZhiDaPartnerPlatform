@@ -25,6 +25,8 @@ import {
   formatToken,
 } from './ExpertContextPanel.helpers';
 import { ContractSection } from './ExpertContextPanel.Contract';
+import { humanStatusLabel } from '../lib/human-status';
+import { humanToolName } from '../lib/human-tool-name';
 
 type WorkbenchTab = 'overview' | 'evidence' | 'tasks' | 'approvals' | 'audit' | 'admin';
 
@@ -61,7 +63,6 @@ export function ExpertContextPanel(props: {
     { tab: 'audit' as const, label: '执行', value: summaryCounts.executions, tone: 'neutral' as const },
   ].filter((item) => item.value > 0);
 
-  const assembled = [...(contract?.skills ?? []), ...(contract?.tools ?? []), ...(contract?.workflows ?? [])];
   const hasFailures = overview.tools.failed > 0 || overview.timeline.some((i) => i.tone === 'error' || i.tone === 'warn');
 
   return (
@@ -93,17 +94,17 @@ export function ExpertContextPanel(props: {
 
       <div className="copilot-ecx-stack">
         {messageOverview ? (
-          <div className="copilot-ecx-card copilot-ecx-card--soft">
-            <button type="button" className="copilot-ecx-card__head" onClick={() => setShowCompare((v) => !v)} aria-expanded={showCompare}>
-              <span className="copilot-ecx-card__icon"><Shield className="h-3.5 w-3.5" /></span>
-              <span className="copilot-ecx-card__title">范围对比</span>
+          <div className="copilot-ecx-section">
+            <button type="button" className="copilot-ecx-section__head" onClick={() => setShowCompare((v) => !v)} aria-expanded={showCompare}>
+              <span className="copilot-ecx-section__icon"><Shield className="h-3.5 w-3.5" /></span>
+              <span className="copilot-ecx-section__title">范围对比</span>
               <Badge tone="neutral" className="text-[9px]">会话 / 消息</Badge>
-              <span className="copilot-ecx-card__chevron">
+              <span className="copilot-ecx-section__chevron">
                 {showCompare ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
               </span>
             </button>
             {showCompare ? (
-              <div className="copilot-ecx-card__body">
+              <div className="copilot-ecx-section__body">
                 <div className="copilot-ecx-compare-grid">
                   {[
                     ['引用', sessionOverview.citations.length, messageOverview.citations.length],
@@ -127,7 +128,7 @@ export function ExpertContextPanel(props: {
           icon={BriefcaseBusiness}
           badge={contract ? <Badge tone="success" className="text-[9px]">在岗</Badge> : <Badge tone="neutral" className="text-[9px]">未绑定</Badge>}
         >
-          <ContractSection contract={contract} assembled={assembled} onPickExpert={onPickExpert} />
+          <ContractSection contract={contract} onPickExpert={onPickExpert} />
         </Collapsible>
 
         <Collapsible
@@ -140,7 +141,7 @@ export function ExpertContextPanel(props: {
             </Badge>
           }
         >
-          <div className="copilot-ecx-kpi">
+          <div className="copilot-ecx-kpi copilot-ecx-kpi--4">
             <div>
               <span>状态</span>
               <strong>{overview.rag.label}</strong>
@@ -242,12 +243,12 @@ export function ExpertContextPanel(props: {
                 {overview.toolItems.map((t) => (
                   <li key={t.id} className={cn((t.status === 'failed' || t.status === 'denied') && 'is-error')}>
                     <button type="button" className="copilot-ecx-tools__row" onClick={() => onJumpMessage?.(t.messageId)}>
-                      <span className="copilot-ecx-tools__name">{t.name}</span>
+                      <span className="copilot-ecx-tools__name" title={t.name}>{humanToolName(t.name)}</span>
                       <Badge
                         tone={t.status === 'success' ? 'success' : t.status === 'denied' || t.status === 'failed' ? 'error' : 'neutral'}
                         className="text-[9px]"
                       >
-                        {t.status}
+                        {humanStatusLabel(t.status)}
                       </Badge>
                       {t.durationMs != null ? <span className="font-mono text-[10px] text-[var(--text-muted)]">{t.durationMs}ms</span> : null}
                       {t.approvalPending ? <Badge tone="warn" className="text-[9px]">待审</Badge> : null}

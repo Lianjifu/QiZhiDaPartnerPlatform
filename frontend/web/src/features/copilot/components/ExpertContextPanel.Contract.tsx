@@ -7,15 +7,13 @@ import { ExternalLink } from 'lucide-react';
 import { Button } from '@qzda/web-ui';
 import type { DigitalPartner } from '@qzda/web-types';
 import type { ExpertJobContract } from '../lib/expert-context';
-import { CapChips, MetaRow } from './ExpertContextPanel.helpers';
+import { CapChips, CapGroup, MetaRow } from './ExpertContextPanel.helpers';
 
 export function ContractSection({
   contract,
-  assembled,
   onPickExpert,
 }: {
   contract: ExpertJobContract | null;
-  assembled: string[];
   onPickExpert?: () => void;
 }) {
   if (!contract) {
@@ -68,13 +66,15 @@ export function ContractSection({
         </div>
       </div>
 
-      <div>
+      <div className="copilot-ecx-block">
         <div className="copilot-ecx-kicker">知识包</div>
         <CapChips items={contract.knowledge} empty="尚未装配知识包" />
       </div>
-      <div>
+      <div className="copilot-ecx-block">
         <div className="copilot-ecx-kicker">技能 / 工具 / 流程</div>
-        <CapChips items={assembled} empty="尚未装配" />
+        <CapGroup label="技能" items={contract.skills ?? []} empty="无" />
+        <CapGroup label="工具" items={contract.tools ?? []} empty="无" />
+        <CapGroup label="流程" items={contract.workflows ?? []} empty="无" />
       </div>
 
       <div className="copilot-ecx-contract__foot">

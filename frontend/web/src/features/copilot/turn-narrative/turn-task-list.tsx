@@ -1,5 +1,6 @@
 import { CheckCircle2, Circle, Loader2, XCircle } from 'lucide-react';
 import { cn } from '@qzda/web-utils';
+import { humanStatusLabel } from '../lib/human-status';
 import type { TurnTaskItem } from './types';
 
 type Props = {
@@ -28,19 +29,21 @@ export function TurnTaskList({ tasks, compact }: Props) {
   const hidden = deduped.length - visible.length;
   return (
     <div className="copilot-turn-task space-y-1" role="list" aria-label="任务清单">
-      {visible.map((task, index) => (
-        <div
-          key={`${task.id}__${index}`}
-          role="listitem"
-          className="flex items-start gap-2 text-[11px] text-[var(--text-secondary)]"
-        >
-          <span className="mt-0.5 shrink-0">{statusIcon(task.status)}</span>
-          <div className="min-w-0">
-            <div className="font-medium">{task.title}</div>
-            {task.detail ? <div className="text-[var(--text-muted)]">{task.detail}</div> : null}
+      {visible.map((task, index) => {
+        const detail = humanStatusLabel(task.detail);
+        return (
+          <div
+            key={`${task.id}__${index}`}
+            role="listitem"
+            className="flex items-center gap-2 text-[11px] text-[var(--text-secondary)]"
+          >
+            <span className="shrink-0">{statusIcon(task.status)}</span>
+            <span className="min-w-0 truncate font-medium" title={task.title}>{task.title}</span>
+            {detail ? <span className="shrink-0 text-[10px] text-[var(--text-muted)]">{detail}</span> : null}
+            <span className="flex-1" aria-hidden="true" />
           </div>
-        </div>
-      ))}
+        );
+      })}
       {hidden > 0 ? (
         <div className="text-[10px] text-[var(--text-muted)]">另有 {hidden} 项任务</div>
       ) : null}
