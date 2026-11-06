@@ -17,7 +17,7 @@ export function CopilotPageHeader() {
   if (!currentSession) {
     return (
       <header className="copilot-header copilot-header--lite">
-        <div className="copilot-work-header">
+        <div className="copilot-work-header copilot-column">
           <div className="flex min-w-0 items-center gap-3">
             <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--brand-light)] text-[var(--brand)]">
               <BriefcaseBusiness className="h-4 w-4" />
@@ -37,7 +37,7 @@ export function CopilotPageHeader() {
 
   return (
     <header className="copilot-header copilot-header--lite">
-      <div className="copilot-work-header">
+      <div className="copilot-work-header copilot-column">
         <div className="flex min-w-0 items-center gap-3">
           <button
             type="button"

@@ -12,6 +12,9 @@
   --brand-hover: #4338ca;
   --brand-active: #3730a3;
 
+  /* 协作页阅读列宽度：正文 / 输入框 / 头部共用同一列，窄屏自动占满 */
+  --copilot-reading-w: 880px;
+
   /* 中性 */
   --bg: #ffffff;
   --bg-elevated: #f8fafc;
@@ -4168,6 +4171,12 @@ a:focus-visible,
 .copilot-header__inner { width: 100%; }
 .copilot-work-header { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .copilot-work-strip__inner { width: 100%; margin-inline: auto; }
+/* 阅读列：正文 / 输入框 / 头部内容共用同一列宽并居中，
+   宽屏不再把内容挤在左侧，窄屏自动占满。 */
+.copilot-column { width: 100%; max-width: var(--copilot-reading-w); margin-inline: auto; }
+@media (min-width: 1800px) {
+  :root { --copilot-reading-w: 960px; }
+}
 .copilot-work-strip__metrics { margin-left: auto; }
 .copilot-header__actions > button { flex-shrink: 0; font-size: 12px; }
 .copilot-header__actions { min-width: 0; display: flex; align-items: center; gap: 8px; }

@@ -110,7 +110,7 @@ export function CopilotPageComposer() {
 
   return (
     <div className="copilot-composer border-t border-[var(--border)] bg-[var(--bg)] px-4 pb-2.5 pt-2 sm:px-5">
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-1.5">
+      <div className="copilot-column flex flex-col gap-1.5">
         {s.attachments.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {s.attachments.map((a, i) => (

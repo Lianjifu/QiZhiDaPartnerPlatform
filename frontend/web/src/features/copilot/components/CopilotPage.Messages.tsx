@@ -39,7 +39,7 @@ export function CopilotPageMessages() {
 
   const emptyIntro = (
     <div className="copilot-empty-state h-full grid place-items-center px-6">
-      <div className="w-full max-w-2xl">
+      <div className="copilot-column">
         <div className="text-center mb-8">
           {activeEmployee ? (
             <div className="mx-auto mb-4 inline-flex overflow-hidden rounded-full">
@@ -224,12 +224,12 @@ export function CopilotPageMessages() {
   return (
     <div ref={s.scrollRef} className="copilot-messages min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5" role="log" aria-live="polite" aria-relevant="additions text">
       {conversationMissing && (
-        <div className="mx-auto mb-3 w-full max-w-3xl rounded-md bg-[var(--warning-bg)] px-3 py-2 text-[12px] text-[var(--warning)]">
+        <div className="copilot-column mb-3 rounded-md bg-[var(--warning-bg)] px-3 py-2 text-[12px] text-[var(--warning)]">
           无法加载会话消息。请刷新后重试，或从左侧重新选择会话。
         </div>
       )}
       {displayMessages.length === 0 ? emptyIntro : (
-        <div className="mx-auto flex w-full max-w-full flex-col gap-6">
+        <div className="copilot-column flex flex-col gap-6">
           {displayMessages.map(renderMessage)}
           {showTypingFallback && (
             <div className="copilot-typing mt-3 flex items-center gap-2 text-[12px] text-[var(--text-muted)]" aria-live="polite">

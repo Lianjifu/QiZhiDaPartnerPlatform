@@ -166,7 +166,7 @@ export function AppLayout() {
 
   return (
     <div
-      className="grid h-screen w-screen overflow-hidden bg-[var(--bg-elevated)] lg:[grid-template-columns:var(--sidebar-width)_1fr] lg:[grid-template-rows:60px_1fr]"
+      className="grid h-screen w-screen grid-cols-[minmax(0,1fr)] overflow-hidden bg-[var(--bg-elevated)] lg:[grid-template-columns:var(--sidebar-width)_minmax(0,1fr)] lg:[grid-template-rows:60px_1fr]"
       style={{ '--sidebar-width': sidebarCollapsed ? '72px' : '200px', gridTemplateRows: '60px 1fr' } as CSSProperties}
     >
       {mobileDrawerOpen && (
@@ -177,7 +177,7 @@ export function AppLayout() {
         />
       )}
       <header
-        className="app-glass col-span-2 sticky top-0 z-30 flex h-[60px] items-center gap-2 border-b px-3 shadow-[var(--shadow-xs)] md:gap-6 md:px-6"
+        className="app-glass sticky top-0 z-30 flex h-[60px] items-center gap-2 border-b px-3 shadow-[var(--shadow-xs)] md:gap-6 md:px-6"
         style={{ gridColumn: '1 / -1' }}
       >
         <button
@@ -454,7 +454,7 @@ export function AppLayout() {
         )}
       </aside>
 
-      <main className={cn('row-start-2 col-span-2 min-w-0 min-h-0 bg-[var(--bg-elevated)] lg:col-start-2 lg:col-span-1', location.pathname.startsWith('/workflows') || location.pathname.startsWith('/partners') || location.pathname.startsWith('/copilot') ? 'overflow-hidden' : 'overflow-y-auto')}>
+      <main className={cn('row-start-2 col-span-1 min-w-0 min-h-0 bg-[var(--bg-elevated)] lg:col-start-2 lg:col-span-1', location.pathname.startsWith('/workflows') || location.pathname.startsWith('/partners') || location.pathname.startsWith('/copilot') ? 'overflow-hidden' : 'overflow-y-auto')}>
         <Outlet />
       </main>
       <OnboardingGuide open={onboardingOpen} onClose={closeOnboarding} role={user?.role} />

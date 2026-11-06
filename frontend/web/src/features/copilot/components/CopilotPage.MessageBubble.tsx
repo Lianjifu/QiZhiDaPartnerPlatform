@@ -174,7 +174,7 @@ export function CopilotPageMessageBubble({
       ) : null}
       <div className={cn(
         'copilot-message__content min-w-0 space-y-2.5',
-        isUser ? 'max-w-[80%]' : 'w-full max-w-[800px]',
+        isUser ? 'max-w-[80%]' : 'w-full',
       )}>
         {showHeader && !isUser ? (
           <div className="copilot-message__meta flex items-center gap-2 text-[11px] justify-between">

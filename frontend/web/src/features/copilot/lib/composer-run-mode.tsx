@@ -44,7 +44,7 @@ export function ComposerRunModeMenu({ value, disabled, onChange }: Props) {
         title={disabled ? '当前不可切换协作模式' : '协作模式'}
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          'copilot-composer__mode-btn inline-flex h-7 items-center gap-1 rounded-md px-2 text-[11px] font-medium',
+          'copilot-composer__mode-btn inline-flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-2 text-[11px] font-medium',
           'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]',
           'disabled:cursor-not-allowed disabled:opacity-45',
           open && 'bg-[var(--bg-hover)] text-[var(--text)]',
