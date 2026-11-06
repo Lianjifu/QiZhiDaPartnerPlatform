@@ -107,6 +107,31 @@ func humanPlanAction(action string) string {
 	}
 }
 
+// humanTaskDetail 把任务事件里的机器状态译成人话（success / done / skipped…）。
+// 未知值原样返回 —— 那里可能是已经中文化的说明（如「检索知识」）。
+func humanTaskDetail(detail string) string {
+	switch strings.ToLower(strings.TrimSpace(detail)) {
+	case "success", "succeeded":
+		return "成功"
+	case "done", "completed":
+		return "已完成"
+	case "skipped":
+		return "已跳过"
+	case "failed", "error":
+		return "失败"
+	case "denied", "rejected":
+		return "已拒绝"
+	case "running", "started":
+		return "执行中"
+	case "pending", "waiting":
+		return "等待中"
+	case "cancelled", "canceled":
+		return "已取消"
+	default:
+		return detail
+	}
+}
+
 // planPrompt 注入给 planner LLM 的 system prompt(走版本化注册表)。
 // 要求只输出 PLAN 块、不超过 6 步;注册表为空时回退 hardcoded v1。
 func planPrompt() string {

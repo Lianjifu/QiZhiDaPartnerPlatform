@@ -305,7 +305,8 @@ func emitThoughtPhase(emit reactEmitFunc, kind, phase, title, detail string, ext
 	payload := map[string]any{
 		"type": contract.StreamThought, "kind": kind, "phase": phase, "title": title,
 	}
-	if d := strings.TrimSpace(detail); d != "" {
+	// detail 可能来自机器状态（success / done / skipped…），一律译成人话再进事件。
+	if d := humanTaskDetail(strings.TrimSpace(detail)); d != "" {
 		payload["detail"] = d
 	}
 	for k, v := range extra {
@@ -340,7 +341,8 @@ func emitTurnTask(emit reactEmitFunc, action, taskID, title, detail string, inde
 		"type": contract.StreamTask, "action": action,
 		"taskId": taskID, "title": title, "status": taskStatusFromAction(action),
 	}
-	if d := strings.TrimSpace(detail); d != "" {
+	// detail 可能来自机器状态（success / done / skipped…），一律译成人话再进事件。
+	if d := humanTaskDetail(strings.TrimSpace(detail)); d != "" {
 		payload["detail"] = d
 	}
 	if index > 0 {

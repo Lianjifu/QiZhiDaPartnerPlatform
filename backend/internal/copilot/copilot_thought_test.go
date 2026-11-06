@@ -134,3 +134,23 @@ func TestHumanPlanAction(t *testing.T) {
 		}
 	}
 }
+
+func TestHumanTaskDetail(t *testing.T) {
+	cases := map[string]string{
+		"success":  "成功",
+		"done":     "已完成",
+		"skipped":  "已跳过",
+		"failed":   "失败",
+		"denied":   "已拒绝",
+		"running":  "执行中",
+		"SUCCESS":  "成功",
+		"  done  ": "已完成",
+		"检索知识":   "检索知识", // 已中文化的说明原样保留
+		"":         "",
+	}
+	for in, want := range cases {
+		if got := humanTaskDetail(in); got != want {
+			t.Fatalf("humanTaskDetail(%q)=%q, want %q", in, got, want)
+		}
+	}
+}
