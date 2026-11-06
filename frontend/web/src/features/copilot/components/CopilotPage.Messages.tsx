@@ -158,6 +158,15 @@ export function CopilotPageMessages() {
         s.chat.setFeedback(mid, { kind: kind ?? null });
         if (kind === 'dislike') s.setFeedbackOpen(mid);
       },
+      // M16：因人工审批挂起的回合，授权通过后由 resume 续跑同一个 run。
+      onExecuteAuthorized: (mid: string) => {
+        const target = displayMessages.find((item) => item.id === mid);
+        if (!target?.awaitingApproval) return;
+        void s.chat.resumeAwaitingTurn(mid).catch((err: unknown) => {
+          // eslint-disable-next-line no-console
+          console.error('resume awaiting turn failed', err);
+        });
+      },
     };
 
     // user / tool 消息:单气泡,不进 stack 容器(避免误触发连接线)

@@ -430,6 +430,52 @@ export interface DigitalPartnerBoundaryPolicy {
   };
 }
 
+/**
+ * 能力契约（M16）：伙伴已装配能力的调用形状 —— 入参 schema、产物类型、
+ * 是否需要审批、执行模式。后端按同一份契约下发模型工具 schema 并做调用前校验。
+ */
+export interface DigitalPartnerCapabilityContract {
+  name: string;
+  kind: 'builtin' | 'tool' | 'skill' | 'workflow' | 'platform' | string;
+  description?: string;
+  mode?: DigitalPartnerExecutionMode;
+  approval?: boolean;
+  artifacts?: string[];
+  inputSchema?: Record<string, unknown>;
+  required?: string[];
+}
+
+/**
+ * 岗位运行轨迹评分（M16）：基于伙伴真实运行回合的行为健康度。
+ * 没有真实回合时 status='unknown' —— 不给假分数。
+ */
+export interface DigitalPartnerTrajectory {
+  status: 'unknown' | 'passed' | 'failed';
+  score: number;
+  turns: number;
+  toolCalls: number;
+  failures: number;
+  awaiting: number;
+  escalations: number;
+  violations: Array<{
+    kind: string;
+    tool?: string;
+    conversationId?: string;
+    correlationId?: string;
+    detail?: string;
+  }>;
+  evaluatedAt?: ISODate;
+}
+
+/** 子伙伴派生策略（M16）：默认关闭，白名单约束能力与目标。 */
+export interface DigitalPartnerDelegationPolicy {
+  enabled: boolean;
+  maxDepth?: number;
+  maxConcurrent?: number;
+  inheritCapabilities?: string[];
+  allowedTargets?: string[];
+}
+
 export interface DigitalPartner {
   id: ID;
   workspaceId: ID;
@@ -452,9 +498,15 @@ export interface DigitalPartner {
   /** 新版岗位授权契约；历史字段保留以兼容已发布员工与模板。 */
   boundaryPolicy?: DigitalPartnerBoundaryPolicy;
   capabilities: DigitalPartnerCapabilities;
+  /** M16：已装配能力的调用契约（配置投影，后端按此下发模型 schema）。 */
+  capabilityContracts?: DigitalPartnerCapabilityContract[];
+  /** M16：子伙伴派生策略（默认关闭）。 */
+  delegationPolicy?: DigitalPartnerDelegationPolicy;
+  /** M16：岗位运行轨迹评分（真实回合才有分）。 */
+  trajectory?: DigitalPartnerTrajectory;
   memoryPolicy: { shortTermHours: number; workingDays: number; longTermCadence: 'daily' | 'weekly'; knowledgePromotion: 'approval_required' | 'disabled' };
   runtime: { calls24h: number; successRate: number; p95Ms: number; costToday: number; handoffs24h: number; anomalies: number };
-  evaluation: { status: 'not_started' | 'passed' | 'failed' | 'running'; score?: number; lastRunAt?: ISODate; /** mock / 演示数据标记 — 前端用于明确告知用户分数非真实冒烟测试结果。 */ mock?: boolean };
+  evaluation: { status: 'not_started' | 'passed' | 'failed' | 'running'; score?: number; lastRunAt?: ISODate; /** mock / 演示数据标记 — 前端用于明确告知用户分数非真实冒烟测试结果。 */ mock?: boolean; /** M16：评测依据的真实运行轨迹。 */ trajectory?: DigitalPartnerTrajectory };
   release: {
     status: 'not_released' | 'pending_approval' | 'released';
     releasedAt?: ISODate;

@@ -207,6 +207,17 @@ export interface ChatMessageEx {
   attachment?: { name: string; size: string; type: 'file' | 'image' };
   thinking?: string;
   approvalRequest?: ApprovalRequest;
+  /**
+   * M16：回合因人工审批挂起（awaiting）。
+   * 审批通过后可用「继续执行」续跑同一个回合 —— 后端会真实执行被批准的工具，
+   * 并把结果作为观察喂回同一个伙伴。
+   */
+  awaitingApproval?: {
+    actionId?: string;
+    tool?: string;
+    correlationId?: string;
+    at?: string;
+  };
   /** 批准后仍待续跑的 skill.run command */
   nextRunCommand?: string;
   canContinueRun?: boolean;

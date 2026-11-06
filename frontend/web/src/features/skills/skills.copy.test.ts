@@ -36,10 +36,11 @@ describe('skills center IA', () => {
     expect(catalogTab).toContain('PlatformToolsWorkspace');
     expect(catalogTab).not.toContain("from './SkillsDetailModal'");
     expect(detailPage).toContain('page-skills-detail');
-    expect(detailPage).toContain('概览与策略');
+    // M11 技能详情重设后收敛为 2 个 tab（概览 / 运行），权限与版本已并入概览。
+    expect(detailPage).toContain('概览');
     expect(detailPage).toContain('权限');
-    expect(detailPage).toContain('版本与发布');
-    expect(detailPage).toContain('运行与审计');
+    expect(detailPage).toContain('版本');
+    expect(detailPage).toContain('运行');
     expect(detailPage).not.toContain('KnowledgeStudioRail');
     expect(detailPage).not.toContain('上一步');
     expect(detailPage).not.toContain('下一步');

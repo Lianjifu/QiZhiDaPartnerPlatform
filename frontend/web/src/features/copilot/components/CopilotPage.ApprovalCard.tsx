@@ -50,6 +50,12 @@ export function ApprovalCard({
         </span>
       </div>
       <div className="text-[11px] text-[var(--text)] mb-2 font-mono break-all">{m.approvalRequest.action}</div>
+      {m.awaitingApproval ? (
+        <div className="mb-2 rounded border border-[var(--warning)]/30 bg-[var(--warning-bg)] px-2 py-1.5 text-[10px] text-[var(--warning)]">
+          本回合已挂起：{m.awaitingApproval.tool ? `工具「${m.awaitingApproval.tool}」` : '受控操作'}
+          等待人工授权，授权通过后可续跑同一个回合。
+        </div>
+      ) : null}
       {(m.approvalRequest.planSummary || m.approvalRequest.skillTurn?.summary) ? (
         <div className="mb-2 rounded border border-[var(--border)] bg-[var(--bg)]/60 px-2 py-1.5 text-[10px] text-[var(--text-secondary)]">
           <span className="text-[var(--text-muted)]">Skill Turn：</span>
@@ -193,10 +199,10 @@ export function ApprovalCard({
             <Button
               size="sm"
               variant="primary"
-              title="授权已完成，点击开始执行"
+              title={m.awaitingApproval ? '授权已完成，续跑同一个回合继续执行' : '授权已完成，点击开始执行'}
               onClick={() => void onExecuteAuthorized(m.id)}
             >
-              开始执行
+              {m.awaitingApproval ? '继续执行' : '开始执行'}
             </Button>
           ) : null}
           {(m.canContinueRun || m.nextRunCommand) && onContinueRun ? (

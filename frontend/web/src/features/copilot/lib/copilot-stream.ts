@@ -15,6 +15,8 @@ export type CopilotSSEEvent = {
   text?: string;
   message?: string;
   name?: string;
+  /** 触发事件的能力名（M16 awaiting / authorization 事件用）。 */
+  tool?: string;
   hits?: unknown;
   decision?: string;
   units?: number;
@@ -175,6 +177,40 @@ export type StreamTurnInput = {
   onEvent: (event: string, data: CopilotSSEEvent) => void;
 };
 
+/** 读取一个 SSE 响应体并逐事件回调。 */
+export async function consumeSSE(
+  res: Response,
+  onEvent: (event: string, data: CopilotSSEEvent) => void,
+): Promise<void> {
+  if (!res.body) {
+    throw new Error('浏览器不支持流式响应');
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    buffer = parseSSEChunk(buffer, onEvent);
+  }
+  if (buffer.trim()) {
+    parseSSEChunk(`${buffer}\n`, onEvent);
+  }
+}
+
+/** 把非 2xx 响应转成可读错误。 */
+async function streamError(res: Response, fallback: string): Promise<Error> {
+  let message = `${fallback} (${res.status})`;
+  try {
+    const json = (await res.json()) as { error?: { message?: string; code?: string } };
+    if (json.error?.message) message = json.error.message;
+  } catch {
+    /* keep default */
+  }
+  return new Error(message);
+}
+
 export async function streamCopilotTurn(input: StreamTurnInput): Promise<void> {
   const token = localStorage.getItem('token');
   const user = useAuthStore.getState().user;
@@ -216,30 +252,51 @@ export async function streamCopilotTurn(input: StreamTurnInput): Promise<void> {
   );
 
   if (!res.ok) {
-    let message = `流式请求失败 (${res.status})`;
-    try {
-      const json = (await res.json()) as { error?: { message?: string; code?: string } };
-      if (json.error?.message) message = json.error.message;
-    } catch {
-      /* keep default */
-    }
-    throw new Error(message);
+    throw await streamError(res, '流式请求失败');
   }
 
-  if (!res.body) {
-    throw new Error('浏览器不支持流式响应');
+  await consumeSSE(res, input.onEvent);
+}
+
+export type ResumeTurnInput = {
+  conversationId: string;
+  correlationId: string;
+  signal?: AbortSignal;
+  onEvent: (event: string, data: CopilotSSEEvent) => void;
+};
+
+/**
+ * 续跑一个因人工审批挂起的回合（M16）。
+ *
+ * 审批通过后调用：平台执行被批准的工具,把结果作为观察喂回模型,
+ * 让**同一个伙伴、同一个 run** 接着把活干完。
+ */
+export async function streamResumeTurn(input: ResumeTurnInput): Promise<void> {
+  const token = localStorage.getItem('token');
+  const user = useAuthStore.getState().user;
+  const workspaceId = resolveWorkspaceHeader();
+
+  const res = await fetch(
+    `/api/copilot/conversations/${encodeURIComponent(input.conversationId)}/turns/${encodeURIComponent(input.correlationId)}/resume`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        'x-workspace-id': workspaceId,
+        'x-correlation-id': input.correlationId,
+        ...(user ? { 'x-tenant-id': user.tenantId } : {}),
+        ...mockIdentityHeaders(user),
+      },
+      body: JSON.stringify({ correlationId: input.correlationId }),
+      signal: input.signal,
+    },
+  );
+
+  if (!res.ok) {
+    throw await streamError(res, '续跑失败');
   }
 
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    buffer = parseSSEChunk(buffer, input.onEvent);
-  }
-  if (buffer.trim()) {
-    parseSSEChunk(`${buffer}\n`, input.onEvent);
-  }
+  await consumeSSE(res, input.onEvent);
 }

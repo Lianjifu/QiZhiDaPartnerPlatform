@@ -23,7 +23,7 @@ import { useCallback, useEffect, useReducer, useRef } from 'react';
 import { getApiClient } from '@qzda/web-api';
 import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { useAuthStore } from '@/stores/authStore';
-import { streamCopilotTurn, type CopilotSSEEvent } from '@/features/copilot/lib/copilot-stream';
+import { streamCopilotTurn, streamResumeTurn, type CopilotSSEEvent } from '@/features/copilot/lib/copilot-stream';
 import { isDemoApiMode } from '@/lib/api-mode';
 import { applySegmentSSEEvent, createSegmentRouter } from '@/features/copilot/lib/copilot-segment-router';
 import { orderAssistantSegments } from '@/features/copilot/lib/segment-message-order';
@@ -1470,6 +1470,24 @@ export function useChat(agentMeta?: { name: string }) {
           patchTurnState();
           return;
         }
+        if (typ === 'awaiting') {
+          // M16：工具命中人工授权 → 回合挂起，等审批通过后由 resume 续跑。
+          const mid = thoughtHost;
+          const base = segmentPlaceholders.get(mid) ?? placeholder;
+          const next: ChatMessageEx = {
+            ...base,
+            awaitingApproval: {
+              actionId: typeof data.actionId === 'string' ? data.actionId : undefined,
+              tool: typeof data.tool === 'string' ? data.tool : typeof data.name === 'string' ? data.name : undefined,
+              correlationId: correlationIdStr,
+              at: new Date().toISOString(),
+            },
+          };
+          segmentPlaceholders.set(mid, next);
+          dispatch({ type: 'replace_msg', sid, mid, msg: next });
+          pushThought(typ, data);
+          return;
+        }
         if (typ === 'authorization') {
           const approvalRaw = (data.approvalRequest ?? data.authorizationRequest) as (ChatMessageEx['approvalRequest'] & {
             approverRoleHint?: string;
@@ -2513,6 +2531,97 @@ export function useChat(agentMeta?: { name: string }) {
   }, [state.activeId, state.sessions]);
 
   /** P2：批准后若仍有待续跑 run，手动继续 Skill Turn；返回是否成功 */
+  /**
+   * M16：续跑一个因人工审批挂起的回合。
+   *
+   * 后端会真实执行被批准的工具,把结果作为观察喂回模型,让同一个伙伴、
+   * 同一个 run 接着把活干完。续跑产物作为一条新的助手消息追加到会话。
+   */
+  const resumeAwaitingTurn = useCallback(async (mid: string): Promise<boolean> => {
+    if (!state.activeId) return false;
+    const session = state.sessions[state.activeId];
+    const message = session?.messages.find((item) => item.id === mid);
+    if (!message) return false;
+    const correlationId = message.awaitingApproval?.correlationId ?? message.correlationId;
+    if (!correlationId) throw new Error('该回合缺少 correlationId，无法续跑');
+    const conversationId = session.conversationId ?? state.activeId;
+    const replyId = uid('r_');
+    const base: ChatMessageEx = {
+      id: replyId,
+      role: 'assistant',
+      agentName: message.agentName ?? '岗位专家',
+      content: '',
+      reasoningSteps: [],
+      toolCalls: [],
+      citations: [],
+      correlationId,
+      status: 'streaming',
+      createdAt: new Date().toISOString(),
+    };
+    dispatch({ type: 'append_msg', sid: state.activeId, msg: base });
+
+    let content = '';
+    const toolCalls: ToolCall[] = [];
+    const patch = (patch: Partial<ChatMessageEx>) => {
+      dispatch({
+        type: 'replace_msg',
+        sid: state.activeId,
+        mid: replyId,
+        msg: { ...base, content, toolCalls: [...toolCalls], ...patch },
+      });
+    };
+
+    try {
+      await streamResumeTurn({
+        conversationId,
+        correlationId,
+        onEvent: (event, data) => {
+          const typ = data.type || event;
+          if (typ === 'delta' && typeof data.text === 'string' && data.text) {
+            content += data.text;
+            patch({});
+          }
+          if (typ === 'tool' && typeof data.name === 'string') {
+            toolCalls.push({
+              id: typeof data.id === 'string' && data.id ? data.id : uid('tc_'),
+              name: data.name,
+              args: (typeof data.args === 'object' && data.args ? data.args : {}) as Record<string, unknown>,
+              status: data.status === 'failed' || data.status === 'denied' ? data.status : 'success',
+              durationMs: typeof data.durationMs === 'number' ? data.durationMs : undefined,
+              permission: data.permission,
+              error: data.error,
+            });
+            patch({});
+          }
+        },
+      });
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : '续跑失败';
+      dispatch({
+        type: 'replace_msg',
+        sid: state.activeId,
+        mid: replyId,
+        msg: { ...base, content: content || `续跑失败：${detail}`, status: 'failed', error: { category: 'unknown', message: detail } },
+      });
+      throw err;
+    }
+
+    dispatch({
+      type: 'replace_msg',
+      sid: state.activeId,
+      mid: replyId,
+      msg: { ...base, content: content || '（本轮无新增内容）', toolCalls: [...toolCalls], status: 'succeeded' },
+    });
+    // 挂起标记已解除：原消息不再显示「等待审批」。
+    dispatch({
+      type: 'replace_msg',
+      sid: state.activeId,
+      mid,
+      msg: { ...message, awaitingApproval: undefined },
+    });
+    return true;
+  }, [state.activeId, state.sessions, dispatch, uid]);
+
   const continueSkillTurn = useCallback(async (mid: string): Promise<boolean> => {
     if (!state.activeId) return false;
     const session = state.sessions[state.activeId];
@@ -2794,6 +2903,7 @@ export function useChat(agentMeta?: { name: string }) {
     /* 企业级 */
     approve,
     executeAuthorized,
+    resumeAwaitingTurn,
     continueSkillTurn,
     reject,
     setFeedback,

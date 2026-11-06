@@ -125,6 +125,53 @@ export function CapabilityContent({ employee }: { employee: DigitalPartner }) {
           </div>
         </div>
       ))}
+      <CapabilityContractsContent employee={employee} />
+    </div>
+  );
+}
+
+/**
+ * 能力契约（M16）：已装配能力各自要什么参数、是否需要人工授权。
+ *
+ * 契约不是展示用的装饰 —— 后端按同一份契约下发模型工具 schema 并在调用前校验，
+ * 参数不合法的调用不会被执行。
+ */
+export function CapabilityContractsContent({ employee }: { employee: DigitalPartner }) {
+  const contracts = employee.capabilityContracts ?? [];
+  if (contracts.length === 0) {
+    return (
+      <div className="rounded-lg border border-[var(--border)] bg-[var(--bg)] p-3 text-xs text-[var(--text-muted)]">
+        尚未装配任何带调用契约的能力。
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-lg bg-[var(--bg)] p-3" style={{ boxShadow: 'var(--saas-ring)' }}>
+      <div className="text-xs font-semibold">能力契约</div>
+      <p className="mt-1 text-[11px] leading-4 text-[var(--text-muted)]">
+        平台按契约把工具形状下发给模型，并在执行前校验参数；不合规的调用不会被执行。
+      </p>
+      <div className="mt-2 space-y-1.5">
+        {contracts.map((c) => (
+          <div key={c.name} className="rounded border border-[var(--border)] bg-[var(--surface-1)] px-2 py-1.5">
+            <div className="flex items-center gap-1.5">
+              <span className="font-mono text-[11px] text-[var(--text)]">{c.name}</span>
+              <Badge tone="neutral" className="text-[9px]">{c.kind}</Badge>
+              {c.mode ? <Badge tone={c.mode === 'prohibited' ? 'error' : c.mode === 'approval_required' ? 'warn' : 'neutral'} className="text-[9px]">{c.mode}</Badge> : null}
+              {c.approval ? <Badge tone="warn" className="text-[9px]">需授权</Badge> : null}
+            </div>
+            {c.description ? <div className="mt-0.5 text-[10px] text-[var(--text-secondary)]">{c.description}</div> : null}
+            {c.required?.length ? (
+              <div className="mt-0.5 text-[10px] text-[var(--text-muted)]">
+                必填参数：<span className="font-mono">{c.required.join(' · ')}</span>
+              </div>
+            ) : null}
+            {c.artifacts?.length ? (
+              <div className="mt-0.5 text-[10px] text-[var(--text-muted)]">产物：{c.artifacts.join(' · ')}</div>
+            ) : null}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -169,6 +216,52 @@ export function RuntimeContent({ employee }: { employee: DigitalPartner }) {
         <HeartPulse className="mr-1 inline h-3.5 w-3.5 text-[var(--success)]" />
         运行运营聚焦业务服务质量；模型、工具与渠道的深度技术指标分别在其所属控制面查看。
       </div>
+      <TrajectoryContent employee={employee} />
+    </div>
+  );
+}
+
+/**
+ * 运行轨迹（M16）：基于岗位真实运行回合的行为健康度。
+ *
+ * 没有真实回合时后端返回 status=unknown —— 前端如实显示「暂无轨迹」，
+ * 不展示任何编造的分数。
+ */
+export function TrajectoryContent({ employee }: { employee: DigitalPartner }) {
+  const traj = employee.trajectory;
+  if (!traj || traj.status === 'unknown' || traj.turns === 0) {
+    return (
+      <div className="rounded-lg border border-[var(--border)] bg-[var(--bg)] p-3 text-xs text-[var(--text-muted)]">
+        暂无运行轨迹：伙伴还没有产生可评估的真实回合。
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-lg border border-[var(--border)] bg-[var(--bg)] p-3">
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-semibold">运行轨迹</span>
+        <Badge tone={traj.status === 'passed' ? 'success' : 'error'} className="text-[9px]">
+          {traj.status === 'passed' ? '达标' : '未达标'}
+        </Badge>
+        <span className="ml-auto font-mono text-xs text-[var(--text)]">{traj.score.toFixed(1)} 分</span>
+      </div>
+      <div className="mt-2 grid grid-cols-3 gap-2">
+        <Metric label="回合" value={traj.turns} />
+        <Metric label="工具调用" value={traj.toolCalls} />
+        <Metric label="工具失败" value={traj.failures} />
+        <Metric label="挂起审批" value={traj.awaiting} />
+        <Metric label="越界拦截" value={traj.escalations} />
+      </div>
+      {traj.violations.length ? (
+        <div className="mt-2 space-y-1">
+          <div className="text-[10px] font-semibold text-[var(--text-muted)]">最近异常回合</div>
+          {traj.violations.slice(0, 5).map((v, i) => (
+            <div key={`${v.correlationId ?? 'v'}-${i}`} className="text-[10px] text-[var(--text-secondary)]">
+              · {v.kind}{v.tool ? ` · ${v.tool}` : ''}{v.detail ? ` · ${v.detail}` : ''}
+            </div>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
