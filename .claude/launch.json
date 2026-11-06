@@ -2,6 +2,13 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "qiZhiDa-dev-stack",
+      "runtimeExecutable": "/Users/LIANJIFU/ops/QiZhiDaPartnerPlatform/scripts/dev-stack/run-stack.sh",
+      "port": 8010,
+      "url": "http://127.0.0.1:8010",
+      "cwd": "/Users/LIANJIFU/ops/QiZhiDaPartnerPlatform"
+    },
+    {
       "name": "qiZhiDa-dev-demo",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["dev:demo"],
@@ -9,17 +16,11 @@
       "cwd": "frontend/web"
     },
     {
-      "name": "qiZhiDa-dev-api",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["dev"],
-      "autoPort": true,
-      "cwd": "frontend/web"
-    },
-    {
       "name": "qiZhiDa-prod-static",
       "runtimeExecutable": "node",
       "runtimeArgs": ["/Users/LIANJIFU/ops/QiZhiDaPartnerPlatform/scripts/dev-stack/fe-prod-serve.mjs"],
-      "autoPort": true
+      "port": 8010,
+      "url": "http://127.0.0.1:8010"
     }
   ]
 }
