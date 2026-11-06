@@ -13,10 +13,10 @@ Monolith 入口代理。Python `main.py`(stdlib `BaseHTTPRequestHandler` / `Thre
 | 监听 | **8089** |
 | Upstream | `qzda-app :8100` |
 | 本机 dev | `python3 services/qzda-gateway/main.py`(由 `scripts/dev-stack/run-stack.sh` 拉起) |
-| 容器 | `make run` 自动 build + up |
+| 容器 | 全 Docker 形态：`docker compose -f deploy/compose.yml up -d --build` |
 
 ```bash
-make run
+make run-app              # 仓库根：全栈（含本机网关）
 # FE: VITE_API_BASE=http://127.0.0.1:8089
 ```
 

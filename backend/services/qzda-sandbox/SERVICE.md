@@ -46,7 +46,7 @@
 
 ## 网络
 
-- 拥有 `qzda_exec_net`（`qzda-app` 双挂以调用）。详见 [`backend/deploy/networks.md:6`](../../deploy/networks.md)。
+- 与 `qzda-app` 同处 `qzda_net`（原计划的 `qzda_exec_net` 已在 M10 折叠时下线）。详见 [`backend/deploy/networks.md`](../../deploy/networks.md)。
 - 容器内 `seccomp=unconfined`(gVisor 自己实现 syscall 拦截,重复套用会与 Sentry 冲突)。
 
 ## 现状

@@ -20,18 +20,41 @@
    :8092 qzda-rag     (Python FastAPI,向量检索:pgvector 同 PG 实例 / vector-memory 回退)
 ```
 
-四个容器都跑在同一台 host(本机 Colima / 生产 Docker Engine),没有跨主机
-服务发现、没有 Envoy mesh、没有 K8s。`docker compose up` 一条命令拉起全部。
+所有进程都跑在同一台 host(本机 Colima / 生产 Docker Engine),没有跨主机
+服务发现、没有 Envoy mesh、没有 K8s。
+
+**两种部署形态**(compose.yml 同时定义了全部 6 个服务):
+
+| 形态 | Docker 里跑什么 | 应用进程跑哪 | 入口 |
+|------|----------------|-------------|------|
+| **A · 本机联调(默认)** | 只有 PG + Redis | gateway / 控制面 / 沙箱 / RAG / 前端跑宿主机进程 | 仓库根 `make run-app` |
+| **B · 全 Docker** | 全部 6 个服务 | 都在容器里 | `docker compose -f deploy/compose.yml up -d --build` |
 
 ## 2. 启动
 
-### 2.1 完整 Docker 栈(主路径)
+### 2.1 本机联调(主路径)
+
+```bash
+make run-app       # 仓库根：launchd 监管的全栈（PG/Redis 在 Docker，其余宿主机进程）
+make run-app-status # 看进程与端口
+make run-app-stop   # 停栈
+```
+
+形态 A 下 Docker 只负责有状态的两件：
 
 ```bash
 cd backend
-make run           # 自动拉起 Colima → docker compose up -d → 等所有 healthcheck 通过
-make compose-ps    # 确认所有 6 个容器 running/healthy
-make compose-logs  # 滚动日志(默认尾 100 行)
+make compose-up     # 只起 postgres + redis 两个容器
+make compose-ps     # 确认 qzda-postgres / qzda-redis healthy
+make compose-logs   # 滚动日志(默认尾 100 行)
+```
+
+### 2.2 全 Docker 栈
+
+```bash
+cd backend
+docker compose -f deploy/compose.yml up -d --build
+docker compose -f deploy/compose.yml ps
 ```
 
 | 容器 | 端口 | 镜像 | 角色 |
@@ -43,7 +66,9 @@ make compose-logs  # 滚动日志(默认尾 100 行)
 | `qzda-app` | 8100 | qzda-app:local | Go 单进程控制面(M10 折叠) |
 | `qzda-gateway` | 8089 | qzda-gateway:local | Python 反向代理,8089 → 8100 |
 
-### 2.2 仅本机 Go 控制面(debug)
+> compose.yml 的 `build.context` 目前写成**绝对路径**（指向某台开发机），换机器或换目录要改成 `../..`（仓库根）才能构建。
+
+### 2.3 仅本机 Go 控制面(debug)
 
 不需要完整 docker 栈时,可直接 `go run`:
 
@@ -53,7 +78,9 @@ make run-app       # 启动 PG/Redis + go run ./cmd/qzda-app(连本机 PG/Redis)
 make run-demo      # 内存 + ACME seed,无 PG(纯 demo)
 ```
 
-### 2.3 沙箱 gVisor 启用
+本机联调、演示模式与生产启动的完整口径见 [附录B §B.5 启动](../../docs/附录B-运行模式与本地起停.md#b5-启动)。
+
+### 2.4 沙箱 gVisor 启用
 
 默认 `runtime=runc`(兼容性兜底)。要启用 gVisor:
 
@@ -72,8 +99,10 @@ compose.yml 已配置。
 
 ## 3. 环境变量
 
-`make run` 时通过 `deploy/.env` 注入到所有容器。完整变量清单见
-[`deploy/.env.example`](./.env.example)。最常用:
+`deploy/.env` 里的变量通过 `make infra-env` 写入并注入到容器。完整变量清单见
+[`deploy/.env.example`](./.env.example)；后端侧全部变量与默认值见
+[`backend/README.md` 关键环境变量](../README.md#关键环境变量)，模式语义（`QZDA_MODE` 三档）见
+[附录B §B.2](../../docs/附录B-运行模式与本地起停.md#b2-后端总开关-qzda_mode)。此处只列 Docker 部署最常用:
 
 | 变量 | 默认 | 说明 |
 |------|------|------|
@@ -90,6 +119,9 @@ compose.yml 已配置。
 `QZDA_JWT_SECRET` 在 pro 模式下必填 32 字节随机串;留空走 dev fallback。
 
 ## 4. 数据模式
+
+三套模式的完整口径（三套环境、`QZDA_MODE` 总开关、前端 API 模式、部署拓扑）见
+[附录B 运行模式与本地起停](../../docs/附录B-运行模式与本地起停.md)。此处只记 Docker 侧：
 
 ```
 QZDA_MODE=dev                          (本机默认)  → PG 持久化,空库不灌演示 seed
@@ -111,7 +143,7 @@ make db-reset-dev
 栈起来后,端到端冒烟:
 
 ```bash
-make smoke
+cd backend && make smoke
 # 输出:
 #   healthz ok
 #   workspaces ok
@@ -159,7 +191,7 @@ docker inspect --format '{{.Name}} {{.State.Health.Status}}' \
 # qzda-gateway    healthy
 ```
 
-`make compose-up` 自动等所有 healthy 才退出。
+`make compose-up` 自动等 **PG + Redis** healthy 才退出（形态 A 只起这两个容器）；全 Docker 栈（形态 B）的 healthcheck 由 compose 自己把关。
 
 ## 7.5. pgvector 引导(内网 / Docker Hub 不可达时)
 
@@ -185,13 +217,24 @@ bash scripts/dev-stack/pgvector-bootstrap.sh
 
 历史以下 target / profile 已废弃(M10 折叠 / Phase 4 重命名后):
 
+以下 target 已从 `backend/Makefile` 删除,写文档时不要再引用:
+
+- `compose-up-monolith` / `compose-up-monolith-workflow` — 现在的全栈入口是
+  **仓库根 `make run-app`**(launchd 监管的宿主机进程栈);Docker 侧只起
+  PG + Redis(`cd backend && make compose-up`)。启用进程内 Temporal worker 用
+  `QZDA_WITH_WORKFLOW=1`,不再是独立 target
 - `compose-up-temporal` / `compose-up-oidc` / `compose-up-authentik` /
   `compose-up-kafka` / `compose-up-mtls` / `compose-up-spiffe` /
   `compose-up-opa` / `compose-up-search` /
   `compose-up-obs` / `compose-up-staging` / `compose-up-replica` /
-  `compose-up-full` / `compose-up-monolith-workflow` — K8s / 分布式组件
-  全部下线,单机部署不再需要
+  `compose-up-full` — K8s / 分布式组件全部下线,单机部署不再需要
 - `compose-up-coarse` — M10 折叠到 qzda-app,不存在
+- `smoke-monolith` — 现为 `make smoke`(经 `:8089`)
+- `test-python` — 沙箱 Python 自检改为直接跑脚本:
+  `python3 services/qzda-sandbox/tests/test_runtoken.py`
+- `run-app-workflow` — 改为给 `make run-app` 传 `QZDA_WORKFLOW_WORKER=1` +
+  `QZDA_TEMPORAL_HOST`
+- `skill` — 沙箱 `:8093` 由 `make run-app` 一并拉起
 - 所有 OIDC / Vault / Temporal / Kafka / OPA / OpenSearch /
   Prometheus / Grafana / SPIFFE / mTLS 相关 env 变量 — 单进程部署不需要
 - `QZDA_MILVUS_URI` — 已替换为 `QZDA_PGVECTOR_URL`(同 PG 实例的 pgvector 扩展)

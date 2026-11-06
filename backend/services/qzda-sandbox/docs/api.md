@@ -49,7 +49,7 @@ Prometheus text exposition([`app/main.py:138`](../app/main.py))。
 | `rate_limit_rejected_total{scope}` | counter | rate limit 拒绝(scope ∈ ws / ip / actor) |
 | `skill_syscalls_total{syscall}` | counter | Python 层 syscall 计数 |
 
-**无鉴权**;Compose / 网络层(`qzda_exec_net`)控制可达性。
+**无鉴权**;可达性由部署形态（独立进程/容器）控制。
 
 ## POST `/v1/execute`
 
@@ -137,4 +137,4 @@ Prometheus text exposition([`app/main.py:138`](../app/main.py))。
 - 路径参数必须为扁平文件名;任何 `..` / `/` / `\` → **400 invalid artifact name**。
 - 仅服务 `app.docx_gen.artifact_dir()` 下的产物;`[]=404 not found`。
 - Content-Type 按扩展名推断:`.docx` / `.pptx` / `.pdf` / 兜底 `application/octet-stream`。
-- **无鉴权**;网络层(`qzda_exec_net` + 网关 `x-workspace-id`)保证隔离。
+- **无鉴权**;隔离靠部署形态（独立进程/容器）+ 网关 `x-workspace-id`。

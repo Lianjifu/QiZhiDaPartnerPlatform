@@ -109,7 +109,7 @@ PR2 (`7ed63a9`) 把这一路关死:
 - **Python 层** — [`app/audit_hooks.py`](../app/audit_hooks.py) 通过
   `sys.addaudithook()`(阶段 3)挂 `os.open` / `subprocess.*` / `exec*` /
   `socket.connect`,聚合 `(syscall, retval)` 计数写到响应 `syscalls` 字段。
-- **Go 侧** — 控制面 [`internal/server/builtin_skills.go:auditAppend`](../../internal/server/builtin_skills.go)
+- **Go 侧** — 控制面 [`internal/server/builtin_skills.go:auditAppend`](../../../internal/server/builtin_skills.go)
   把 `syscalls=summary()` 拼到 audit detail(`;syscalls=…` 形状)。
 - **Prometheus** — [`app/telemetry.py`](../app/telemetry.py) 暴露:
   - `skill_executions_total{status,sandbox}`

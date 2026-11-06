@@ -16,9 +16,10 @@ Monolith control plane — 单 Go 进程,承载全部域逻辑(身份 / 策略 /
 ## 启动
 
 ```bash
+make run-app      # 仓库根：全栈（PG/Redis 在 Docker，控制面/网关/沙箱/RAG/前端跑宿主机进程）
 cd backend
-make run          # 完整 Docker 栈(postgres + redis + 3 应用容器)
-make run-app      # 本机裸跑(需 PG/Redis 已起)
+make compose-up   # 只起 Docker PG + Redis
+make run-app      # 本机裸跑控制面 :8100（需 PG/Redis 已起）
 make run-demo     # 内存 + ACME seed,无 PG
 make smoke        # healthz + login + skills/sessions/evaluate 端到端冒烟
 ```

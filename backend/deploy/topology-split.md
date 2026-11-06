@@ -2,11 +2,11 @@
 
 ## 当前形态 — monolith（联调 / demo / 单租户）
 
-**主路径**：`make compose-up-monolith` 或 `make run` → gateway `:8089` → **qzda-app `:8100`** + **qzda-sandbox `:8093`**。
+**主路径**：仓库根 `make run-app`（launchd 监管的宿主机进程栈）→ gateway `:8089` → **qzda-app `:8100`** + **qzda-sandbox `:8093`**。Docker 侧只跑 PG + Redis（`cd backend && make compose-up`）。
 
 | 单元 | 端口 | 内含模块 |
 |------|------|----------|
-| qzda-gateway | 8089 | Envoy `envoy.monolith.yaml` 或 dev `services/qzda-gateway/main.py` |
+| qzda-gateway | 8089 | Python 反向代理 `services/qzda-gateway/main.py` |
 | **qzda-app** | 8100 | **sys + collab + cap + workflow**（`ModeApp` / `DomainAll`） |
 | qzda-sandbox | 8093 | 技能沙箱执行（必须独立） |
 | qzda-agent-runtime | 8091 | Python sidecar，按需（`QZDA_RUNTIME_MODE=remote`） |
@@ -15,12 +15,15 @@
 
 `qzda-app` 单进程内同时挂载 sys / collab / employee / cap / workflow 全部域逻辑。所有 collection 由 `DomainAll` 单一写域拥有；`CanWrite(collection)` 永远返回 true。
 
-可选 Temporal worker：`make compose-up-monolith-workflow` 或 `QZDA_WITH_WORKFLOW=1 scripts/dev-stack/run-stack.sh`。
+可选 Temporal worker：`QZDA_WITH_WORKFLOW=1 scripts/dev-stack/run-stack.sh`（或给 `make run-app` 传 `QZDA_WITH_WORKFLOW=1`）。
 
 ```bash
-cd backend && make compose-up-monolith
-# 裸跑：make run-app & make skill &
-# dev-stack：scripts/dev-stack/run-stack.sh（默认 monolith）
+# 全栈（gateway + 控制面 + 沙箱 + RAG + 前端）
+make run-app                       # 仓库根；等价 scripts/dev-stack/restart-stack.sh start
+# 只起 Docker 基础设施
+cd backend && make compose-up
+# 只起宿主机控制面
+cd backend && make run-app
 ```
 
 ## 进程内组成
@@ -51,7 +54,8 @@ cd backend && make compose-up-monolith
 ## 启动
 
 ```bash
-cd backend && make compose-up-monolith   # 默认
+make run-app                            # 仓库根：全栈（默认）
+cd backend && make compose-up           # 只起 Docker PG + Redis
 # FE Vite 默认代理 → :8089
 ```
 
@@ -60,7 +64,7 @@ cd backend && make compose-up-monolith   # 默认
 - `ServiceMode` 仅 `ModeApp`（运行态）+ `ModeAll`（测试态）。`ParseServiceMode` 接受旧值 `sys` / `collab` / `cap` / `workflow` 全部归 `ModeApp`，向后兼容。
 - 策略评估在 qzda-app 进程内由 `internal/policy.Engine` 直接处理；`/api/zero-trust/evaluate` 与 `/v1/evaluate` 都走本进程。
 - 审计写入：本进程本地 sink（PG / Redis / Kafka / OpenSearch），组合输出。
-- 多活最小集：`QZDA_REPLICA_MODE=standby` 拒写；standby 优先 `QZDA_DATABASE_REPLICA_URL`；`pg_is_in_recovery()` 为真则强制 standby。可选 `make compose-up-replica` 起本机从库 `:5433`。不上 cn-east/south 双活 K8s。
+- 多活最小集：`QZDA_REPLICA_MODE=standby` 拒写；standby 优先 `QZDA_DATABASE_REPLICA_URL`；`pg_is_in_recovery()` 为真则强制 standby。从库由外部提供（本仓不提供从库 compose target）。不上 cn-east/south 双活 K8s。
 
 ## 未来切分路径（按需触发）
 

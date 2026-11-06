@@ -6,13 +6,13 @@ qzda-sandbox 必须**独立部署**（不能并入 qzda-app）。M10 后控制�
 
 | Profile | 部署 | Network |
 |---|---|---|
-| monolith（当前默认，唯一形态） | `qzda-sandbox` 与 `qzda-app` 共 docker-compose,8093 ↔ 8100 内部互联 | `qzda_exec_net` 双挂 |
+| monolith（当前默认，唯一形态） | `qzda-sandbox` 与 `qzda-app` 共 docker-compose,8093 ↔ 8100 内部互联 | 同 `qzda_net`（原 `qzda_exec_net` 已随 M10 折叠下线） |
 
 启动:
 
 ```bash
-cd backend
-make compose-up-monolith    # 默认(快速联调)
+make run-app                 # 仓库根：全栈（含沙箱），默认联调路径
+cd backend && make compose-up   # 只起 Docker PG + Redis
 ```
 
 详细规则与不能并入 qzda-app 的原因见
@@ -110,7 +110,7 @@ OTel:
 | `lsof -i :8093` 报两个 listener | host `services/qzda-sandbox/main.py` 与容器 uvicorn 都起了 8093 | 杀 host,只用容器(详细见 auto-memory `sandbox_port_conflict.md`) |
 | `/v1/execute` 始终 401 `runToken expired` | 控制面与沙箱时钟漂移 > 60s | ntpdate / chrony 对齐 |
 | `QZDA_SANDBOX_SANDBOX=gvisor-local` 沙箱降级 `process` | 没设 runsc | 见上文 *gVisor 启用* |
-| `sealelf: not found` 容器启动失败 | Dockerfile builder stage 缺 `libc6-dev`,本机 `Makefile` 没跑 `make bake` | `make bake` 重 build |
+| `sealelf: not found` 容器启动失败 | Dockerfile builder stage 缺 `libc6-dev` | 重 build 沙箱镜像：`docker compose -f deploy/compose.yml build qzda-sandbox` |
 | `egressProxyUp: false` 持续 | 127.0.0.1:8081 起不来 | 检查 `EgressProxy.start()` 日志;`lsof -i :8081` 看端口冲突 |
 | `skill package signature check failed` | builtin / 用户上传包签名不匹配 | 重签(`cmd/sign-skill`)或重传原 `.skill` 包 |
 

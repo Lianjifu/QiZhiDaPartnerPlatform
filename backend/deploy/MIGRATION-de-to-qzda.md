@@ -84,6 +84,8 @@ kafka-console-consumer.sh --bootstrap-server localhost:9092 \
 
 ### 迁移步骤
 
+> 本节记录 **Phase 3 当时的状态**（SPIRE + envoy mTLS + certs）。当前树里 envoy 配置文件与 `make certs` 已随单进程折叠下线，SPIFFE ID 校验逻辑仍在 `internal/auth/spiffe.go`。回滚到 Phase 3 形态时才需要按下面的步骤操作。
+
 1. **SPIRE Server 配置**(主集群):
    ```bash
    spire-server cli update-federation-bundle \
@@ -130,8 +132,7 @@ make compose-down      # docker compose down
 docker volume prune -f # 移除 de_pg / de_redis / de_milvus_* 等旧卷(本地数据丢失)
 docker network prune -f # 移除 de_net / de_exec_net
 
-make certs             # 重新生成 qzda-* certs(已用 gitignored 新 cert 文件)
-make compose-up-monolith
+make compose-up        # 起 qzda-postgres / qzda-redis
 ```
 
 > ⚠️ `docker volume prune -f` 会**删除所有未被引用的本地卷**,包括 `qzda_*` 卷之外的其他项目卷。请在执行前确认。

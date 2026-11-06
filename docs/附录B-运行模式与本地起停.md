@@ -65,7 +65,7 @@ default:
 
 | 进程 | 端口 | 技术栈 | 职责 |
 |---|---|---|---|
-| `qzda-gateway` | 8089 | Envoy | 统一入口；`/healthz` |
+| `qzda-gateway` | 8089 | Python 反向代理 | 统一入口；`/healthz` |
 | `qzda-app` | 8100 | Go | 控制面全域（单进程 monolith） |
 | `qzda-sandbox` | 8093 | Python FastAPI | 技能执行（**必须独立**） |
 | `qzda-agent-runtime` | 8091 | Python | Agent sidecar，按需 |
@@ -82,14 +82,18 @@ cd frontend/web && npm run dev:demo
 # 演示（后端内存，dev + memory，不写 PG）
 cd backend && make run-demo
 
-# 本机联调（dev，PG 持久化）
-cd backend && make run-dev
-# 或 LaunchAgent
+# 本机联调全栈（dev，PG 持久化）——仓库根，一条命令
+# Docker 只跑 PG + Redis，gateway / 控制面 / 沙箱 / RAG / 前端跑宿主机进程（launchd 监管）
+make run-app
+# 或只重启、不重建
 launchctl kickstart -k "gui/$(id -u)/com.qizhida.dev-stack"
 
 # 改 Go 后必须重编再重启
 cd backend && make build
 launchctl kickstart -k "gui/$(id -u)/com.qizhida.dev-stack"
+
+# 全 Docker 栈（形态 B：6 个容器全在 Docker）
+cd backend && docker compose -f deploy/compose.yml up -d --build
 
 # 生产（pro）
 QZDA_MODE=pro docker compose -f backend/deploy/compose.yml up -d

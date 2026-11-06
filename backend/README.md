@@ -12,11 +12,25 @@
 
 | 文档 | 用途 |
 |------|------|
-| [docs/README.md](../docs/README.md) | 功能模块文档索引（M01–M15 分册） |
+| [docs/README.md](../docs/README.md) | 功能模块文档索引（M01–M16 分册） |
 | [deploy/topology-split.md](deploy/topology-split.md) | monolith 拓扑说明 |
 | [deploy/MIGRATION-de-to-qzda.md](deploy/MIGRATION-de-to-qzda.md) | Phase 3 外部集成迁移指南(OIDC client / Kafka 包名 / SPIFFE trust domain) |
 | [api/routes.md](api/routes.md) | HTTP 路由契约 |
+| [api/models-contract.md](api/models-contract.md) | 模型服务字段级契约（M0 冻结） |
+| [api/proto/README.md](api/proto/README.md) | Connect-RPC / Protobuf IDL 位置 |
 | [../CHANGELOG.md](../CHANGELOG.md) | 三阶段品牌迁移总账 |
+
+服务与组件文档：
+
+| 文档 | 内容 |
+|------|------|
+| [cmd/qzda-app/SERVICE.md](cmd/qzda-app/SERVICE.md) | monolith 控制面职责与端口 |
+| [internal/copilot/README.md](internal/copilot/README.md) | M02 专家协作包内说明（路由 → ReAct → 工具 → SSE） |
+| [infra/postgres/SERVICE.md](infra/postgres/SERVICE.md) · [infra/redis/SERVICE.md](infra/redis/SERVICE.md) | 数据依赖口径 |
+| [services/qzda-gateway/SERVICE.md](services/qzda-gateway/SERVICE.md) | :8089 入口代理 |
+| [services/qzda-rag/SERVICE.md](services/qzda-rag/SERVICE.md) | :8092 RAG（pgvector / vector-memory） |
+| [services/qzda-sandbox/SERVICE.md](services/qzda-sandbox/SERVICE.md) | :8093 技能沙箱 |
+| [services/qzda-agent-runtime/README.md](services/qzda-agent-runtime/README.md) | :8091 agent 运行时 sidecar |
 
 ---
 
@@ -49,7 +63,7 @@ flowchart TB
     CH["渠道入站<br/>飞书 / 企微 / 钉钉"]
   end
 
-  GW["qzda-gateway :8089<br/>Envoy · TLS · 路由 · 限流"]
+  GW["qzda-gateway :8089<br/>Python 反向代理 · 流式桥接"]
 
   FE --> GW
   CH --> GW
@@ -219,7 +233,7 @@ sequenceDiagram
 
 - 策略评估在 qzda-app 进程内由 `internal/policy.Engine` 处理；`/api/zero-trust/evaluate` 与 `/v1/evaluate` 都直接走本进程
 - 审计写入本进程本地 sink（PG / Redis / Kafka / OpenSearch）
-- 多活最小集：`QZDA_REPLICA_MODE=standby` 拒写；优先 `QZDA_DATABASE_REPLICA_URL`（`make compose-up-replica` → `:5433`）
+- 多活最小集：`QZDA_REPLICA_MODE=standby` 拒写；优先 `QZDA_DATABASE_REPLICA_URL`（指向外部从库；本仓无从库 compose target）
 
 ---
 
@@ -250,7 +264,7 @@ backend/
 │   ├── qzda-sandbox/          # 技能沙箱 · 必须独立
 │   ├── qzda-rag/              # FastAPI RAG
 │   └── qzda-agent-runtime/    # Python agent 运行时 sidecar
-├── deploy/                    # compose · envoy · migrations · topology-split
+├── deploy/                    # compose · migrations · topology-split · networks
 ├── infra/ · obs/              # 基础依赖与可观测
 ├── libs/ · pkg/ · gen/        # hexkit 等与 buf 生成代码
 ├── scripts/                   # purge-demo-seed-ids.sql 等
@@ -284,8 +298,10 @@ cd backend && make infra-env
 
 ```bash
 cd backend
-make compose-up-monolith   # 或 make run
-make smoke-monolith        # 经 :8089 验收
+make infra-env             # 校验 / 拉起 Docker Postgres 16
+make compose-up            # 起 Docker PG + Redis
+make run-app               # 起宿主机控制面 :8100
+make smoke                 # 经 :8089 验收（需栈已在跑）
 ```
 
 前端：
@@ -317,22 +333,21 @@ launchctl kickstart -k "gui/$(id -u)/com.qizhida.dev-stack"
 
 | 命令 | 说明 |
 |------|------|
-| `make compose-up` | 仅 PG + Redis |
-| `make compose-up-monolith` / `make run` | **主路径** |
-| `make compose-up-monolith-workflow` | monolith + 启用进程内 Temporal worker |
-| `make compose-up-staging` | monolith + Dex + OPA + OpenSearch + obs |
-| `make compose-up-replica` | 本机从库 `:5433` |
-| `make infra-env` | 校验 / 拉起 Docker Postgres 16 |
+| `make infra-env` | 校验 / 拉起 Docker Postgres 16（写 `deploy/.env`） |
+| `make compose-up` | 起 Docker PG + Redis（仅这两个） |
+| `make compose-down` / `compose-ps` / `compose-logs` | 停 / 看 / 跟日志 |
+| `make run-app` | **主路径**：宿主机起控制面 `:8100`（`QZDA_MODE=dev`） |
+| `make run-demo` | 内存 ACME seed，不写 PG |
+| `make run-dev` | `infra-env` + `run-app` |
+| `make build` | 编 `bin/qzda-app` 与 `bin/qzda-local-llm` |
+| `make test` | `go test ./...` |
+| `make smoke` | 经 `:8089` 探 workspaces / skills / sessions / evaluate |
+| `make db-reset-dev` | drop schema（危险：丢应用数据） |
+| `make verify-builtins` / `vet-builtins` / `skill-gate` | 技能签名与危险模式门禁 |
 
-单进程调试：
+进程内 Temporal worker：给 `run-app` 加 `QZDA_WORKFLOW_WORKER=1` + `QZDA_TEMPORAL_HOST=<host:port>`（或在 `run-stack.sh` 上设 `QZDA_WITH_WORKFLOW=1`）。
 
-```bash
-make run-app              # :8100 monolith · QZDA_MODE=dev
-make run-app-workflow     # :8100 monolith + 进程内 Temporal worker
-make run-demo             # 内存 ACME seed，不写 PG
-make run-dev              # infra-env + run-app
-make skill                # :8093 沙箱
-```
+全栈一条命令（含 gateway / 沙箱 / RAG / 前端）：仓库根 `make run-app`；单看某个端口用 `make run-app-status` / `make run-app-stop`。
 
 网络：[`deploy/networks.md`](deploy/networks.md) · 拓扑：[`deploy/topology-split.md`](deploy/topology-split.md)。
 
@@ -340,16 +355,9 @@ make skill                # :8093 沙箱
 
 ## 冷启动与办公开箱
 
-`apprun` 在非 `demo` 模式下 `store.NewEmpty()` + PG hydrate，**禁止**空库灌演示 seed。启动时 ensure：
+`apprun` 在非 `demo` 模式下 `store.NewEmpty()` + PG hydrate，**禁止**空库灌演示 seed。
 
-| Ensure | 内容 |
-|--------|------|
-| `EnsureBuiltinSkillsReady` | 技能目录 + 各工作区 `autoInstall` 岗位包（`general` / `office`） |
-| `EnsureBuiltinKnowledgeReady` | `kp.{hr,admin,sales,market}.*` 知识包 → published |
-| `EnsureBuiltinWorkflowsReady` | `wf.office.*` + 部门 Certified + 高级库；不覆盖 `wft-user-*` |
-| 内存模式（`QZDA_DATA_BACKEND=memory`）补通用员工；办公助手 `de-office` 同路径 |
-
-源码：`builtin/{knowledge,skills,workflows,scenarios}/`。说明见各子目录 README 与 [附录A 跨模块底座](../docs/附录A-跨模块底座.md)。
+冷启动的完整步骤（建 schema → 挂持久化钩子 → hydrate → builtin 技能/知识/流程 ensure → 内存态补充）见 **[附录B §B.7 冷启动行为](../docs/附录B-运行模式与本地起停.md#b7-冷启动行为)**。builtin 资产源码在 `builtin/{knowledge,skills,workflows,scenarios}/`，说明见各子目录 README 与 [附录A 跨模块底座](../docs/附录A-跨模块底座.md)。
 
 平台工具（`knowledge.retrieve` 等）为 Harness **内置**，不经岗位包安装。
 
@@ -360,9 +368,9 @@ make skill                # :8093 沙箱
 | 模式 | 行为 |
 |------|------|
 | `QZDA_MODE=dev` + `QZDA_DATA_BACKEND=memory` | 内存 store，不 Persist |
-| `development`+ | PG hydrate；Upsert 写回；**硬删必须 `PersistDelete(Sync)`** |
+| `QZDA_MODE=dev` + `QZDA_DATA_BACKEND=pg`（默认） / `QZDA_MODE=pro` | PG hydrate；Upsert 写回；**硬删必须 `PersistDelete(Sync)`** |
 
-多数集合是 Upsert：只改内存再 `Persist` **不会**删掉 PG 旧行。会话删除须 Sync 覆盖 sessions + conversations + messages + context_snapshots。知识 / 模型供应商 / 渠道 / 技能卸载 / 个人流程模板（`workflow_templates`）等同理。记忆为软删（`revoked`）。
+多数集合是 Upsert：只改内存再 `Persist` **不会**删掉 PG 旧行。硬删路径（哪些集合该调 `PersistDelete(Sync)`、kernel 表走 `KernelStore.DeleteMany`、记忆为何是软删）见 **[附录B §B.8 硬删除必须走 PersistDelete](../docs/附录B-运行模式与本地起停.md#b8-硬删除必须走-persistdelete)**。
 
 清理历史 ACME seed：
 
@@ -371,7 +379,7 @@ psql "$QZDA_DATABASE_URL" -f scripts/purge-demo-seed-ids.sql
 # 或 make db-reset-dev（危险：丢全部数据）
 ```
 
-工作区：`x-workspace-id` 不在成员集合内 → **403**（见[附录B §19.9](../docs/附录B-运行模式与本地起停.md#199-工作区-header-不可伪造)）。
+工作区：`x-workspace-id` 不在成员集合内 → **403**（见[附录B §B.9](../docs/附录B-运行模式与本地起停.md#b9-工作区-header-不可伪造)）。
 ---
 
 ## 关键 API 摘要
@@ -408,7 +416,7 @@ psql "$QZDA_DATABASE_URL" -f scripts/purge-demo-seed-ids.sql
 | `QZDA_DATABASE_URL` / `QZDA_REDIS_URL` | PG / Redis |
 | `QZDA_APP_ADDR` / `QZDA_LISTEN_ADDR` | monolith 监听（默认 `:8100`） |
 | `QZDA_SERVICE` | 兼容字段，归 `app`；旧值（`sys` / `collab` / `cap` / `workflow`）也归 `app` |
-| `QZDA_DATABASE_REPLICA_URL` | standby 从库；本机 `compose-up-replica` → `:5433` |
+| `QZDA_DATABASE_REPLICA_URL` | standby 从库 DSN（`QZDA_REPLICA_MODE=standby` 时生效；本仓不提供从库 compose） |
 | `QZDA_AGENT_RUNTIME_URL` / `QZDA_RAG_URL` / `QZDA_SANDBOX_RUNTIME_URL` | 侧车 |
 | `QZDA_RUNTIME_MODE` | `local`（默认）或 `remote` |
 | `QZDA_RUNTIME_FAILOVER_LOCAL` | 非生产 remote 失败可回落 local |
@@ -427,9 +435,15 @@ psql "$QZDA_DATABASE_URL" -f scripts/purge-demo-seed-ids.sql
 ## 测试与冒烟
 
 ```bash
-make test && make test-python && make smoke-monolith
+make test && make smoke
 ```
 
-`make smoke-monolith` 经 `:8089` 探测 workspaces / skills / sessions / evaluate 等主路径。
+`make smoke` 经 `:8089` 探测 workspaces / skills / sessions / evaluate 等主路径。
+
+沙箱 Python 自检（脚本式，非 pytest 收集）：
+
+```bash
+python3 services/qzda-sandbox/tests/test_runtoken.py
+```
 
 CI（[`.github/workflows/backend-contract.yml`](../.github/workflows/backend-contract.yml)）：PR/`main` 跑 `go test ./...` + IDL/路由契约探针 + Python smoke；完整 monolith smoke 仅 `workflow_dispatch`。

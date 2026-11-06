@@ -13,7 +13,7 @@
   │  Authorization: Bearer <token>
   │  x-workspace-id: <ws>
   ▼
-qzda-gateway :8089            Envoy（envoy.monolith.yaml）统一入口
+qzda-gateway :8089            Python 反向代理（services/qzda-gateway/main.py）统一入口
   ▼
 qzda-app :8100
   │  auth.Middleware.RequireAuth      认证 + 角色写门（internal/auth/middleware.go:62）
@@ -126,7 +126,7 @@ evaluateWriteLocked
 
 ### 硬删除纪律
 
-多数集合是 Upsert——只改内存切片再 `Persist` **不会**删掉 PG 旧行。硬删路径必须调 `PersistDelete` / `PersistDeleteSync`（`persist.go:96,112`）；kernel 表走 `KernelStore.DeleteMany`。详见 [附录 B §19.8](./附录B-运行模式与本地起停.md#198-硬删除必须走-persistdelete)。
+多数集合是 Upsert——只改内存切片再 `Persist` **不会**删掉 PG 旧行。硬删路径必须调 `PersistDelete` / `PersistDeleteSync`（`persist.go:96,112`）；kernel 表走 `KernelStore.DeleteMany`。详见 [附录 B §B.8](./附录B-运行模式与本地起停.md#b8-硬删除必须走-persistdelete)。
 
 ---
 

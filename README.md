@@ -13,10 +13,10 @@
 
 <p align="center">
   <a href="#快速开始"><img alt="Quick Start" src="https://img.shields.io/badge/Quick%20Start-2%20min-6D28D9?style=for-the-badge" /></a>
-  <a href="#功能模块"><img alt="Modules" src="https://img.shields.io/badge/15%20Modules-Ready-FF7A1B?style=for-the-badge" /></a>
-  <a href="../../blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/License-AGPL--3.0-blue?style=for-the-badge" /></a>
-  <a href="../../actions"><img alt="CI" src="https://img.shields.io/badge/CI-backend--contract-success?style=for-the-badge" /></a>
-  <a href="../../releases"><img alt="Release" src="https://img.shields.io/badge/Release-v3.6-FF7A1B?style=for-the-badge" /></a>
+  <a href="#功能模块"><img alt="Modules" src="https://img.shields.io/badge/16%20Modules-Ready-FF7A1B?style=for-the-badge" /></a>
+  <a href="https://github.com/Lianjifu/QiZhiDaPartnerPlatform/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/License-AGPL--3.0-blue?style=for-the-badge" /></a>
+  <a href="https://github.com/Lianjifu/QiZhiDaPartnerPlatform/actions"><img alt="CI" src="https://img.shields.io/badge/CI-backend--contract-success?style=for-the-badge" /></a>
+  <a href="https://github.com/Lianjifu/QiZhiDaPartnerPlatform/releases"><img alt="Release" src="https://img.shields.io/badge/Release-v4.11-FF7A1B?style=for-the-badge" /></a>
 </p>
 
 <p align="center">
@@ -129,17 +129,17 @@
 本机联调（**monolith** + 真实网关）最短路径，**约 2 分钟**：
 
 ```bash
-# 1) Docker Postgres 16（勿用 Homebrew 抢 5432）
+# 1) 一键起栈：Docker 只跑 PG + Redis，gateway / 控制面 / 沙箱 / RAG / 前端跑宿主机进程
+#    （launchd 监管，崩了自动拉起；改了 Go 代码先 cd backend && make build）
+make run-app
+curl -sS http://127.0.0.1:8089/healthz   # 网关
+curl -sS http://127.0.0.1:8010/          # 前端
+
+# 单独起 Docker Postgres 16（勿用 Homebrew 抢 5432）
 bash scripts/dev-stack/ensure-docker-postgres.sh
-
-# 2) 控制面
-cd backend && make compose-up-monolith
-curl -sS http://127.0.0.1:8089/healthz
-
-# 3) 前端
-cd ../frontend && pnpm install && pnpm --filter web dev
-# 打开 http://127.0.0.1:8010 ，用 admin@… 登录（密码任意非空）
 ```
+
+前端首次需要 `cd frontend && pnpm install`；打开 http://127.0.0.1:8010 ，用 admin@… 登录（密码任意非空）。
 
 **验收清单**：
 
@@ -169,7 +169,7 @@ cd ../frontend && pnpm install && pnpm --filter web dev
 | <img src="./docs/images/product/skills.png" alt="技能中心" /> |
 | 启用清单 / 技能商店 / 平台工具；含办公相关技能 |
 
-> 原图：[`docs/images/product/`](docs/images/product/)。
+> 原图：[`docs/images/product/`](docs/images/product/)；品牌与示意图资产说明见 [`docs/images/brand/README.md`](docs/images/brand/README.md)。
 
 ---
 
@@ -245,7 +245,7 @@ flowchart TB
 
 > 办公快捷路径：流程模板（办公通用）或直接与 `de-office` 对话。
 
-### 模块一览（15 个一级模块）
+### 模块一览（16 个一级模块）
 
 | ID | 模块 | 路由 | 分组 | 一句话 | 状态 |
 |----|------|------|------|--------|------|
@@ -264,6 +264,7 @@ flowchart TB
 | **M13** | 访问控制 | settings / 独立 | 治理 | 授权、发布审批、SoD | <img src="./docs/images/icons/check-circle-fill.svg" width="16" height="16" align="absmiddle" style="margin-right:6px;vertical-align:middle" alt=""> |
 | **M14** | 持续验证 | settings / 独立 | 治理 | 零信任策略与临时授权 | <img src="./docs/images/icons/check-circle-fill.svg" width="16" height="16" align="absmiddle" style="margin-right:6px;vertical-align:middle" alt=""> |
 | **M15** | 审计中心 | settings / 独立 | 治理 | 只读追溯与脱敏导出 | <img src="./docs/images/icons/check-circle-fill.svg" width="16" height="16" align="absmiddle" style="margin-right:6px;vertical-align:middle" alt=""> |
+| **M16** | 深度智能体编排 | 复用 `/copilot` | 编排 | 结构化工具调用、上下文工程、挂起续跑、轨迹评估 | <img src="./docs/images/icons/check-circle-fill.svg" width="16" height="16" align="absmiddle" style="margin-right:6px;vertical-align:middle" alt=""> |
 
 ### 重点模块详解
 
@@ -287,6 +288,18 @@ flowchart TB
 - 多气泡回合 + 能力调用 + 右侧上下文面板联动
 - ThoughtPanel / 附件 / @ / 命令插入
 - 高风险门禁：写操作身份绑定双签
+
+#### M16 · 深度智能体编排
+
+**功能**：把协作页的「对话 + 文本解析工具」升级为能自主把活干完的伙伴编排。  
+**关键路径**：同一 `/copilot` 会话流 → 结构化工具调用 → 轮内并行 / 上下文压缩 → 命中人工授权则挂起 → 授权通过后同一回合续跑。  
+**亮点**：
+
+- 能力契约：工具参数在执行前校验，配置期拦拼写错误
+- 原生 `tool_use`；provider 不支持时透明降级，旧行为不变
+- 会话压缩 / 大结果卸载 / 提示缓存 / 待办回注
+- 子伙伴派生（白名单 + 深度封顶 1）与自动升级交接
+- 轨迹评估：上岗评测按真实轨迹打分，不写死分数
 
 #### M06 · 工作流程
 
@@ -321,7 +334,7 @@ flowchart TB
 
 | 文档 | 用途 |
 |------|------|
-| [`docs/README.md`](docs/README.md) | 功能模块文档索引（M01–M15 分册） |
+| [`docs/README.md`](docs/README.md) | 功能模块文档索引（M01–M16 分册） |
 | [`backend/deploy/topology-split.md`](backend/deploy/topology-split.md) | monolith 拓扑说明 |
 
 ### 文档分层
@@ -355,7 +368,7 @@ flowchart TB
   end
 
   subgraph Edge["入口层"]
-    GW["qzda-gateway :8089<br/>Envoy / gateway-proxy"]
+    GW["qzda-gateway :8089<br/>Python 反向代理"]
   end
 
   subgraph Control["控制面 · Go 单进程"]
@@ -390,10 +403,12 @@ flowchart TB
 
 | 形态 | 组成 | 适用 |
 |------|------|------|
-| **monolith（默认）** | gateway + qzda-app + sandbox（± agent / rag） | 本地联调 / SME / 单租户 |
-| **staging 拓扑** | monolith + Dex + OPA + OpenSearch + obs | 预发验收 |
+| **monolith（默认，唯一形态）** | gateway + qzda-app + sandbox（± agent / rag） | 本地联调 / SME / 单租户 |
+| **全 Docker** | 上表 6 个容器全部在 Docker 里跑 | 生产 / 预发单机部署 |
 
-启动：`make compose-up-monolith` 或 LaunchAgent（`scripts/dev-stack/run-stack.sh`）。改 Go 后须 `make build` 再重启栈。细则见 [`backend/deploy/topology-split.md`](backend/deploy/topology-split.md)。
+> 原计划的 staging 拓扑（monolith + Dex + OPA + OpenSearch + obs）已随 M10 单进程折叠与 Phase 4 重命名下线；当前只有上表两种形态。可观测只保留 `/metrics` 端点，Prometheus / Grafana 需自行接入。
+
+启动：仓库根 `make run-app`（包装 launchd 监管的 `scripts/dev-stack/restart-stack.sh` → `run-stack.sh`）。改 Go 后须 `cd backend && make build` 再重启栈。细则见 [`backend/deploy/topology-split.md`](backend/deploy/topology-split.md)。
 
 ### 数据流时序图
 
@@ -465,7 +480,7 @@ sequenceDiagram
 | **前端** | React 18、TypeScript、Vite 5、pnpm Workspace、TanStack Query、Zustand、React Flow | 控制台 IA、联调与治理交互 |
 | **控制面** | Go 1.24、Connect/Protobuf、PostgreSQL 16、Redis、`ServiceMode` | 身份、工作区、策略、审计、CRUD、运营聚合 |
 | **执行面** | Python FastAPI；monolith 默认进程内 Harness | Agent 编排、RAG、Skill 沙箱 |
-| **网关 / 基建** | Envoy；可选 Dex、OPA、OpenSearch、Temporal、Vault、Milvus、Kafka | 入口、IdP、策略引擎、编排、密钥、向量（目标/可选） |
+| **网关 / 基建** | Python 反向代理；可选 OPA、OpenSearch、Temporal | 入口、策略引擎、检索、编排（OPA / OpenSearch / Temporal 为外部可选依赖，需自行接入） |
 
 ### 仓库结构
 
@@ -485,20 +500,20 @@ qizhida-partner-platform/
 │   ├── internal/                  # apprun · server(ServiceMode) · store · policy …
 │   ├── api/                       # routes.md · proto · 契约说明
 │   ├── services/                  # 部署单元：Dockerfile · SERVICE.md · FastAPI
-│   ├── deploy/                    # compose · envoy.monolith · topology-split
+│   ├── deploy/                    # compose · topology-split · networks
 │   ├── infra/ · obs/              # 基础依赖与可观测
 │   ├── libs/ · pkg/ · gen/        # 共享库与生成代码
 │   ├── scripts/                   # purge-demo-seed 等运维脚本
 │   ├── bin/                       # make build 产物（LaunchAgent 读取）
 │   └── Makefile
 ├── scripts/
-│   └── dev-stack/                 # ensure-docker-postgres · run-stack · gateway-proxy
+│   └── dev-stack/                 # ensure-docker-postgres · run-stack · restart-stack · pgvector-bootstrap
 ├── docs/
 │   ├── images/
 │   │   ├── brand/                 # 产品主轴 / 三支柱 / 能力地图 / 五中心
 │   │   └── product/               # 控制台截图 2.0
 │   ├── README.md                  # 功能模块文档索引
-│   ├── M01-运营总览.md … M15-审计中心.md
+│   ├── M01-运营总览.md … M16-深度智能体编排.md
 │   ├── 附录A-跨模块底座.md
 │   ├── 附录B-运行模式与本地起停.md
 └── .github/workflows/             # backend-contract（test + 契约；smoke 手动）
@@ -556,8 +571,8 @@ bash scripts/dev-stack/ensure-docker-postgres.sh
 
 ```bash
 cd backend
-make compose-up-monolith    # 推荐
-# make compose-up-staging   # 预发拓扑
+make compose-up             # 只起 Docker PG + Redis
+make run-app                # 再起宿主机控制面 :8100（等价：仓库根 make run-app）
 curl -sS http://127.0.0.1:8089/healthz
 ```
 
@@ -600,7 +615,7 @@ dev 允许 `mock-*-token` 与 `x-mock-*` 身份头；pro 禁止两者。业务�
 
 ```bash
 cd frontend && pnpm --filter web typecheck && pnpm --filter web test
-cd ../backend && make test && make test-python && make smoke-monolith
+cd ../backend && make test && make smoke
 ```
 
 | 现象 | 处理 |
@@ -620,7 +635,7 @@ cd ../backend && make test && make test-python && make smoke-monolith
 
 | 文档 | 用途 |
 |------|------|
-| [`docs/README.md`](docs/README.md) | 功能模块文档索引（M01–M15 分册） |
+| [`docs/README.md`](docs/README.md) | 功能模块文档索引（M01–M16 分册） |
 | [`backend/deploy/topology-split.md`](backend/deploy/topology-split.md) | 部署拓扑 |
 | [`backend/README.md`](backend/README.md) | 控制面命令与 `builtin/` |
 | [`CHANGELOG.md`](CHANGELOG.md) | 品牌升级与发布说明(三阶段迁移记录) |
@@ -630,14 +645,14 @@ cd ../backend && make test && make test-python && make smoke-monolith
 
 ## <img src="./docs/images/icons/heart-fill.svg" width="16" height="16" align="absmiddle" style="margin-right:6px;vertical-align:middle" alt=""> 贡献与社区
 
-- **问题反馈**：[Issue Tracker](../../issues)
-- **功能建议**：[Discussions](../../discussions)
+- **问题反馈**：[Issue Tracker](https://github.com/Lianjifu/QiZhiDaPartnerPlatform/issues)
+- **功能建议**：[Discussions](https://github.com/Lianjifu/QiZhiDaPartnerPlatform/discussions)
 - **代码贡献**：欢迎 PR；先读 [`backend/README.md`](backend/README.md) 与 [`docs/README.md`](docs/README.md)
 - **CI 流水线**：[`.github/workflows/backend-contract.yml`](.github/workflows/backend-contract.yml)（`backend/**` 改动触发）
 
 ### 开发约定
 
-- 提交前：`make test` + `make smoke-monolith`
+- 提交前：`make test`（后端）+ `cd backend && make smoke`（经 :8089 验收）
 - Go 后端改动：必须 `cd backend && make build` 后重启栈
 - 前端改动：`pnpm --filter web typecheck && pnpm --filter web test`
 - 破坏性变更：顶部 [`CHANGELOG.md`](CHANGELOG.md) 加 `Unreleased` 区块
@@ -650,7 +665,7 @@ cd ../backend && make test && make test-python && make smoke-monolith
 
 ## <img src="./docs/images/icons/file.svg" width="16" height="16" align="absmiddle" style="margin-right:6px;vertical-align:middle" alt=""> 许可证
 
-本项目基于 **AGPL-3.0** 开源。详见 [`LICENSE`](../../blob/main/LICENSE)。
+本项目基于 **AGPL-3.0** 开源。详见 [`LICENSE`](https://github.com/Lianjifu/QiZhiDaPartnerPlatform/blob/main/LICENSE)。
 
 商业授权 / OEM 集成 / 闭源分发：请通过 Issue 联系维护团队。
 
