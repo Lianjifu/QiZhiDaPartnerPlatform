@@ -22,7 +22,7 @@ import {
 } from '@/features/copilot/lib/expert-tools';
 import { deriveReasoningEffort, deriveRunMode } from '@/features/copilot/lib/composer-mode';
 import { readCopilotLastSession } from '@/lib/copilot-workspace';
-import { toChatSession, sessionInWorkspace, type SessionItem } from '@/features/copilot/components/CopilotPage.helpers';
+import { stripHeadingMarkers, toChatSession, sessionInWorkspace, type SessionItem } from '@/features/copilot/components/CopilotPage.helpers';
 import type { CopilotState } from '@/features/copilot/components/useCopilotState';
 
 export interface UseCopilotEffectsParams {
@@ -268,7 +268,7 @@ export function useCopilotEffects(p: UseCopilotEffectsParams) {
       {
         ...toChatSession(summary),
         messages: resolved.messages,
-        preview: summary.preview || toChatSession(summary).preview,
+        preview: stripHeadingMarkers(summary.preview) || toChatSession(summary).preview,
       },
       { preserveGovernance: true },
     );

@@ -4334,29 +4334,40 @@ a:focus-visible,
 .copilot-message-list { gap: 8px; }
 .copilot-message {
   margin-inline: 0;
-  padding: 12px 14px;
-  border: 1px solid transparent;
-  border-radius: 16px;
-  transition: border-color .16s ease, box-shadow .16s ease;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  transition: background-color .16s ease, box-shadow .16s ease;
 }
 .copilot-message--assistant,
 .copilot-message--tool {
-  border-color: var(--border);
-  background: var(--surface-1);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+  background: transparent;
+  box-shadow: none;
 }
 .copilot-message:hover,
 .copilot-message:focus-within {
-  border-color: color-mix(in srgb, var(--brand) 22%, var(--border));
+  border-color: transparent;
 }
-.copilot-message.is-context-selected { border-color: color-mix(in srgb, var(--brand) 42%, var(--border)); background: color-mix(in srgb, var(--brand-light) 38%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-light) 62%, transparent); }
-.copilot-message--user { margin-left: 10%; border-color: transparent; background: transparent; box-shadow: none; }
+.copilot-message.is-context-selected { border-color: transparent; background: color-mix(in srgb, var(--brand-light) 38%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-light) 62%, transparent); }
+.copilot-message--user { margin-left: 10%; }
 .copilot-message__avatar { box-shadow: inset 0 0 0 1px rgba(15,23,42,.05); }
 .copilot-message__meta { color: var(--text-muted); }
-.copilot-message__meta > .font-semibold { letter-spacing: -.01em; }
+.copilot-message__meta .font-semibold { letter-spacing: -.01em; }
 .copilot-message__body--assistant .md-content > :first-child { margin-top: 0; }
 .copilot-message__body--assistant .md-content > :last-child { margin-bottom: 0; }
-.copilot-message__body--user { box-shadow: 0 3px 10px rgba(79,70,229,.16); }
+.copilot-message__body--user { box-shadow: none; }
+/* 答复正文不做视觉分区:模型自发的 ## / ### 退化为与正文同号的强调行,
+   不再是"小标题"(无字号跳变、无竖条、无额外留白)。 */
+.copilot-message__body--assistant .md-content .md-h2,
+.copilot-message__body--assistant .md-content .md-h3 {
+  font-size: inherit;
+  font-weight: 600;
+  margin: 12px 0 0;
+  padding: 0;
+  border: 0;
+}
+.copilot-message__body--assistant .md-content > .md-h2:first-child,
+.copilot-message__body--assistant .md-content > .md-h3:first-child { margin-top: 0; }
 .copilot-message-workcards { padding-top: 1px; }
 .copilot-message-workcard { min-height: 54px; box-shadow: none; transition: transform .16s ease, border-color .16s ease, background-color .16s ease, box-shadow .16s ease; }
 .copilot-message-workcard:hover, .copilot-message-workcard:focus-visible { box-shadow: var(--shadow-sm); transform: translateY(-1px); }
@@ -13227,7 +13238,4 @@ a:focus-visible,
  * ============================================================= */
 
 /* 同一 turn 内的块(思考 / 工具 / 答复)左边缘对齐,间距由 .bubble-stack 的 gap 控制;
-   跨 turn 之间保留更大的间距。卡片样式统一见 copilot 组件内的 rounded-lg + border + bg-elevated。 */
-.copilot-message-list .bubble-stack + .bubble-stack {
-  margin-top: 1rem;
-}
+   跨 turn 之间的间距由 CopilotPage.Messages.tsx 外层容器的 gap 承担。 */

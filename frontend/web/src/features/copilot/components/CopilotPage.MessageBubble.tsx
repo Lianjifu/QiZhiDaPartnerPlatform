@@ -20,14 +20,14 @@ import { ApprovalCard } from './CopilotPage.ApprovalCard';
 import { CopilotMessageStatus } from './CopilotPage.MessageStatus';
 import { CopilotVariantNav, type CopilotVariant } from './CopilotPage.VariantNav';
 import { CopilotMessageAuditLink } from './CopilotPage.MessageAuditLink';
-import { ToolCallRow } from './CopilotPage.ToolCallRow';
+import { ToolCallGroup } from './CopilotPage.ToolCallGroup';
 import type { BubbleVariantStyle } from './CopilotPage.BubbleSplitter';
 
 /**
  * 气泡变体样式(由 BubbleSplitter 决定):
  *   - standard: 默认 assistant 主气泡
  *   - muted   : 灰色 / 紧凑 / 折叠向(thought / observation)
- *   - compact : 工具调用卡片(橙边 / font-mono)
+ *   - compact : 工具调用组(折叠条)
  */
 const _BUBBLE_VARIANT_DOC: BubbleVariantStyle = 'standard';
 
@@ -106,7 +106,9 @@ export function CopilotPageMessageBubble({
   const isCompact = variantStyle === 'compact';
   const isEmpty = !m.content;
   const isStreaming = m.status === 'streaming' || m.status === 'in_flight';
-  const agentDisplayName = agentName || m.agentName || (isUser ? '王昊' : isTool ? '能力调用' : '助手');
+  const agentDisplayName = agentName || m.agentName || (isTool ? '能力调用' : '助手');
+  // 用户身份取当前登录人;拿不到时退回"我",不再硬编码具体人名。
+  const userDisplayName = currentUser?.name || m.agentName || '我';
   const needsDecision = !isUser && /CVE|高危|高风险|影响资产/.test(m.content ?? '');
   const artifacts = useMemo(
     () => (isUser || isTool || !m.content ? [] : extractSkillArtifacts(m.content)),
@@ -174,26 +176,29 @@ export function CopilotPageMessageBubble({
         'copilot-message__content min-w-0 space-y-2.5',
         isUser ? 'max-w-[80%]' : 'w-full max-w-[800px]',
       )}>
-        {showHeader ? (
-          <div className={cn('copilot-message__meta flex items-center gap-1.5 text-[11px]', isUser && 'justify-end')}>
-            {isUser ? <Avatar name="王昊" size={20} /> : null}
-            <span className="font-semibold text-[var(--text)]">{isUser ? '王昊' : agentDisplayName}</span>
-            {!isUser && !isTool && expertRole ? (
-              <span className="truncate text-[10px] text-[var(--text-muted)]">{expertRole}</span>
-            ) : null}
-            {!isUser && m.status ? (
-              <CopilotMessageStatus status={m.status} elapsedSec={generationElapsedSec} />
-            ) : null}
-            {!isUser && m.metrics?.ttftMs !== undefined ? (
-              <details className="text-[10px] text-[var(--text-muted)]">
-                <summary className="cursor-pointer">运行详情</summary>
-                <span className="font-mono">TTFT {m.metrics.ttftMs}ms · {m.metrics.durationMs ? `${(m.metrics.durationMs / 1000).toFixed(1)}s` : ''}{m.metrics.model ? ` · ${m.metrics.model}` : ''}</span>
-              </details>
-            ) : null}
-            <span className="text-[10px] text-[var(--text-muted)] font-mono tabular-nums" title={m.createdAt}>{formatShanghaiTime(m.createdAt)}</span>
-            {((m.toolCalls?.length ?? 0) > 0 || isTool) && !isCompact ? <Badge tone="warn" className="text-[9px]">能力调用</Badge> : null}
-            {m.approvalRequest && !isCompact ? <Badge tone="error" className="text-[9px]">写操作</Badge> : null}
-            {!isUser && showHeader ? (
+        {showHeader && !isUser ? (
+          <div className="copilot-message__meta flex items-center gap-2 text-[11px] justify-between">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <span className="truncate font-semibold text-[var(--text-secondary)]">{agentDisplayName}</span>
+              {!isTool && expertRole ? (
+                <span className="truncate text-[10px] text-[var(--text-muted)]">
+                  {expertRole}
+                </span>
+              ) : null}
+            </div>
+            <div className="flex shrink-0 items-center gap-1.5">
+              {!isTool && m.status ? (
+                <CopilotMessageStatus status={m.status} elapsedSec={generationElapsedSec} />
+              ) : null}
+              {!isTool && m.metrics?.ttftMs !== undefined ? (
+                <details className="text-[10px] text-[var(--text-muted)]">
+                  <summary className="cursor-pointer">运行详情</summary>
+                  <span className="font-mono">TTFT {m.metrics.ttftMs}ms · {m.metrics.durationMs ? `${(m.metrics.durationMs / 1000).toFixed(1)}s` : ''}{m.metrics.model ? ` · ${m.metrics.model}` : ''}</span>
+                </details>
+              ) : null}
+              <span className="text-[10px] text-[var(--text-muted)] font-mono tabular-nums" title={m.createdAt}>{formatShanghaiTime(m.createdAt)}</span>
+              {((m.toolCalls?.length ?? 0) > 0 || isTool) && !isCompact ? <Badge tone="warn" className="text-[9px]">能力调用</Badge> : null}
+              {m.approvalRequest && !isCompact ? <Badge tone="error" className="text-[9px]">写操作</Badge> : null}
               <CopilotMessageAuditLink
                 conversationId={conversationId}
                 correlationId={m.correlationId}
@@ -201,7 +206,7 @@ export function CopilotPageMessageBubble({
                 onOpenAudit={onOpenAudit}
                 onOpenReplay={onOpenReplay}
               />
-            ) : null}
+            </div>
           </div>
         ) : null}
 
@@ -256,20 +261,16 @@ export function CopilotPageMessageBubble({
         ) : null}
 
         {isTool && (m.toolCalls?.length ?? 0) > 0 ? (
-          <div className="space-y-1">
-            {m.toolCalls!.map((tc) => (
-              <ToolCallRow key={tc.id} toolCall={tc} />
-            ))}
-          </div>
+          <ToolCallGroup toolCalls={m.toolCalls!} streaming={isStreaming} />
         ) : null}
 
         {!isEmpty ? (
           <div className={cn(
             'copilot-message__body relative',
             isUser
-              ? 'copilot-message__body--user inline-block max-w-full whitespace-pre-wrap break-words rounded-2xl rounded-tr-sm bg-[var(--brand)] px-4 py-2.5 text-[14px] text-white shadow-sm'
+              ? 'copilot-message__body--user inline-block max-w-full whitespace-pre-wrap break-words rounded-2xl bg-[var(--surface-3)] px-4 py-2.5 text-[14px] leading-[1.65] text-[var(--text)]'
               : isTool
-              ? 'copilot-message__body--tool rounded-lg border border-[var(--warning)]/30 bg-[var(--warning-bg)]/50 px-3 py-2 text-[12px] text-[var(--text-secondary)] font-mono'
+              ? 'copilot-message__body--tool text-[12px] text-[var(--text-secondary)] break-words'
               : isMuted
               ? 'copilot-message__body--muted max-w-[760px] text-[12.5px] leading-[1.6] text-[var(--text-muted)] break-words'
               : isCompact
@@ -380,6 +381,16 @@ export function CopilotPageMessageBubble({
 
         {isTurnTail && !isEmpty ? (
           <div className={cn('copilot-message__actions flex items-center gap-0.5 text-[var(--text-muted)]', isUser ? 'justify-end' : '')}>
+            {isUser ? (
+              // 用户身份行放在气泡下方(与 Claude Code 一致):时间在左,姓名与头像在右。
+              <div className="mr-1 flex items-center gap-1.5">
+                <span className="font-mono text-[10px] tabular-nums text-[var(--text-muted)]" title={m.createdAt}>
+                  {formatShanghaiTime(m.createdAt)}
+                </span>
+                <span className="text-[11px] text-[var(--text-secondary)]">{userDisplayName}</span>
+                <Avatar name={userDisplayName} size={18} />
+              </div>
+            ) : null}
             <button
               onClick={() => onCopy(m)}
               className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] hover:bg-[var(--bg-hover)] hover:text-[var(--text)]"

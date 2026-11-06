@@ -54,6 +54,21 @@ export function sessionTime(lastMessageAt: string | undefined | null) {
     : new Intl.DateTimeFormat('zh-CN', { timeZone: SHANGHAI_TIME_ZONE, month: 'numeric', day: 'numeric' }).format(date);
 }
 
+// 会话列表预览来自答复正文,可能带 Markdown 标题标记("## 结论"),
+// 列表里显示裸标记不好看,去掉(行内 "C#" 不受影响)。
+export function stripHeadingMarkers(text: string | undefined): string {
+  if (!text || !text.includes('#')) return text ?? '';
+  return text
+    .split('\n')
+    .map((line) => {
+      const trimmed = line.replace(/^[ \t]+/, '');
+      if (!trimmed.startsWith('#')) return line;
+      const rest = trimmed.replace(/^#+/, '');
+      return /^[ \t]/.test(rest) ? rest.trim() : line;
+    })
+    .join('\n');
+}
+
 export function toChatSession(session: SessionItem): ChatSession {
   const stamp = session.lastMessageAt || session.updatedAt || session.createdAt;
   const created = parseDate(session.createdAt)?.getTime() ?? parseDate(stamp)?.getTime() ?? Date.now();
@@ -64,7 +79,7 @@ export function toChatSession(session: SessionItem): ChatSession {
     ownerId: session.ownerId,
     conversationId: session.conversationId ?? session.id,
     title: session.title || '未命名会话',
-    preview: session.preview || '暂无消息',
+    preview: stripHeadingMarkers(session.preview) || '暂无消息',
     agent: session.digitalPartnerName ?? session.agent ?? (session.digitalPartnerId ? '岗位专家' : '助手'),
     digitalPartnerId: session.digitalPartnerId,
     digitalPartnerName: session.digitalPartnerName ?? session.agent,

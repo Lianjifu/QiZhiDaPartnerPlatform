@@ -229,7 +229,7 @@ export function CopilotPageMessages() {
         </div>
       )}
       {displayMessages.length === 0 ? emptyIntro : (
-        <div className="mx-auto flex w-full max-w-full flex-col">
+        <div className="mx-auto flex w-full max-w-full flex-col gap-6">
           {displayMessages.map(renderMessage)}
           {showTypingFallback && (
             <div className="copilot-typing mt-3 flex items-center gap-2 text-[12px] text-[var(--text-muted)]" aria-live="polite">

@@ -36,7 +36,7 @@ describe('splitMessageIntoBubbles', () => {
     expect(slices[0].messageOverride.role).toBe('user');
   });
 
-  it('extracts thought from reasoningSteps', () => {
+  it('extracts thought from reasoningSteps without leaking step details into the body', () => {
     const slices = splitMessageIntoBubbles(baseMsg({
       reasoningSteps: [
         { id: 's1', kind: 'analyze', title: '理解用户意图', detail: '用户问入职流程' },
@@ -46,19 +46,24 @@ describe('splitMessageIntoBubbles', () => {
     }));
     expect(slices.length).toBe(2);
     expect(slices[0].kind).toBe('thought');
-    expect(slices[0].messageOverride.content).toContain('用户问入职流程');
+    // 推理细节属于内部叙事,不得进入用户可见正文
+    expect(slices[0].messageOverride.content).toBe('');
+    expect(slices[0].messageOverride.content).not.toContain('用户问入职流程');
+    expect(slices[0].messageOverride.reasoningSteps).toHaveLength(2);
     expect(slices[0].bubbleProps?.variantStyle).toBe('muted');
     expect(slices[1].kind).toBe('answer');
     expect(slices[1].messageOverride.content).toBe('这是最终回答。');
   });
 
-  it('extracts thought from [thinking]...[/thinking] tag', () => {
+  it('extracts thought from [thinking]...[/thinking] tag into the narrative field', () => {
     const slices = splitMessageIntoBubbles(baseMsg({
       content: '[thinking]我先想一下用户意图[/thinking]好的,请看下面流程。',
     }));
     expect(slices.length).toBe(2);
     expect(slices[0].kind).toBe('thought');
-    expect(slices[0].messageOverride.content).toBe('我先想一下用户意图');
+    // 叙述文本进 thinking 字段(由 TurnThoughtPanel 折叠展示),不进正文
+    expect(slices[0].messageOverride.content).toBe('');
+    expect(slices[0].messageOverride.thinking).toBe('我先想一下用户意图');
     expect(slices[1].messageOverride.content).toBe('好的,请看下面流程。');
   });
 
@@ -153,7 +158,7 @@ it('debug: actual kinds', () => {
     expect(true).toBe(true);
   });
 
-  it('alternates tool_call and tool_observation per tool call, with last obs merged into answer', () => {
+  it('merges all tool calls into one group and puts observations after it', () => {
     const slices = splitMessageIntoBubbles(baseMsg({
       toolCalls: [
         { id: 'tc1', name: 'knowledge.retrieve', args: { query: '入职' }, status: 'success' },
@@ -167,22 +172,21 @@ it('debug: actual kinds', () => {
         '记忆里有 2 条偏好\n' +
         '最终回答:流程如下。',
     }));
-    // 期望:thought, tool_call[0], obs[0], tool_call[1], answer(含 obs[1] 与最终回答)
+    // 期望:thought, tool_call(整组), tool_observation(中间观察统一后置), answer
     // 注:obs 与 answer 之间无显式 marker,采取"最后一次 obs 与 answer 合并"策略,
     // 避免依赖易出错的启发式分隔。
     expect(slices.map((s) => s.kind)).toEqual([
       'thought',
       'tool_call',
       'tool_observation',
-      'tool_call',
       'answer',
     ]);
-    expect(slices[1].messageOverride.toolCalls?.[0]?.id).toBe('tc1');
+    // 工具整组合并在一个 slice 里
+    expect(slices[1].messageOverride.toolCalls?.map((tc) => tc.id)).toEqual(['tc1', 'tc2']);
     expect(slices[2].messageOverride.content).toContain('共找到 3 条知识');
-    expect(slices[3].messageOverride.toolCalls?.[0]?.id).toBe('tc2');
     // answer 段同时包含最后一次 obs 的延续 + 真正的回答(无 marker 切分)
-    expect(slices[4].messageOverride.content).toContain('记忆里有 2 条偏好');
-    expect(slices[4].messageOverride.content).toContain('最终回答:流程如下。');
+    expect(slices[3].messageOverride.content).toContain('记忆里有 2 条偏好');
+    expect(slices[3].messageOverride.content).toContain('最终回答:流程如下。');
   });
 
   it('handles tool call without <<<TOOL>>> markers (natural language path)', () => {

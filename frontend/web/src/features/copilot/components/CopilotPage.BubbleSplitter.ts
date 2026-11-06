@@ -3,8 +3,8 @@
  *
  * 拆分规则:
  *   1. THOUGHT          — reasoningSteps / thinking / [thinking] / cognitive.phases / turnTasks
- *   2. TOOL_CALL        — 每个 toolCall 一条(紧凑卡片)
- *   3. TOOL_OBSERVATION — 每个 toolCall 后紧跟的文字(浅色背景)
+ *   2. TOOL_CALL        — 全部 toolCall 合并为一条(由 ToolCallGroup 折叠展示)
+ *   3. TOOL_OBSERVATION — 工具组之后的观察文字(浅色)
  *   4. ANSWER           — 去除以上片段后的正文(标准气泡)
  *   5. META             — citations / attachments 摘要(折叠)
  *
@@ -71,13 +71,21 @@ export function splitMessageIntoBubbles(m: ChatMessageEx): BubbleSlice[] {
   // 1) THOUGHT:有 reasoning / cognitive narrative / turnTasks / streaming 时都出 thought 泡
   //    让 TurnThoughtPanel(认知阶段 + 任务卡)只显示在 thought 泡,answer 泡跳过
   //    避免 thought 内容与 answer 同处一个气泡(用户诉求:多泡分隔)
+  //
+  //    thought 泡不承载正文:推理过程属于内部叙事,由 TurnThoughtPanel 折叠展示。
+  //    把 step.detail 直接拼进正文会把内部代号(如 client_hint / default_logic)
+  //    泄进用户可见的回复里,因此这里只保留结构化数据,正文留空。
   const thought = extractThought(m);
   if (thought) {
+    // 叙述文本:优先用消息自带的 thinking,其次是 [thinking] 标记里的正文。
+    // 它属于内部叙事,由 TurnThoughtPanel 折叠展示,不进正文。
+    const narrative = thought.text.trim();
     slices.push({
       kind: 'thought',
       index: idx++,
       messageOverride: {
-        content: thought.text,
+        content: '',
+        thinking: narrative || m.thinking,
         reasoningSteps: thought.steps,
         // thought 不带工具 / 引用(单独显示)
         toolCalls: [],
@@ -91,20 +99,18 @@ export function splitMessageIntoBubbles(m: ChatMessageEx): BubbleSlice[] {
     });
   }
 
-  // 2 + 3) TOOL_CALL + TOOL_OBSERVATION(成对出现)
+  // 2 + 3) TOOL_CALL(整组合并) + TOOL_OBSERVATION(统一后置)
+  // 工具调用收成"一组":MessageBubble 用 ToolCallGroup 折叠展示,展开后才是逐行明细,
+  // 与 Claude Code 的 "Ran N commands ⌄" 一致。
   // 最后一个 tool 的观察不单独成泡,自然并入下面的 ANSWER,
   // 避免"obs 末尾 + answer 开头"内容重复(无 marker 区分)。
-  for (let i = 0; i < toolCalls.length; i++) {
-    const tc = toolCalls[i];
-    const isLast = i === toolCalls.length - 1;
-    const obs = isLast ? null : extractObservationForTool(m.content, toolCalls, i);
-
+  if (toolCalls.length > 0) {
     slices.push({
       kind: 'tool_call',
       index: idx++,
       messageOverride: {
-        // tool_call 气泡只渲染当前工具,不复用 m.toolCalls 整组
-        toolCalls: [tc],
+        // 整组工具交给 ToolCallGroup 渲染
+        toolCalls,
         content: '',
         role: 'tool',
         variants: undefined,
@@ -113,16 +119,21 @@ export function splitMessageIntoBubbles(m: ChatMessageEx): BubbleSlice[] {
       bubbleProps: {
         variantStyle: 'compact',
         showHeader: true,
-        tag: `tool:${tc.name}`,
+        tag: `tool:${toolCalls.length}`,
       },
     });
 
-    if (obs && obs.trim()) {
+    // 中间观察文字统一后置到工具组之后;最后一个工具的观察并入 ANSWER。
+    const observations = toolCalls
+      .slice(0, -1)
+      .map((_, i) => extractObservationForTool(m.content, toolCalls, i))
+      .filter((text): text is string => Boolean(text && text.trim()));
+    if (observations.length > 0) {
       slices.push({
         kind: 'tool_observation',
         index: idx++,
         messageOverride: {
-          content: obs,
+          content: observations.join('\n\n'),
           role: 'assistant',
           // observation 不带工具(避免递归)
           toolCalls: [],
@@ -130,7 +141,7 @@ export function splitMessageIntoBubbles(m: ChatMessageEx): BubbleSlice[] {
         bubbleProps: {
           variantStyle: 'muted',
           showHeader: false,
-          tag: `obs:${i}`,
+          tag: 'obs',
         },
       });
     }
@@ -189,11 +200,14 @@ export function splitMessageIntoBubbles(m: ChatMessageEx): BubbleSlice[] {
  * 提取推理段:优先 reasoningSteps;fallback 到 [thinking] ... [/thinking] 包裹的首段;
  * 也支持 turnTasks / cognitive.phases 这类"非纯文本"的 thought 数据。
  * 若都没找到返回 null(将由 answer 段承载整段内容)。
+ *
+ * 注意:reasoningSteps 只作为结构化数据返回(交给 TurnThoughtPanel 渲染),
+ * 不把 step.detail 拼成正文——step.detail 是内部推理细节,直接展示会泄露
+ * 内部代号并让回复看起来像日志。
  */
 function extractThought(m: ChatMessageEx): { text: string; steps?: ReasoningStep[] } | null {
   if (m.reasoningSteps && m.reasoningSteps.length > 0) {
-    const text = m.reasoningSteps.map((s) => s.detail ?? s.title).filter(Boolean).join('\n\n');
-    if (text.trim()) return { text, steps: m.reasoningSteps };
+    return { text: '', steps: m.reasoningSteps };
   }
   if (m.thinking && m.thinking.trim()) {
     return { text: m.thinking };

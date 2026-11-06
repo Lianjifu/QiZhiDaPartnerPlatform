@@ -8,7 +8,7 @@ import { Badge, Button } from '@qzda/web-ui';
 import { useCopilotContext } from '@/features/copilot/components/useCopilotController';
 import { rolePageCopy } from '@/features/role-nav/role-nav';
 import { useT } from '@/i18n';
-import type { SessionItem } from '@/features/copilot/components/CopilotPage.helpers';
+import { stripHeadingMarkers, type SessionItem } from '@/features/copilot/components/CopilotPage.helpers';
 
 const GROUP_LABELS = {
   pinned: '置顶',
@@ -90,7 +90,7 @@ export function CopilotPageSessionsAside() {
                             <time className="session-item__time">{session.time}</time>
                           )}
                         </div>
-                        <div className="session-item__preview">{session.preview || '暂无消息'}</div>
+                        <div className="session-item__preview">{stripHeadingMarkers(session.preview) || '暂无消息'}</div>
                         <div className="session-item__meta">
                           <span className="session-item__agent">{session.agent}</span>
                           <Badge tone={sessionGenerating ? 'info' : session.status === 'active' ? 'brand' : 'success'} className="text-[10px]">

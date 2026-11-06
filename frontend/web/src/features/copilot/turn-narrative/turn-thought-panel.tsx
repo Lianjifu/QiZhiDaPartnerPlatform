@@ -81,11 +81,9 @@ export function TurnThoughtPanel({ message, streaming, showNarrative = true }: P
 
   if (!hasContent && streaming) {
     return (
-      <div className="copilot-turn-thought max-w-[920px] rounded-md border border-dashed border-[var(--border)] bg-[var(--bg-elevated)]/60 px-3 py-2 text-[11px] text-[var(--text-muted)]">
-        <span className="inline-flex items-center gap-2">
-          <Brain className="h-3 w-3 shrink-0 text-[var(--brand)]" />
-          正在理解问题并准备下一步…
-        </span>
+      <div className="copilot-turn-thought flex items-center gap-2 text-[11px] text-[var(--text-muted)]">
+        <Brain className="h-3 w-3 shrink-0 text-[var(--brand)]" />
+        正在理解问题并准备下一步…
       </div>
     );
   }
@@ -95,20 +93,20 @@ export function TurnThoughtPanel({ message, streaming, showNarrative = true }: P
   const summary = buildTurnSummary(message, phases, streaming);
 
   return (
-    <div className="copilot-turn-thought w-full max-w-[800px] rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)]">
+    <div className="copilot-turn-thought w-full max-w-[800px]">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
         aria-controls={`turn-thought-${message.id}`}
-        className="flex w-full items-center gap-2 px-3 py-2 text-[11px] text-[var(--text-muted)] hover:text-[var(--text)]"
+        className="flex w-full items-center gap-2 text-[11px] text-[var(--text-muted)] hover:text-[var(--text)]"
       >
         <Brain className="h-3 w-3 shrink-0" />
         <span className="font-semibold">{summary}</span>
         {expanded ? <ChevronDown className="ml-auto h-3 w-3" /> : <ChevronRight className="ml-auto h-3 w-3" />}
       </button>
       {expanded && (
-        <div id={`turn-thought-${message.id}`} className="space-y-2 border-t border-[var(--border)] px-3 py-2">
+        <div id={`turn-thought-${message.id}`} className="mt-2 space-y-2 border-l border-[var(--border)] pl-3">
           {thinking ? (
             <div className="text-[11px] leading-relaxed text-[var(--text-muted)] whitespace-pre-wrap">{thinking}</div>
           ) : null}
