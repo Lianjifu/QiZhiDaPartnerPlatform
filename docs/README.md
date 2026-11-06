@@ -33,7 +33,7 @@
 ### 0.3 文档约定
 
 - 各模块文档的「前端」路径相对 `frontend/web/src/`，「后端」路径相对 `backend/`
-- 路由前缀以 `server.go` 的 `route()` switch 为准（当前 257 个路由分支、196 个路径）
+- 路由前缀以 `server.go` 的 `route()` switch 为准（当前 258 个路由分支、196 个路径）
 - 每份模块文档结构统一为：**功能 → 前端 → 后端 → 调用链 → 落库集合总表 → 边界 → 关联模块**
 - 「调用链」小节按能力逐条给出 **前端组件 → API 路由 → handler（文件:行）→ 校验 → 落库集合/表 → 错误码**
 
@@ -77,6 +77,7 @@
 | M13 | 访问控制 | `/settings?tab=access` | `/api/access/*`、`/api/release-approvals/*` | ✅ | [M13-访问控制.md](./M13-访问控制.md) |
 | M14 | 持续验证 | `/settings?tab=zeroTrust` | `/api/zero-trust/*` | ✅ | [M14-持续验证.md](./M14-持续验证.md) |
 | M15 | 审计中心 | `/settings?tab=auditCenter` | `/api/audit-center*` | ✅ | [M15-审计中心.md](./M15-审计中心.md) |
+| M16 | 深度智能体编排 | `/copilot`（复用 M02 会话入口） | `/api/copilot/*` | ✅ | [M16-深度智能体编排.md](./M16-深度智能体编排.md) |
 
 **附录（跨模块）**
 
@@ -152,8 +153,9 @@
 | **v4.3** | **2026-11-05** | **各模块文档升级为调用链级实现说明：每条能力标注「前端组件 → API 路由 → handler(文件:行) → 校验 → 落库集合/表 → 错误码」；补落库集合总表、模块编号口径勘误与 3 处实现缺口标注** |
 | **v4.4** | **2026-11-05** | **逐条校验文档内 359 处「文件:行 → 符号」引用并全部修正（行号漂移 + 导出门面名 vs 实现名不符）；另扫描全部 444 处文件引用确认均在文件行数范围内；修正路由分支数（255→257）** |
 | **v4.5** | **2026-11-05** | **验证阶段发现并修复 P0 自锁死：`memory.Service.IngestRuntimeMemory` 在调用方已持 `Store.Lock()` 时二次加锁，导致协作回合与任务流转请求挂死并阻塞全后端（回归于 `4f6b588`）。恢复 lock-free 变体 `IngestRuntimeMemoryLocked`；M02 / M03 补锁契约说明** |
+| **v4.7** | **2026-11-06** | **新增 M16 深度智能体编排：① 能力契约（`CapabilityContract` + 全量工具 schema + 调用前参数校验 + 上岗闸门拦拼写错误）；② 原生结构化工具调用（modelprov 协议归一 + anthropic/OpenAI 流式 tool_use 还原 + provider 不支持时透明降级 + 轮内并行，上限 4）；③ 上下文工程（会话压缩 / 大结果卸载到 `agent_artifacts` + `artifact.read` / system 前缀提示缓存 / 待办状态机回注）；④ 自动升级交接（`boundaryPolicy.handoff.triggers` 运行期落地为会话移交 + 写操作暂停 + 审计计数）；⑤ 子伙伴派生（`delegationPolicy` 白名单、深度封顶 1、上下文隔离）；⑥ 人机共岗续跑（命中审批即挂起 `awaiting`，`POST /api/copilot/conversations/{cid}/turns/{corr}/resume` 批准后同一 run 继续）；⑦ 轨迹评估（`internal/copilot/trajectory` 断言器 + 7 类岗位剧本 fixture + 上岗评测改用真实轨迹评分，替换写死的 93.5/68.0）；前端接入：`awaiting` 事件 → 授权卡挂起提示与「继续执行」按钮（接通此前从未接入的 `onExecuteAuthorized`，审批通过后同一 run 续跑）、伙伴详情页「能力契约」与「运行轨迹」面板** |
 | **v4.6** | **2026-11-05** | **审查并修复剩余问题：① 29 个 dev/pro 模式收敛后失效的 `internal/server` 用例（pro 模式禁 mock token → 改用签名 JWT；dev 模式保留 stub 回退的语义差异；工作区 publisher key 导入因 `ed25519.PublicKey` 断言失败而全量报错的运行时缺陷）；② 工作区 freeze / archive / transfer 补 `PersistCollection`；③ 运营告警改为「任务实时推导 + `home_alert_acks` 持久化确认」，修复首页「确认」按钮必然 404；④ M02 的包内测试路由夹具从生产文件迁出，生产只保留一份路由表** |
 
 ---
 
-*功能模块文档 v4.6 · 只描述已实现能力 · 调用链级实现说明 · 模块事实以 `qizhida-partner-platform` 代码为准*
+*功能模块文档 v4.7 · 只描述已实现能力 · 调用链级实现说明 · 模块事实以 `qizhida-partner-platform` 代码为准*
