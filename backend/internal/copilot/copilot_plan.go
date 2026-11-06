@@ -91,6 +91,22 @@ func heuristicPlan(userMsg string) planPayload {
 	return planPayload{Goal: goal, Steps: steps}
 }
 
+// humanPlanAction 把计划步骤的内部 action 枚举翻译成用户可读的动作名。
+func humanPlanAction(action string) string {
+	switch strings.ToLower(strings.TrimSpace(action)) {
+	case "retrieve":
+		return "检索知识"
+	case "memory":
+		return "回忆偏好"
+	case "tool":
+		return "调用能力"
+	case "answer":
+		return "整理结论"
+	default:
+		return ""
+	}
+}
+
 // planPrompt 注入给 planner LLM 的 system prompt(走版本化注册表)。
 // 要求只输出 PLAN 块、不超过 6 步;注册表为空时回退 hardcoded v1。
 func planPrompt() string {
@@ -173,7 +189,7 @@ func (s *Service) runPlanExecuteTurn(ctx context.Context, in reactTurnInput) rea
 		fmt.Sprintf("共 %d 步", len(plan.Steps)),
 	)
 	for i, st := range plan.Steps {
-		emitTurnTask(in.Emit, "added", fmt.Sprintf("plan_%s", st.ID), st.Title, st.Action, i+1, len(plan.Steps))
+		emitTurnTask(in.Emit, "added", fmt.Sprintf("plan_%s", st.ID), st.Title, humanPlanAction(st.Action), i+1, len(plan.Steps))
 	}
 	if normalizeReplyMode(in.ReplyMode) == replyModeStepwise {
 		appendStepSegment(in.StepSegments, defaultSegmentIDGen(s), segmentKindStep, "计划就绪",
@@ -248,7 +264,13 @@ func (s *Service) runPlanExecuteTurn(ctx context.Context, in reactTurnInput) rea
 
 	// --- Aggregate ---
 	in.Emit("stage", "aggregate", map[string]any{"status": "running"})
-	aggSystem := system + "\n你是执行汇总器。请根据「计划观察」给出面向用户的最终中文回答：结构清晰、可执行，不要输出 PLAN/TOOL 标记。"
+	aggSystem := system + "\n你是执行汇总器。请根据「计划观察」给出面向用户的最终中文回答。\n" +
+		"格式要求（直接输出正文，不要重复请求、不要输出 PLAN/TOOL 标记）：\n" +
+		"先直接回答用户的问题（1–3 句，给出结论和理由），\n" +
+		"再写支撑结论的依据（每条一行；来源用「知识库」「跨会话记忆」等自然说法，不要写工具技术名），\n" +
+		"最后写下一步建议（可执行动作：负责人/期限/步骤，没有明确下一步时省略）。\n" +
+		"这三部分之间空一行；不要使用 Markdown 标题，也不要写「结论：」「依据：」「下一步：」这类标签前缀，\n" +
+		"只输出确有内容的部分；不要复述内部流程、模式名、推理过程。"
 	aggMsgs := append([]modelprov.ChatMessage{}, messages...)
 	aggMsgs = append(aggMsgs, modelprov.ChatMessage{
 		Role:    "user",

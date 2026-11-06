@@ -20,6 +20,8 @@ package copilot
 // (Store.Messages[cid]). The wire format mirrors what the front-end
 // reads today via MessageRow.
 
+import "strings"
+
 // variant 元数据键常量：parent/branchIndex/isActive/groupId/auditEventId/activeVariantId。
 const (
 	MsgKeyParentMessageID = "parentMessageId"
@@ -170,12 +172,32 @@ func belongsToGroup(m map[string]any, groupID string) bool {
 }
 
 // previewOf 取出消息正文前 80 字符作为前端 preview 字段；超过则加省略号。
+// 去掉 Markdown 标题标记（"## 结论" → "结论"），列表里不出现裸标记。
 func previewOf(m map[string]any) string {
-	c := str(m["content"])
+	c := StripMarkdownHeadingMarkers(str(m["content"]))
 	if len(c) > 80 {
 		return c[:80] + "…"
 	}
 	return c
+}
+
+// StripMarkdownHeadingMarkers 去掉行首的 ATX 标题标记（# / ## / ###）。
+func StripMarkdownHeadingMarkers(s string) string {
+	if !strings.Contains(s, "#") {
+		return s
+	}
+	lines := strings.Split(s, "\n")
+	for i, line := range lines {
+		trimmed := strings.TrimLeft(line, " \t")
+		if !strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		rest := strings.TrimLeft(trimmed, "#")
+		if rest == "" || strings.HasPrefix(rest, " ") || strings.HasPrefix(rest, "\t") {
+			lines[i] = strings.TrimSpace(rest)
+		}
+	}
+	return strings.Join(lines, "\n")
 }
 
 // coalesceStr 在 a 非空时返回 a，否则返回 b；和 coalesce 等价但参数顺序固定 a,b。

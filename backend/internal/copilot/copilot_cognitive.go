@@ -90,6 +90,48 @@ func cognitiveLabel(id string) string {
 	return id
 }
 
+// cognitiveModeLabel 把推理深度枚举翻译成用户可读的中文。
+func cognitiveModeLabel(mode string) string {
+	switch mode {
+	case cognitiveModeQuick:
+		return "快速"
+	case cognitiveModeStandard:
+		return "标准"
+	case cognitiveModeDeep:
+		return "深度"
+	default:
+		return "标准"
+	}
+}
+
+// humanCognitiveReasons 把框架决策的内部 reason 码翻译成中文短语。
+// 形如 "signal:logic" / "dept_pref:creative" / "default_logic" 的内部标识
+// 不允许出现在给用户看的文案里。
+func humanCognitiveReasons(reasons []string) []string {
+	out := make([]string, 0, len(reasons))
+	for _, r := range reasons {
+		r = strings.TrimSpace(r)
+		if r == "" {
+			continue
+		}
+		switch {
+		case r == "default_logic":
+			out = append(out, "默认逻辑框架")
+		case r == "soft_analyze":
+			out = append(out, "识别到分析意图")
+		case strings.HasPrefix(r, "signal:"):
+			out = append(out, "识别到"+cognitiveLabel(strings.TrimPrefix(r, "signal:"))+"特征")
+		case strings.HasPrefix(r, "secondary:"):
+			out = append(out, "辅框架"+cognitiveLabel(strings.TrimPrefix(r, "secondary:")))
+		case strings.HasPrefix(r, "dept_pref:"):
+			out = append(out, "部门偏好"+cognitiveLabel(strings.TrimPrefix(r, "dept_pref:")))
+		default:
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
 func employeeCognitiveConfig(emp map[string]any) (enabled bool, maxFrameworks int, preferred string) {
 	enabled = true
 	maxFrameworks = 2
@@ -512,9 +554,9 @@ func emitCognitiveThoughts(emit reactEmitFunc, d cognitiveDecision) {
 		emitThought(emit, "plan", turnPhaseUnderstand, "直接作答（跳过认知框架）", humanCognitiveBypass(d.BypassReason))
 		return
 	}
-	detail := "模式 " + d.Mode
-	if len(d.Reasons) > 0 {
-		detail += " · " + strings.Join(d.Reasons, ", ")
+	detail := "推理深度：" + cognitiveModeLabel(d.Mode)
+	if labels := humanCognitiveReasons(d.Reasons); len(labels) > 0 {
+		detail += " · " + strings.Join(labels, "、")
 	}
 	emitThoughtCognitive(emit, "framework", turnPhaseUnderstand, "选用框架："+cognitiveLabel(d.Primary)+"（主）", detail, d, "primary", "")
 	if d.Secondary != "" {

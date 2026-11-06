@@ -35,19 +35,25 @@ func thoughtForRouteMode(mode, reason string) (title, detail string) {
 }
 
 // humanRouteReason 把 classifyCopilotMode 的内部 reason 翻译成对用户友好的中文短语。
+// 未知 reason 一律回落到通用文案，不把内部枚举值（如 client_hint）透给用户。
 func humanRouteReason(reason string) string {
 	switch strings.TrimSpace(reason) {
 	case "reflect_requested":
 		return "用户反馈需复核"
 	case "plan_hint", "plan_requested":
 		return "方案模式"
-	case "complex_task":
+	case "complex_task", "complex_multi_step":
 		return "任务较复杂"
+	case "client_hint":
+		return "按指定模式处理"
+	case "short_chitchat":
+		return "简短寒暄"
+	case "cross_department":
+		return "涉及跨部门协作"
+	case "default_react":
+		return "默认逐步分析"
 	default:
-		if reason == "" {
-			return ""
-		}
-		return reason
+		return ""
 	}
 }
 
@@ -67,9 +73,9 @@ func thoughtForToolChoice(toolName string) (title, detail string) {
 	case strings.Contains(lower, "xlsx") || strings.Contains(lower, "excel"):
 		return "调用生成表格", "便于汇总与二次处理"
 	case strings.Contains(lower, "knowledge") || strings.Contains(lower, "retrieve"):
-		return "检索相关知识", name
+		return "检索相关知识", "查找与问题相关的已发布资料"
 	case strings.Contains(lower, "memory"):
-		return "查阅相关记忆", name
+		return "查阅相关记忆", "回忆此前对话中记录的个人偏好"
 	default:
 		return "调用能力：" + name, ""
 	}
@@ -77,10 +83,7 @@ func thoughtForToolChoice(toolName string) (title, detail string) {
 
 // thoughtForToolResult 把工具调用状态（success / denied / failed）翻译成 thought 标题。
 func thoughtForToolResult(status, toolName string) (title, detail string) {
-	name := strings.TrimSpace(toolName)
-	if name == "" {
-		name = "能力"
-	}
+	name := humanToolName(toolName)
 	switch strings.ToLower(strings.TrimSpace(status)) {
 	case "success", "ok":
 		return "完成：" + name, ""
@@ -90,5 +93,41 @@ func thoughtForToolResult(status, toolName string) (title, detail string) {
 		return "失败：" + name, ""
 	default:
 		return "", ""
+	}
+}
+
+// humanToolName 把工具的技术名翻译成用户可读的能力名。
+// knowledge.retrieve / memory.recall 这类内部标识出现在气泡里会让回复像日志。
+func humanToolName(toolName string) string {
+	name := strings.TrimSpace(toolName)
+	if name == "" {
+		return "能力"
+	}
+	lower := strings.ToLower(name)
+	switch {
+	case strings.Contains(lower, "knowledge") || strings.Contains(lower, "retrieve"):
+		return "知识检索"
+	case strings.Contains(lower, "memory") || strings.Contains(lower, "recall"):
+		return "记忆回忆"
+	case strings.Contains(lower, "docx") || strings.Contains(lower, "word"):
+		return "Word 文档"
+	case strings.Contains(lower, "pptx") || strings.Contains(lower, "ppt"):
+		return "演示文稿"
+	case strings.Contains(lower, "xlsx") || strings.Contains(lower, "excel"):
+		return "表格"
+	case strings.Contains(lower, "web") || strings.Contains(lower, "browse"):
+		return "网页访问"
+	case strings.Contains(lower, "shell"):
+		return "受控命令"
+	case strings.Contains(lower, "mcp"):
+		return "MCP 服务"
+	case strings.Contains(lower, "chart"):
+		return "图表生成"
+	case strings.Contains(lower, "artifact"):
+		return "产物读取"
+	case strings.Contains(lower, "todo"):
+		return "待办记录"
+	default:
+		return name
 	}
 }

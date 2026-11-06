@@ -881,7 +881,7 @@ streamCtx, streamCancel := context.WithTimeout(r.Context(), copilotStreamTimeout
 		}
 	}
 	s.Store.Messages[cid] = append(s.Store.Messages[cid], assistantMsgs...)
-	preview := truncateRunes(full, 80)
+	preview := truncateRunes(copilot.StripMarkdownHeadingMarkers(full), 80)
 	s.touchSessionLocked(resolvedWS, rawID, cid, preview, assistantNow, modelID, resolvedDE, id.ID)
 	s.Store.AppendAudit(ws, id.Name, "协作回合", cid, "success", corr)
 	if resolvedDE != "" {

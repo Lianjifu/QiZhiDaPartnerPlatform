@@ -1,6 +1,7 @@
 package copilot
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -89,5 +90,27 @@ func TestVariantGroupIDNilSafe(t *testing.T) {
 	}
 	if touched, prev := SwitchActiveVariant(nil, "g", "x"); touched != 0 || prev != "" {
 		t.Fatalf("SwitchActiveVariant(nil) returned %d/%q, want 0/\"\"", touched, prev)
+	}
+}
+
+func TestPreviewOfStripsMarkdownHeadingMarkers(t *testing.T) {
+	msg := map[string]any{"content": "## 结论\n先按通用必备准备。\n\n## 下一步\n确认清单。"}
+	got := previewOf(msg)
+	if strings.Contains(got, "##") {
+		t.Fatalf("previewOf kept heading markers: %q", got)
+	}
+	if !strings.Contains(got, "结论") {
+		t.Fatalf("previewOf dropped heading text: %q", got)
+	}
+}
+
+func TestStripMarkdownHeadingMarkersKeepsInlineHash(t *testing.T) {
+	// 行内 "C#" 不是标题标记,不能被剥掉
+	if got := StripMarkdownHeadingMarkers("用 C# 写"); got != "用 C# 写" {
+		t.Fatalf("stripMarkdownHeadingMarkers=%q, want unchanged", got)
+	}
+	// 无空格的 "##x" 不是合法 ATX 标题,保持原样
+	if got := StripMarkdownHeadingMarkers("##x 不是标题"); got != "##x 不是标题" {
+		t.Fatalf("stripMarkdownHeadingMarkers=%q, want unchanged", got)
 	}
 }
