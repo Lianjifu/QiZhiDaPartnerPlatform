@@ -1,11 +1,11 @@
 // Integration tests for the M02 专家协作 (Expert Collaboration) handlers
-// (C1–C9 from docs/整合方案/专家协作模块整合方案.md §6.3). Mirrors the
+// (C1–C9). Mirrors the
 // pattern of internal/operations/integration_test.go: each test boots a
 // fresh server + in-memory store, mints a signed JWT, and round-trips
 // through the standard {ok, data, error} envelope. The test file is
 // self-contained — no shared fixtures in test/.
 //
-// Test surface (mirrors §6.3 of the plan doc):
+// Test surface:
 //
 //	C1 GET   /api/copilot/conversations                       — list w/ filter
 //	C2 POST  /api/copilot/conversations                       — create + audit

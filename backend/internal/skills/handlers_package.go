@@ -1,6 +1,7 @@
 package skills
 
 import (
+	"crypto/ed25519"
 	"encoding/base64"
 	"encoding/json"
 	"io"
@@ -358,7 +359,7 @@ func (s *Service) verifyImportSignature(wsID string, meta *skillPackageManifest,
 		return apperr.BadReq(apperr.SkillSignatureInvalid,
 			"malformed signature base64: "+err.Error())
 	}
-	pubBytes, ok := pub.([]byte)
+	pubBytes, ok := publisherKeyBytes(pub)
 	if !ok {
 		return apperr.BadReq(apperr.SkillSignatureInvalid,
 			"publisher key resolved to unexpected type")
@@ -370,6 +371,20 @@ func (s *Service) verifyImportSignature(wsID string, meta *skillPackageManifest,
 			"imported skill signature mismatch: "+err.Error())
 	}
 	return nil
+}
+
+// publisherKeyBytes normalizes a resolved publisher key to its raw bytes.
+// ResolvePublisherKey hands back ed25519.PublicKey — a named []byte type —
+// so a plain type assertion to []byte would reject it.
+func publisherKeyBytes(pub any) ([]byte, bool) {
+	switch k := pub.(type) {
+	case []byte:
+		return k, true
+	case ed25519.PublicKey:
+		return []byte(k), true
+	default:
+		return nil, false
+	}
 }
 
 // trustStoreForSkillVerify returns a TrustStore that includes the dev keypair

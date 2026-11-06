@@ -76,6 +76,7 @@ var DurableCollections = []string{
 	"workflow_skills",
 	"workspace_publisher_keys", // W2-D1
 	"expert_inbox",             // W3-D1
+	"home_alert_acks",          // M01 · operator acknowledgements of live alerts
 }
 
 // SetPersistHook registers durable snapshot writer (Postgres kv_documents).
@@ -199,6 +200,8 @@ func (s *Store) snapshotLocked(collection string) []map[string]any {
 	switch collection {
 	case "workspaces":
 		return s.Workspaces
+	case "home_alert_acks":
+		return s.HomeAlertAcks
 	case "model_providers":
 		return s.ModelProviders
 	case "routing_policies":
@@ -422,6 +425,8 @@ func (s *Store) HydrateFrom(collection string, items []map[string]any) {
 	switch collection {
 	case "workspaces":
 		s.Workspaces = items
+	case "home_alert_acks":
+		s.HomeAlertAcks = items
 	case "model_providers":
 		s.ModelProviders = items
 	case "routing_policies":

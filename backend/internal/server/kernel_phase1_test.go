@@ -21,6 +21,7 @@ import (
 )
 
 func TestMockTokenForbiddenWhenBanMock(t *testing.T) {
+	t.Setenv("QZDA_MODE", "pro")
 	h := server.New(store.New()).Handler()
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/workspaces", nil)
@@ -35,6 +36,7 @@ func TestMockTokenForbiddenWhenBanMock(t *testing.T) {
 }
 
 func TestMockHeadersForbiddenWhenAllowMockIdentityFalse(t *testing.T) {
+	t.Setenv("QZDA_MODE", "pro")
 	h := server.New(store.New()).Handler()
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/workspaces", nil)
@@ -256,6 +258,42 @@ func mustAdminJWT(t *testing.T) string {
 		WorkspaceIDs:      []string{"w1", "w2", "w3", "w4"},
 		EnvironmentScopes: []string{"sandbox", "staging", "production"},
 		Permissions:       auth.RolePermissions("admin"),
+		MFAEnabled:        true,
+	}, time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return tok
+}
+
+// mustUserJWT mints a signed user JWT. Pro mode rejects the mock-*-token
+// dev shortcut, so production-mode tests must carry a real signature.
+func mustUserJWT(t *testing.T) string {
+	t.Helper()
+	tok, err := auth.Sign(auth.Identity{
+		ID: "u2", Name: "业务构建者", Email: "user@acme.com", Role: "user",
+		TenantID: "tenant-acme", WorkspaceID: "w1",
+		WorkspaceIDs:      []string{"w1", "w2"},
+		EnvironmentScopes: []string{"sandbox", "staging"},
+		Permissions:       auth.RolePermissions("user"),
+		MFAEnabled:        true,
+	}, time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return tok
+}
+
+// mustAuditorJWT mints a signed auditor JWT with the same identity the dev
+// mock-auditor-token resolves to.
+func mustAuditorJWT(t *testing.T) string {
+	t.Helper()
+	tok, err := auth.Sign(auth.Identity{
+		ID: "u3", Name: "合规审计员", Email: "audit@acme.com", Role: "auditor",
+		TenantID: "tenant-acme", WorkspaceID: "w1",
+		WorkspaceIDs:      []string{"w1", "w2", "w3"},
+		EnvironmentScopes: []string{"sandbox", "staging", "production"},
+		Permissions:       auth.RolePermissions("auditor"),
 		MFAEnabled:        true,
 	}, time.Hour)
 	if err != nil {

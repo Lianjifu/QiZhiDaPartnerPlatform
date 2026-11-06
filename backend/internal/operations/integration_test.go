@@ -1,6 +1,6 @@
-// Integration tests for the M01 Operations Overview handlers (H1–H8
-// from docs/整合方案/运营总览模块整合方案.md §6.3). These tests boot the
-// full HTTP server (server.New(store.New()).Handler()), mint signed
+// Integration tests for the M01 Operations Overview handlers (H1–H8).
+// These tests boot the full HTTP server
+// (server.New(store.New()).Handler()), mint signed
 // auth tokens for admin / user / auditor roles, and round-trip through
 // the standard {ok, data, error} envelope used by pkg/response. They
 // are the integration counterpart to operations/aggregate_test.go
@@ -8,7 +8,7 @@
 // route wiring regressions, middleware compatibility, and audit
 // pipeline plumbing that direct-call unit tests miss.
 //
-// Test surface (mirrors §6.3 of the plan doc):
+// Test surface:
 //
 //	H1 GET  /api/home/kpis                       — 6 KPI tile load
 //	H2 GET  /api/home/extra                      — full payload

@@ -2,7 +2,7 @@
 
 服务定义位于 `de/{common,platform,policy,audit,collab,employee,runtime,rag}/v1`。
 
-内核 ABI（[ADR-013](../../../docs/adr/ADR-013-agent-os-kernel.md)）：`de.common.v1` Envelope / ContextSnapshot；`CollabService.ReplayTurn`；`RuntimeService.Run`。
+内核 ABI（见[附录A 跨模块底座](../../../docs/附录A-跨模块底座.md)）：`de.common.v1` Envelope / ContextSnapshot；`CollabService.ReplayTurn`；`RuntimeService.Run`。
 
 ```bash
 cd backend && make buf-generate

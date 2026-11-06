@@ -77,7 +77,7 @@ compose.yml 已配置。
 
 | 变量 | 默认 | 说明 |
 |------|------|------|
-| `QZDA_MODE` | `dev` | `dev`(PG 持久化,可选内存)/ `pro`(双人审批 + Vault + OIDC + 强制签名);见 [环境与数据模式](../../docs/环境与数据模式.md) |
+| `QZDA_MODE` | `dev` | `dev`(PG 持久化,可选内存)/ `pro`(双人审批 + Vault + OIDC + 强制签名);见 [附录B](../../docs/附录B-运行模式与本地起停.md) |
 | `QZDA_DATA_BACKEND` | `pg` | 仅 dev 生效:`memory` = 内存 + ACME seed,不写 PG |
 | `QZDA_DATABASE_URL` | `postgres://de:de@127.0.0.1:5432/digital_employee?sslmode=disable` | docker compose 内自动用 `postgres:5432` |
 | `QZDA_REDIS_URL` | `redis://127.0.0.1:6379/0` | 同上,容器内用 `redis:6379` |
@@ -197,5 +197,5 @@ bash scripts/dev-stack/pgvector-bootstrap.sh
 - `QZDA_MILVUS_URI` — 已替换为 `QZDA_PGVECTOR_URL`(同 PG 实例的 pgvector 扩展)
 - K8s / Helm / kubectl 相关说明 — 已迁移到单机 Docker
 
-详见 [`docs/数字伙伴平台-技术规格说明.md`](../../docs/数字伙伴平台-技术规格说明.md)
+详见 [`docs/README.md`](../../docs/README.md)
 与 [`CHANGELOG.md`](../../CHANGELOG.md)(M10 折叠 + Phase 4 重命名)。

@@ -1,6 +1,6 @@
 package server_test
 
-// 集成测试 — 覆盖 §6.3 集成测试用例中尚未在
+// 集成测试 — 覆盖尚未在
 // auth_production_test.go / auth/http_test.go 验证的场景。
 //
 // 已覆盖的（详见各文件）:
@@ -18,7 +18,7 @@ package server_test
 //
 // L1–L4（前端登出）不在本包;前端单测在 packages/api/src/*.mock.test.ts
 // 已覆盖 login 调用,登出为客户端纯操作,无后端联调需求。
-// L4（旧 token 复活）作为已知 gap,记录在 docs/整合方案/登录模块整合方案.md §八。
+// L4（旧 token 复活）作为已知 gap,见本文件的历史说明。
 
 import (
 	"bytes"

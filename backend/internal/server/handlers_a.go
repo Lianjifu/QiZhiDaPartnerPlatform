@@ -272,6 +272,7 @@ func (s *Server) workspaceAction(r *http.Request) (any, error) {
 			ws["status"] = "archived"
 		}
 		s.Store.AppendAudit(wsID, id.Name, action+"工作区", str(ws["name"]), "success", str(body["reason"]))
+		s.Store.PersistCollection("workspaces", s.Store.Workspaces)
 		return ws, nil
 	case "transfer":
 		if str(body["ownerId"]) == "" {
@@ -279,6 +280,7 @@ func (s *Server) workspaceAction(r *http.Request) (any, error) {
 		}
 		ws["ownerId"] = body["ownerId"]
 		s.Store.AppendAudit(wsID, id.Name, "移交工作区负责人", str(ws["name"]), "success", str(body["reason"]))
+		s.Store.PersistCollection("workspaces", s.Store.Workspaces)
 		return ws, nil
 	case "runtime":
 		ev := map[string]any{

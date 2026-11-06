@@ -93,17 +93,22 @@ func TestRuntimeModeRemoteStreamsLoopEvents(t *testing.T) {
 }
 
 func TestRuntimeModeRemoteUnavailable(t *testing.T) {
+	// Hard-fail on an unreachable remote is the production contract; dev
+	// keeps the stub fallback (allowRuntimeStub) so the UI stays usable
+	// without an agent-runtime.
+	t.Setenv("QZDA_MODE", "pro")
 	t.Setenv("QZDA_RUNTIME_MODE", "remote")
 	t.Setenv("QZDA_RUNTIME_FAILOVER_LOCAL", "0")
 	st := store.New()
 	srv := server.New(st)
 	srv.RuntimeURL = "http://127.0.0.1:1"
 	h := srv.Handler()
+	tok := mustAdminJWT(t)
 
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/copilot/conversations/conv-1/stream",
 		bytes.NewBufferString(`{"content":"runtime down","correlationId":"corr-rt-down-1"}`))
-	req.Header.Set("Authorization", "Bearer mock-admin-token")
+	req.Header.Set("Authorization", "Bearer "+tok)
 	req.Header.Set("X-Workspace-Id", "w1")
 	req.Header.Set("Content-Type", "application/json")
 	h.ServeHTTP(rr, req)
@@ -177,7 +182,7 @@ func TestSkillSimDisabledInProduction(t *testing.T) {
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/skills/sk-docx/test",
 		bytes.NewBufferString(`{"command":"echo ok"}`))
-	req.Header.Set("Authorization", "Bearer mock-admin-token")
+	req.Header.Set("Authorization", "Bearer "+mustAdminJWT(t))
 	req.Header.Set("X-Workspace-Id", "w1")
 	req.Header.Set("Content-Type", "application/json")
 	h.ServeHTTP(rr, req)
@@ -232,7 +237,7 @@ func TestRuntimeRemoteNoFailoverInProduction(t *testing.T) {
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/copilot/conversations/conv-1/stream",
 		bytes.NewBufferString(`{"content":"no prod failover","correlationId":"corr-rt-nofailover-1"}`))
-	req.Header.Set("Authorization", "Bearer mock-admin-token")
+	req.Header.Set("Authorization", "Bearer "+mustAdminJWT(t))
 	req.Header.Set("X-Workspace-Id", "w1")
 	req.Header.Set("Content-Type", "application/json")
 	h.ServeHTTP(rr, req)
@@ -264,7 +269,7 @@ func TestRagDegradesWhenSidecarDownInProduction(t *testing.T) {
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/knowledge/retrieve",
 		bytes.NewBufferString(`{"query":"缓存"}`))
-	req.Header.Set("Authorization", "Bearer mock-admin-token")
+	req.Header.Set("Authorization", "Bearer "+mustAdminJWT(t))
 	req.Header.Set("X-Workspace-Id", "w1")
 	req.Header.Set("Content-Type", "application/json")
 	h.ServeHTTP(rr, req)

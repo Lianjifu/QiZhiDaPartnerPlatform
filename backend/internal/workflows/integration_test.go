@@ -1,12 +1,12 @@
-// Integration tests for the M06 工作流程 (Workflow) handlers (W1–W15
-// from docs/整合方案/工作流程模块整合方案.md §3.3). Mirrors the pattern
-// of internal/partners/integration_test.go (P1–P14), internal/copilot/
+// Integration tests for the M06 工作流程 (Workflow) handlers (W1–W15).
+// Mirrors the pattern of internal/partners/integration_test.go (P1–P14),
+// internal/copilot/
 // integration_test.go (C1–C9), and internal/tasks/integration_test.go
 // (T1–T9): each test boots a fresh server + in-memory store, mints a
 // signed JWT for an admin identity, and round-trips through the standard
 // {ok, data, error} envelope used by pkg/response.
 //
-// Test surface (mirrors §3.3 of the plan doc):
+// Test surface:
 //
 //	W1  GET   /api/workflows                             — list (workspace filter)
 //	W2  POST  /api/workflows                             — create draft workflow

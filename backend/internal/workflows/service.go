@@ -14,12 +14,10 @@
 // builtin_workflows.go (template CRUD + builtin loader),
 // handlers_p1.go (workflowByID + listWorkflowGenerations + generateWorkflow),
 // handlers_skills.go (listWorkflowSkillsAligned + publishWorkflowSkill)
-// and handlers_skills_detail.go (bindWorkflowCapability). Phase 2 of
-// the M06 工作流程整合方案
-// (docs/整合方案/工作流程模块整合方案.md) extracts that M06 code into
-// internal/workflows/ using the standard partners/copilot/tasks pattern:
-// function-value Deps struct + NewService(deps) constructor + Service
-// façade methods.
+// and handlers_skills_detail.go (bindWorkflowCapability). The M06 P2
+// extraction moved that M06 code into internal/workflows/ using the standard
+// partners/copilot/tasks pattern: function-value Deps struct +
+// NewService(deps) constructor + Service façade methods.
 //
 // Service is constructed once at server boot via NewService(deps). The
 // route table in server.go dispatches the 13 M06 routes through

@@ -110,6 +110,12 @@ type Store struct {
 	HomeKPIs             map[string]any
 	HomeExtra            map[string]any
 	HomeAlerts           []map[string]any
+	// HomeAlertAcks records operator acknowledgements of the live task-derived
+	// alerts (id = the alert id, e.g. "task-alert-<taskId>"). The alert rows
+	// themselves are derived from tasks on every read, so only the ack has to
+	// survive a restart — it is what the durable "home_alert_acks" collection
+	// holds.
+	HomeAlertAcks []map[string]any
 	Billing              map[string]any
 	Backups              []map[string]any
 	OpsOverview          map[string]any

@@ -6,10 +6,9 @@
 // History: prior to M05 P2, all M05 handlers lived in internal/server/
 // as `(s *Server)` receiver methods across handlers_contract.go,
 // handlers_b.go, handlers_capability_catalog.go, and connect_services.go.
-// The package boundary was implicit. Phase 2 of the M05 数字伙伴整合方案
-// (docs/整合方案/数字伙伴模块整合方案.md) extracts the M05 code into
-// internal/partners/ with the same function-value façade pattern that
-// M02 copilot and M03 tasks use.
+// The package boundary was implicit. The M05 P2 extraction moved the M05
+// code into internal/partners/ with the same function-value façade pattern
+// that M02 copilot and M03 tasks use.
 //
 // Service is constructed once at server boot via NewService(store, deps).
 // It carries the M05 dependencies directly: Store, plus a Deps struct

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Keep local FE+BE up for 企智搭 · 数字伙伴平台 (QiZhiDa · PartnerPlatform) (real API + PG/Redis; no frontend mock).
-# Defaults: QZDA_MODE=dev. See docs/环境与数据模式.md.
+# Defaults: QZDA_MODE=dev. See docs/附录B-运行模式与本地起停.md.
 set -u
 export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/Users/LIANJIFU/ops/QiZhiDaPartnerPlatform/backend/.tools/go/bin:$PATH"
 ROOT="/Users/LIANJIFU/ops/QiZhiDaPartnerPlatform"

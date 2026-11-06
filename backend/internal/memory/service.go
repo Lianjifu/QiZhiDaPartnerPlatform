@@ -5,11 +5,10 @@
 //
 // History: prior to M07 P2 all M07 handlers lived in internal/server/ as
 // (s *Server) receiver methods across handlers_memory.go, memory_ttl.go,
-// and the inline runtimeMemoryInput type. Phase 2 of the M07 记忆中心整合方案
-// (docs/整合方案/记忆中心模块整合方案.md) extracts that M07 code into
-// internal/memory/ using the standard partners/copilot/tasks/workflows
-// pattern: function-value Deps struct + NewService(deps) constructor +
-// Service façade methods.
+// and the inline runtimeMemoryInput type. The M07 P2 extraction moved that
+// M07 code into internal/memory/ using the standard
+// partners/copilot/tasks/workflows pattern: function-value Deps struct +
+// NewService(deps) constructor + Service façade methods.
 //
 // Service is constructed once at server boot via NewService(deps). The
 // route table in server.go dispatches the 13 M07 routes through
@@ -226,6 +225,15 @@ func (s *Service) MemoryIdentityDelete(r *http.Request) (any, error) {
 func (s *Service) IngestRuntimeMemory(in RuntimeMemoryInput) (map[string]any, error) {
 	s.Store.Lock()
 	defer s.Store.Unlock()
+	return s.IngestRuntimeMemoryLocked(in)
+}
+
+// IngestRuntimeMemoryLocked requires Store.Lock held by caller. Used by the
+// post-turn paths (copilot stream, internal delegate) and by
+// tasks.handlers_memory.writeTaskWorkingMemoryLocked, where the caller
+// already holds Store.Lock(). Store.mu is a non-reentrant sync.RWMutex, so
+// taking it again in this path would self-deadlock the request.
+func (s *Service) IngestRuntimeMemoryLocked(in RuntimeMemoryInput) (map[string]any, error) {
 	item, err := s.ingestRuntimeMemoryLocked(in)
 	if err != nil {
 		return nil, err

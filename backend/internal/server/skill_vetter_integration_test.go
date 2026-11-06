@@ -91,7 +91,7 @@ func TestImportSkillVetterDeniedAuditWritten(t *testing.T) {
 
 	// Use a user token (not admin) so the `skill.vet.override` bypass is
 	// not triggered; we want to verify the strict Deny path still blocks.
-	code, body := uploadSkillZip(t, h, "mock-user-token", badDestructiveSkillZip(t))
+	code, body := uploadSkillZip(t, h, "mock-user-token", signSkillZip(t, srv, badDestructiveSkillZip(t)))
 	if code != 400 {
 		t.Fatalf("expected 400 on vetter deny, got %d %s", code, body)
 	}
@@ -117,7 +117,7 @@ func TestImportSkillVetterOverrideAdmitsAndAudits(t *testing.T) {
 	srv := server.New(store.New())
 	h := srv.Handler()
 
-	code, body := uploadSkillZip(t, h, "mock-admin-token", badDestructiveSkillZip(t))
+	code, body := uploadSkillZip(t, h, "mock-admin-token", signSkillZip(t, srv, badDestructiveSkillZip(t)))
 	if code != http.StatusOK {
 		t.Fatalf("admin override should admit the package, got HTTP %d body=%s", code, body)
 	}
@@ -142,7 +142,7 @@ func TestImportSkillVetterWarnAuditWritten(t *testing.T) {
 	srv := server.New(store.New())
 	h := srv.Handler()
 
-	code, _ := uploadSkillZip(t, h, "mock-user-token", badDestructiveSkillZip(t))
+	code, _ := uploadSkillZip(t, h, "mock-user-token", signSkillZip(t, srv, badDestructiveSkillZip(t)))
 	if code != 200 {
 		t.Fatalf("warn_only must admit the package, got HTTP %d", code)
 	}
@@ -180,7 +180,7 @@ body
 	srv := server.New(store.New())
 	h := srv.Handler()
 
-	code, body := uploadSkillZip(t, h, "mock-admin-token", buf.Bytes())
+	code, body := uploadSkillZip(t, h, "mock-admin-token", signSkillZip(t, srv, buf.Bytes()))
 	if code != 200 {
 		t.Fatalf("clean import must succeed, got %d %s", code, body)
 	}

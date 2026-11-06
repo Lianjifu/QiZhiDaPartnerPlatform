@@ -100,42 +100,18 @@ func (h *Handler) homeExtraLive(r *http.Request) (any, error) {
 	var alerts []map[string]any
 	var notifications []map[string]any
 	// Alerts are derived from live tasks only (no HomeAlerts demo seed on the overview).
-	for _, t := range h.Store.Tasks {
-		if str(t["workspaceId"]) != ws {
-			continue
-		}
-		st := str(t["status"])
-		risk := ""
-		if sla, ok := t["sla"].(map[string]any); ok {
-			risk = str(sla["risk"])
-		}
-		prio := str(t["priority"])
-		needsAttention := st == "review" || risk == "critical" || risk == "overdue" || risk == "warning" ||
-			(prio == "P0" && st != "completed" && st != "archived")
-		if !needsAttention {
-			continue
-		}
-		code := str(t["code"])
-		title := str(t["title"])
-		if title == "" {
-			title = code
-		}
-		level := firstNonEmpty(prio, risk, "P2")
-		updated := str(t["updatedAt"])
-		alert := map[string]any{
-			"id": "task-alert-" + str(t["id"]), "level": level, "text": title,
-			"time": updated, "assignee": firstNonEmpty(str(t["digitalPartnerName"]), str(t["assignee"])),
-			"taskCode": code, "workspaceId": ws, "source": "task",
-		}
-		alerts = append(alerts, alert)
+	alerts = h.liveTaskAlerts(ws)
+	for _, alert := range alerts {
+		updated := str(alert["time"])
 		if slot := hourSlot(updated, now, 12); slot >= 0 {
 			hourAlerts[slot]++
 		}
 		notifications = append(notifications, map[string]any{
-			"id": "n-task-" + str(t["id"]), "tone": "warn", "icon": "AlertTriangle",
-			"text": title, "detail": code, "time": updated, "unread": true,
+			"id": "n-task-" + str(alert["taskId"]), "tone": "warn", "icon": "AlertTriangle",
+			"text": str(alert["text"]), "detail": str(alert["taskCode"]), "time": updated, "unread": true,
 		})
 	}
+	alerts = h.applyAlertAcks(alerts)
 
 	collabToday := 0
 	for _, sess := range h.Store.Sessions {

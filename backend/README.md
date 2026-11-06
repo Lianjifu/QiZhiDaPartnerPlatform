@@ -12,11 +12,9 @@
 
 | 文档 | 用途 |
 |------|------|
-| [docs/后端架构规划.md](../docs/后端架构规划.md) | 服务边界与交付阶段 |
-| [docs/后端单进程方案.md](../docs/后端单进程方案.md) | 单进程 + 未来切分路径 |
+| [docs/README.md](../docs/README.md) | 功能模块文档索引（M01–M15 分册） |
 | [deploy/topology-split.md](deploy/topology-split.md) | monolith 拓扑说明 |
 | [deploy/MIGRATION-de-to-qzda.md](deploy/MIGRATION-de-to-qzda.md) | Phase 3 外部集成迁移指南(OIDC client / Kafka 包名 / SPIFFE trust domain) |
-| [docs/环境与数据模式.md](../docs/环境与数据模式.md) | `QZDA_MODE`、Persist、办公开箱 |
 | [api/routes.md](api/routes.md) | HTTP 路由契约 |
 | [../CHANGELOG.md](../CHANGELOG.md) | 三阶段品牌迁移总账 |
 
@@ -204,7 +202,7 @@ sequenceDiagram
 
 `QZDA_RUNTIME_MODE=local`（默认）：进程内 Harness。  
 `QZDA_RUNTIME_MODE=remote`：回合经 `qzda-agent-runtime` `POST /v1/run` SSE。  
-完整扇出见 [docs/后端架构规划.md](../docs/后端架构规划.md) §3.3。
+完整扇出见 [api/routes.md](api/routes.md)。
 
 ---
 
@@ -351,7 +349,7 @@ make skill                # :8093 沙箱
 | `EnsureBuiltinWorkflowsReady` | `wf.office.*` + 部门 Certified + 高级库；不覆盖 `wft-user-*` |
 | 内存模式（`QZDA_DATA_BACKEND=memory`）补通用员工；办公助手 `de-office` 同路径 |
 
-源码：`builtin/{knowledge,skills,workflows,scenarios}/`。说明见各子目录 README 与 [环境与数据模式](../docs/环境与数据模式.md)。
+源码：`builtin/{knowledge,skills,workflows,scenarios}/`。说明见各子目录 README 与 [附录A 跨模块底座](../docs/附录A-跨模块底座.md)。
 
 平台工具（`knowledge.retrieve` 等）为 Harness **内置**，不经岗位包安装。
 
@@ -373,7 +371,7 @@ psql "$QZDA_DATABASE_URL" -f scripts/purge-demo-seed-ids.sql
 # 或 make db-reset-dev（危险：丢全部数据）
 ```
 
-工作区：`x-workspace-id` 不在成员集合内 → **403**（见 [ADR-014](../docs/adr/ADR-014-scope-layers.md)）。
+工作区：`x-workspace-id` 不在成员集合内 → **403**（见[附录B §19.9](../docs/附录B-运行模式与本地起停.md#199-工作区-header-不可伪造)）。
 ---
 
 ## 关键 API 摘要
@@ -405,7 +403,7 @@ psql "$QZDA_DATABASE_URL" -f scripts/purge-demo-seed-ids.sql
 
 | 变量 | 说明 |
 |------|------|
-| `QZDA_MODE` | `dev`（默认）\| `pro`；见 [环境与数据模式](../docs/环境与数据模式.md) |
+| `QZDA_MODE` | `dev`（默认）\| `pro`；见 [附录B](../docs/附录B-运行模式与本地起停.md) |
 | `QZDA_DATA_BACKEND` | 仅 dev 生效：`pg`（默认）\| `memory`（内存 + ACME seed） |
 | `QZDA_DATABASE_URL` / `QZDA_REDIS_URL` | PG / Redis |
 | `QZDA_APP_ADDR` / `QZDA_LISTEN_ADDR` | monolith 监听（默认 `:8100`） |

@@ -40,4 +40,4 @@ make smoke        # healthz + login + skills/sessions/evaluate 端到端冒烟
 
 `qzda-sys` / `qzda-collab` / `qzda-cap` / `qzda-workflow` 已在 M10 折叠到
 `qzda-app`,二进制 / Dockerfile / Compose profile 全部下线。当前阶段不引入新
-的 Go 微服务;按需切分路径见 [`docs/后端单进程方案.md`](../../../docs/后端单进程方案.md)。
+的 Go 微服务;按需切分路径见 [`backend/deploy/topology-split.md`](../../deploy/topology-split.md)。

@@ -72,10 +72,12 @@ func TestWecomWebhookReusesSessionForSameUser(t *testing.T) {
 func TestProductionEmployeeApproveRequiresDualApproval(t *testing.T) {
 	t.Setenv("QZDA_MODE", "pro")
 	h := server.New(store.New()).Handler()
+	utok := mustUserJWT(t)
+	atok := mustAdminJWT(t)
 
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/partners/de-2/approve", nil)
-	req.Header.Set("Authorization", "Bearer mock-user-token")
+	req.Header.Set("Authorization", "Bearer "+utok)
 	req.Header.Set("X-Workspace-Id", "w1")
 	h.ServeHTTP(rr, req)
 	if rr.Code == 200 {
@@ -87,7 +89,7 @@ func TestProductionEmployeeApproveRequiresDualApproval(t *testing.T) {
 
 	rr = httptest.NewRecorder()
 	req = httptest.NewRequest(http.MethodPost, "/api/partners/de-2/approve", nil)
-	req.Header.Set("Authorization", "Bearer mock-admin-token")
+	req.Header.Set("Authorization", "Bearer "+atok)
 	req.Header.Set("X-Workspace-Id", "w1")
 	h.ServeHTTP(rr, req)
 	if rr.Code != 200 {
@@ -103,9 +105,10 @@ func TestProductionRoutingPublishPendingThenSoD(t *testing.T) {
 	h := server.New(store.New()).Handler()
 
 	// Admin publish: no second admin required — goes live immediately.
+	atok := mustAdminJWT(t)
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/model-routing/policies/rp-draft/validate", bytes.NewBufferString(`{}`))
-	req.Header.Set("Authorization", "Bearer mock-admin-token")
+	req.Header.Set("Authorization", "Bearer "+atok)
 	req.Header.Set("X-Workspace-Id", "w1")
 	req.Header.Set("Content-Type", "application/json")
 	h.ServeHTTP(rr, req)
@@ -115,7 +118,7 @@ func TestProductionRoutingPublishPendingThenSoD(t *testing.T) {
 
 	rr = httptest.NewRecorder()
 	req = httptest.NewRequest(http.MethodPost, "/api/model-routing/policies/rp-draft/publish", bytes.NewBufferString(`{}`))
-	req.Header.Set("Authorization", "Bearer mock-admin-token")
+	req.Header.Set("Authorization", "Bearer "+atok)
 	req.Header.Set("X-Workspace-Id", "w1")
 	req.Header.Set("Content-Type", "application/json")
 	h.ServeHTTP(rr, req)
@@ -149,7 +152,7 @@ func TestProductionUserRoutingPublishNeedsAdmin(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/model-routing/policies/rp-draft/publish", bytes.NewBufferString(`{}`))
-	req.Header.Set("Authorization", "Bearer mock-admin-token")
+	req.Header.Set("Authorization", "Bearer "+mustAdminJWT(t))
 	req.Header.Set("X-Workspace-Id", "w1")
 	req.Header.Set("Content-Type", "application/json")
 	h.ServeHTTP(rr, req)
@@ -160,9 +163,10 @@ func TestProductionUserRoutingPublishNeedsAdmin(t *testing.T) {
 
 func TestWorkflowPublishAsSkillRequiresPublishedTrial(t *testing.T) {
 	h := server.New(store.New()).Handler()
+	atok := mustAdminJWT(t)
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/workflows", bytes.NewBufferString(`{"name":"草稿流"}`))
-	req.Header.Set("Authorization", "Bearer mock-admin-token")
+	req.Header.Set("Authorization", "Bearer "+atok)
 	req.Header.Set("X-Workspace-Id", "w1")
 	req.Header.Set("Content-Type", "application/json")
 	h.ServeHTTP(rr, req)
@@ -181,7 +185,7 @@ func TestWorkflowPublishAsSkillRequiresPublishedTrial(t *testing.T) {
 	}
 	rr = httptest.NewRecorder()
 	req = httptest.NewRequest(http.MethodPost, "/api/workflows/"+wfID+"/publish-as-skill", bytes.NewBufferString(`{}`))
-	req.Header.Set("Authorization", "Bearer mock-admin-token")
+	req.Header.Set("Authorization", "Bearer "+atok)
 	req.Header.Set("X-Workspace-Id", "w1")
 	req.Header.Set("Content-Type", "application/json")
 	h.ServeHTTP(rr, req)
@@ -191,7 +195,7 @@ func TestWorkflowPublishAsSkillRequiresPublishedTrial(t *testing.T) {
 
 	rr = httptest.NewRecorder()
 	req = httptest.NewRequest(http.MethodPost, "/api/workflows/wf1/publish-as-skill", bytes.NewBufferString(`{"name":"故障自愈技能-组装"}`))
-	req.Header.Set("Authorization", "Bearer mock-admin-token")
+	req.Header.Set("Authorization", "Bearer "+atok)
 	req.Header.Set("X-Workspace-Id", "w1")
 	req.Header.Set("Content-Type", "application/json")
 	h.ServeHTTP(rr, req)
@@ -207,9 +211,10 @@ func TestTemporalFailClosedInProduction(t *testing.T) {
 	t.Setenv("QZDA_MODE", "pro")
 	t.Setenv("QZDA_TEMPORAL_HOST", "127.0.0.1:1")
 	h := server.New(store.New()).Handler()
+	atok := mustAdminJWT(t)
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/workflows/run", bytes.NewBufferString(`{"workflowId":"wf1"}`))
-	req.Header.Set("Authorization", "Bearer mock-admin-token")
+	req.Header.Set("Authorization", "Bearer "+atok)
 	req.Header.Set("X-Workspace-Id", "w1")
 	req.Header.Set("Content-Type", "application/json")
 	h.ServeHTTP(rr, req)
@@ -230,10 +235,11 @@ func TestProductionBudgetHardGate(t *testing.T) {
 	}
 	st.Unlock()
 	h := server.New(st).Handler()
+	atok := mustAdminJWT(t)
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/copilot/conversations/conv-1/stream",
 		bytes.NewBufferString(`{"content":"budget gate","correlationId":"corr-budget-prod-1"}`))
-	req.Header.Set("Authorization", "Bearer mock-admin-token")
+	req.Header.Set("Authorization", "Bearer "+atok)
 	req.Header.Set("X-Workspace-Id", "w1")
 	req.Header.Set("Content-Type", "application/json")
 	h.ServeHTTP(rr, req)
@@ -247,9 +253,10 @@ func TestProductionBudgetHardGate(t *testing.T) {
 
 func TestOpsOverviewGovernanceHonestCounts(t *testing.T) {
 	h := server.New(store.New()).Handler()
+	atok := mustAdminJWT(t)
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/operations/overview", nil)
-	req.Header.Set("Authorization", "Bearer mock-admin-token")
+	req.Header.Set("Authorization", "Bearer "+atok)
 	req.Header.Set("X-Workspace-Id", "w1")
 	h.ServeHTTP(rr, req)
 	if rr.Code != 200 {
@@ -268,9 +275,10 @@ func TestProductionKnowledgePublishPendingThenSoD(t *testing.T) {
 	h := server.New(store.New()).Handler()
 
 	// Admin publish knowledge: immediate, no peer wait.
+	atok := mustAdminJWT(t)
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/knowledge/packages/pkg-ops/publish", bytes.NewBufferString(`{}`))
-	req.Header.Set("Authorization", "Bearer mock-admin-token")
+	req.Header.Set("Authorization", "Bearer "+atok)
 	req.Header.Set("X-Workspace-Id", "w1")
 	req.Header.Set("Content-Type", "application/json")
 	h.ServeHTTP(rr, req)
@@ -298,7 +306,7 @@ func TestProductionKnowledgePublishPendingThenSoD(t *testing.T) {
 
 	rr = httptest.NewRecorder()
 	req = httptest.NewRequest(http.MethodPost, "/api/knowledge/packages/pkg-ops/publish", bytes.NewBufferString(`{}`))
-	req.Header.Set("Authorization", "Bearer mock-admin-token")
+	req.Header.Set("Authorization", "Bearer "+atok)
 	req.Header.Set("X-Workspace-Id", "w1")
 	req.Header.Set("Content-Type", "application/json")
 	h.ServeHTTP(rr, req)
@@ -370,9 +378,10 @@ func TestProductionEmployeeSubmitNonAdminStaysPending(t *testing.T) {
 	}
 	st.Unlock()
 	h := server.New(st).Handler()
+	utok := mustUserJWT(t)
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/partners/de-hr/submit", bytes.NewBufferString(`{}`))
-	req.Header.Set("Authorization", "Bearer mock-user-token")
+	req.Header.Set("Authorization", "Bearer "+utok)
 	req.Header.Set("X-Workspace-Id", "w1")
 	req.Header.Set("Content-Type", "application/json")
 	h.ServeHTTP(rr, req)

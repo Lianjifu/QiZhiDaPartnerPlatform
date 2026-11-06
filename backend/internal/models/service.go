@@ -10,9 +10,8 @@
 // and the M08 segment of handlers_c.go L75-139 (listModelRoutes,
 // createModelRoute, listModelBudgets, listUsage legacy/FE path aliases).
 //
-// Phase 2 of the M08 模型中心整合方案
-// (docs/整合方案/模型中心模块整合方案.md §3.2 + §四 D2-D7) extracts that M08
-// code into internal/models/ with the same function-value façade pattern that
+// The M08 P2 extraction moved that M08 code into internal/models/ with the
+// same function-value façade pattern that
 // M02 copilot, M03 tasks, M05 partners, and M06 workflows use:
 //
 //   - Service struct holds Store + Vault + Cache + ModelProbe + TraceRecorder.

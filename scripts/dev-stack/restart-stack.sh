@@ -89,7 +89,9 @@ case "${1:-restart}" in
     else
       launchctl load "$PLIST"
     fi
-    wait_ready
+    ready_rc=0
+    wait_ready || ready_rc=$?
+    exit "$ready_rc"
     ;;
   restart|"")
     if [ -f "$PLIST" ] && launchctl list | grep -q qizhida; then
@@ -97,13 +99,24 @@ case "${1:-restart}" in
       launchctl unload "$PLIST"
       wait_down 20
     fi
-    # Ensure infra is up (PG + Redis)
+    # Ensure infra is up (PG + Redis).
+    # Capture make's real exit code via command substitution: piping straight
+    # into `tail` would return tail's status and silently swallow a failed
+    # compose-up, leaving the script to load a supervisor that can never start.
     echo "ensuring PG/Redis..."
-    (cd "$BACKEND" && make compose-up 2>&1 | tail -3)
+    compose_out=$(cd "$BACKEND" && make compose-up 2>&1); compose_rc=$?
+    printf '%s\n' "$compose_out" | tail -3
+    if [ "$compose_rc" -ne 0 ]; then
+      echo "compose-up failed (exit ${compose_rc}); supervisor left unloaded." >&2
+      echo "  fix the Docker engine, then re-run: $0 start" >&2
+      exit 1
+    fi
     echo "loading supervisor..."
     launchctl load "$PLIST"
-    wait_ready
+    ready_rc=0
+    wait_ready || ready_rc=$?
     probe
+    exit "$ready_rc"
     ;;
   *)
     echo "usage: $0 {restart|start|stop|status}"

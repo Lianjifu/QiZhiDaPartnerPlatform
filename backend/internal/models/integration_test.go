@@ -1,12 +1,12 @@
-// Integration tests for the M08 模型中心 (Model Center) handlers (T1–T16
-// from docs/整合方案/模型中心模块整合方案.md §3.3). Mirrors the pattern of
-// internal/workflows/integration_test.go (W1–W15), internal/partners/
+// Integration tests for the M08 模型中心 (Model Center) handlers (T1–T16).
+// Mirrors the pattern of internal/workflows/integration_test.go (W1–W15),
+// internal/partners/
 // integration_test.go (P1–P14), and internal/copilot/integration_test.go
 // (C1–C9): each test boots a fresh server + in-memory store, mints a signed
 // JWT for an admin identity, and round-trips through the standard
 // {ok, data, error} envelope used by pkg/response.
 //
-// Test surface (mirrors §3.3 of the plan doc):
+// Test surface:
 //
 //	T1  GET   /api/model-providers                          — list providers
 //	T2  POST  /api/model-providers                          — create provider (id)

@@ -29,14 +29,22 @@ export type HomeEvents = HomeExtraLive['recentActivities'];
 
 export type HomeTeam = HomeExtraLive['teamMembers'];
 
+// HomeAlert mirrors the backend alert row: task-derived, id "task-alert-<taskId>",
+// with the operator acknowledgement stamped on when it exists.
 export type HomeAlert = {
   id: string;
-  severity: string;
-  tone: 'danger' | 'warning' | 'info';
-  title: string;
-  meta: string;
+  taskId: string;
+  level: string;
+  text: string;
+  time: string;
+  assignee: string;
   taskCode: string;
+  workspaceId: string;
+  source: string;
   acknowledged?: boolean;
+  acknowledgedAt?: string;
+  acknowledgedBy?: string;
+  acknowledgementNote?: string;
 };
 
 export type OpsOverview = ReturnType<typeof import('@qzda/web-api').buildOpsOverviewLive> extends infer T ? T : never;

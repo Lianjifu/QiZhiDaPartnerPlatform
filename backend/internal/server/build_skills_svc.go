@@ -1,8 +1,6 @@
 // Package server — M09 技能中心 (Skills Center) façade construction.
 //
-// Phase 2 of the M09 技能中心整合方案
-// (docs/整合方案/技能中心模块整合方案.md §3.2 + §四 D1-D13 + §五 G1-G13)
-// extracted the M09 handlers out of internal/server/ into
+// The M09 P2 extraction moved the M09 handlers out of internal/server/ into
 // internal/skills/. This file holds the lone bridge between the two
 // packages: buildSkillsSvc constructs the *skills.Service façade and
 // wires every cross-package Deps callback to its *Server method.

@@ -77,10 +77,13 @@ type InstanceIDFn func() string
 type Handler struct {
 	Store       *store.Store
 	AuditSink   AuditSink
-	Health      HealthProbe  // optional, nil-safe
+	Health      HealthProbe // optional, nil-safe
 	WorkspaceID WorkspaceIDFn
 	ReplicaRole ReplicaRoleFn // optional
 	InstanceID  InstanceIDFn  // optional
+	// PersistCollection persists a durable collection. Optional, nil-safe:
+	// without it an operator acknowledgement stays in memory only.
+	PersistCollection func(collection string, items []map[string]any)
 }
 
 // NewHandler builds an operations.Handler with the dependencies wired

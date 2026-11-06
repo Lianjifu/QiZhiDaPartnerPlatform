@@ -142,7 +142,7 @@ docker run --rm -p 8093:8093 -v $PWD/backend/secrets/skill-run-secret:/etc/qzda/
 - ~~`backend-contract.yml:75` 检查 `deploy/qzda-sandbox/seccomp.json`,但实际只在
   `deploy/qzda-skill-runtime/seccomp.json` — workflow path drift~~ → 已解决
   (2026-10-04 迁至 `deploy/qzda-sandbox/`)
-- `docs/后端微服务重构方案.md:162` 写 `/v1/skills/execute`,实际是 `/v1/execute`
+- 旧 `docs/后端微服务重构方案.md:162` 写 `/v1/skills/execute`,实际是 `/v1/execute`
 - Go fallback 路径(`internal/server/skill_artifacts.go` 等 5 处陈旧绝对路径)待清理
 
 这些 PR3 不动,留给后续 PR。

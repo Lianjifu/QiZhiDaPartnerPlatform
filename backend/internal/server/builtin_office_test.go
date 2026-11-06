@@ -52,7 +52,10 @@ func TestEnsureBuiltinWorkflowsReady_IncludesOffice(t *testing.T) {
 	for _, item := range st.WorkflowTpls {
 		if str(item["id"]) == "wf.office.meeting_minutes" {
 			found = true
-			if str(item["department"]) != "office" {
+			// The office pack splits across departments the way the rest of
+			// the catalog does: HR-owned items carry "hr", the rest carry
+			// "admin". There is no "office" department.
+			if str(item["department"]) != "admin" {
 				t.Fatalf("department=%v", item["department"])
 			}
 		}

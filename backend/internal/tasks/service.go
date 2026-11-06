@@ -3,10 +3,9 @@
 // create / catch-all / conversation-derived cross-module entry).
 //
 // History: the legacy `task_*.go` files lived in internal/server/ as
-// unexported helpers + (s *Server) receiver methods. Phase 2 of the M03
-// 任务中心整合方案 (docs/整合方案/任务中心模块整合方案.md) split the 546L
-// task_domain.go into two domain files (≤400L each, per the W4-A-收 file
-// size gate) and exposed a typed façade (Service) so the parent server
+// unexported helpers + (s *Server) receiver methods. The M03 P2 extraction
+// split the 546L task_domain.go into two domain files (≤400L each, per the
+// W4-A-收 file size gate) and exposed a typed façade (Service) so the parent server
 // can dispatch the 4 M03 routes through a single struct field.
 //
 // Phase 3 (this commit) finishes the move: the 4 HTTP handlers + their

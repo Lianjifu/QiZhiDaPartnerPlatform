@@ -1,12 +1,12 @@
 // Integration tests for the M05 数字伙伴 (Digital Partner) handlers
-// (P1–P14 from docs/整合方案/数字伙伴模块整合方案.md §3.3). Mirrors the
+// (P1–P14). Mirrors the
 // pattern of internal/copilot/integration_test.go and internal/tasks/
 // integration_test.go: each test boots a fresh server + in-memory store,
 // mints a signed JWT for an admin identity, and round-trips through the
 // standard {ok, data, error} envelope used by pkg/response. The test
 // file is self-contained — no shared fixtures in test/.
 //
-// Test surface (mirrors §3.3 of the plan doc):
+// Test surface:
 //
 //	P1  GET   /api/partners                                 — list (workspace filter)
 //	P2  GET   /api/partners/overview                        — counters (total/active/pending/anomalies/costToday)
@@ -193,8 +193,8 @@ func TestP2_EmployeeOverview(t *testing.T) {
 // ----------------------------------------------------------------------
 
 // TestP3_CreateEmployee verifies create returns a new employee id and
-// initial lifecycle stage is "draft". The plan doc says lifecycleStage
-// "pending" — the implementation sets lifecycle="draft" for new entries
+// initial lifecycle stage is "draft". The intended contract was
+// lifecycleStage "pending" — the implementation sets lifecycle="draft" for new entries
 // (see handlers_contract.go L97: \"lifecycle\": \"draft\"). We assert
 // "draft" instead and document the deviation.
 func TestP3_CreateEmployee(t *testing.T) {

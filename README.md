@@ -82,7 +82,7 @@
 
 ### <img src="./docs/images/icons/toolbox.svg" width="16" height="16" align="absmiddle" style="margin-right:6px;vertical-align:middle" alt=""> 办公开箱 — 第一天就能干活
 
-无需先手工灌库；冷启动即带 **10 包部门化知识 × 4 个岗位技能 × 12 个流程模板 + 1 个办公伙伴**。
+无需先手工灌库；冷启动即带 **10 包部门化知识 × 9 个办公岗位技能 × 21 个流程模板 + 1 个办公伙伴**。
 
 | 入口 | 体验 |
 |------|------|
@@ -176,7 +176,7 @@ cd ../frontend && pnpm install && pnpm --filter web dev
 ## <img src="./docs/images/icons/map.svg" width="16" height="16" align="absmiddle" style="margin-right:6px;vertical-align:middle" alt="">️ 功能模块
 
 侧栏按**用户工作顺序**组织；底层 Agent 只作执行内核，**不作**一级入口。  
-细则见 [`docs/数字伙伴平台-功能模块文档.md`](docs/数字伙伴平台-功能模块文档.md)。
+细则见 [`docs/README.md`](docs/README.md)（按模块分册）。
 
 ### 导航信息架构
 
@@ -294,8 +294,8 @@ flowchart TB
 **关键路径**：`/workflows` → 选模板（平台内置 / 个人创建）→ 画布编排 → 试运行 → 发布为技能 → 进入技能商店。  
 **亮点**：
 
-- **办公开箱模板**：12 个开箱流程（`wf.office.*`）
-- **部门 Certified**：经过认证的部门级模板
+- **办公开箱模板**：11 个办公通用流程（`wf.office.*`）
+- **部门 Certified**：9 个部门级模板 + 1 个高级库模板
 - **可发布为技能**：流程可被伙伴引用
 
 #### M08 · 知识中心
@@ -321,10 +321,8 @@ flowchart TB
 
 | 文档 | 用途 |
 |------|------|
-| [`docs/数字伙伴平台-架构文档.md`](docs/数字伙伴平台-架构文档.md) | L0 / L1 / L2 产品与领域架构 |
-| [`docs/后端架构规划.md`](docs/后端架构规划.md) | 服务边界与演进阶段 |
+| [`docs/README.md`](docs/README.md) | 功能模块文档索引（M01–M15 分册） |
 | [`backend/deploy/topology-split.md`](backend/deploy/topology-split.md) | monolith 拓扑说明 |
-| [`docs/环境与数据模式.md`](docs/环境与数据模式.md) | `QZDA_MODE`、Persist、办公开箱冷启动 |
 
 ### 文档分层
 
@@ -447,7 +445,7 @@ sequenceDiagram
   APP--)AUD: 异步 AuditEvent · UsageMeter
 ```
 
-完整扇出见 [`docs/后端架构规划.md`](docs/后端架构规划.md) §3.3。
+完整扇出见 [`backend/api/routes.md`](backend/api/routes.md)。
 
 ### 部署单元
 
@@ -499,11 +497,10 @@ qizhida-partner-platform/
 │   ├── images/
 │   │   ├── brand/                 # 产品主轴 / 三支柱 / 能力地图 / 五中心
 │   │   └── product/               # 控制台截图 2.0
-│   ├── adr/                       # ADR-013 内核 · ADR-014 作用域三层 …
-│   ├── 环境与数据模式.md
-│   ├── 数字伙伴平台-架构文档.md
-│   ├── 数字伙伴平台-功能模块文档.md
-│   └── …                          # 后端规划 · 规格 · 视觉等
+│   ├── README.md                  # 功能模块文档索引
+│   ├── M01-运营总览.md … M15-审计中心.md
+│   ├── 附录A-跨模块底座.md
+│   ├── 附录B-运行模式与本地起停.md
 └── .github/workflows/             # backend-contract（test + 契约；smoke 手动）
 ```
 
@@ -529,7 +526,7 @@ qizhida-partner-platform/
 
 ## <img src="./docs/images/icons/tools.svg" width="16" height="16" align="absmiddle" style="margin-right:6px;vertical-align:middle" alt="">️ 本地部署
 
-两条路径：**Compose**（首次推荐）与 **LaunchAgent**（日常改代码）。均经网关 `:8089`。细则：[`backend/README.md`](backend/README.md) · [`docs/环境与数据模式.md`](docs/环境与数据模式.md)。
+两条路径：**Compose**（首次推荐）与 **LaunchAgent**（日常改代码）。均经网关 `:8089`。细则：[`backend/README.md`](backend/README.md) · [`docs/附录B-运行模式与本地起停.md`](docs/附录B-运行模式与本地起停.md)。
 
 ### 环境要求
 
@@ -623,16 +620,11 @@ cd ../backend && make test && make test-python && make smoke-monolith
 
 | 文档 | 用途 |
 |------|------|
-| [`docs/环境与数据模式.md`](docs/环境与数据模式.md) | `QZDA_MODE`、Postgres、硬删除、岗位包、办公开箱 |
-| [`docs/数字伙伴平台-功能模块文档.md`](docs/数字伙伴平台-功能模块文档.md) | 模块 Tab / 路由 / 成熟度 |
-| [`docs/数字伙伴平台-架构文档.md`](docs/数字伙伴平台-架构文档.md) | L0 / L1 / L2 |
-| [`docs/后端架构规划.md`](docs/后端架构规划.md) · [`docs/后端单进程方案.md`](docs/后端单进程方案.md) | 后端演进 |
+| [`docs/README.md`](docs/README.md) | 功能模块文档索引（M01–M15 分册） |
 | [`backend/deploy/topology-split.md`](backend/deploy/topology-split.md) | 部署拓扑 |
 | [`backend/README.md`](backend/README.md) | 控制面命令与 `builtin/` |
-| [`docs/视觉设计规范.md`](docs/视觉设计规范.md) | UI 规范 |
 | [`CHANGELOG.md`](CHANGELOG.md) | 品牌升级与发布说明(三阶段迁移记录) |
 | [`backend/deploy/MIGRATION-de-to-qzda.md`](backend/deploy/MIGRATION-de-to-qzda.md) | Phase 3 外部集成迁移(OIDC client / Kafka 包名 / SPIFFE trust domain) |
-| [`docs/adr/`](docs/adr/) | 架构决策记录 |
 
 ---
 
@@ -640,7 +632,7 @@ cd ../backend && make test && make test-python && make smoke-monolith
 
 - **问题反馈**：[Issue Tracker](../../issues)
 - **功能建议**：[Discussions](../../discussions)
-- **代码贡献**：欢迎 PR；先读 [`backend/README.md`](backend/README.md) 与 [`docs/adr/`](docs/adr/) 中的架构决策
+- **代码贡献**：欢迎 PR；先读 [`backend/README.md`](backend/README.md) 与 [`docs/README.md`](docs/README.md)
 - **CI 流水线**：[`.github/workflows/backend-contract.yml`](.github/workflows/backend-contract.yml)（`backend/**` 改动触发）
 
 ### 开发约定

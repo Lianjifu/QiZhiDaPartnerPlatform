@@ -1,13 +1,12 @@
-// Integration tests for the M09 技能中心 (Skills Center) handlers (S1–S18
-// from docs/整合方案/技能中心模块整合方案.md §3.3 + §四 D13). Mirrors the
-// pattern of internal/knowledge/integration_test.go (K1–K17),
+// Integration tests for the M09 技能中心 (Skills Center) handlers (S1–S18).
+// Mirrors the pattern of internal/knowledge/integration_test.go (K1–K17),
 // internal/models/integration_test.go (T1–T16), and internal/partners/
 // integration_test.go (P1–P14): each test boots a fresh server +
 // in-memory store, mints a signed admin JWT for workspace "w1", and
 // round-trips through the standard {ok, data, error} envelope used by
 // pkg/response.
 //
-// Test surface (mirrors §3.3 of the plan doc):
+// Test surface:
 //
 //	S1  GET   /api/skills                                 — list skills
 //	S2  POST  /api/skills                                 — create skill (id)

@@ -1,6 +1,6 @@
 /**
  * @qzda/web-ui — PSSP 设计系统组件库
- * 与 docs/视觉设计规范.md Token 对齐
+ * 与 frontend/web/src/styles/global.css 的设计 Token 对齐
  * 双主题自适应（light / dark）
  */
 import { forwardRef, useState, type ButtonHTMLAttributes, type HTMLAttributes, type InputHTMLAttributes, type ReactNode } from 'react';

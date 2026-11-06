@@ -72,4 +72,4 @@ cd backend && make compose-up-monolith   # 默认
 | Python Harness 远程化需要常驻进程 | `qzda-agent-runtime` 必起，`QZDA_RUNTIME_MODE=remote` |
 | 沙箱执行排队 / 资源占用上升 | 把 `qzda-sandbox` 横向扩多实例 |
 
-每次拆分复用同套六边形包：`internal/server` → `internal/{platform,policy,audit,collab,cap,workflow}`，handler 不改、契约不变。详见 [`docs/后端单进程方案.md`](../../docs/后端单进程方案.md)。
+每次拆分复用同套六边形包：`internal/server` → `internal/{platform,policy,audit,collab,cap,workflow}`，handler 不改、契约不变。详见 [`docs/附录B-运行模式与本地起停.md`](../../docs/附录B-运行模式与本地起停.md)。

@@ -1,13 +1,12 @@
-// Integration tests for the M07 知识中心 (Knowledge Center) handlers (K1–K17
-// from docs/整合方案/知识中心模块整合方案.md §3.3 + §四 D8). Mirrors the
-// pattern of internal/models/integration_test.go (T1–T16),
+// Integration tests for the M07 知识中心 (Knowledge Center) handlers (K1–K17).
+// Mirrors the pattern of internal/models/integration_test.go (T1–T16),
 // internal/workflows/integration_test.go (W1–W15), and internal/partners/
 // integration_test.go (P1–P14): each test boots a fresh server +
 // in-memory store, mints a signed admin JWT for workspace "w1", and
 // round-trips through the standard {ok, data, error} envelope used by
 // pkg/response.
 //
-// Test surface (mirrors §3.3 of the plan doc):
+// Test surface:
 //
 //	K1  GET    /api/knowledge/docs                 — list docs
 //	K2  POST   /api/knowledge/docs                 — create doc (id)

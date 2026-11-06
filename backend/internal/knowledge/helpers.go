@@ -12,11 +12,9 @@
 // (office builtin knowledge packs + EnsureBuiltinKnowledgeReady), and the
 // M07 segment of connect_services.go (ragConnect binding for qzda.rag.v1).
 //
-// Phase 2 of the M07 知识中心整合方案
-// (docs/整合方案/知识中心模块整合方案.md §3.2 + §四 D2-D7) extracts that
-// M07 code into internal/knowledge/ with the same function-value façade
-// pattern that M02 copilot, M03 tasks, M05 partners, M06 workflows, and
-// M08 models use:
+// The M07 P2 extraction moved that M07 code into internal/knowledge/ with
+// the same function-value façade pattern that M02 copilot, M03 tasks, M05
+// partners, M06 workflows, and M08 models use:
 //
 //   - Service struct holds Store + a Vault-free configuration surface
 //     (knowledge doesn't store credentials — the package is purely

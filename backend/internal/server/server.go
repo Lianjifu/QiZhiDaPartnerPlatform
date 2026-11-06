@@ -1466,6 +1466,9 @@ func (s *Server) buildOpsHandler() *operations.Handler {
 		WorkspaceID: s.workspaceID,
 		ReplicaRole: s.replicaRole,
 		InstanceID:  instanceID,
+		PersistCollection: func(collection string, items []map[string]any) {
+			s.Store.PersistCollection(collection, items)
+		},
 	}
 }
 
@@ -2208,7 +2211,7 @@ func (s *Server) ingestRuntimeMemoryLocked(in runtimeMemoryInput) (map[string]an
 	if s.memorySvc == nil {
 		return nil, nil
 	}
-	return s.memorySvc.IngestRuntimeMemory(in)
+	return s.memorySvc.IngestRuntimeMemoryLocked(in)
 }
 
 // persistMemory flushes the four memory collections to the durable

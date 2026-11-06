@@ -10,7 +10,7 @@
 // (getBilling, getBillingQuota, listBackups, requestBackup, backupAction)
 // and handlers_p1.go (listNotificationChannels, getTenantProfile,
 // patchTenantProfile, patchNotificationChannel, listAPIKeys,
-// listWebhooksConfig). Phase 2 of the M09 平台设置整合方案 extracts that
+// listWebhooksConfig). The M09 P2 extraction moved that
 // code into internal/settings/.
 //
 // Service is constructed once at server boot via NewService. The route

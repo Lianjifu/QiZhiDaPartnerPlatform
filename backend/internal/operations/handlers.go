@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
-	"time"
 
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
@@ -47,23 +46,24 @@ func (h *Handler) HomeTeam(r *http.Request) (any, error) {
 	return []any{}, nil
 }
 
-// HomeAlerts returns the alert list filtered to the caller's
-// workspace (or workspace-agnostic alerts with empty workspaceId).
-// Note: this is the *seed* alert list; the live attention alerts are
-// embedded in HomeExtra.slaAlerts (task-derived). AckAlert mutates
-// this collection, so the operations package needs write access here
-// even though the rest of the package is read-mostly.
+// HomeAlerts returns the attention alerts for the caller's workspace.
+//
+// The rows are the same ones HomeExtra.slaAlerts serves (task-derived, id
+// "task-alert-<taskId>") plus the legacy seed rows, with operator
+// acknowledgements stamped on. The acknowledgement itself lives in the
+// durable "home_alert_acks" collection — the alert rows are derived, so
+// persisting them would duplicate a projection.
 func (h *Handler) HomeAlerts(r *http.Request) (any, error) {
 	ws := h.workspaceOf(r)
 	h.Store.RLock()
 	defer h.Store.RUnlock()
-	var out []map[string]any
+	out := h.liveTaskAlerts(ws)
 	for _, a := range h.Store.HomeAlerts {
 		if str(a["workspaceId"]) == ws || str(a["workspaceId"]) == "" {
 			out = append(out, a)
 		}
 	}
-	return out, nil
+	return h.applyAlertAcks(out), nil
 }
 
 // AckAlert is the HTTP entry point for POST /api/home/alerts/:id/{ack,acknowledge}.
@@ -73,11 +73,11 @@ func (h *Handler) HomeAlerts(r *http.Request) (any, error) {
 //   - Admin-only. User / auditor → 403 "仅管理员可确认运营告警".
 //   - P0 alerts require a non-empty `note` in the JSON body; missing →
 //     400 "P0 告警确认必须记录处置说明".
-//   - On success: stamps acknowledged / acknowledgedAt / acknowledgedBy /
-//     acknowledgementNote on the alert row and writes an audit row with
-//     action="确认运营告警" via the injected AuditSink. The audit row
-//     stays byte-identical with the legacy server.ackAlert text so the
-//     audit-center UI keeps working without changes.
+//   - On success: records the acknowledgement in the durable ack collection
+//     (acknowledged / acknowledgedAt / acknowledgedBy / acknowledgementNote)
+//     and writes an audit row with action="确认运营告警" via the injected
+//     AuditSink. The audit row stays byte-identical with the legacy
+//     server.ackAlert text so the audit-center UI keeps working.
 func (h *Handler) AckAlert(r *http.Request) (any, error) {
 	id := identityFrom(r)
 	if id == nil || id.Role != "admin" {
@@ -91,25 +91,22 @@ func (h *Handler) AckAlert(r *http.Request) (any, error) {
 	aid := parts[3]
 	body, _ := decodeBodyMap(r)
 	note := strings.TrimSpace(str(body["note"]))
+	ws := h.workspaceOf(r)
+
 	h.Store.Lock()
-	defer h.Store.Unlock()
-	for _, a := range h.Store.HomeAlerts {
-		if str(a["id"]) != aid {
-			continue
-		}
-		if str(a["level"]) == "P0" && note == "" {
-			return nil, apperr.BadReq(apperr.AckNoteRequired, "P0 告警确认必须记录处置说明")
-		}
-		a["acknowledged"] = true
-		a["acknowledgedAt"] = time.Now().UTC().Format(time.RFC3339)
-		a["acknowledgedBy"] = id.Name
-		a["acknowledgementNote"] = note
-		if h.AuditSink != nil {
-			h.AuditSink(h.workspaceOf(r), id.Name, "确认运营告警", aid, "success", note)
-		}
-		return a, nil
+	ack, err := h.ackAlert(id, ws, aid, note)
+	acks := h.Store.HomeAlertAcks
+	h.Store.Unlock()
+	if err != nil {
+		return nil, err
 	}
-	return nil, apperr.NotFoundErr(apperr.HomeAlertNotFound, "告警不存在或不属于当前工作区")
+	if h.PersistCollection != nil {
+		h.PersistCollection("home_alert_acks", acks)
+	}
+	if h.AuditSink != nil {
+		h.AuditSink(ws, id.Name, "确认运营告警", aid, "success", note)
+	}
+	return ack, nil
 }
 
 // OpsOverview is the HTTP entry point for GET /api/operations/overview.

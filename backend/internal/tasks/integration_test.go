@@ -1,5 +1,5 @@
-// Integration tests for the M03 任务中心 (Task Center) handlers (T1–T9
-// from docs/整合方案/任务中心模块整合方案.md §3.3). Mirrors the pattern
+// Integration tests for the M03 任务中心 (Task Center) handlers (T1–T9).
+// Mirrors the pattern
 // of internal/copilot/integration_test.go + internal/operations/
 // integration_test.go: each test boots a fresh server + in-memory store,
 // mints a signed JWT for an admin identity (with full Permission set
@@ -8,7 +8,7 @@
 // round-trips through the standard {ok, data, error} envelope used by
 // pkg/response.
 //
-// Test surface (§3.3):
+// Test surface:
 //
 //	T1 GET   /api/tasks                                  — list (workspace filter)
 //	T2 POST  /api/tasks                                  — create returns id+stage=pending
@@ -279,12 +279,12 @@ func TestT3_LifecycleFSM(t *testing.T) {
 // TestT4_KanbanMove exercises the same transition endpoint the frontend
 // Kanban board uses for drag-to-stage moves (see features/tasks/components/
 // TasksPage.tsx moveTask → /api/tasks/{id}/transition with stage). The
-// plan doc labelled the action "move" with `to_stage=running`; the
+// The action is "move" with `to_stage=running`; the
 // handler actually accepts `stage` in body and dispatches via the
 // "transition" action path. We assert the FSM edge is honoured (no 4xx)
 // and the row's lifecycleStage flips to running.
 //
-// Deviation note: the plan says POST /api/tasks/{id}/move with
+// Deviation note: the implemented route is POST /api/tasks/{id}/transition with
 // to_stage=running; the implementation accepts /transition + stage.
 // Tested against the real route — see handler taskRoute L121-136 in
 // internal/server/handlers_contract.go.

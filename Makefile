@@ -55,7 +55,7 @@ ci-frontend:
 # restart-stack.sh so the stack survives transient crashes.
 #
 # QZDA_STACK=coarse switches to the split qzda-sys / qzda-collab / qzda-cap
-# topology. See docs/数字伙伴平台-架构文档.md.
+# topology. See docs/附录B-运行模式与本地起停.md.
 
 QZDA_STACK ?= monolith
 export QZDA_STACK

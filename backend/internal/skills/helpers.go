@@ -6,10 +6,8 @@
 // (/api/mcp-connections, /api/tools), and the cross-module bind entry
 // /api/agents/{id}/skills).
 //
-// Phase 2 of the M09 技能中心整合方案
-// (docs/整合方案/技能中心模块整合方案.md §3.2 + §四 D1-D13 + §五 G1-G13)
-// extracts the M09 code out of internal/server/ with the same
-// function-value façade pattern that M02 copilot, M03 tasks, M05
+// The M09 P2 extraction moved the M09 code out of internal/server/ with the
+// same function-value façade pattern that M02 copilot, M03 tasks, M05
 // partners, M06 workflows, M07 knowledge, and M08 models use:
 //
 //   - Service struct holds Store + AuditSink + Signer + Sandboxes + Signer.

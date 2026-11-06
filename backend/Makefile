@@ -57,36 +57,56 @@ build:
 local-llm:
 	$(GO) run ./cmd/qzda-local-llm
 
-# === Docker 引擎自检 ===
+# === Docker 引擎自检 + 自愈 ===
+# 宿主 docker info 连不上有两种形态,必须分开处理:
+#   1. VM 根本没起来        → colima start
+#   2. VM 活着但转发僵死    → colima start 是 no-op(它只看 VM 存活),
+#                            必须 stop+start 重置宿主→VM 的 socket 转发。
+#      形态 2 的特征: VM 内一切正常(colima ssh -- docker ps 有容器),
+#      但宿主 docker ps 报 "Cannot connect to the Docker daemon"。
+#      colima status 的文案走 stderr,所以这里用退出码判断而非 grep 文案。
 docker-engine:
 	@command -v docker >/dev/null || { echo "docker CLI missing; brew install docker colima"; exit 1; }
-	@if ! docker info >/dev/null 2>&1; then \
-		echo "starting Colima Docker engine..."; \
-		colima start --cpu 2 --memory 4 --disk 20; \
-	fi
-	@docker info >/dev/null
+	@if docker info >/dev/null 2>&1; then exit 0; fi; \
+	echo "docker engine unreachable; probing Colima VM state..."; \
+	if colima status >/dev/null 2>&1; then \
+		echo "  VM is up but the host->VM socket forward is stale"; \
+		echo "  resetting it (colima stop && colima start)..."; \
+		colima stop >/dev/null 2>&1 || true; \
+	fi; \
+	echo "  starting Colima Docker engine..."; \
+	colima start --cpu 2 --memory 4 --disk 20 >/dev/null || exit 1; \
+	for i in $$(seq 1 15); do \
+		docker info >/dev/null 2>&1 && { echo "  docker engine ready"; exit 0; }; \
+		sleep 2; \
+	done; \
+	echo "docker engine still unreachable after start." >&2; \
+	echo "  diagnose: colima status / colima logs" >&2; \
+	exit 1
 
 # === Compose 入口 ===
+# 只拉起基础设施(PG + Redis);应用进程由 restart-stack.sh 在宿主机上跑。
+# 等待条件必须和实际 up 的服务对齐 —— 早先这里等 6 个服务(含从未被 up 的
+# qzda-app / sandbox / rag / gateway),那些容器不存在,条件永远不满足。
 compose-up: docker-engine
 	$(COMPOSE) up -d postgres redis
-	@echo "waiting for all services healthy..."
-	@for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30; do \
+	@echo "waiting for infra healthy..."
+	@ok=1; \
+	for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30; do \
 		pg=$$(docker inspect -f '{{.State.Health.Status}}' qzda-postgres 2>/dev/null || echo starting); \
 		rd=$$(docker inspect -f '{{.State.Health.Status}}' qzda-redis 2>/dev/null || echo starting); \
-		app=$$(docker inspect -f '{{.State.Health.Status}}' qzda-app 2>/dev/null || echo starting); \
-		sb=$$(docker inspect -f '{{.State.Health.Status}}' qzda-sandbox 2>/dev/null || echo starting); \
-		rag=$$(docker inspect -f '{{.State.Health.Status}}' qzda-rag 2>/dev/null || echo starting); \
-		gw=$$(docker inspect -f '{{.State.Health.Status}}' qzda-gateway 2>/dev/null || echo starting); \
-		echo "  try $$i: pg=$$pg redis=$$rd app=$$app sandbox=$$sb rag=$$rag gateway=$$gw"; \
-		if [ "$$pg" = "healthy" ] && [ "$$rd" = "healthy" ] && [ "$$app" = "healthy" ] && [ "$$sb" = "healthy" ] && [ "$$rag" = "healthy" ] && [ "$$gw" = "healthy" ]; then \
-			echo "monolith ready"; \
-			echo "  gateway :8089 → qzda-app :8100"; \
-			echo "  sandbox :8093  rag :8092  pg :5432  redis :6379"; \
-			exit 0; \
-		fi; \
+		echo "  try $$i: pg=$$pg redis=$$rd"; \
+		if [ "$$pg" = "healthy" ] && [ "$$rd" = "healthy" ]; then ok=0; break; fi; \
 		sleep 2; \
-	done
-	@echo "stack not healthy after 60s; try: make compose-logs"; exit 1
+	done; \
+	if [ "$$ok" -eq 0 ]; then \
+		echo "infra ready"; \
+		echo "  postgres :5432  redis :6379"; \
+		echo "  now: ../scripts/dev-stack/restart-stack.sh start   (or: make -C .. run-app)"; \
+	else \
+		echo "infra not healthy after 60s; try: make compose-logs" >&2; \
+		exit 1; \
+	fi
 
 compose-down:
 	$(COMPOSE) down

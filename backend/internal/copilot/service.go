@@ -404,21 +404,9 @@ type Service struct {
 	// 懒构造,5min TTL,避免重复问题反复打 qzda-rag。
 	ragCache *ragCache
 
-	// HTTP handler 函数字段(8 个标准路由 + 1 个内部钩子)。
-	// 生产调用方(server.New)在构造时把这些绑到自己的 *Server 方法上。
-	// Handler 结构体把它们当 method value 使用,从而让包依赖始终单向
-	// (copilot 永不导入 server/)。
-	// CopH() 方法在本包独立运行(例如 copilot 内部测试)时,
-	// 会把这些字段填上自身闭包。
-	listConversationsFn      func(r *http.Request) (any, error)
-	createConversationFn     func(r *http.Request) (any, error)
-	getCopilotTurnStatusFn   func(r *http.Request) (any, error)
-	replayCopilotTurnFn      func(r *http.Request) (any, error)
-	cancelCopilotTurnFn      func(r *http.Request) (any, error)
-	copilotMessageFeedbackFn func(r *http.Request) (any, error)
-	copilotPostTurnAPIFn     func(r *http.Request) (any, error)
-	copilotStreamFn          func(w http.ResponseWriter, r *http.Request)
-	evolveCandidateActionFn  func(r *http.Request) (any, error)
+	// M02 的 HTTP 路由只有一份:internal/server/server.go 的 route() switch,
+	// 直接调用 server 侧的 *Server 方法。本包不再持有任何 HTTP 路由字段 ——
+	// copilot 负责域逻辑,server 负责路由分发。
 }
 
 // NewService 用给定的 Store + Deps 构造一个生产可用的 Service。
@@ -434,27 +422,6 @@ func NewService(store *store.Store, deps Deps) *Service {
 // 用途:跑纯逻辑(频控、模型路由等)而不需要 wire 服务端依赖。
 func New(store *store.Store) *Service {
 	return NewService(store, Deps{})
-}
-
-// CopH 返回 8 个标准 M02 路由的 Handler facade。
-// 作为 Service 方法保留,让 copilot 内部测试可以路由 M02 HTTP 路径
-// 通过 Handler,不必实例化 *server.Server。
-// 生产调用方(server.New)直接用自己方法值 wire Handler。
-func (s *Service) CopH() *Handler {
-	return &Handler{
-		ListConversations:    s.listConversationsFn,
-		CreateConversation:    s.createConversationFn,
-		GetCopilotTurnStatus:  s.getCopilotTurnStatusFn,
-		ReplayCopilotTurn:     s.replayCopilotTurnFn,
-		CancelCopilotTurn:     s.cancelCopilotTurnFn,
-		// 直接 wire 包内方法,让 copilot 内部测试可经 CopH() 路由
-		// 而不必实例化 *server.Server。生产调用方(server.New)会用
-		// 自己的方法值覆盖这些字段,做跨包分发。
-		CopilotMessageFeedback: s.copilotMessageFeedback,
-		CopilotPostTurnAPI:     s.copilotPostTurnAPIFn,
-		CopilotStream:          s.copilotStreamFn,
-		EvolveCandidateAction:  s.evolveCandidateAction,
-	}
 }
 
 // SetTestHooks 给 Service 挂上测试用的可替换钩子(panic 注入 / 假 LLM 响应等)。
