@@ -10427,7 +10427,7 @@ a:focus-visible,
 }
 
 /* ============ Markdown 渲染 ============ */
-.md-content { line-height: 1.7; }
+.md-content { line-height: 1.7; overflow-wrap: anywhere; word-break: break-word; }
 
 /* 消息流容器防抖动 */
 .flex-1\.overflow-y-auto { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
@@ -10478,7 +10478,6 @@ a:focus-visible,
   font-size: 11px;
   font-family: var(--font-mono);
 }
-.md-content .md-pre-code { color: var(--text-secondary); white-space: pre-wrap; }
 .md-content .md-kw { color: var(--brand); font-weight: 600; }
 .md-content .md-str { color: var(--success); }
 .md-content .md-num { color: var(--purple); }
@@ -10578,6 +10577,64 @@ a:focus-visible,
 }
 .md-content .md-form-meta__label::after { content: '：'; }
 .md-content .md-form-meta__value { color: var(--text); }
+
+/* --- markdown-it 全量元素补充 --- */
+.md-content .md-del { color: var(--text-muted); text-decoration: line-through; }
+.md-content .md-img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 8px 0;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+.md-content .md-li { margin: 2px 0; }
+/* Tailwind preflight 把 ol/ul 的 list-style 清成了 none，这里显式恢复标记 */
+.md-content .md-ul { list-style: disc; }
+.md-content .md-ol { list-style: decimal; }
+.md-content .md-ul, .md-content .md-ol { margin: 4px 0 8px 18px; padding-left: 6px; }
+.md-content .md-ul .md-ul, .md-content .md-ol .md-ol,
+.md-content .md-ul .md-ol, .md-content .md-ol .md-ul { margin: 2px 0 2px 4px; }
+.md-content .md-ul .md-ul { list-style: circle; }
+.md-content .md-li > p { margin: 0; }
+.md-content .md-li > .md-ul, .md-content .md-li > .md-ol { margin-top: 2px; }
+.md-content .md-li > .md-p + .md-p { margin-top: 2px; }
+
+/* 任务列表 */
+.md-content .task-list-item { list-style: none; margin-left: -18px; }
+.md-content .task-list-item-checkbox {
+  width: 13px;
+  height: 13px;
+  margin-right: 6px;
+  vertical-align: -2px;
+  accent-color: var(--brand);
+  cursor: pointer;
+}
+.md-content .task-list-item input[type='checkbox']:disabled { cursor: default; }
+
+/* 脚注 */
+.md-content .footnotes {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.md-content .footnotes-sep { display: none; }
+.md-content .footnote-item { margin: 3px 0; }
+.md-content .footnote-ref {
+  padding: 0 2px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--brand);
+  text-decoration: none;
+  vertical-align: super;
+}
+.md-content .footnote-backref { margin-left: 4px; color: var(--text-muted); text-decoration: none; }
+
+/* 代码块：桌面横向滚动不折行，移动端折行避免横向溢出 */
+.md-content .md-pre-code { color: var(--text-secondary); white-space: pre; }
 
 /* 用户消息里的 chat-bubble 去掉 pre 格式（用户内容通常不是 markdown） */
 .chat-bubble--user .md-content { line-height: 1.5; }
