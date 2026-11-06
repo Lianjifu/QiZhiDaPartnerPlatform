@@ -151,11 +151,26 @@ func (s *Service) digitalEmployeeRoute(r *http.Request) (any, error) {
 	switch action {
 	case "evaluate":
 		incomplete := s.Deps.EmployeeEvaluateIncomplete(emp) || body["forceFail"] == true
+		// P7:评测基于伙伴的真实运行轨迹;没有轨迹时保留结构性评测,
+		// 并把 trajectory.status 标成 unknown(不伪造一个高分)。
+		traj := map[string]any{}
+		if s.Deps.EvaluateEmployeeTrajectoryLocked != nil {
+			traj = s.Deps.EvaluateEmployeeTrajectoryLocked(emp)
+		}
+		now := time.Now().UTC().Format(time.RFC3339)
 		if incomplete {
-			emp["evaluation"] = map[string]any{"status": "failed", "score": 68.0, "lastRunAt": time.Now().UTC().Format(time.RFC3339)}
+			emp["evaluation"] = map[string]any{"status": "failed", "score": 68.0, "lastRunAt": now, "trajectory": traj}
 		} else {
-			emp["evaluation"] = map[string]any{"status": "passed", "score": 93.5, "lastRunAt": time.Now().UTC().Format(time.RFC3339)}
-			if str(emp["lifecycle"]) == "draft" {
+			status, score := "passed", 93.5
+			switch str(traj["status"]) {
+			case "passed":
+				score = floatFrom(traj["score"])
+			case "failed":
+				status = "failed"
+				score = floatFrom(traj["score"])
+			}
+			emp["evaluation"] = map[string]any{"status": status, "score": score, "lastRunAt": now, "trajectory": traj}
+			if status == "passed" && str(emp["lifecycle"]) == "draft" {
 				emp["lifecycle"] = "testing"
 			}
 		}
@@ -393,6 +408,10 @@ func (s *Service) applyEmployeeConfig(emp map[string]any, draft map[string]any) 
 	}
 	if mem, ok := draft["memoryPolicy"]; ok {
 		emp["memoryPolicy"] = mem
+	}
+	// P5 子伙伴派生策略:默认关闭,不配置就不许派生。
+	if dp, ok := draft["delegationPolicy"]; ok {
+		emp["delegationPolicy"] = dp
 	}
 	if boundary, ok := draft["boundary"].(map[string]any); ok {
 		if resp := boundary["responsibilities"]; resp != nil {

@@ -280,7 +280,8 @@ type resolvedTurn = copilot.ResolvedTurn
 // so the runtime_loop/session_panel call sites stay byte-compatible.
 func (s *Server) streamLLMForCopilot(ctx context.Context, r *http.Request, ws, modelID string, messages []modelprov.ChatMessage, system string, onDelta func(text, resolvedModelID string) error) (string, copilot.ResolvedTurn, error) {
 	if s.modelSvc != nil {
-		return s.modelSvc.StreamLLMForCopilot(ctx, r, ws, modelID, messages, system, onDelta)
+		text, _, rt, err := s.modelSvc.StreamLLMForCopilot(ctx, r, ws, modelID, messages, system, copilot.LLMCallOptions{}, onDelta)
+		return text, rt, err
 	}
 	return "", copilot.ResolvedTurn{}, nil
 }

@@ -83,7 +83,22 @@ type ResolvedTurn struct {
 //   - onDelta           : 流式回调(每段 token 触发一次,resolvedModelID 用于路由标识)
 //
 // 返回:完整 reply + 实际命中的 ResolvedTurn + error
-type StreamLLMForCopilotFn func(ctx context.Context, r *http.Request, ws, modelID string, messages []modelprov.ChatMessage, system string, onDelta func(text, resolvedModelID string) error) (reply string, resolved ResolvedTurn, err error)
+type StreamLLMForCopilotFn func(ctx context.Context, r *http.Request, ws, modelID string, messages []modelprov.ChatMessage, system string, opts LLMCallOptions, onDelta func(text, resolvedModelID string) error) (reply string, toolCalls []modelprov.ToolCall, resolved ResolvedTurn, err error)
+
+// LLMCallOptions 是一次 LLM 调用的可选参数。
+//
+// P3 起工具契约随调用下发:Tools 是从能力契约生成的 JSON Schema,
+// 模型据此发起结构化工具调用,而不是在正文里吐 <<<TOOL>>> 文本块。
+type LLMCallOptions struct {
+	// Tools 是下发给模型的工具契约;为空表示纯对话(旧行为)。
+	Tools []modelprov.ToolSchema
+	// ParallelToolCalls 允许模型一轮内发起多个工具调用。
+	ParallelToolCalls bool
+	// ToolChoice: auto(默认) | none | required。
+	ToolChoice string
+	// CachePoints 标记需要做提示缓存的消息下标(P4)。
+	CachePoints []int
+}
 
 // runtimeMemoryInput 是 ingestRuntimeMemoryLocked 的入参结构体(覆盖范围 / 来源 / 置信度等)。
 // 从 internal/server/handlers_memory.go 迁过来,以便 copilot 直接传入而不产生 import cycle。
@@ -286,6 +301,39 @@ type ToolDeps struct {
 	RunRuntimeToolFn func(ctx toolRunContext, t *registeredTool, call toolCallRequest, started time.Time) toolExecResult
 	// PersistSkillHealthFn 同步落盘技能健康检查快照。
 	PersistSkillHealthFn func()
+	// PendingTodosFn 读取当前会话的待办清单(todo_write 写入)。
+	// 用于把待办注入下一轮 system prompt,让伙伴按清单推进而不是随手做。
+	PendingTodosFn func(conversationID string) []map[string]any
+	// OffloadArtifactFn 把过大的工具输出落成产物(P4 上下文卸载),
+	// 返回 {id, ...};未接线时不做卸载。
+	OffloadArtifactFn func(in ArtifactInput) (map[string]any, error)
+	// ReadArtifactFn 按产物 ID 取回完整正文(artifact.read 工具用)。
+	ReadArtifactFn func(artifactID string) (map[string]any, bool)
+}
+
+// EscalationInput 是伙伴自动升级（交接）的入参。
+//
+// 触发方是运行期：伙伴尝试了被禁止的能力、工具连续失败、或命中伙伴配置的
+// boundaryPolicy.handoff.triggers 里的任一条件。升级动作本身由 server 侧实现
+// （把会话移交给接管人并暂停写操作），copilot 只负责判断与发起。
+type EscalationInput struct {
+	WorkspaceID     string
+	ConversationID  string
+	CorrelationID   string
+	DigitalPartnerID string
+	// Trigger 是触发原因标识：prohibited_action / tool_failure / user_request。
+	Trigger string
+	// Reason 是给人看的说明。
+	Reason string
+	// ToolName 是触发时的工具名(可空)。
+	ToolName string
+}
+
+// EscalationDeps 是伙伴自动升级（交接）相关的依赖。
+type EscalationDeps struct {
+	// EscalateFn 把当前会话移交给接管人;返回 {"escalated":bool,"owner":string,...}。
+	// Nil 时表示未启用自动升级,调用点直接跳过。
+	EscalateFn func(in EscalationInput) (map[string]any, error)
 }
 
 // MultiAgentDeps 是多专家面板的依赖。
@@ -348,6 +396,7 @@ type Deps struct {
 	RAG        RAGDeps
 	Tools      ToolDeps
 	MultiAgent MultiAgentDeps
+	Escalation EscalationDeps
 	Persist    PersistenceDeps
 	Sandbox    SandboxHelperDeps
 	SkillsRoot SkillsRootDeps

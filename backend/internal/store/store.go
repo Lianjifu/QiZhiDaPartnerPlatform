@@ -116,7 +116,11 @@ type Store struct {
 	// survive a restart — it is what the durable "home_alert_acks" collection
 	// holds.
 	HomeAlertAcks []map[string]any
-	Billing              map[string]any
+	// AgentArtifacts holds tool outputs that were too large to keep in the
+	// model context (P4). The conversation keeps only a reference; the model
+	// can pull the full body back through the artifact.read tool.
+	AgentArtifacts      []map[string]any
+	Billing             map[string]any
 	Backups              []map[string]any
 	OpsOverview          map[string]any
 	NotificationChannels []map[string]any

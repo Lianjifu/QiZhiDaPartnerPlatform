@@ -385,13 +385,14 @@ func (s *Service) runMultiAgentTurn(ctx context.Context, in reactTurnInput) reac
 	var lastRT ResolvedTurn
 	var aggBuf strings.Builder
 	aggText, rt2, err2 := withLLMRetry(ctx, func(ctx context.Context) (string, ResolvedTurn, error) {
-		return s.Deps.Routing.StreamLLMForCopilotFn(ctx, in.Request, in.WorkspaceID, in.ModelID, aggMsgs, aggSystem, func(chunk, mid string) error {
+		reply, _, resolved, callErr := s.Deps.Routing.StreamLLMForCopilotFn(ctx, in.Request, in.WorkspaceID, in.ModelID, aggMsgs, aggSystem, LLMCallOptions{}, func(chunk, mid string) error {
 			if mid != "" {
 				resolvedModel = mid
 			}
 			aggBuf.WriteString(chunk)
 			return nil
 		})
+		return reply, resolved, callErr
 	})
 	if err2 != nil && aggBuf.Len() == 0 && aggText == "" {
 		return reactTurnResult{Err: err2, ToolCalls: toolCalls, Steps: len(picks), ModelID: resolvedModel, Mode: modeMultiAgent}

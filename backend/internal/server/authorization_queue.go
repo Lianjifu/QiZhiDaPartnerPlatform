@@ -81,7 +81,9 @@ func (s *Server) queueToolAuthorization(ctx toolRunContext, tool *registeredTool
 	}
 	return toolExecResult{
 		Status: "pending_authorization", Permission: "approval_required",
-		Output: "工具「" + tool.Name + "」已进入人工审核队列，等待授权人批准后才能执行。请勿声称已执行成功。",
+		// ActionID 让回合能挂起并在审批后被续跑(P6)。
+		ActionID: actionID,
+		Output:   "工具「" + tool.Name + "」已进入人工审核队列，等待授权人批准后才能执行。请勿声称已执行成功。",
 	}
 }
 

@@ -10,7 +10,7 @@ func TestValidateEmployeeReleaseGates(t *testing.T) {
 		"owner": "A", "escalationOwner": "B", "serviceObject": "S",
 		"responsibilities": []any{"值班"},
 		"capabilities": map[string]any{
-			"model": "m1", "skills": []any{"s1"}, "tools": []any{}, "workflows": []any{},
+			"model": "m1", "skills": []any{"s1"}, "tools": []any{"knowledge.retrieve"}, "workflows": []any{},
 		},
 		"evaluation": map[string]any{"status": "passed"},
 	}
@@ -27,6 +27,44 @@ func TestValidateEmployeeReleaseGates(t *testing.T) {
 	err := validateEmployeeReleaseGates(bad)
 	if err == nil || !strings.Contains(err.Error(), "E_DIGITAL_PARTNER_PROFILE_INCOMPLETE") {
 		t.Fatalf("expected profile incomplete, got %v", err)
+	}
+}
+
+// TestValidateEmployeeReleaseGatesRejectsUncontractedCapability covers the P2
+// gate: a platform capability whose name has no matching contract (a typo
+// such as "knowlege.retrieve") is rejected at release time instead of
+// failing at runtime with "工具未注册".
+func TestValidateEmployeeReleaseGatesRejectsUncontractedCapability(t *testing.T) {
+	emp := map[string]any{
+		"owner": "A", "escalationOwner": "B", "serviceObject": "S",
+		"responsibilities": []any{"值班"},
+		"capabilities": map[string]any{
+			"model": "m1", "skills": []any{"s1"},
+			"tools": []any{"knowlege.retrieve"}, "workflows": []any{},
+		},
+		"evaluation": map[string]any{"status": "passed"},
+	}
+	err := validateEmployeeReleaseGates(emp)
+	if err == nil || !strings.Contains(err.Error(), "E_CAPABILITY_CONTRACT_MISSING") {
+		t.Fatalf("expected contract gate, got %v", err)
+	}
+}
+
+// TestValidateEmployeeReleaseGatesAllowsEnterpriseRuntimeTools keeps the gate
+// narrow: CMDB / enterprise tools have their own executors and must not be
+// blocked from going on duty.
+func TestValidateEmployeeReleaseGatesAllowsEnterpriseRuntimeTools(t *testing.T) {
+	emp := map[string]any{
+		"owner": "A", "escalationOwner": "B", "serviceObject": "S",
+		"responsibilities": []any{"值班"},
+		"capabilities": map[string]any{
+			"model": "m1", "skills": []any{"s1"},
+			"tools": []any{"cmdb.asset.lookup"}, "workflows": []any{},
+		},
+		"evaluation": map[string]any{"status": "passed"},
+	}
+	if err := validateEmployeeReleaseGates(emp); err != nil {
+		t.Fatalf("expected ok, got %v", err)
 	}
 }
 

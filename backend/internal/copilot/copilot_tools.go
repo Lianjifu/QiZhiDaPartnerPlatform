@@ -57,6 +57,9 @@ type registeredTool struct {
 	Enabled          bool
 	RequiresApproval bool
 	Description      string
+	// Contract 是该能力的能力契约(P2):入参 schema / 产物类型 / 审批要求。
+	// 由 buildToolRegistry 在装配时补齐,校验与原生 tool_use 都依赖它。
+	Contract         CapabilityContract
 }
 
 // toolCallRequest 是一次工具调用的最小请求体（name + args）。
@@ -75,6 +78,8 @@ type toolExecResult struct {
 	Permission string
 	Error      string
 	SandboxID  string
+	// ActionID 是进入人工审核队列时的待审单 ID(P6 续跑用)。
+	ActionID   string
 }
 
 // toolRunContext 把一次工具执行需要的"周边上下文"打包传给具体执行器。
@@ -90,6 +95,8 @@ type toolRunContext struct {
 	Viewer          *auth.Identity
 	SessionMode     string
 	RiskLevel       string
+	// ModelID 是本回合实际使用的模型(P5:子伙伴沿用同一模型档位)。
+	ModelID string
 }
 
 // toolCallBlockRE / xmlToolCallBlockRE 预编译的工具调用块匹配正则。
@@ -175,6 +182,7 @@ func buildToolRegistry(emp map[string]any, enabledTools []string) []registeredTo
 		}
 		seen[t.Key] = struct{}{}
 		t.RequiresApproval = t.Mode == toolModeApproval
+		t.Contract = contractForTool(t)
 		if t.Kind == "builtin" {
 			if enableAllNonApproval {
 				t.Enabled = true
@@ -215,6 +223,10 @@ func buildToolRegistry(emp map[string]any, enabledTools []string) []registeredTo
 	add(registeredTool{
 		Key: "builtin:skill.read", Name: "skill.read", Kind: "builtin",
 		Mode: toolModeExecute, Description: "加载已装配技能的 SKILL.md 全文",
+	})
+	add(registeredTool{
+		Key: "builtin:artifact.read", Name: "artifact.read", Kind: "builtin",
+		Mode: toolModeExecute, Description: "取回此前被卸载的大结果正文(按 artifact id)",
 	})
 	// M14+ 企业 agent shell 工具(读 / 写 / 编辑 / 搜索 / 列目录 / 受控执行),
 	// 全部经 workspace 白名单 + exec 白名单 + audit 留痕,数字伙伴可挂载
@@ -425,6 +437,48 @@ func toolRegistryPrompt(reg []registeredTool) string {
 	return b.String()
 }
 
+// pendingTodosPrompt 渲染当前会话的待办清单,注入 system prompt。
+//
+// todo_write 此前只写不读 —— 伙伴写完清单就忘了,下一轮不会照着做。
+// 这里把未完成的待办显式带回给模型,作为下一步的行动依据。
+func (s *Service) pendingTodosPrompt(convID string) string {
+	if s == nil || s.Deps.Tools.PendingTodosFn == nil || strings.TrimSpace(convID) == "" {
+		return ""
+	}
+	todos := s.Deps.Tools.PendingTodosFn(convID)
+	if len(todos) == 0 {
+		return ""
+	}
+	open := make([]string, 0, len(todos))
+	for _, t := range todos {
+		status := strings.ToLower(strings.TrimSpace(str(t["status"])))
+		if status == "done" || status == "completed" {
+			continue
+		}
+		content := firstNonEmptyString(str(t["content"]), str(t["title"]))
+		if content == "" {
+			continue
+		}
+		if status == "" {
+			status = "pending"
+		}
+		open = append(open, "- ["+status+"] "+content)
+	}
+	if len(open) == 0 {
+		return ""
+	}
+	return "【当前待办】\n" + strings.Join(open, "\n") + "\n请优先推进以上待办；不需要调用工具时直接给结论。\n"
+}
+
+func firstNonEmptyString(vals ...string) string {
+	for _, v := range vals {
+		if strings.TrimSpace(v) != "" {
+			return v
+		}
+	}
+	return ""
+}
+
 // parseToolCall 是工具调用解析的总入口：先尝试 <<<TOOL>>> 块，再 fallback 到 XML 风格。
 func parseToolCall(text string) (toolCallRequest, bool) {
 	text = strings.TrimSpace(text)
@@ -584,6 +638,15 @@ func authorizeToolCall(reg []registeredTool, call toolCallRequest) (*registeredT
 			Status: "denied", Error: "工具未在本会话启用：" + t.Name, Permission: "disabled",
 		}
 	}
+	// 能力契约校验(P2):参数不合法就不执行,把错误回灌给模型让它自纠。
+	// 放在审批分支之前 —— 参数都不对就不该生成待审授权单。
+	if msg := ValidateContractArgs(t.Contract, call.Args); msg != "" {
+		return t, &toolExecResult{
+			Status: "denied", Permission: "contract_invalid",
+			Error:  "工具参数不符合能力契约：" + msg,
+			Output: "工具「" + t.Name + "」的调用参数未通过契约校验：" + msg + "。请按契约修正参数后重试。",
+		}
+	}
 	// Skill approval is per-action (open vs run/write) in dispatchAuthorizedTool.
 	if t.RequiresApproval && t.Kind != "skill" {
 		return t, &toolExecResult{
@@ -668,6 +731,25 @@ func (s *Service) runCopilotTool(ctx toolRunContext, t *registeredTool, call too
 
 	case t.Name == "skill.read" || t.Key == "builtin:skill.read":
 		return s.Deps.Tools.RunSkillReadToolFn(ctx, call, started)
+
+	case t.Name == "artifact.read" || t.Key == "builtin:artifact.read":
+		// P4:取回此前被卸载的大结果正文。
+		id := strings.TrimSpace(str(call.Args["id"]))
+		if id == "" {
+			return toolExecResult{Status: "failed", Error: "缺少 id", DurationMs: int(time.Since(started).Milliseconds())}
+		}
+		if s.Deps.Tools.ReadArtifactFn == nil {
+			return toolExecResult{Status: "unavailable", Permission: "unavailable",
+				DurationMs: int(time.Since(started).Milliseconds()),
+				Error:      "产物读取能力未接入",
+				Output:     "当前未启用产物读取（artifact.read）能力。"}
+		}
+		art, ok := s.Deps.Tools.ReadArtifactFn(id)
+		if !ok {
+			return toolExecResult{Status: "failed", Error: "产物不存在：" + id, DurationMs: int(time.Since(started).Milliseconds())}
+		}
+		return toolExecResult{Status: "success", DurationMs: int(time.Since(started).Milliseconds()),
+			Output: str(art["content"])}
 
 	case t.Name == "time.now" || t.Key == "builtin:time.now":
 		now := time.Now().Format(time.RFC3339)

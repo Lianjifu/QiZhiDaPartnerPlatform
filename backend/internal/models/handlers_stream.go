@@ -53,7 +53,7 @@ func (s *Service) ModelInvokeStream(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	var full strings.Builder
-	text, rt, streamErr := s.streamLocalCandidates(ctx, ws, modelID, messages, system, func(t, mid string) error {
+	text, _, rt, streamErr := s.streamLocalCandidates(ctx, ws, modelID, messages, system, copilot.LLMCallOptions{}, func(t, mid string) error {
 		if full.Len() == 0 {
 			emit("meta", map[string]any{
 				"modelId": mid, "source": "provider",
@@ -84,11 +84,11 @@ func (s *Service) ModelInvokeStream(w http.ResponseWriter, r *http.Request) {
 // Split topology: Collab hops there first (Cap owns providers/credentials/
 // invoke), and falls back to local candidate resolution on transport
 // failure.
-func (s *Service) StreamLLMForCopilot(ctx context.Context, r *http.Request, ws, modelID string, messages []modelprov.ChatMessage, system string, onDelta func(text, resolvedModelID string) error) (string, copilot.ResolvedTurn, error) {
+func (s *Service) StreamLLMForCopilot(ctx context.Context, r *http.Request, ws, modelID string, messages []modelprov.ChatMessage, system string, opts copilot.LLMCallOptions, onDelta func(text, resolvedModelID string) error) (string, []modelprov.ToolCall, copilot.ResolvedTurn, error) {
 	if s.IsCollabMode != nil && s.IsCollabMode() {
-		out, rt, err := s.streamLLMViaCap(ctx, r, ws, modelID, messages, system, onDelta)
+		out, calls, rt, err := s.streamLLMViaCap(ctx, r, ws, modelID, messages, system, opts, onDelta)
 		if err == nil {
-			return out, rt, nil
+			return out, calls, rt, nil
 		}
 		// Cap unreachable / 5xx — degrade to local resolution so a flaky
 		// sidecar doesn't kill the entire Copilot session.
@@ -96,11 +96,11 @@ func (s *Service) StreamLLMForCopilot(ctx context.Context, r *http.Request, ws, 
 	// Honour the overall harness timeout for multi-step ReAct.
 	harnessCtx, cancel := context.WithTimeout(ctx, copilotStreamTimeout())
 	defer cancel()
-	text, rt, err := s.streamLocalCandidates(harnessCtx, ws, modelID, messages, system, onDelta)
+	text, calls, rt, err := s.streamLocalCandidates(harnessCtx, ws, modelID, messages, system, opts, onDelta)
 	if err != nil {
-		return "", rt, err
+		return "", calls, rt, err
 	}
-	return text, rt, nil
+	return text, calls, rt, nil
 }
 
 // capBaseURL returns the Cap sidecar base URL (CapBaseURL Deps field, with
@@ -121,10 +121,11 @@ func (s *Service) capBaseURL() string {
 // endpoint. The Cap sidecar owns providers/credentials/invoke (Collab
 // only owns session/routing), so Collab hops there first and falls back
 // to direct local resolution on transport failure.
-func (s *Service) streamLLMViaCap(ctx context.Context, r *http.Request, ws, modelID string, messages []modelprov.ChatMessage, system string, onDelta func(text, resolvedModelID string) error) (string, ResolvedTurn, error) {
+func (s *Service) streamLLMViaCap(ctx context.Context, r *http.Request, ws, modelID string, messages []modelprov.ChatMessage, system string, opts copilot.LLMCallOptions, onDelta func(text, resolvedModelID string) error) (string, []modelprov.ToolCall, ResolvedTurn, error) {
 	url := s.capBaseURL() + "/api/model-invoke/stream"
 	body, _ := json.Marshal(map[string]any{
 		"workspaceId": ws, "modelId": modelID, "messages": messages, "system": system,
+		"tools": opts.Tools, "parallelToolCalls": opts.ParallelToolCalls,
 	})
 	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, url, strings.NewReader(string(body)))
 	req.Header.Set("Content-Type", "application/json")
@@ -142,11 +143,11 @@ func (s *Service) streamLLMViaCap(ctx context.Context, r *http.Request, ws, mode
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return "", ResolvedTurn{}, fmt.Errorf("cap unreachable: %w", err)
+		return "", nil, ResolvedTurn{}, fmt.Errorf("cap unreachable: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return "", ResolvedTurn{}, fmt.Errorf("cap returned %d", resp.StatusCode)
+		return "", nil, ResolvedTurn{}, fmt.Errorf("cap returned %d", resp.StatusCode)
 	}
 	// Cap-side ModelInvokeStream emits SSE frames via writeSSE
 	// ("data: <json>\n\n"). Use a Scanner so we honour the SSE framing
@@ -175,23 +176,23 @@ func (s *Service) streamLLMViaCap(ctx context.Context, r *http.Request, ws, mode
 			resolved = c.ResolvedModelID
 			if onDelta != nil {
 				if err := onDelta(c.Text, c.ResolvedModelID); err != nil {
-					return b.String(), ResolvedTurn{ModelID: resolved}, err
+					return b.String(), nil, ResolvedTurn{ModelID: resolved}, err
 				}
 			}
 		case "done":
 			resolved = c.ResolvedModelID
 		case "error":
-			return b.String(), ResolvedTurn{ModelID: resolved}, fmt.Errorf("%s", c.Error)
+			return b.String(), nil, ResolvedTurn{ModelID: resolved}, fmt.Errorf("%s", c.Error)
 		}
 	}
 	if err := sc.Err(); err != nil {
 		// Treat scanner EOF / transient pipe close as a graceful end-of-stream;
 		// we only surface transport errors here.
 		if err.Error() != "EOF" {
-			return b.String(), ResolvedTurn{ModelID: resolved}, fmt.Errorf("cap stream read: %w", err)
+			return b.String(), nil, ResolvedTurn{ModelID: resolved}, fmt.Errorf("cap stream read: %w", err)
 		}
 	}
-	return b.String(), ResolvedTurn{ModelID: resolved}, nil
+	return b.String(), nil, ResolvedTurn{ModelID: resolved}, nil
 }
 
 // headerSSE sets the SSE response headers (Content-Type, no-cache, keep-alive).

@@ -61,6 +61,12 @@ type Deps struct {
 	ValidateEmployeeConfigurationBody func(body map[string]any) error
 	ValidateEmployeeReleaseGates      func(emp map[string]any) error
 	EmployeeEvaluateIncomplete        func(emp map[string]any) bool
+	// EvaluateEmployeeTrajectoryLocked 按伙伴的真实运行轨迹评估岗位表现(P7):
+	// 返回 {status, score, turns, toolCalls, failures, awaiting, escalations, violations}。
+	// 没有任何真实回合时 status=unknown(不给假分数)。
+	//
+	// 命名带 Locked:调用方已持有 Store.Lock,实现内部不得再加锁。
+	EvaluateEmployeeTrajectoryLocked  func(emp map[string]any) map[string]any
 	ValidatePublishedCapabilities     func(emp map[string]any) error
 
 	// Employee runtime projections (compute / evidence / with-runtime)

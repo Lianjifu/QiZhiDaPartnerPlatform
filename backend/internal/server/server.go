@@ -1029,6 +1029,10 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) {
 		data, err = s.getCopilotTurnStatus(r)
 	case strings.HasPrefix(path, "/api/copilot/conversations/") && strings.Contains(path, "/turns/") && strings.HasSuffix(path, "/replay") && method == http.MethodGet:
 		data, err = s.CopSvc.ReplayCopilotTurn(r)
+	case strings.HasPrefix(path, "/api/copilot/conversations/") && strings.Contains(path, "/turns/") && strings.HasSuffix(path, "/resume") && method == http.MethodPost:
+		// P6 人机共岗:审批结果回来后,续跑同一个回合。
+		s.copilotResumeTurn(w, r)
+		return
 	case strings.HasPrefix(path, "/api/copilot/conversations/") && strings.HasSuffix(path, "/cancel") && method == http.MethodPost:
 		data, err = s.CopSvc.CancelCopilotTurn(r)
 	case strings.HasPrefix(path, "/api/copilot/conversations/") && strings.HasSuffix(path, "/stream") && method == http.MethodPost:
@@ -1506,10 +1510,38 @@ func (s *Server) buildCopSvc() *copilot.Service {
 		Memory: copilot.MemoryDeps{
 			AppendMemoryAuditLockedFn: s.appendMemoryAuditLocked,
 			MemoryCanReadFn:           s.memoryCanRead,
+			// 以下三个在 P1 接线：记忆治理此前只有 2/6 字段被接上，
+			// 导致 dream 压缩恒返回 nil、evolve 记忆晋升返回假成功。
+			PersistMemorySyncFn:       s.persistMemory,
+			IngestRuntimeMemoryLockedFn: func(in copilot.RuntimeMemoryInputExport) (map[string]any, error) {
+				return s.ingestRuntimeMemoryLocked(runtimeMemoryInput{
+					WorkspaceID:      in.WorkspaceID,
+					OwnerID:          in.OwnerID,
+					OwnerName:        in.OwnerName,
+					DigitalPartnerID: in.DigitalPartnerID,
+					Title:            in.Title,
+					Content:          in.Content,
+					SourceType:       in.SourceType,
+					SourceID:         in.SourceID,
+					CorrelationID:    in.CorrelationID,
+					Layer:            in.Layer,
+					Scope:            in.Scope,
+					Confidence:       in.Confidence,
+				})
+			},
+			MemoryPolicyForFn:         s.memoryPolicyFor,
+			LogCitationsForRAGFn:      s.logCitationsForRAG,
+		},
+		Escalation: copilot.EscalationDeps{
+			// 数字伙伴自动升级(交接):命中 boundaryPolicy.handoff.triggers 时移交接管人。
+			EscalateFn: s.escalateDigitalPartner,
 		},
 		Tools: copilot.ToolDeps{
 			DispatchAuthorizedToolFn: s.dispatchAuthorizedTool,
 			RunSkillToolFn:           s.runSkillTool,
+			PendingTodosFn:           s.pendingTodosFor,
+			OffloadArtifactFn:        s.offloadAgentArtifact,
+			ReadArtifactFn:           s.readAgentArtifact,
 		},
 		MultiAgent: copilot.MultiAgentDeps{
 			BuildParticipantContextFn: func(in copilot.ParticipantCtxInput, emp map[string]any) copilot.ParticipantContext {
@@ -1720,6 +1752,7 @@ func (s *Server) buildPartnerSvc() *partners.Service {
 		ValidateEmployeeConfigurationBody: s.validateEmployeeConfigurationBody,
 		ValidateEmployeeReleaseGates:      s.validateEmployeeReleaseGates,
 		EmployeeEvaluateIncomplete:        s.employeeEvaluateIncomplete,
+		EvaluateEmployeeTrajectoryLocked:  s.employeeTrajectoryEvaluationLocked,
 		ValidatePublishedCapabilities:     s.validatePublishedCapabilities,
 		EmployeeWithRuntimeLocked:         s.employeeWithRuntimeLocked,
 		RealEmployeeEvidenceLocked:        s.realEmployeeEvidenceLocked,

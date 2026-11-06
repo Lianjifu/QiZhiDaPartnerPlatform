@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/qizhida-partner-platform/backend/internal/auth"
+	"github.com/qizhida-partner-platform/backend/internal/copilot"
 	"github.com/qizhida-partner-platform/backend/internal/tasks"
 )
 
@@ -159,6 +161,22 @@ func conversationTodosKey(convID string) string {
 	return "copilotTodos:" + convID
 }
 
+// pendingTodosFor 返回会话当前的待办清单(todo_write 写入的内容)。
+// 供 copilot 注入下一轮 system prompt,让伙伴按清单推进。
+func (s *Server) pendingTodosFor(convID string) []map[string]any {
+	convID = strings.TrimSpace(convID)
+	if convID == "" {
+		return nil
+	}
+	s.Store.RLock()
+	defer s.Store.RUnlock()
+	if s.Store.SkillExtra == nil {
+		return nil
+	}
+	todos, _ := s.Store.SkillExtra[conversationTodosKey(convID)].([]map[string]any)
+	return todos
+}
+
 func (s *Server) runtimeTodoWrite(ctx toolRunContext, call toolCallRequest, started time.Time) toolExecResult {
 	convID := coalesce(ctx.ConversationID, "default")
 	s.Store.Lock()
@@ -173,19 +191,67 @@ func (s *Server) runtimeTodoWrite(ctx toolRunContext, call toolCallRequest, star
 	if merge, ok := call.Args["merge"].(bool); ok && !merge {
 		todos = nil
 	}
+	// P4 待办状态机:带 id 的条目是状态迁移(pending → in_progress → done),
+	// 不带 id 的是新增。
+	apply := func(m map[string]any) {
+		id := strings.TrimSpace(str(m["id"]))
+		status := normalizeTodoStatus(str(m["status"]))
+		content := firstNonEmpty(str(m["content"]), str(m["title"]))
+		if id != "" {
+			for i := range todos {
+				if str(todos[i]["id"]) != id {
+					continue
+				}
+				if content != "" {
+					todos[i]["content"] = content
+				}
+				if status != "" {
+					todos[i]["status"] = status
+				}
+				todos[i]["updatedAt"] = time.Now().UTC().Format(time.RFC3339)
+				return
+			}
+		}
+		if content == "" {
+			return
+		}
+		if id == "" {
+			id = fmt.Sprintf("todo-%d", len(todos)+1)
+		}
+		if status == "" {
+			status = "pending"
+		}
+		todos = append(todos, map[string]any{
+			"id": id, "content": content, "status": status,
+			"createdAt": time.Now().UTC().Format(time.RFC3339),
+		})
+	}
 	if items, ok := call.Args["todos"].([]any); ok {
 		for _, it := range items {
 			if m, ok := it.(map[string]any); ok {
-				todos = append(todos, m)
+				apply(m)
 			}
 		}
 	} else if title := str(call.Args["content"]); title != "" {
-		todos = append(todos, map[string]any{"id": fmt.Sprintf("todo-%d", len(todos)+1), "content": title, "status": "pending"})
+		apply(map[string]any{"content": title, "status": str(call.Args["status"])})
 	}
 	s.Store.SkillExtra[key] = todos
 	s.Store.Unlock()
 	return toolExecResult{Status: "success", DurationMs: int(time.Since(started).Milliseconds()),
 		Output: fmt.Sprintf("【todo_write】%d 项 todo\n%s", len(todos), formatTodos(todos))}
+}
+
+// normalizeTodoStatus 归一待办状态;未知状态一律落到 pending。
+func normalizeTodoStatus(v string) string {
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "in_progress", "in-progress", "doing":
+		return "in_progress"
+	case "done", "completed", "finished":
+		return "done"
+	case "pending", "todo", "":
+		return "pending"
+	}
+	return "pending"
 }
 
 func formatTodos(todos []map[string]any) string {
@@ -199,7 +265,7 @@ func formatTodos(todos []map[string]any) string {
 func (s *Server) runtimeAskUserQuestion(ctx toolRunContext, call toolCallRequest, started time.Time) toolExecResult {
 	q := firstNonEmpty(str(call.Args["question"]), str(call.Args["query"]), ctx.UserMessage)
 	return toolExecResult{Status: "needs_elicitation", DurationMs: int(time.Since(started).Milliseconds()),
-		Output: fmt.Sprintf("【ask_user_question】%s\n（等待用户在会话中回复后继续）", q),
+		Output:     fmt.Sprintf("【ask_user_question】%s\n（等待用户在会话中回复后继续）", q),
 		Permission: "elicitation"}
 }
 
@@ -273,9 +339,52 @@ func (s *Server) runtimeSendAttachment(ctx toolRunContext, call toolCallRequest,
 }
 
 func (s *Server) runtimeAgent(ctx toolRunContext, call toolCallRequest, started time.Time) toolExecResult {
-	prompt := firstNonEmpty(str(call.Args["prompt"]), str(call.Args["task"]), ctx.UserMessage)
-	return toolExecResult{Status: "success", DurationMs: int(time.Since(started).Milliseconds()),
-		Output: fmt.Sprintf("【agent】子 Agent 已接收任务（简化委派）：%s\n提示：完整子循环需 qzda-agent-runtime；当前返回任务摘要供主 Agent 继续。", truncateRunes(prompt, 500))}
+	task := firstNonEmpty(str(call.Args["task"]), str(call.Args["prompt"]), ctx.UserMessage)
+	if strings.TrimSpace(task) == "" {
+		return toolExecResult{Status: "failed", Error: "缺少 task", DurationMs: int(time.Since(started).Milliseconds())}
+	}
+	if s.CopSvc == nil {
+		return toolExecResult{Status: "unavailable", Permission: "unavailable",
+			DurationMs: int(time.Since(started).Milliseconds()),
+			Error:  "子伙伴派生能力未就绪",
+			Output: "【agent】子伙伴派生服务未就绪，请直接在本回合内用可用工具完成任务。"}
+	}
+	reqCtx := context.Background()
+	if ctx.Request != nil {
+		reqCtx = ctx.Request.Context()
+	}
+	res := s.CopSvc.RunDelegatedTurn(reqCtx, copilot.DelegationInput{
+		Request:         ctx.Request,
+		WorkspaceID:     ctx.WorkspaceID,
+		ConversationID:  ctx.ConversationID,
+		CorrelationID:   ctx.CorrelationID,
+		ParentPartnerID: ctx.DigitalPartner,
+		Task:            task,
+		TargetPartnerID: str(call.Args["target"]),
+		Viewer:          ctx.Viewer,
+		SessionMode:     ctx.SessionMode,
+		RiskLevel:       ctx.RiskLevel,
+		ModelID:         ctx.ModelID,
+	})
+	switch res.Status {
+	case "success":
+		return toolExecResult{Status: "success", DurationMs: int(time.Since(started).Milliseconds()),
+			Output: fmt.Sprintf("【agent】子伙伴(%s)已完成子任务：\n%s", res.ChildPartnerID, res.Summary)}
+	case "denied":
+		return toolExecResult{Status: "denied", Permission: "delegation_denied",
+			DurationMs: int(time.Since(started).Milliseconds()),
+			Error:  res.Error,
+			Output: "【agent】派生被拒绝：" + res.Error}
+	case "unavailable":
+		return toolExecResult{Status: "unavailable", Permission: "unavailable",
+			DurationMs: int(time.Since(started).Milliseconds()),
+			Error:  res.Error,
+			Output: "【agent】" + res.Error}
+	default:
+		return toolExecResult{Status: "failed", DurationMs: int(time.Since(started).Milliseconds()),
+			Error:  res.Error,
+			Output: "【agent】子伙伴执行失败：" + res.Error}
+	}
 }
 
 func (s *Server) runtimeTaskCreate(ctx toolRunContext, call toolCallRequest, started time.Time) toolExecResult {

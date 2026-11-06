@@ -246,22 +246,31 @@ func (s *Service) listResolvedTurns(ctx context.Context, ws, requested string) [
 
 // streamResolvedChat streams text deltas for a resolved turn via the
 // modelprov client. Calls back on every non-empty delta.
-func (s *Service) streamResolvedChat(ctx context.Context, rt ResolvedTurn, messages []modelprov.ChatMessage, onDelta func(string) error) (string, error) {
+func (s *Service) streamResolvedChat(ctx context.Context, rt ResolvedTurn, messages []modelprov.ChatMessage, opts copilot.LLMCallOptions, onDelta func(string) error) (string, []modelprov.ToolCall, error) {
 	req := rt.Request
 	if len(messages) == 0 {
-		return "", fmt.Errorf("missing messages")
+		return "", nil, fmt.Errorf("missing messages")
 	}
 	req.Messages = messages
+	// P3: 把能力契约(P2)随请求下发 —— 模型据此发起结构化工具调用。
+	req.Tools = opts.Tools
+	req.ParallelToolCalls = opts.ParallelToolCalls
+	req.ToolChoice = opts.ToolChoice
+	req.CachePoints = opts.CachePoints
 	client := s.modelProbe()
 	started := time.Now()
 	traceID := s.newTraceID()
 	ch, err := client.StreamChat(ctx, req)
 	if err != nil {
 		s.recordTrace(traceID, "", "", rt, started, trace.StatusError, err)
-		return "", err
+		return "", nil, err
 	}
 	var b strings.Builder
+	var toolCalls []modelprov.ToolCall
 	for chunk := range ch {
+		if len(chunk.ToolCalls) > 0 {
+			toolCalls = append(toolCalls, chunk.ToolCalls...)
+		}
 		if chunk.Err != nil {
 			status := trace.StatusError
 			if isCapUnreachable(chunk.Err) {
@@ -275,9 +284,9 @@ func (s *Service) streamResolvedChat(ctx context.Context, rt ResolvedTurn, messa
 			}
 			s.recordTrace(traceID, "", "", rt, started, status, chunk.Err)
 			if b.Len() > 0 {
-				return b.String(), chunk.Err
+				return b.String(), toolCalls, chunk.Err
 			}
-			return "", chunk.Err
+			return "", toolCalls, chunk.Err
 		}
 		if chunk.Text == "" {
 			continue
@@ -286,17 +295,17 @@ func (s *Service) streamResolvedChat(ctx context.Context, rt ResolvedTurn, messa
 		if onDelta != nil {
 			if err := onDelta(chunk.Text); err != nil {
 				s.recordTrace(traceID, "", "", rt, started, trace.StatusError, err)
-				return b.String(), err
+				return b.String(), toolCalls, err
 			}
 		}
 	}
-	if b.Len() == 0 {
+	if b.Len() == 0 && len(toolCalls) == 0 {
 		err := fmt.Errorf("empty model response")
 		s.recordTrace(traceID, "", "", rt, started, trace.StatusError, err)
-		return "", err
+		return "", toolCalls, err
 	}
 	s.recordTrace(traceID, "", "", rt, started, trace.StatusOK, nil)
-	return b.String(), nil
+	return b.String(), toolCalls, nil
 }
 
 // recordTrace emits a single trace.Event to the recorder. Nil-safe.
@@ -332,7 +341,7 @@ func (s *Service) newTraceID() string {
 // streamLocalCandidates tries provider candidates, then QZDA_LLM_*, then
 // embedded chat. Honors per-attempt timeouts (full for primary, shorter for
 // standbys).
-func (s *Service) streamLocalCandidates(ctx context.Context, ws, modelID string, messages []modelprov.ChatMessage, system string, onDelta func(text, resolvedModelID string) error) (string, ResolvedTurn, error) {
+func (s *Service) streamLocalCandidates(ctx context.Context, ws, modelID string, messages []modelprov.ChatMessage, system string, opts copilot.LLMCallOptions, onDelta func(text, resolvedModelID string) error) (string, []modelprov.ToolCall, ResolvedTurn, error) {
 	var lastErr error
 	candidates := s.listResolvedTurns(ctx, ws, modelID)
 	for i, rt := range candidates {
@@ -357,16 +366,16 @@ func (s *Service) streamLocalCandidates(ctx context.Context, ws, modelID string,
 		}
 		attemptCtx, cancel := context.WithTimeout(ctx, budget)
 		rt.Request.Timeout = budget
-		text, streamErr := s.streamResolvedChat(attemptCtx, rt, messages, func(t string) error {
+		text, calls, streamErr := s.streamResolvedChat(attemptCtx, rt, messages, opts, func(t string) error {
 			return onDelta(t, rt.ModelID)
 		})
 		cancel()
 		if streamErr == nil {
-			return text, rt, nil
+			return text, calls, rt, nil
 		}
 		lastErr = streamErr
 	}
-	return s.streamEnvFallback(ctx, messages, system, onDelta, lastErr)
+	return s.streamEnvFallback(ctx, messages, system, opts, onDelta, lastErr)
 }
 
 // candidateAttemptTimeout returns the per-attempt timeout for the primary
@@ -480,7 +489,7 @@ func formatModelInvokeUserMessage(err error) string {
 
 // streamEnvFallback tries the QZDA_LLM_* env fallback, then embedded chat,
 // before bubbling up a "no model endpoint available" error.
-func (s *Service) streamEnvFallback(ctx context.Context, messages []modelprov.ChatMessage, system string, onDelta func(text, resolvedModelID string) error, prior error) (string, ResolvedTurn, error) {
+func (s *Service) streamEnvFallback(ctx context.Context, messages []modelprov.ChatMessage, system string, opts copilot.LLMCallOptions, onDelta func(text, resolvedModelID string) error, prior error) (string, []modelprov.ToolCall, ResolvedTurn, error) {
 	userMsg := copilot.LastUserContent(messages)
 	if envReq, ok := modelprov.EnvFallbackRequest(userMsg); ok {
 		if system != "" {
@@ -491,11 +500,11 @@ func (s *Service) streamEnvFallback(ctx context.Context, messages []modelprov.Ch
 			ModelID: coalesce(envReq.Model, "env-llm"), ModelName: envReq.Model,
 			ProviderID: "env", ProviderName: "QZDA_LLM", Protocol: envReq.Protocol, Source: "env", Request: envReq,
 		}
-		text, streamErr := s.streamResolvedChat(ctx, rt, messages, func(t string) error {
+		text, calls, streamErr := s.streamResolvedChat(ctx, rt, messages, opts, func(t string) error {
 			return onDelta(t, rt.ModelID)
 		})
 		if streamErr == nil {
-			return text, rt, nil
+			return text, calls, rt, nil
 		}
 		prior = streamErr
 	}
@@ -506,18 +515,18 @@ func (s *Service) streamEnvFallback(ctx context.Context, messages []modelprov.Ch
 			ModelID: req.Model, ModelName: req.Model, ProviderID: "embedded",
 			ProviderName: "平台内置对话", Protocol: "embedded", Source: "embedded", Request: req,
 		}
-		text, streamErr := s.streamResolvedChat(ctx, rt, messages, func(t string) error {
+		text, calls, streamErr := s.streamResolvedChat(ctx, rt, messages, opts, func(t string) error {
 			return onDelta(t, rt.ModelID)
 		})
 		if streamErr == nil {
-			return text, rt, nil
+			return text, calls, rt, nil
 		}
 		prior = streamErr
 	}
 	if prior == nil {
 		prior = fmt.Errorf("no model endpoint available")
 	}
-	return "", ResolvedTurn{}, fmt.Errorf("%s", formatModelInvokeUserMessage(prior))
+	return "", nil, ResolvedTurn{}, fmt.Errorf("%s", formatModelInvokeUserMessage(prior))
 }
 
 // isCapUnreachable reports whether the error is one we'd see when the Cap
@@ -549,7 +558,7 @@ func (s *Service) ModelInvoke(r *http.Request) (any, error) {
 	system := strings.TrimSpace(str(body["system"]))
 	ctx, cancel := context.WithTimeout(r.Context(), 150*time.Second)
 	defer cancel()
-	text, rt, err := s.streamLocalCandidates(ctx, ws, modelID, messages, system, func(string, string) error { return nil })
+	text, _, rt, err := s.streamLocalCandidates(ctx, ws, modelID, messages, system, copilot.LLMCallOptions{}, func(string, string) error { return nil })
 	if err != nil {
 		return nil, apperr.BadReq(apperr.ModelUnavailable, formatModelInvokeUserMessage(err))
 	}

@@ -137,13 +137,14 @@ func (s *Service) runPlanExecuteTurn(ctx context.Context, in reactTurnInput) rea
 	})
 	var planBuf strings.Builder
 	planText, rt, err := withLLMRetry(ctx, func(ctx context.Context) (string, ResolvedTurn, error) {
-		return s.Deps.Routing.StreamLLMForCopilotFn(ctx, in.Request, in.WorkspaceID, in.ModelID, planMsgs, system+"\n\n"+planPrompt(), func(chunk, mid string) error {
+		reply, _, resolved, callErr := s.Deps.Routing.StreamLLMForCopilotFn(ctx, in.Request, in.WorkspaceID, in.ModelID, planMsgs, system+"\n\n"+planPrompt(), LLMCallOptions{}, func(chunk, mid string) error {
 			if mid != "" {
 				resolvedModel = mid
 			}
 			planBuf.WriteString(chunk)
 			return nil
 		})
+		return reply, resolved, callErr
 	})
 	if err == nil {
 		lastRT = rt
@@ -255,13 +256,14 @@ func (s *Service) runPlanExecuteTurn(ctx context.Context, in reactTurnInput) rea
 	})
 	var aggBuf strings.Builder
 	aggText, rt2, err2 := withLLMRetry(ctx, func(ctx context.Context) (string, ResolvedTurn, error) {
-		return s.Deps.Routing.StreamLLMForCopilotFn(ctx, in.Request, in.WorkspaceID, in.ModelID, aggMsgs, aggSystem, func(chunk, mid string) error {
+		reply, _, resolved, callErr := s.Deps.Routing.StreamLLMForCopilotFn(ctx, in.Request, in.WorkspaceID, in.ModelID, aggMsgs, aggSystem, LLMCallOptions{}, func(chunk, mid string) error {
 			if mid != "" {
 				resolvedModel = mid
 			}
 			aggBuf.WriteString(chunk)
 			return nil
 		})
+		return reply, resolved, callErr
 	})
 	if err2 != nil && aggBuf.Len() == 0 && aggText == "" {
 		return reactTurnResult{Err: err2, ToolCalls: toolCalls, Citations: citations, Steps: len(plan.Steps), ModelID: resolvedModel, Mode: modePlanExec, Plan: plan}

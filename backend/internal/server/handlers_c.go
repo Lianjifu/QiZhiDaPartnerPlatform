@@ -643,6 +643,9 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 	segmentPolicy := copilot.ResolveSegmentPolicy(body, empMap)
 	system += copilot.ReplyModePromptClause(replyMode, segmentPolicy)
 
+	// P4 会话压缩:历史过长时把早期内容压成摘要,保留最近若干轮原文。
+	// 原始消息一条不删,只是给模型看的上下文更紧凑。
+	historySnapshot, compactInfo := s.CopSvc.CompactConversationHistory(r.Context(), r, ws, cid, modelID, corr, historySnapshot)
 	chatMessages := copilot.AssembleCopilotChatMessages(historySnapshot)
 	if len(chatMessages) == 0 {
 		chatMessages = []copilot.ChatMessage{{Role: "user", Content: userMsg}}
@@ -661,6 +664,7 @@ func (s *Server) copilotStream(w http.ResponseWriter, r *http.Request) {
 		"sessionMode": sessionMode, "riskLevel": riskLevel,
 		"channel": channel, "channelThreadId": channelThreadID,
 		"runtimeMode": runtimeMode(), "employeeBinding": binding,
+		"compaction": compactInfo,
 		"envelope": map[string]any{
 			"tenantId": id.TenantID, "workspaceId": ws, "actorId": id.ID,
 			"channel": channel, "channelThreadId": channelThreadID,

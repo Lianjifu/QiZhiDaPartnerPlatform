@@ -649,7 +649,8 @@ func (s *Service) applyEvolveCandidateLocked(ws, actorID, actorName string, cand
 			}
 			return map[string]any{"memoryId": str(item["id"]), "layer": target}, nil
 		}
-		return map[string]any{"memoryId": "", "layer": target}, nil
+		return nil, apperr.BadReq(apperr.EvolveMemoryUnavailable,
+			"记忆晋升暂不可用：记忆治理模块未接入（不能返回空 memoryId 的假成功）")
 
 	case evolveKindSkillPatch:
 		// Draft skill note only — never mark installed/published.

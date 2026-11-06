@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/qizhida-partner-platform/backend/internal/copilot"
 )
 
 func asRuntimeMap(v any) map[string]any {
@@ -328,6 +330,10 @@ func (s *Server) computeEmployeeRuntimeLocked(emp map[string]any) map[string]any
 func (s *Server) employeeWithRuntimeLocked(emp map[string]any) map[string]any {
 	out := cloneMap(emp)
 	out["runtime"] = s.computeEmployeeRuntimeLocked(emp)
+	// P2 能力契约:伙伴装了什么能力、各项要什么参数,详情页/配置版本可见。
+	out["capabilityContracts"] = copilot.EmployeeCapabilityContracts(emp)
+	// P7:岗位运行轨迹评分(有真实回合时才有分数)。
+	out["trajectory"] = s.computeEmployeeTrajectorySummaryLocked(emp)
 	return out
 }
 

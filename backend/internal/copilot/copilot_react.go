@@ -17,7 +17,6 @@ package copilot
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -46,33 +45,33 @@ type reactEmitFunc func(typ, stage string, extra map[string]any)
 //
 // 字段命名约定：所有 ID 类都带 Id 后缀或全大写（Corr / ConversationID）。
 type reactTurnInput struct {
-	Request         *http.Request
-	WorkspaceID     string
-	ModelID         string
-	System          string
-	Messages        []modelprov.ChatMessage
-	Registry        []registeredTool
-	UserMessage     string
-	ConversationID  string
-	CorrelationID   string
-	DigitalPartner string
-	Viewer          *auth.Identity
-	Emit            reactEmitFunc
-	ModeHint        string
-	ReflectHint     string
-	RouteReason     string
-	SkipRoute       bool
-	SkipStream      bool
-	NoBootstrap     bool
-	MaxSteps        int
-	SessionMode     string
-	RiskLevel       string
-	Channel         string // inbound channel (feishu/wecom/dingtalk); propagated into participantChannel
-	RAGPrefetched   bool   // 主路径已预检索知识并写入 system，跳过 bootstrap retrieve
-	SnapshotID      string
-	Binding         map[string]any
+	Request          *http.Request
+	WorkspaceID      string
+	ModelID          string
+	System           string
+	Messages         []modelprov.ChatMessage
+	Registry         []registeredTool
+	UserMessage      string
+	ConversationID   string
+	CorrelationID    string
+	DigitalPartner   string
+	Viewer           *auth.Identity
+	Emit             reactEmitFunc
+	ModeHint         string
+	ReflectHint      string
+	RouteReason      string
+	SkipRoute        bool
+	SkipStream       bool
+	NoBootstrap      bool
+	MaxSteps         int
+	SessionMode      string
+	RiskLevel        string
+	Channel          string // inbound channel (feishu/wecom/dingtalk); propagated into participantChannel
+	RAGPrefetched    bool   // 主路径已预检索知识并写入 system，跳过 bootstrap retrieve
+	SnapshotID       string
+	Binding          map[string]any
 	MemoryProvenance []map[string]any
-	SegmentPolicy   string
+	SegmentPolicy    string
 	ReplyMode        string
 	FirstMessageID   string
 	StepSegments     *[]AssistantSegment
@@ -112,10 +111,19 @@ type reactTurnResult struct {
 	Segments      []AssistantSegment
 	ReplyMode     string
 	Cognitive     cognitiveDecision
+	// Awaiting 表示本回合因人工审核而挂起(P6):工具已进入审批队列,
+	// 等审批结果回来后由 resume 续跑。AwaitingActionID 是待审单 ID。
+	Awaiting        bool
+	AwaitingActionID string
+	AwaitingTool    string
 }
 
 // runReactTurn executes a bounded Reason→Act→Observe loop, then optionally streams the final answer.
 func (s *Service) runReactTurn(ctx context.Context, in reactTurnInput) reactTurnResult {
+	// 子伙伴 / 续跑等内部调用可能不带 emit:给一个空发射器,避免空指针。
+	if in.Emit == nil {
+		in.Emit = func(typ, stage string, extra map[string]any) {}
+	}
 	reg := in.Registry
 	messages := append([]modelprov.ChatMessage{}, in.Messages...)
 	system := strings.TrimSpace(in.System)
@@ -123,6 +131,7 @@ func (s *Service) runReactTurn(ctx context.Context, in reactTurnInput) reactTurn
 		system += "\n\n"
 	}
 	system += toolRegistryPrompt(reg)
+	system += s.pendingTodosPrompt(in.ConversationID)
 
 	maxSteps := in.MaxSteps
 	if maxSteps <= 0 {
@@ -146,6 +155,7 @@ func (s *Service) runReactTurn(ctx context.Context, in reactTurnInput) reactTurn
 		DigitalPartner: in.DigitalPartner, ConversationID: in.ConversationID,
 		CorrelationID: in.CorrelationID, UserMessage: in.UserMessage, Viewer: in.Viewer,
 		SessionMode: in.SessionMode, RiskLevel: in.RiskLevel,
+		ModelID: in.ModelID,
 	}
 	if in.Viewer != nil {
 		runCtx.OwnerID = in.Viewer.ID
@@ -184,14 +194,29 @@ func (s *Service) runReactTurn(ctx context.Context, in reactTurnInput) reactTurn
 
 	finalText := ""
 	steps := 0
+	failedTools := map[string]int{}
+
+	// P3: 把能力契约(P2)转成工具 schema 下发给模型;provider 不支持时
+	// modelprov 会透明降级,此时不会有结构化调用,继续走文本解析路径。
+	awaiting := false
+	awaitingActionID := ""
+	awaitingTool := ""
+
+	toolSchemas := registryToSchemas(reg)
+	// CachePoints{0} 标记 system 前缀(跨回合稳定)可做提示缓存(P4)。
+	llmOpts := LLMCallOptions{Tools: toolSchemas, CachePoints: []int{0}}
+	if len(toolSchemas) > 1 {
+		llmOpts.ParallelToolCalls = true
+	}
 
 	for step := 1; step <= maxSteps; step++ {
 		steps = step
 		in.Emit("stage", "react", map[string]any{"status": "running", "step": step})
 
 		var buf strings.Builder
+		var structCalls []modelprov.ToolCall
 		text, rt, err := withLLMRetry(ctx, func(ctx context.Context) (string, ResolvedTurn, error) {
-			return s.Deps.Routing.StreamLLMForCopilotFn(ctx, in.Request, in.WorkspaceID, in.ModelID, messages, system, func(chunk, mid string) error {
+			reply, calls, resolved, callErr := s.Deps.Routing.StreamLLMForCopilotFn(ctx, in.Request, in.WorkspaceID, in.ModelID, messages, system, llmOpts, func(chunk, mid string) error {
 				if mid != "" {
 					resolvedModel = mid
 				}
@@ -201,6 +226,8 @@ func (s *Service) runReactTurn(ctx context.Context, in reactTurnInput) reactTurn
 				}
 				return nil
 			})
+			structCalls = calls
+			return reply, resolved, callErr
 		})
 		if err != nil {
 			if finalText == "" && buf.Len() == 0 && text == "" {
@@ -215,105 +242,101 @@ func (s *Service) runReactTurn(ctx context.Context, in reactTurnInput) reactTurn
 			resolvedModel = coalesce(rt.ModelID, resolvedModel)
 		}
 
-		call, ok := parseToolCall(text)
-		if !ok || maxSteps == 1 {
+		// P3: 优先采用结构化工具调用;模型没给结构化调用时回退到文本解析。
+		calls := structuredToolCalls(structCalls)
+		structured := len(calls) > 0
+		if !structured {
+			if c, ok := parseToolCall(text); ok {
+				calls = []toolCallRequest{c}
+			}
+		}
+		if len(calls) == 0 || maxSteps == 1 {
 			finalText = stripToolCallMarkers(text)
 			in.Emit("stage", "react", map[string]any{"status": "ok", "step": step, "action": "final"})
 			emitThought(in.Emit, "finalize", turnPhasePlan, "准备输出回复", "")
 			break
 		}
 
-		tcID := fmt.Sprintf("tc_react_%d", step)
-		if title, detail := thoughtForToolChoice(call.Name); title != "" {
-			emitThoughtPhase(in.Emit, "tool_call", turnPhaseExecute, title, detail, map[string]any{
-				"toolCallId": tcID,
-			})
-		}
-		in.Emit("tool", "react", map[string]any{
-			"name": call.Name, "status": "running", "args": call.Args, "id": tcID,
-		})
-
-		tool, res := s.Deps.Tools.DispatchAuthorizedToolFn(runCtx, reg, call, in.SessionMode, in.RiskLevel, in.Emit)
-
-		displayName := call.Name
-		if tool != nil {
-			displayName = tool.Name
-		}
-		toolCalls = append(toolCalls, toolCallToPersist(tcID, displayName, call.Args, res))
-		extra := map[string]any{
-			"name": displayName, "status": res.Status, "args": call.Args, "id": tcID,
-			"durationMs": res.DurationMs, "permission": res.Permission,
-		}
-		if res.Hits != nil {
-			extra["hits"] = res.Hits
-			citations = append(citations, citationsFromRagHits(res.Hits)...)
-		}
-		if res.Error != "" {
-			extra["error"] = res.Error
-		}
-		if res.SandboxID != "" {
-			extra["sandboxId"] = res.SandboxID
-		}
-		in.Emit("tool", "react", extra)
-		if title, detail := thoughtForToolResult(res.Status, displayName); title != "" {
-			emitThoughtPhase(in.Emit, "tool_call", turnPhaseExecute, title, detail, map[string]any{
-				"toolCallId": tcID,
-			})
-		}
-
-		obs := res.Output
-		if obs == "" {
-			obs = coalesce(res.Error, res.Status)
-		}
-		if runCmd := s.Deps.Sandbox.ParseNextRunCommandFn(obs); s.Deps.Sandbox.ShouldAutoRunAfterSkillWriteFn(res, runCmd) && s.Deps.Sandbox.IsSkillWorkspaceWriteCallFn(call, tool) {
-			runCall := s.Deps.Sandbox.BuildAutoRunToolCallAfterWriteFn(reg, tool, call, runCmd)
-			runTcID := tcID + "_autorun"
-			runDisplay := runCall.Name
-			in.Emit("tool", "react", map[string]any{
-				"name": runDisplay, "status": "running", "args": runCall.Args, "id": runTcID, "autoContinue": true,
-			})
-			runTool, runRes := s.Deps.Tools.DispatchAuthorizedToolFn(runCtx, reg, runCall, in.SessionMode, in.RiskLevel, in.Emit)
-			// write 已在本回合成功：若 run 仍被送进审核队列，改为直接执行沙箱脚本（避免卡在「只写不跑」）。
-			if runRes.Status == "pending_authorization" && s.Deps.Sandbox.IsSandboxCopilotWsPathFn(runCmd) {
-				if runTool == nil {
-					runTool = registryLookup(reg, runCall.Name)
+		// 一轮内的多个工具并行执行(治理闸不变,只提吞吐)。
+		records := s.executeToolCalls(runCtx, reg, calls, in.SessionMode, in.RiskLevel, in.Emit)
+		for i := range records {
+			rec := &records[i]
+			// P4 上下文卸载:过大的工具输出落成产物,上下文里只留引用。
+			full := rec.Res.Output
+			if full == "" {
+				full = coalesce(rec.Res.Error, rec.Res.Status)
+			}
+			if ref := s.offloadToolOutput(ArtifactInput{
+				WorkspaceID:    in.WorkspaceID,
+				ConversationID: in.ConversationID,
+				CorrelationID:  in.CorrelationID,
+				DigitalPartner: in.DigitalPartner,
+				ToolName:       rec.Name,
+				Content:        full,
+			}); ref != nil {
+				rec.ContextObservation = artifactReferenceText(ref)
+			}
+			toolCalls = append(toolCalls, toolCallToPersist(rec.ID, rec.Name, rec.Args, rec.Res))
+			if rec.Res.Hits != nil {
+				citations = append(citations, citationsFromRagHits(rec.Res.Hits)...)
+			}
+			// 自动续跑:写类 skill 成功后自动接一次 run(逐个处理,保持原语义)。
+			extra, extraRec := s.autoContinueAfterWrite(runCtx, reg, rec, calls[i], in.SessionMode, in.RiskLevel, in.Emit)
+			if extraRec != nil {
+				toolCalls = append(toolCalls, toolCallToPersist(extraRec.ID, extraRec.Name, extraRec.Args, extraRec.Res))
+			}
+			if extra != "" {
+				rec.Res.Output = rec.Res.Output + "\n\n" + extra
+			}
+			if rec.Res.Permission == "prohibited" {
+				s.maybeEscalate(in, escalateTriggerProhibited,
+					"伙伴尝试执行被边界策略禁止的能力："+rec.Name, rec.Name)
+			}
+			if rec.Res.Status == "failed" {
+				failedTools[rec.Name]++
+				if failedTools[rec.Name] >= escalateFailureThreshold {
+					s.maybeEscalate(in, escalateTriggerToolFailure,
+						"工具「"+rec.Name+"」连续失败 "+itoa(failedTools[rec.Name])+" 次", rec.Name)
 				}
-				if runTool != nil {
-					runRes = s.runCopilotTool(runCtx, runTool, runCall)
-				}
+			} else {
+				delete(failedTools, rec.Name)
 			}
-			if runTool != nil {
-				runDisplay = runTool.Name
-			}
-			toolCalls = append(toolCalls, toolCallToPersist(runTcID, runDisplay, runCall.Args, runRes))
-			runExtra := map[string]any{
-				"name": runDisplay, "status": runRes.Status, "args": runCall.Args, "id": runTcID, "autoContinue": true,
-				"durationMs": runRes.DurationMs, "permission": runRes.Permission,
-			}
-			if runRes.Error != "" {
-				runExtra["error"] = runRes.Error
-			}
-			if runRes.SandboxID != "" {
-				runExtra["sandboxId"] = runRes.SandboxID
-			}
-			in.Emit("tool", "react", runExtra)
-			runObs := coalesce(runRes.Output, coalesce(runRes.Error, runRes.Status))
-			obs = strings.TrimSpace(obs + "\n\n【自动续跑 run · " + runDisplay + " · " + runRes.Status + "】\n" + runObs)
-			if runRes.Status == "success" {
-				res = runRes
+			// P6: pending tool authorization suspends this turn; resume continues it.
+			if rec.Res.Status == "pending_authorization" {
+				awaiting = true
+				awaitingActionID = rec.Res.ActionID
+				awaitingTool = rec.Name
 			}
 		}
-		obs = truncateRunes(obs, reactToolObservationMaxRunes)
-		messages = append(messages,
-			modelprov.ChatMessage{Role: "assistant", Content: strings.TrimSpace(text)},
-			modelprov.ChatMessage{Role: "user", Content: "【工具观察 " + displayName + " · " + res.Status + "】\n" + obs + "\n请基于观察继续：若需再调用工具请输出工具块，否则给出最终中文回答。"},
-		)
+
+		if structured {
+			messages = append(messages,
+				modelprov.ChatMessage{Role: "assistant", Content: strings.TrimSpace(text), ToolCalls: structCalls},
+				modelprov.ChatMessage{Role: "user", ToolResults: toolCallsToResults(records, structCalls)},
+				modelprov.ChatMessage{Role: "user", Content: "请基于上述工具观察继续：若需再调用工具请直接发起工具调用，否则给出最终中文回答。"},
+			)
+		} else {
+			rec := records[0]
+			messages = append(messages,
+				modelprov.ChatMessage{Role: "assistant", Content: strings.TrimSpace(text)},
+				modelprov.ChatMessage{Role: "user", Content: toolResultContent(rec) + "\n请基于观察继续：若需再调用工具请输出工具块，否则给出最终中文回答。"},
+			)
+		}
+
+		if awaiting {
+			// Suspend: wait for the approval result, then resume this same turn.
+			in.Emit("awaiting", "approval", map[string]any{
+				"status": "pending_authorization", "actionId": awaitingActionID, "tool": awaitingTool,
+			})
+			finalText = "工具「" + awaitingTool + "」已进入人工审核队列，等待授权通过后将继续执行。"
+			break
+		}
 
 		if step == maxSteps {
 			systemFinal := system + "\n已达工具步数上限，请不要再调用工具，直接给出最终中文回答。"
 			var finalBuf strings.Builder
 			ft, rt2, err2 := withLLMRetry(ctx, func(ctx context.Context) (string, ResolvedTurn, error) {
-				return s.Deps.Routing.StreamLLMForCopilotFn(ctx, in.Request, in.WorkspaceID, in.ModelID, messages, systemFinal, func(chunk, mid string) error {
+				reply, _, resolved, callErr := s.Deps.Routing.StreamLLMForCopilotFn(ctx, in.Request, in.WorkspaceID, in.ModelID, messages, systemFinal, LLMCallOptions{}, func(chunk, mid string) error {
 					if mid != "" {
 						resolvedModel = mid
 					}
@@ -323,6 +346,7 @@ func (s *Service) runReactTurn(ctx context.Context, in reactTurnInput) reactTurn
 					}
 					return nil
 				})
+				return reply, resolved, callErr
 			})
 			if err2 == nil {
 				lastRT = rt2
@@ -358,7 +382,7 @@ func (s *Service) runReactTurn(ctx context.Context, in reactTurnInput) reactTurn
 		return reactTurnResult{
 			Text: finalText, Resolved: lastRT, ModelID: resolvedModel,
 			ToolCalls: toolCalls, Citations: dedupeCitations(citations),
-			Steps: steps, Mode: modeReact, Segments: segs, ReplyMode: in.ReplyMode,
+			Steps: steps, Mode: modeReact, Segments: segs, ReplyMode: in.ReplyMode,			Awaiting: awaiting, AwaitingActionID: awaitingActionID, AwaitingTool: awaitingTool,
 		}
 	}
 
@@ -366,6 +390,7 @@ func (s *Service) runReactTurn(ctx context.Context, in reactTurnInput) reactTurn
 		Text: finalText, Resolved: lastRT, ModelID: resolvedModel,
 		ToolCalls: toolCalls, Citations: dedupeCitations(citations),
 		Steps: steps, Mode: modeReact,
+		Awaiting: awaiting, AwaitingActionID: awaitingActionID, AwaitingTool: awaitingTool,
 	}
 }
 

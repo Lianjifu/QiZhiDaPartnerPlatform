@@ -3,6 +3,7 @@ package server
 import (
 	"strings"
 
+	"github.com/qizhida-partner-platform/backend/internal/copilot"
 	apperr "github.com/qizhida-partner-platform/backend/pkg/errors"
 )
 
@@ -67,6 +68,13 @@ func validateEmployeeReleaseGates(emp map[string]any) error {
 	}
 	if model == "" || employeeCapabilityCount(emp) == 0 {
 		return apperr.BadReq(apperr.DigitalPartnerCapabilityRequired, "请先装配已发布模型与至少一项技能/工具/流程技能")
+	}
+	// P2 能力契约闸门:已装配的平台内置工具必须能解析出调用契约。
+	// 只拦"拼写错误"这类确定性问题(knowlege.retrieve / todo_wirte),
+	// 不拦 CMDB / 企业自带的运行时工具 —— 那些有各自的执行器契约。
+	if issues := copilot.EmployeeContractIssues(emp); len(issues) > 0 {
+		return apperr.BadReq(apperr.CapabilityContractMissing,
+			"已装配能力缺少调用契约："+issues[0])
 	}
 	ev, _ := emp["evaluation"].(map[string]any)
 	if ev == nil || str(ev["status"]) != "passed" {

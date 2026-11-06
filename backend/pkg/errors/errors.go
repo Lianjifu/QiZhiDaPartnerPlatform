@@ -86,6 +86,13 @@ const (
 	DigitalPartnerProfileIncomplete     Code = "E_DIGITAL_PARTNER_PROFILE_INCOMPLETE"
 	DigitalPartnerEvaluationRequired    Code = "E_DIGITAL_PARTNER_EVALUATION_REQUIRED"
 	MemoryWriteForbidden                 Code = "E_MEMORY_WRITE_FORBIDDEN"
+	// EvolveMemoryUnavailable —— 自进化候选的记忆晋升能力未接入时返回,
+	// 而不是返回一个空 memoryId 的假成功(P1)。
+	EvolveMemoryUnavailable Code = "E_EVOLVE_MEMORY_UNAVAILABLE"
+	// CapabilityContractMissing —— 数字伙伴装配的能力缺少契约(P2)。
+	CapabilityContractMissing Code = "E_CAPABILITY_CONTRACT_MISSING"
+	// CapabilityArgsInvalid —— 工具调用参数不符合能力契约(P2)。
+	CapabilityArgsInvalid Code = "E_CAPABILITY_ARGS_INVALID"
 	HomeAlertNotFound                    Code = "E_HOME_ALERT_NOT_FOUND"
 	AckNoteRequired                      Code = "E_ACK_NOTE_REQUIRED"
 	CredentialsRequired                  Code = "E_CREDENTIALS_REQUIRED"

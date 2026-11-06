@@ -163,13 +163,14 @@ func (s *Service) applyReflection(ctx context.Context, in reactTurnInput, result
 
 		var buf strings.Builder
 		text, rt, err := withLLMRetry(ctx, func(ctx context.Context) (string, ResolvedTurn, error) {
-			return s.Deps.Routing.StreamLLMForCopilotFn(ctx, in.Request, in.WorkspaceID, in.ModelID, msgs, system, func(chunk, mid string) error {
+			reply, _, resolved, callErr := s.Deps.Routing.StreamLLMForCopilotFn(ctx, in.Request, in.WorkspaceID, in.ModelID, msgs, system, LLMCallOptions{}, func(chunk, mid string) error {
 				if mid != "" {
 					current.ModelID = mid
 				}
 				buf.WriteString(chunk)
 				return nil
 			})
+			return reply, resolved, callErr
 		})
 		if err != nil && buf.Len() == 0 && text == "" {
 			in.Emit("reflect", "reflect", map[string]any{"status": "failed", "round": round, "error": err.Error()})

@@ -59,6 +59,28 @@ func coalesce(values ...string) string {
 	return ""
 }
 
+// floatFrom converts arbitrary JSON-shape values to float64. Default 0.
+func floatFrom(v any) float64 {
+	switch t := v.(type) {
+	case float64:
+		return t
+	case float32:
+		return float64(t)
+	case int:
+		return float64(t)
+	case int64:
+		return float64(t)
+	case json.Number:
+		f, err := t.Float64()
+		if err != nil {
+			return 0
+		}
+		return f
+	default:
+		return 0
+	}
+}
+
 // intFrom converts arbitrary JSON-shape values to int. Default 0 on any
 // unrecognized shape. Mirrors the legacy server.intFrom used by
 // adoptTemplate + applyEmployeeConfig.
